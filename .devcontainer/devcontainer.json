@@ -1,0 +1,11 @@
+{
+  "name": "LactoKeeper Codespace",
+  "forwardPorts": [5173],
+  "portsAttributes": {
+    "5173": {
+      "label": "Vite App",
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
+    }
+  }
+}

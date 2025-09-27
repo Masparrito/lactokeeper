@@ -7,7 +7,7 @@ export default function App() {
             <Droplets className="w-16 h-16 text-indigo-400"/>
             <div>
                 <h1 className="text-5xl font-bold text-white">LactoKeeper</h1>
-                <p className="text-gray-400 mt-2">Bienvenido. Entorno reconstruido.</p>
+                <p className="text-gray-400 mt-2">¡Entorno reconstruido y funcional!</p>
             </div>
         </div>
     </div>
