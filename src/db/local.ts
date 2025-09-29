@@ -1,37 +1,59 @@
+// src/db/local.ts
+
 import Dexie, { Table } from 'dexie';
 
-// Define la "forma" o estructura de nuestros datos.
-export interface Goat {
-  id: string; // Clave primaria (ej: 'R063')
-  lactationCount: number;
+export interface Animal {
+  id: string; 
+  sex: 'Hembra' | 'Macho';
+  status: 'Activo' | 'Vendido' | 'Descartado' | 'Muerto';
+  birthDate: string;
   motherId?: string;
+  fatherId?: string;
+  birthWeight?: number;
+  parturitionId?: number;
 }
+
+// CORRECCIÓN: Renombramos 'Sire' a 'Father'
+export interface Father {
+  id: string;
+  name: string;
+}
+
+export interface Parturition {
+  id?: number;
+  goatId: string;
+  parturitionDate: string;
+  sireId: string; // Mantenemos sireId como referencia interna, pero en la UI será "Padre"
+  offspringCount: number;
+  parturitionType: 'Simple' | 'Doble' | 'Triple' | 'Cuádruple' | 'Quíntuple';
+  status: 'activa' | 'en-secado' | 'seca';
+  dryingStartDate?: string;
+}
+
 export interface Weighing {
-  id?: number; // Clave autoincremental
+  id?: number;
   goatId: string;
   date: string;
   kg: number;
 }
-export interface Birth {
-    id?: number; // Clave autoincremental
-    goatId: string;
-    parturitionDate: string;
-}
 
 export class LactoKeeperDB extends Dexie {
-  goats!: Table<Goat>;
+  animals!: Table<Animal>;
+  // CORRECCIÓN: Renombramos 'sires' a 'fathers'
+  fathers!: Table<Father>;
+  parturitions!: Table<Parturition>;
   weighings!: Table<Weighing>;
-  births!: Table<Birth>;
 
   constructor() {
-    super('LactoKeeperDB_Weather'); // Nuevo nombre para evitar conflictos
+    super('LactoKeeperDB_v2'); 
     this.version(1).stores({
-      goats: '&id',
+      animals: '&id, motherId, fatherId, parturitionId, status',
+      // CORRECCIÓN: Renombramos la tabla
+      fathers: '&id',
+      parturitions: '++id, goatId, sireId, status',
       weighings: '++id, goatId, date',
-      births: '++id, goatId'
     });
   }
 }
 
 export const db = new LactoKeeperDB();
-

@@ -1,9 +1,9 @@
 // src/pages/AnimalProfilePage.tsx
 
 import { useState, useMemo } from 'react';
-// CORRECCIÓN: Se elimina 'Cell' de la lista de importaciones porque no se está utilizando.
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar } from 'recharts';
+import { XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar, LineChart, Line, Legend, CartesianGrid } from 'recharts';
 import { useAnimalData } from '../hooks/useAnimalData';
+import { useComparativeData, ComparisonType } from '../hooks/useComparativeData';
 import { ArrowLeft, Droplet, TrendingUp, CalendarDays, Repeat, CalendarCheck2 } from 'lucide-react';
 import { CustomTooltip } from '../components/ui/CustomTooltip';
 import { Modal } from '../components/ui/Modal';
@@ -43,7 +43,6 @@ const ModalChartTooltip = ({ active, payload, label, context }: { active?: boole
     return null;
 };
 
-
 interface AnimalProfilePageProps {
   animalId: string;
   onBack: () => void;
@@ -52,8 +51,11 @@ interface AnimalProfilePageProps {
 export default function AnimalProfilePage({ animalId, onBack }: AnimalProfilePageProps) {
   const { allLactations, parturitionIntervals, lastWeighingDate, isLoading } = useAnimalData(animalId);
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [activeComparison, setActiveComparison] = useState<ComparisonType | null>(null);
+  const [isComparing, setIsComparing] = useState(false);
+  
+  const { comparativeCurve, isLoading: isComparativeLoading } = useComparativeData(activeComparison);
 
-  // --- Sección de Preparación de Datos para Gráficos ---
   const chartData = useMemo(() => ({
     average: allLactations.map(l => ({ name: new Date(l.parturitionDate).getFullYear().toString(), value: l.averageProduction })),
     peak: allLactations.map(l => ({ name: new Date(l.parturitionDate).getFullYear().toString(), value: l.peakProduction.kg })),
@@ -67,14 +69,26 @@ export default function AnimalProfilePage({ animalId, onBack }: AnimalProfilePag
   
   const currentLactation = allLactations.length > 0 ? allLactations[allLactations.length - 1] : null;
   const latestInterval = parturitionIntervals.length > 0 ? parturitionIntervals[parturitionIntervals.length - 1].days : 0;
+  
+  const isCurrentAnimalPrimipara = allLactations.length === 1;
+
+  const handleCompareToggle = () => {
+    const newIsComparing = !isComparing;
+    setIsComparing(newIsComparing);
+    if (!newIsComparing) {
+      setActiveComparison(null);
+    }
+  };
+
+  const handleComparisonSelect = (type: ComparisonType) => {
+    setActiveComparison(prev => (prev === type ? null : type));
+  };
 
   return (
     <>
       <div className="w-full max-w-4xl mx-auto space-y-4 animate-fade-in">
         <header className="flex items-center pt-8 pb-4">
-          <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors">
-            <ArrowLeft size={24} />
-          </button>
+          <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
           <div className="text-center flex-grow">
             <h1 className="text-4xl font-bold tracking-tight text-white">{animalId}</h1>
             <p className="text-xl text-zinc-400">Perfil de Lactancia</p>
@@ -105,25 +119,47 @@ export default function AnimalProfilePage({ animalId, onBack }: AnimalProfilePag
             </div>
         </div>
 
-        <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
-          <h3 className="text-zinc-400 font-semibold border-b border-brand-border pb-2 mb-4 text-xs uppercase">Curva de Lactancia Actual (Parto: {currentLactation?.parturitionDate || 'N/A'})</h3>
+        <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border relative">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-brand-border pb-2 mb-4 gap-2">
+              <h3 className="text-zinc-400 font-semibold text-xs uppercase">
+                  Curva de Lactancia Actual (Parto: {currentLactation?.parturitionDate || 'N/A'})
+              </h3>
+              <div className="flex items-center space-x-2 self-end sm:self-center">
+                  <span className="text-xs font-semibold text-zinc-300">Comparar:</span>
+                  <button onClick={handleCompareToggle} className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isComparing ? 'bg-amber-500' : 'bg-zinc-700'}`}>
+                      <span aria-hidden="true" className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isComparing ? 'translate-x-5' : 'translate-x-0'}`}/>
+                  </button>
+                  {isComparing && (
+                      <div className="flex items-center space-x-2 animate-fade-in">
+                          <button onClick={() => handleComparisonSelect('PRIMIPARAS_HISTORICAL')} className={`px-2 py-1 text-xs rounded-md transition-colors ${activeComparison === 'PRIMIPARAS_HISTORICAL' ? 'bg-amber-500 text-black font-semibold' : 'bg-zinc-700/50 text-zinc-300 hover:bg-zinc-600/50'} ${isCurrentAnimalPrimipara ? 'ring-2 ring-amber-400' : ''}`}>
+                              vs Primíparas
+                          </button>
+                          <button onClick={() => handleComparisonSelect('MULTIPARAS_HISTORICAL')} className={`px-2 py-1 text-xs rounded-md transition-colors ${activeComparison === 'MULTIPARAS_HISTORICAL' ? 'bg-amber-500 text-black font-semibold' : 'bg-zinc-700/50 text-zinc-300 hover:bg-zinc-600/50'} ${!isCurrentAnimalPrimipara ? 'ring-2 ring-amber-400' : ''}`}>
+                              vs Multíparas
+                          </button>
+                      </div>
+                  )}
+              </div>
+          </div>
           <div className="w-full h-56 -ml-4">
             <ResponsiveContainer>
-                <AreaChart data={currentLactation?.lactationCurve}>
-                    <defs><linearGradient id="animalGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#F59E0B" stopOpacity={0.7}/><stop offset="80%" stopColor="#3B82F6" stopOpacity={0.1}/></linearGradient></defs>
-                    <XAxis dataKey="del" name="DEL" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} stroke="rgba(255,255,255,0.3)" tickLine={false} axisLine={false} />
-                    <YAxis orientation="right" dataKey="kg" name="Kg" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} stroke="rgba(255,255,255,0.3)" tickLine={false} axisLine={false} domain={['dataMin - 0.2', 'dataMax + 0.2']}/>
-                    <Tooltip content={<CustomTooltip />} />
-                    <Area type="monotone" dataKey="kg" stroke="#FBBF24" strokeWidth={2.5} fill="url(#animalGradient)" />
-                </AreaChart>
+              <LineChart margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="del" type="number" domain={['dataMin', 'dataMax']} tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
+                  <YAxis orientation="right" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend verticalAlign="top" height={36} iconType="plainline"/>
+                  <Line type="monotone" data={currentLactation?.lactationCurve} dataKey="kg" name={animalId} stroke="#FBBF24" strokeWidth={2.5} dot={false} />
+                  {activeComparison && !isComparativeLoading && (
+                      <Line type="monotone" data={comparativeCurve} dataKey="kg" name="Promedio del Grupo" stroke="#34d399" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                  )}
+              </LineChart>
             </ResponsiveContainer>
+            {isComparativeLoading && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-xl text-white">Calculando comparación...</div>}
           </div>
         </div>
       </div>
-
-      {/* --- SECCIÓN DE MODALES --- */}
-
-      {/* Modal de Promedios */}
+      
       <Modal isOpen={activeModal === 'average'} onClose={() => setActiveModal(null)} title="Historial de Promedios">
         <div className="space-y-6">
             <div className="w-full h-48 -ml-4"><ResponsiveContainer>
@@ -144,7 +180,6 @@ export default function AnimalProfilePage({ animalId, onBack }: AnimalProfilePag
         </div>
       </Modal>
 
-      {/* Modal de Picos de Producción */}
       <Modal isOpen={activeModal === 'peak'} onClose={() => setActiveModal(null)} title="Historial de Picos de Producción">
         <div className="space-y-6">
             <div className="w-full h-48 -ml-4"><ResponsiveContainer>
@@ -165,7 +200,6 @@ export default function AnimalProfilePage({ animalId, onBack }: AnimalProfilePag
         </div>
       </Modal>
 
-      {/* Modal de Duración de Lactancias (DEL) */}
       <Modal isOpen={activeModal === 'del'} onClose={() => setActiveModal(null)} title="Historial de Duración de Lactancias">
         <div className="space-y-6">
             <div className="w-full h-48 -ml-4"><ResponsiveContainer>
@@ -186,7 +220,6 @@ export default function AnimalProfilePage({ animalId, onBack }: AnimalProfilePag
         </div>
       </Modal>
 
-      {/* Modal de Intervalo entre Partos */}
       <Modal isOpen={activeModal === 'interval'} onClose={() => setActiveModal(null)} title="Historial de Intervalos entre Partos">
         <div className="space-y-6">
             <div className="w-full h-48 -ml-4"><ResponsiveContainer>
