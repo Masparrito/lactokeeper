@@ -1,5 +1,6 @@
 // src/pages/Dashboard.tsx
 
+// Corregido: Se elimina 'React' de la importación
 import { useState, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, BarChart, Bar, ReferenceLine, Tooltip, CartesianGrid } from 'recharts';
 import { useData } from '../context/DataContext';
@@ -9,10 +10,10 @@ import { CustomTooltip } from '../components/ui/CustomTooltip';
 import { Modal } from '../components/ui/Modal';
 
 interface DashboardProps {
-  onNavigateToAnimals: (view: 'all' | 'milking') => void;
+  onNavigateToAnalysis: () => void;
 }
 
-export default function Dashboard({ onNavigateToAnimals }: DashboardProps) {
+export default function Dashboard({ onNavigateToAnalysis }: DashboardProps) {
   const { animals, weighings, parturitions, isLoading } = useData();
   const [chartView, setChartView] = useState<'current' | 'historical'>('current');
   const [isChartInfoModalOpen, setIsChartInfoModalOpen] = useState(false);
@@ -26,12 +27,16 @@ export default function Dashboard({ onNavigateToAnimals }: DashboardProps) {
       };
     }
     
+    let animalsInLastWeighing = 0;
+    if (weighings.length > 0) {
+        const latestDate = weighings.reduce((max, w) => w.date > max ? w.date : max, weighings[0].date);
+        animalsInLastWeighing = weighings.filter(w => w.date === latestDate).length;
+    }
+    
     let weighingsForChart = weighings;
     if (chartView === 'current') {
         const milkingAnimalIds = new Set(
-            parturitions
-                .filter(p => p.status === 'activa')
-                .map(p => p.goatId)
+            parturitions.filter(p => p.status === 'activa').map(p => p.goatId)
         );
         weighingsForChart = weighings.filter(w => milkingAnimalIds.has(w.goatId));
     }
@@ -41,7 +46,6 @@ export default function Dashboard({ onNavigateToAnimals }: DashboardProps) {
         const parturitionForWeighing = parturitions
             .filter(p => p.goatId === w.goatId && new Date(w.date) >= new Date(p.parturitionDate))
             .sort((a, b) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime())[0];
-
         if (!parturitionForWeighing) return;
         
         const del = calculateDEL(parturitionForWeighing.parturitionDate, w.date);
@@ -79,7 +83,7 @@ export default function Dashboard({ onNavigateToAnimals }: DashboardProps) {
     const gaussData = { distribution, mean, stdDev };
     const totalAverage = weighings.length > 0 ? weighings.reduce((sum,w) => sum + w.kg, 0) / weighings.length : 0;
     
-    return { herdAverage: totalAverage, activeGoats: animals.length, herdLactationCurve, gaussData };
+    return { herdAverage: totalAverage, activeGoats: animalsInLastWeighing, herdLactationCurve, gaussData };
   }, [animals, weighings, parturitions, isLoading, chartView]);
 
   if (isLoading) {
@@ -100,10 +104,10 @@ export default function Dashboard({ onNavigateToAnimals }: DashboardProps) {
               <p className="text-4xl font-bold tracking-tight text-white">{analytics.herdAverage.toFixed(2)} <span className="text-2xl font-medium text-zinc-400">Kg</span></p>
             </div>
              <button 
-               onClick={() => onNavigateToAnimals('milking')}
+               onClick={onNavigateToAnalysis}
                className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border text-left hover:border-brand-amber transition-colors"
              >
-              <div className="flex items-center space-x-2 text-zinc-400 font-semibold mb-2 text-xs uppercase tracking-wider"><ActivitySquare /><span>Animales Activos</span></div>
+              <div className="flex items-center space-x-2 text-zinc-400 font-semibold mb-2 text-xs uppercase tracking-wider"><ActivitySquare /><span>Animales en Ordeño</span></div>
               <p className="text-4xl font-bold tracking-tight text-white">{analytics.activeGoats}</p>
             </button>
         </div>
@@ -126,11 +130,12 @@ export default function Dashboard({ onNavigateToAnimals }: DashboardProps) {
                   </button>
               </div>
           </div>
-          <div className="w-full h-48 -ml-4">
-            <ResponsiveContainer><AreaChart data={analytics.herdLactationCurve}>
+          <div className="w-full h-48">
+            <ResponsiveContainer>
+              <AreaChart data={analytics.herdLactationCurve} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <defs><linearGradient id="weatherGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#F59E0B" stopOpacity={0.7}/><stop offset="60%" stopColor="#10B981" stopOpacity={0.2}/><stop offset="100%" stopColor="#3B82F6" stopOpacity={0.1}/></linearGradient></defs>
                 <XAxis dataKey="del" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} stroke="rgba(255,255,255,0.3)" tickLine={false} axisLine={false} />
-                <YAxis orientation="right" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} stroke="rgba(255,255,255,0.3)" tickLine={false} axisLine={false} domain={['dataMin - 0.5', 'dataMax + 0.5']}/>
+                <YAxis orientation="right" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} stroke="rgba(255,255,255,0.3)" tickLine={false} axisLine={false} domain={['dataMin - 0.5', 'dataMax + 0.5']} width={30} />
                 <Tooltip content={<CustomTooltip />} />
                 <Area type="monotone" dataKey="kg" stroke="#FBBF24" strokeWidth={2.5} fill="url(#weatherGradient)" />
             </AreaChart></ResponsiveContainer>
@@ -147,12 +152,12 @@ export default function Dashboard({ onNavigateToAnimals }: DashboardProps) {
                     </button>
                 </div>
             </div>
-            <div className="w-full h-48 -ml-4">
+            <div className="w-full h-48">
                 <ResponsiveContainer>
-                    <BarChart data={analytics.gaussData.distribution} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <BarChart data={analytics.gaussData.distribution} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
                         <XAxis dataKey="range" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} stroke="rgba(255,255,255,0.3)" tickLine={false} axisLine={false} />
-                        <YAxis orientation="right" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} stroke="rgba(255,255,255,0.3)" tickLine={false} axisLine={false} allowDecimals={false} />
+                        <YAxis orientation="right" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} stroke="rgba(255,255,255,0.3)" tickLine={false} axisLine={false} allowDecimals={false} width={30} />
                         <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(255, 255, 255, 0.05)'}} />
                         <Bar dataKey="count" fill="rgba(255, 255, 255, 0.4)" name="Nº de Cabras" />
                         <ReferenceLine x={analytics.gaussData.mean.toFixed(2)} stroke="#34d399" strokeWidth={2} label={{ value: `μ`, fill: '#34d399', position: 'insideTopLeft' }} />
@@ -165,27 +170,16 @@ export default function Dashboard({ onNavigateToAnimals }: DashboardProps) {
       <Modal 
         isOpen={isChartInfoModalOpen} 
         onClose={() => setIsChartInfoModalOpen(false)} 
-        title="¿Qué Muestra este Gráfico?"
+        title="¿Qué es la Curva de Lactancia del Rebaño?"
       >
         <div className="text-zinc-300 space-y-4 text-base">
-            <p>
-                Este gráfico representa la **curva de lactancia promedio** de tu rebaño, mostrando el rendimiento general a lo largo del ciclo productivo.
-            </p>
+            <p>Este gráfico revela la **"personalidad productiva"** de tu rebaño. No es un promedio simple, sino una línea de tiempo del rendimiento promedio.</p>
             <div>
-                <h4 className="font-semibold text-white mb-1">Eje X (Horizontal): Días en Leche (DEL)</h4>
-                <p className="text-sm">
-                    Muestra un punto específico en el ciclo de lactancia de un animal, contando los días desde su último parto. No representa fechas del calendario.
-                </p>
+                <h4 className="font-semibold text-white mb-1">¿Cómo se Calcula?</h4>
+                <p className="text-sm">Para cada "Día en Leche" (DEL) en el eje horizontal, el sistema agrupa los pesajes de **todos los animales** que han pasado por ese día de su ciclo y calcula el promedio.</p>
+                <p className="text-sm mt-2 bg-black/20 p-2 rounded-md"><strong>Ejemplo:</strong> El punto en "DEL 50" es el promedio de todos los pesajes que se hicieron a cualquier animal cuando estaba exactamente en su día 50 de lactancia.</p>
             </div>
-            <div>
-                <h4 className="font-semibold text-white mb-1">Eje Y (Vertical): Producción Promedio (Kg)</h4>
-                <p className="text-sm">
-                    Para cada "Día en Leche", el gráfico calcula el promedio de **todos los pesajes** registrados a todos los animales cuando estaban en ese exacto día de su ciclo.
-                </p>
-            </div>
-            <p className="pt-2 border-t border-zinc-700/80">
-                Te permite responder visualmente a preguntas clave como: ¿Cuándo ocurre el pico de producción del rebaño? y ¿Qué tan persistente es la lactancia después del pico?
-            </p>
+            <p className="pt-2 border-t border-zinc-700/80">Te permite responder visualmente a preguntas clave como: ¿Cuándo ocurre el pico de producción del rebaño? y ¿Qué tan persistente es la lactancia después del pico?</p>
         </div>
       </Modal>
 
@@ -195,24 +189,16 @@ export default function Dashboard({ onNavigateToAnimals }: DashboardProps) {
         title="¿Qué es la Distribución del Rebaño?"
       >
         <div className="text-zinc-300 space-y-4 text-base">
-            <p>
-                Este gráfico, conocido como Campana de Gauss o distribución normal, clasifica el rendimiento promedio de cada animal en el rebaño.
-            </p>
+            <p>Este gráfico, conocido como Campana de Gauss o distribución normal, clasifica el rendimiento promedio de cada animal en el rebaño.</p>
             <div>
                 <h4 className="font-semibold text-white mb-1">Media (μ)</h4>
-                <p className="text-sm">
-                    La línea verde marcada como **μ** representa el **promedio de producción de todo el rebaño**. Es el punto de referencia central.
-                </p>
+                <p className="text-sm">La línea verde marcada como **μ** representa el **promedio de producción de todo el rebaño**. Es el punto de referencia central.</p>
             </div>
             <div>
                 <h4 className="font-semibold text-white mb-1">Las Barras</h4>
-                <p className="text-sm">
-                    Cada barra muestra cuántos animales caen dentro de un rango específico de producción. Una barra alta en el centro (cerca de μ) indica que la mayoría de tu rebaño tiene un rendimiento promedio y consistente.
-                </p>
+                <p className="text-sm">Cada barra muestra cuántos animales caen dentro de un rango específico de producción. Una barra alta en el centro (cerca de μ) indica que la mayoría de tu rebaño tiene un rendimiento promedio y consistente.</p>
             </div>
-            <p className="pt-2 border-t border-zinc-700/80">
-                Esta herramienta es clave para identificar rápidamente a los animales de élite (extremo derecho) y a los que podrían necesitar atención (extremo izquierdo).
-            </p>
+            <p className="pt-2 border-t border-zinc-700/80">Esta herramienta es clave para identificar rápidamente a los animales de élite (extremo derecho) y a los que podrían necesitar atención (extremo izquierdo).</p>
         </div>
       </Modal>
     </>

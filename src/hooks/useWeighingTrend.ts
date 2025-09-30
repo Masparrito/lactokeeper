@@ -1,16 +1,16 @@
 // src/hooks/useWeighingTrend.ts
 
 import { useState, useEffect } from 'react';
-import { db } from '../db/local';
+import { Weighing } from '../db/local'; // Importamos el tipo para mayor seguridad
 
 export type Trend = 'up' | 'down' | 'stable' | 'single' | null;
 
 // El hook ahora recibe todos los pesajes para ser más eficiente
-export const useWeighingTrend = (animalId: string, allWeighings: any[]) => {
+export const useWeighingTrend = (animalId: string, allWeighings: Weighing[]) => {
     const [trend, setTrend] = useState<Trend>(null);
     const [difference, setDifference] = useState<number>(0);
     const [isLongTrend, setIsLongTrend] = useState(false);
-    const [lastTwoWeighings, setLastTwoWeighings] = useState<any[]>([]);
+    const [lastTwoWeighings, setLastTwoWeighings] = useState<Weighing[]>([]);
 
     useEffect(() => {
         const animalWeighings = allWeighings
@@ -20,6 +20,8 @@ export const useWeighingTrend = (animalId: string, allWeighings: any[]) => {
         if (animalWeighings.length < 2) {
             setTrend(animalWeighings.length === 1 ? 'single' : null);
             setLastTwoWeighings(animalWeighings);
+            setDifference(0);
+            setIsLongTrend(false);
             return;
         }
 
@@ -40,6 +42,7 @@ export const useWeighingTrend = (animalId: string, allWeighings: any[]) => {
             const third = animalWeighings[2].kg;
             const previousDiff = previous - third;
             
+            // Comprueba si la tendencia es consistente (dos subidas o dos bajadas seguidas)
             if ((diff > margin && previousDiff > margin) || (diff < -margin && previousDiff < -margin)) {
                 setIsLongTrend(true);
             } else {

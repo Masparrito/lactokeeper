@@ -9,8 +9,14 @@ interface IDataContext {
   weighings: Weighing[];
   parturitions: Parturition[];
   isLoading: boolean;
-  addWeighing: (weighing: { goatId: string; kg: number }) => Promise<void>;
+  addWeighing: (weighing: Weighing) => Promise<number | undefined>;
   addParturition: (data: any) => Promise<void>;
+  updateWeighing: (id: number, newKg: number) => Promise<void>;
+  deleteWeighing: (id: number) => Promise<void>;
+  startDryingProcess: (parturitionId: number) => Promise<void>;
+  setLactationAsDry: (parturitionId: number) => Promise<void>;
+  fetchData: () => Promise<void>;
+  addFather: (father: Father) => Promise<string | number>;
 }
 
 const DataContext = createContext<IDataContext>({
@@ -19,8 +25,14 @@ const DataContext = createContext<IDataContext>({
   weighings: [],
   parturitions: [],
   isLoading: true,
-  addWeighing: async () => {},
+  addWeighing: async () => undefined,
   addParturition: async () => {},
+  updateWeighing: async () => {},
+  deleteWeighing: async () => {},
+  startDryingProcess: async () => {},
+  setLactationAsDry: async () => {},
+  fetchData: async () => {},
+  addFather: async () => '',
 });
 
 export const useData = () => useContext(DataContext);
@@ -138,11 +150,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchData();
   }, [fetchData]);
 
-  const addWeighing = async (weighing: { goatId: string; kg: number }) => {
-    await db.weighings.add({
-        ...weighing,
-        date: new Date().toISOString().split('T')[0]
-    });
+  const addWeighing = async (weighing: Weighing) => {
+    const newId = await db.weighings.add(weighing);
+    // fetchData() will be called from the component to ensure all data is fresh after bulk adds
+    return newId;
+  };
+
+  const updateWeighing = async (id: number, newKg: number) => {
+    await db.weighings.update(id, { kg: newKg });
+    await fetchData();
+  };
+
+  const deleteWeighing = async (id: number) => {
+    await db.weighings.delete(id);
     await fetchData();
   };
 
@@ -171,9 +191,45 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     await fetchData();
   };
+  
+  const addFather = async (father: Father) => {
+    const newId = await db.fathers.add(father);
+    await fetchData();
+    return newId;
+  };
+
+  const startDryingProcess = async (parturitionId: number) => {
+    await db.parturitions.update(parturitionId, {
+      status: 'en-secado',
+      dryingStartDate: new Date().toISOString().split('T')[0],
+    });
+    await fetchData();
+  };
+
+  const setLactationAsDry = async (parturitionId: number) => {
+    await db.parturitions.update(parturitionId, {
+      status: 'seca',
+    });
+    await fetchData();
+  };
 
   return (
-    <DataContext.Provider value={{ animals, fathers, weighings, parturitions, isLoading, addWeighing, addParturition }}>
+    <DataContext.Provider value={{ 
+        animals, 
+        fathers, 
+        weighings, 
+        parturitions, 
+        isLoading, 
+        addWeighing, 
+        addParturition, 
+        updateWeighing, 
+        deleteWeighing,
+        startDryingProcess,
+        setLactationAsDry,
+        fetchData,
+        addFather
+      }}
+    >
       {children}
     </DataContext.Provider>
   );

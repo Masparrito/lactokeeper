@@ -22,7 +22,8 @@ export const calculateDEL = (parturitionDate: string, weighDate: string): number
 /**
  * Calcula un puntaje ponderado que ajusta la producción en Kg 
  * según los Días en Leche (DEL).
- * Recompensa la producción temprana y penaliza la producción tardía si es baja.
+ * --- CORREGIDO ---
+ * Recompensa la persistencia lechera (producción tardía) y penaliza ligeramente la producción temprana.
  * @param kg - La producción en kilogramos.
  * @param del - Los Días en Leche.
  * @returns El puntaje ponderado.
@@ -31,13 +32,13 @@ export const calculateWeightedScore = (kg: number, del: number): number => {
   // Día considerado como el pico ideal de lactancia.
   const idealPeakDay = 50; 
 
-  // Factor de ajuste: 
-  // - Si DEL es bajo, el factor es > 1 (bonificación).
-  // - Si DEL es alto, el factor es < 1 (penalización).
-  // La fórmula está diseñada para ser suave y no castigar excesivamente.
-  const weightFactor = 1 + ((idealPeakDay - del) / (idealPeakDay + del));
+  // --- FÓRMULA CORREGIDA ---
+  // El factor ahora es > 1 para DEL altos y < 1 para DEL bajos.
+  // Recompensa la producción que se mantiene alta lejos del pico de lactancia.
+  const weightFactor = 1 + ((del - idealPeakDay) / (del + idealPeakDay));
 
-  const weightedScore = kg * Math.max(0, weightFactor); // Se asegura de que el puntaje no sea negativo.
+  // Se asegura un factor mínimo (0.5) para no penalizar en exceso la producción muy temprana.
+  const weightedScore = kg * Math.max(0.5, weightFactor); 
 
   return parseFloat(weightedScore.toFixed(2));
 };

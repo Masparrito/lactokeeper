@@ -11,70 +11,74 @@ export interface AnalyzedAnimal extends Animal {
     score: number;
     classification: 'Sobresaliente' | 'Promedio' | 'Pobre';
     trend: Trend;
+    weighingId?: number;
+    date: string;
 }
 
 export const useGaussAnalysis = (
-    milkingAnimals: Animal[], 
-    allWeighings: Weighing[], 
-    activeParturitions: Parturition[],
+    weighingsForDay: Weighing[], 
+    allAnimals: Animal[],
+    allWeighings: Weighing[],
+    allParturitions: Parturition[], 
     isWeighted: boolean
 ) => {
     return useMemo(() => {
-        if (!milkingAnimals.length || !allWeighings.length) {
+        if (!weighingsForDay.length || !allAnimals.length) {
             return { classifiedAnimals: [], distribution: [], mean: 0, stdDev: 0, weightedMean: 0 };
         }
 
-        // CORRECCIÓN 1: Se define el tipo del array intermedio para guiar a TypeScript
-        const analyzedAnimals: Omit<AnalyzedAnimal, 'classification'>[] = milkingAnimals.map(animal => {
-            const history = allWeighings
-                .filter(w => w.goatId === animal.id)
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        // --- LÓGICA CORREGIDA Y SIMPLIFICADA ---
+        // Iteramos directamente sobre los pesajes del día, en lugar de pre-filtrar animales.
+        // Esto garantiza que cada pesaje del día se intente analizar.
+        const initialAnalyzedAnimals = weighingsForDay.reduce((acc: Omit<AnalyzedAnimal, 'classification'>[], currentWeighing) => {
+            const animal = allAnimals.find(a => a.id === currentWeighing.goatId);
+            if (!animal) return acc; // Si no se encuentra el maestro del animal, se omite
+
+            const parturitionForWeighing = allParturitions
+                .filter(p => p.goatId === animal.id && new Date(p.parturitionDate) <= new Date(currentWeighing.date))
+                .sort((a, b) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime())[0];
+
+            if (!parturitionForWeighing) return acc;
+
+            const animalHistory = allWeighings.filter(w => w.goatId === animal.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             
-            const latestWeighing = history[0];
-            const parturition = activeParturitions.find(p => p.goatId === animal.id);
-
-            if (!latestWeighing || !parturition) {
-                return { ...animal, latestWeighing: 0, del: 0, score: 0, trend: null };
-            }
-
-            const del = calculateDEL(parturition.parturitionDate, latestWeighing.date);
-            const score = isWeighted 
-                ? calculateWeightedScore(latestWeighing.kg, del) 
-                : latestWeighing.kg;
+            const del = calculateDEL(parturitionForWeighing.parturitionDate, currentWeighing.date);
+            const score = isWeighted ? calculateWeightedScore(currentWeighing.kg, del) : currentWeighing.kg;
 
             let trend: Trend = 'single';
             const margin = 0.15;
-            if (history.length >= 2) {
-                const diff = history[0].kg - history[1].kg;
-                if (diff > margin) trend = 'up';
-                else if (diff < -margin) trend = 'down';
-                else trend = 'stable';
+            const currentIndexInHistory = animalHistory.findIndex(w => w.id === currentWeighing.id);
+
+            if (currentIndexInHistory > 0) {
+                const previousWeighing = animalHistory[currentIndexInHistory - 1];
+                const diff = currentWeighing.kg - previousWeighing.kg;
+                if (diff > margin) trend = 'up'; else if (diff < -margin) trend = 'down'; else trend = 'stable';
             }
             
-            return { ...animal, latestWeighing: latestWeighing.kg, del, score, trend };
-        }).filter((animal): animal is Omit<AnalyzedAnimal, 'classification'> => animal !== null);
+            acc.push({ ...animal, latestWeighing: currentWeighing.kg, weighingId: currentWeighing.id, del, score, trend, date: currentWeighing.date });
+            return acc;
+        }, []);
 
-        if (!analyzedAnimals.length) {
+
+        if (!initialAnalyzedAnimals.length) {
              return { classifiedAnimals: [], distribution: [], mean: 0, stdDev: 0, weightedMean: 0 };
         }
 
-        const mean = analyzedAnimals.reduce((sum, a) => sum + a.latestWeighing, 0) / analyzedAnimals.length;
-        const weightedMean = analyzedAnimals.reduce((sum, a) => sum + a.score, 0) / analyzedAnimals.length;
-        
         const scoreToAnalyzeKey = isWeighted ? 'score' : 'latestWeighing';
-        const analysisMean = analyzedAnimals.reduce((sum, a) => sum + a[scoreToAnalyzeKey], 0) / analyzedAnimals.length;
-        const stdDev = Math.sqrt(analyzedAnimals.reduce((sum, a) => sum + Math.pow(a[scoreToAnalyzeKey] - analysisMean, 2), 0) / analyzedAnimals.length);
+        const analysisMean = initialAnalyzedAnimals.reduce((sum, a) => sum + a[scoreToAnalyzeKey], 0) / initialAnalyzedAnimals.length;
+        const stdDev = Math.sqrt(initialAnalyzedAnimals.reduce((sum, a) => sum + Math.pow(a[scoreToAnalyzeKey] - analysisMean, 2), 0) / initialAnalyzedAnimals.length);
 
         const POOR_THRESHOLD = analysisMean - (0.4 * stdDev);
         const EXCELLENT_THRESHOLD = analysisMean + (0.4 * stdDev);
         
-        // CORRECCIÓN 2: Se construye el objeto final 'classifiedAnimals' con el tipo correcto
-        const classifiedAnimals: AnalyzedAnimal[] = analyzedAnimals.map(animal => {
+        const classifiedAnimals: AnalyzedAnimal[] = initialAnalyzedAnimals.map(animal => {
             const scoreToClassify = animal[scoreToAnalyzeKey];
             let classification: AnalyzedAnimal['classification'] = 'Promedio';
             
-            if (scoreToClassify < POOR_THRESHOLD) classification = 'Pobre';
-            else if (scoreToClassify > EXCELLENT_THRESHOLD) classification = 'Sobresaliente';
+            if (stdDev > 0.1) {
+                if (scoreToClassify < POOR_THRESHOLD) classification = 'Pobre';
+                else if (scoreToClassify > EXCELLENT_THRESHOLD) classification = 'Sobresaliente';
+            }
             
             return { ...animal, classification };
         });
@@ -85,6 +89,9 @@ export const useGaussAnalysis = (
             { name: 'Sobresaliente', count: classifiedAnimals.filter(a => a.classification === 'Sobresaliente').length, fill: '#22C55E' },
         ];
         
+        const mean = initialAnalyzedAnimals.reduce((sum, a) => sum + a.latestWeighing, 0) / initialAnalyzedAnimals.length;
+        const weightedMean = initialAnalyzedAnimals.reduce((sum, a) => sum + a.score, 0) / initialAnalyzedAnimals.length;
+
         return { classifiedAnimals, distribution, mean, stdDev, weightedMean };
-    }, [milkingAnimals, allWeighings, activeParturitions, isWeighted]);
+    }, [weighingsForDay, allAnimals, allWeighings, allParturitions, isWeighted]);
 };
