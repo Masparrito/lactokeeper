@@ -1,3 +1,5 @@
+// tsconfig.json
+
 {
   "compilerOptions": {
     "target": "ES2020",
@@ -20,6 +22,8 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"],
+  // --- LÍNEA CORREGIDA ---
+  // Le decimos explícitamente a TypeScript que incluya el archivo de tipos de Vite
+  "include": ["src", "src/vite-env.d.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

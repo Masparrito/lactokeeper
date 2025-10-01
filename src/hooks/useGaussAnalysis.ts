@@ -28,11 +28,9 @@ export const useGaussAnalysis = (
         }
 
         // --- LÓGICA CORREGIDA Y SIMPLIFICADA ---
-        // Iteramos directamente sobre los pesajes del día, en lugar de pre-filtrar animales.
-        // Esto garantiza que cada pesaje del día se intente analizar.
         const initialAnalyzedAnimals = weighingsForDay.reduce((acc: Omit<AnalyzedAnimal, 'classification'>[], currentWeighing) => {
             const animal = allAnimals.find(a => a.id === currentWeighing.goatId);
-            if (!animal) return acc; // Si no se encuentra el maestro del animal, se omite
+            if (!animal) return acc;
 
             const parturitionForWeighing = allParturitions
                 .filter(p => p.goatId === animal.id && new Date(p.parturitionDate) <= new Date(currentWeighing.date))
@@ -59,7 +57,6 @@ export const useGaussAnalysis = (
             return acc;
         }, []);
 
-
         if (!initialAnalyzedAnimals.length) {
              return { classifiedAnimals: [], distribution: [], mean: 0, stdDev: 0, weightedMean: 0 };
         }
@@ -75,7 +72,7 @@ export const useGaussAnalysis = (
             const scoreToClassify = animal[scoreToAnalyzeKey];
             let classification: AnalyzedAnimal['classification'] = 'Promedio';
             
-            if (stdDev > 0.1) {
+            if (stdDev > 0.1) { // Evita clasificar si la desviación es muy pequeña
                 if (scoreToClassify < POOR_THRESHOLD) classification = 'Pobre';
                 else if (scoreToClassify > EXCELLENT_THRESHOLD) classification = 'Sobresaliente';
             }

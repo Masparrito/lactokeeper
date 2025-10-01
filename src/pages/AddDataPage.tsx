@@ -1,10 +1,9 @@
-// src/pages/AddDataPage.tsx
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { PlusCircle, ScanLine, CheckCircle, AlertTriangle, ArrowLeft, Zap, Feather, X, Save, ShieldAlert } from 'lucide-react';
 import { Weighing } from '../db/local';
 import { db } from '../db/local';
+// La importación de 'Modal' que estaba aquí ha sido eliminada.
 
 // --- Formulario de Entrada Individual ---
 const ManualEntryForm = ({ onBack }: { onBack: () => void }) => {
@@ -19,13 +18,12 @@ const ManualEntryForm = ({ onBack }: { onBack: () => void }) => {
       setMessage({ type: 'error', text: 'El ID y los Kg son obligatorios.' });
       return;
     }
-    const newEntry: Weighing = {
+    const newEntry: Omit<Weighing, 'id' | 'firestoreId'> = {
         goatId: goatId.toUpperCase().trim(),
         kg: parseFloat(kg),
         date: new Date().toISOString().split('T')[0]
     };
     try {
-      // @ts-ignore
       await addWeighing(newEntry);
       setMessage({ type: 'success', text: `Pesaje para ${goatId.toUpperCase().trim()} añadido.` });
       setGoatId('');
@@ -78,10 +76,9 @@ const ManualEntryForm = ({ onBack }: { onBack: () => void }) => {
   );
 };
 
-// --- Fila de la lista, ahora maneja animales no reconocidos ---
+// --- Fila de la lista de Entrada Rápida ---
 const EntryRow = ({ entry, onDelete, onRegister }: { entry: any, onDelete: (tempId: number) => void, onRegister: (animalId: string) => void }) => {
     const isUnrecognized = entry.isUnrecognized;
-
     return (
         <div className={`p-3 rounded-lg flex justify-between items-center animate-fade-in group ${isUnrecognized ? 'bg-red-900/40 border border-red-500/50' : 'bg-black/20'}`}>
             <div className="flex items-center space-x-2">
@@ -104,8 +101,7 @@ const EntryRow = ({ entry, onDelete, onRegister }: { entry: any, onDelete: (temp
     );
 };
 
-
-// --- Formulario de Entrada Rápida con la nueva lógica de carga por lotes ---
+// --- Formulario de Entrada Rápida ---
 const RapidEntryForm = ({ onBack, onNavigate }: { onBack: () => void, onNavigate: (page: 'add-parturition', state: { motherId: string }) => void }) => {
     const { animals, fetchData } = useData();
     const [currentId, setCurrentId] = useState('');
@@ -115,49 +111,34 @@ const RapidEntryForm = ({ onBack, onNavigate }: { onBack: () => void, onNavigate
 
     const idInputRef = useRef<HTMLInputElement>(null);
     const kgInputRef = useRef<HTMLInputElement>(null);
-    
     const animalIdSet = useMemo(() => new Set(animals.map(a => a.id)), [animals]);
 
     useEffect(() => { idInputRef.current?.focus(); }, []);
 
-    // 1. Añade el pesaje a la lista temporal en pantalla
     const handleAddToList = () => {
         if (!currentId || !currentKg) return;
-        
         const id = currentId.toUpperCase().trim();
-        const newEntry = {
-            tempId: Date.now(),
-            goatId: id,
-            kg: parseFloat(currentKg),
-            date: new Date().toISOString().split('T')[0],
-            isUnrecognized: !animalIdSet.has(id)
-        };
-
+        const newEntry = { tempId: Date.now(), goatId: id, kg: parseFloat(currentKg), date: new Date().toISOString().split('T')[0], isUnrecognized: !animalIdSet.has(id) };
         setSessionEntries(prev => [newEntry, ...prev]);
         setCurrentId('');
         setCurrentKg('');
         idInputRef.current?.focus();
     };
     
-    // 2. Guarda el lote completo en la base de datos
     const handleFinalSave = async () => {
         setMessage(null);
         const unrecognizedCount = sessionEntries.filter(e => e.isUnrecognized).length;
-
         if (unrecognizedCount > 0) {
             setMessage({ type: 'error', text: `No se puede guardar. Tienes ${unrecognizedCount} animal(es) sin registrar.` });
             return;
         }
-        
         if (sessionEntries.length === 0) {
             setMessage({ type: 'error', text: 'No hay pesajes en la lista para guardar.' });
             return;
         }
-
         try {
             const weighingsToSave = sessionEntries.map(({ goatId, kg, date }) => ({ goatId, kg, date }));
             await db.weighings.bulkAdd(weighingsToSave);
-            
             setMessage({ type: 'success', text: `${sessionEntries.length} pesajes guardados con éxito.` });
             setSessionEntries([]); 
             await fetchData();
@@ -167,74 +148,44 @@ const RapidEntryForm = ({ onBack, onNavigate }: { onBack: () => void, onNavigate
         }
     };
     
-    const handleIdKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && currentId) {
-            e.preventDefault();
-            kgInputRef.current?.focus();
-        }
-    };
-
-    const handleKgKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && currentKg) {
-            e.preventDefault();
-            handleAddToList();
-        }
-    };
-
-    const handleDeleteFromList = (tempId: number) => {
-        setSessionEntries(prev => prev.filter(e => e.tempId !== tempId));
-    };
-
-    const handleRegister = (animalId: string) => {
-        onNavigate('add-parturition', { motherId: animalId });
-    };
+    const handleIdKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter' && currentId) { e.preventDefault(); kgInputRef.current?.focus(); } };
+    const handleKgKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter' && currentKg) { e.preventDefault(); handleAddToList(); } };
+    const handleDeleteFromList = (tempId: number) => { setSessionEntries(prev => prev.filter(e => e.tempId !== tempId)); };
+    const handleRegister = (animalId: string) => { onNavigate('add-parturition', { motherId: animalId }); };
 
     return (
-        <>
-            <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border animate-fade-in space-y-4">
-                <div className="flex items-center border-b border-brand-border pb-2">
-                    <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={20} /></button>
-                    <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mx-auto pr-8">Entrada Rápida</h2>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                    <input ref={idInputRef} type="text" value={currentId} onChange={(e) => setCurrentId(e.target.value)} onKeyDown={handleIdKeyDown} placeholder="ID Animal" className="w-full bg-black/20 text-white text-lg placeholder-zinc-500 p-4 rounded-xl border-2 border-transparent focus:border-amber-500 focus:ring-0 focus:outline-none"/>
-                    <input ref={kgInputRef} type="number" step="0.01" value={currentKg} onChange={(e) => setCurrentKg(e.target.value)} onKeyDown={handleKgKeyDown} placeholder="Kg" className="w-32 flex-shrink-0 bg-black/20 text-white text-lg placeholder-zinc-500 p-4 rounded-xl border-2 border-transparent focus:border-amber-500 focus:ring-0 focus:outline-none"/>
-                    <button onClick={handleAddToList} disabled={!currentId || !currentKg} aria-label="Añadir a la lista" className="aspect-square h-full bg-indigo-600 text-white rounded-xl flex items-center justify-center transition-all hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed"><PlusCircle size={24} /></button>
-                </div>
-
-                <div className="max-h-60 overflow-y-auto space-y-2 pr-2 border-t border-b border-brand-border py-2">
-                    {sessionEntries.length === 0 && <p className="text-center text-zinc-500 text-sm">Los pesajes añadidos aparecerán aquí.</p>}
-                    {sessionEntries.map((entry) => (
-                        <EntryRow 
-                            key={entry.tempId} 
-                            entry={entry}
-                            onDelete={handleDeleteFromList}
-                            onRegister={handleRegister}
-                        />
-                    ))}
-                </div>
-                
-                <button onClick={handleFinalSave} className="w-full flex items-center justify-center gap-2 bg-brand-amber hover:bg-yellow-500 text-black font-bold py-4 px-4 rounded-xl transition-colors text-lg">
-                    <Save size={20} />
-                    Guardar {sessionEntries.length > 0 ? `(${sessionEntries.length})` : ''} Pesajes
-                </button>
-                
-                {message && (
-                    <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
-                        {message.type === 'success' ? <CheckCircle size={18} /> : <ShieldAlert size={18} />}
-                        <span>{message.text}</span>
-                    </div>
-                )}
+        <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border animate-fade-in space-y-4">
+            <div className="flex items-center border-b border-brand-border pb-2">
+                <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={20} /></button>
+                <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mx-auto pr-8">Entrada Rápida</h2>
             </div>
-        </>
+            <div className="flex items-center gap-2">
+                <input ref={idInputRef} type="text" value={currentId} onChange={(e) => setCurrentId(e.target.value)} onKeyDown={handleIdKeyDown} placeholder="ID Animal" className="w-full bg-black/20 text-white text-lg placeholder-zinc-500 p-4 rounded-xl border-2 border-transparent focus:border-amber-500 focus:ring-0 focus:outline-none"/>
+                <input ref={kgInputRef} type="number" step="0.01" value={currentKg} onChange={(e) => setCurrentKg(e.target.value)} onKeyDown={handleKgKeyDown} placeholder="Kg" className="w-32 flex-shrink-0 bg-black/20 text-white text-lg placeholder-zinc-500 p-4 rounded-xl border-2 border-transparent focus:border-amber-500 focus:ring-0 focus:outline-none"/>
+                <button onClick={handleAddToList} disabled={!currentId || !currentKg} aria-label="Añadir a la lista" className="aspect-square h-full bg-indigo-600 text-white rounded-xl flex items-center justify-center transition-all hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed"><PlusCircle size={24} /></button>
+            </div>
+            <div className="max-h-60 overflow-y-auto space-y-2 pr-2 border-t border-b border-brand-border py-2">
+                {sessionEntries.length === 0 && <p className="text-center text-zinc-500 text-sm">Los pesajes añadidos aparecerán aquí.</p>}
+                {sessionEntries.map((entry) => (
+                    <EntryRow key={entry.tempId} entry={entry} onDelete={handleDeleteFromList} onRegister={handleRegister} />
+                ))}
+            </div>
+            <button onClick={handleFinalSave} className="w-full flex items-center justify-center gap-2 bg-brand-amber hover:bg-yellow-500 text-black font-bold py-4 px-4 rounded-xl transition-colors text-lg">
+                <Save size={20} /> Guardar {sessionEntries.length > 0 ? `(${sessionEntries.length})` : ''} Pesajes
+            </button>
+            {message && (
+                <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
+                    {message.type === 'success' ? <CheckCircle size={18} /> : <ShieldAlert size={18} />}
+                    <span>{message.text}</span>
+                </div>
+            )}
+        </div>
     );
 };
 
-
 // --- Página Principal de Captura de Datos ---
-export default function AddDataPage({ onNavigate }: { onNavigate: (page: 'add-parturition', state?: any) => void; }) {
-  const [entryMode, setEntryMode] = useState<'options' | 'manual' | 'ocr' | 'rapid'>('options');
+export default function AddDataPage({ onNavigate }: { onNavigate: (page: 'add-parturition' | 'ocr', state?: any) => void; }) {
+  const [entryMode, setEntryMode] = useState<'options' | 'manual' | 'rapid'>('options');
 
   const keyForAnimation = entryMode === 'options' ? 'options' : 'form';
 
@@ -265,6 +216,15 @@ export default function AddDataPage({ onNavigate }: { onNavigate: (page: 'add-pa
               <span className="text-lg font-semibold">Registrar Parto</span>
               <span className="text-sm font-normal text-zinc-400">Inicia una nueva lactancia</span>
             </button>
+            
+            <button 
+              onClick={() => onNavigate('ocr')} 
+              className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-blue-400 text-white font-bold p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105"
+            >
+              <ScanLine className="w-12 h-12 mb-2 text-blue-400" />
+              <span className="text-lg font-semibold">Escanear Cuaderno</span>
+              <span className="text-sm font-normal text-zinc-400">Digitalización asistida por IA</span>
+            </button>
 
             <button 
               onClick={() => setEntryMode('manual')} 
@@ -274,29 +234,11 @@ export default function AddDataPage({ onNavigate }: { onNavigate: (page: 'add-pa
               <span className="text-lg font-semibold">Entrada Individual</span>
               <span className="text-sm font-normal text-zinc-400">Formulario tradicional</span>
             </button>
-            
-            <button 
-              onClick={() => setEntryMode('ocr')} 
-              className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-amber text-white font-bold p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105"
-            >
-              <ScanLine className="w-12 h-12 mb-2 text-brand-amber" />
-              <span className="text-lg font-semibold">Escanear Cuaderno</span>
-              <span className="text-sm font-normal text-zinc-400">La forma más rápida (Próximamente)</span>
-            </button>
           </div>
         )}
 
-        {entryMode === 'rapid' && <RapidEntryForm onBack={() => setEntryMode('options')} onNavigate={onNavigate} />}
+        {entryMode === 'rapid' && <RapidEntryForm onBack={() => setEntryMode('options')} onNavigate={onNavigate as any} />}
         {entryMode === 'manual' && <ManualEntryForm onBack={() => setEntryMode('options')} />}
-        {entryMode === 'ocr' && (
-           <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border text-center animate-fade-in">
-              <h2 className="text-lg text-brand-amber">Función Próximamente</h2>
-              <p className="text-zinc-400">La captura por OCR estará disponible pronto.</p>
-               <button onClick={() => setEntryMode('options')} className="w-full text-center text-zinc-40T4 text-sm hover:text-white">
-                  Volver
-              </button>
-           </div>
-        )}
       </div>
     </div>
   );

@@ -1,5 +1,3 @@
-// src/pages/AnimalProfilePage.tsx
-
 import { useState, useMemo } from 'react';
 import { XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar, LineChart, Line, Legend, CartesianGrid } from 'recharts';
 import { useAnimalData } from '../hooks/useAnimalData';
@@ -51,7 +49,8 @@ export default function AnimalProfilePage({ animalId, onBack }: AnimalProfilePag
     if (allLactations.length === 0) return null;
     const lastLactationCycle = allLactations[allLactations.length - 1];
     const correspondingParturition = parturitions.find(p => p.parturitionDate === lastLactationCycle.parturitionDate && p.goatId === animalId);
-    return { ...lastLactationCycle, id: correspondingParturition?.id, status: correspondingParturition?.status };
+    // CORRECCIÓN: Incluimos el firestoreId en nuestro objeto de datos
+    return { ...lastLactationCycle, id: correspondingParturition?.id, firestoreId: correspondingParturition?.firestoreId, status: correspondingParturition?.status };
   }, [allLactations, parturitions, animalId]);
 
   // --- CORRECCIÓN: Lógica para el DEL en tiempo real ---
@@ -111,7 +110,6 @@ export default function AnimalProfilePage({ animalId, onBack }: AnimalProfilePag
             </button>
             <button onClick={() => setActiveModal('del')} className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left hover:border-brand-amber transition-colors">
               <div className="flex items-center space-x-2 text-zinc-400 font-semibold mb-1 text-xs uppercase"><CalendarDays size={14} /><span>DEL</span></div>
-              {/* CORRECCIÓN: Se usa la nueva variable para el DEL en tiempo real */}
               <p className="text-2xl font-bold text-white">{currentDEL}</p>
             </button>
              <button onClick={() => setActiveModal('interval')} className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left hover:border-brand-amber transition-colors">
@@ -156,12 +154,15 @@ export default function AnimalProfilePage({ animalId, onBack }: AnimalProfilePag
           </div>
         </div>
 
-        {currentLactationData?.id && (
+        {/* --- SECCIÓN DE GESTIÓN DE LACTANCIA CORREGIDA --- */}
+        {currentLactationData?.firestoreId && (
           <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
             <h3 className="text-zinc-400 font-semibold text-xs uppercase mb-3">Gestión de Lactancia Actual</h3>
             <div className="flex flex-col sm:flex-row gap-4">
-              {currentLactationData.status === 'activa' && (<button onClick={() => startDryingProcess(currentLactationData.id!)} className="w-full flex items-center justify-center space-x-2 bg-blue-600/80 hover:bg-blue-500/80 text-white font-semibold py-3 px-4 rounded-xl transition-colors"><Wind size={20} /><span>Iniciar Proceso de Secado</span></button>)}
-              {currentLactationData.status === 'en-secado' && (<button onClick={() => setLactationAsDry(currentLactationData.id!)} className="w-full flex items-center justify-center space-x-2 bg-gray-600/80 hover:bg-gray-500/80 text-white font-semibold py-3 px-4 rounded-xl transition-colors"><Archive size={20} /><span>Declarar Lactancia como Seca</span></button>)}
+              {/* CORRECCIÓN: Usamos currentLactationData.firestoreId */}
+              {currentLactationData.status === 'activa' && (<button onClick={() => startDryingProcess(currentLactationData.firestoreId!)} className="w-full flex items-center justify-center space-x-2 bg-blue-600/80 hover:bg-blue-500/80 text-white font-semibold py-3 px-4 rounded-xl transition-colors"><Wind size={20} /><span>Iniciar Proceso de Secado</span></button>)}
+              {/* CORRECCIÓN: Usamos currentLactationData.firestoreId */}
+              {currentLactationData.status === 'en-secado' && (<button onClick={() => setLactationAsDry(currentLactationData.firestoreId!)} className="w-full flex items-center justify-center space-x-2 bg-gray-600/80 hover:bg-gray-500/80 text-white font-semibold py-3 px-4 rounded-xl transition-colors"><Archive size={20} /><span>Declarar Lactancia como Seca</span></button>)}
               {currentLactationData.status === 'seca' && (<div className="w-full text-center p-3 bg-black/20 rounded-xl"><p className="font-semibold text-green-400">Esta lactancia ha finalizado.</p></div>)}
             </div>
             {currentLactationData.status === 'en-secado' && (<p className="text-center text-xs text-zinc-400 mt-2">El animal está en su período de secado.</p>)}

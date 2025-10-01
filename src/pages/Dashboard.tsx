@@ -1,6 +1,3 @@
-// src/pages/Dashboard.tsx
-
-// Corregido: Se elimina 'React' de la importación
 import { useState, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, BarChart, Bar, ReferenceLine, Tooltip, CartesianGrid } from 'recharts';
 import { useData } from '../context/DataContext';
@@ -27,10 +24,13 @@ export default function Dashboard({ onNavigateToAnalysis }: DashboardProps) {
       };
     }
     
+    // --- LÓGICA CORREGIDA PARA 'ANIMALES EN ORDEÑO' ---
     let animalsInLastWeighing = 0;
     if (weighings.length > 0) {
+        // 1. Encontrar la fecha más reciente de todos los pesajes
         const latestDate = weighings.reduce((max, w) => w.date > max ? w.date : max, weighings[0].date);
-        animalsInLastWeighing = weighings.filter(w => w.date === latestDate).length;
+        // 2. Contar cuántos animales únicos fueron pesados en esa fecha
+        animalsInLastWeighing = new Set(weighings.filter(w => w.date === latestDate).map(w => w.goatId)).size;
     }
     
     let weighingsForChart = weighings;

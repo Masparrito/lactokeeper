@@ -1,5 +1,3 @@
-// src/db/local.ts
-
 import Dexie, { Table } from 'dexie';
 
 export interface Animal {
@@ -21,6 +19,7 @@ export interface Father {
 
 export interface Parturition {
   id?: number;
+  firestoreId: string; // <-- LÍNEA CORREGIDA
   goatId: string;
   parturitionDate: string;
   sireId: string; // Mantenemos sireId como referencia interna, pero en la UI será "Padre"
@@ -50,7 +49,7 @@ export class LactoKeeperDB extends Dexie {
       animals: '&id, motherId, fatherId, parturitionId, status',
       // CORRECCIÓN: Renombramos la tabla
       fathers: '&id',
-      parturitions: '++id, goatId, sireId, status',
+      parturitions: '++id, goatId, sireId, status, firestoreId', // <-- Añadimos firestoreId aquí también
       weighings: '++id, goatId, date',
     });
   }

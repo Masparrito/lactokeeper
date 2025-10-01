@@ -1,16 +1,21 @@
+// src/main.tsx
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { DataProvider } from './context/DataContext';
+import { AuthProvider } from './context/AuthContext'; // Importamos el nuevo AuthProvider
 
-// Envolvemos toda la aplicación <App /> con el <DataProvider />
-// para que todos los componentes hijos tengan acceso a los datos.
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <DataProvider>
-      <App />
-    </DataProvider>
+    {/* Envolvemos todo con el AuthProvider por fuera, 
+      para que el DataProvider (y toda la app) pueda saber quién es el usuario.
+    */}
+    <AuthProvider>
+      <DataProvider>
+        <App />
+      </DataProvider>
+    </AuthProvider>
   </React.StrictMode>,
 );
-
