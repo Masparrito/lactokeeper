@@ -1,5 +1,3 @@
-// src/App.tsx
-
 import { useState } from 'react';
 import { useAuth } from './context/AuthContext';
 import { LoginPage } from './pages/LoginPage';
@@ -10,6 +8,7 @@ import AddParturitionPage from './pages/AddParturitionPage';
 import AnimalsPage from './pages/AnimalsPage';
 import HistoryPage from './pages/HistoryPage';
 import ManagementPage from './pages/ManagementPage';
+import OcrPage from './pages/OcrPage'; // <-- 1. IMPORTAR LA PÁGINA
 import { BarChartIcon, PlusCircleIcon, List, CalendarClock, Bell, LogOut } from 'lucide-react';
 import { useManagementAlerts } from './hooks/useManagementAlerts';
 import { PeriodStats } from './hooks/useHistoricalAnalysis';
@@ -22,9 +21,10 @@ export type PageState =
   | { name: 'history' }
   | { name: 'add-data' }
   | { name: 'add-parturition', motherId?: string } 
-  | { name: 'animal-profile', animalId: string };
+  | { name: 'animal-profile', animalId: string }
+  | { name: 'ocr' }; // <-- 2. AÑADIR 'ocr' A LOS ESTADOS POSIBLES
 
-// --- 1. Renombramos el componente principal a "LactoKeeperApp" ---
+// --- Renombramos el componente principal a "LactoKeeperApp" ---
 const LactoKeeperApp = () => {
   const [page, setPage] = useState<PageState>({ name: 'dashboard' });
   const [history, setHistory] = useState<PageState[]>([]);
@@ -69,11 +69,13 @@ const LactoKeeperApp = () => {
       case 'history':
         return <HistoryPage onSelectAnimal={(animalId) => navigateTo({ name: 'animal-profile', animalId })} selectedPeriod={historySelectedPeriod} setSelectedPeriod={setHistorySelectedPeriod} />;
       case 'add-data':
-        return <AddDataPage onNavigate={(pageName, state) => navigateTo({ name: pageName, ...state })} />;
+        return <AddDataPage onNavigate={(pageName, state) => navigateTo({ name: pageName as any, ...state })} />;
       case 'add-parturition':
         return <AddParturitionPage onBack={navigateBack} motherId={page.motherId} />;
       case 'animal-profile':
         return <AnimalProfilePage animalId={page.animalId} onBack={navigateBack} />;
+      case 'ocr': // <-- 3. AÑADIR EL CASO PARA RENDERIZAR LA PÁGINA
+        return <OcrPage onBack={navigateBack} />;
       default:
         return <DashboardPage onNavigateToAnalysis={() => navigateTo({ name: 'animals' })} />;
     }
@@ -114,7 +116,7 @@ const LactoKeeperApp = () => {
   );
 };
 
-// --- 2. Este es el nuevo componente 'App' que actúa como el "director" ---
+// --- Este es el nuevo componente 'App' que actúa como el "director" ---
 export default function App() {
     const { currentUser } = useAuth();
 

@@ -1,5 +1,3 @@
-// src/components/ui/SearchHeader.tsx
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
 
@@ -26,15 +24,15 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({ title, subtitle, sea
     };
 
     return (
-        <header className="text-center pt-8 pb-4 relative overflow-hidden">
+        <header className="text-center pt-4 pb-4 relative overflow-hidden">
             {/* Títulos */}
             <div className={`transition-transform duration-300 ${isSearchVisible ? '-translate-y-20' : 'translate-y-0'}`}>
-                <h1 className="text-4xl font-bold tracking-tight text-white">{title}</h1>
-                <p className="text-xl text-zinc-400">{subtitle}</p>
+                <h1 className="text-2xl font-bold tracking-tight text-white">{title}</h1>
+                <p className="text-md text-zinc-400">{subtitle}</p>
             </div>
 
             {/* Barra de Búsqueda */}
-            <div className={`absolute inset-0 transition-transform duration-300 flex items-center pt-4 ${isSearchVisible ? 'translate-y-0' : 'translate-y-20'}`}>
+            <div className={`absolute inset-0 transition-transform duration-300 flex items-center pt-2 ${isSearchVisible ? 'translate-y-0' : 'translate-y-20'}`}>
                 <input
                     ref={inputRef}
                     type="text"
@@ -46,12 +44,12 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({ title, subtitle, sea
             </div>
 
             {/* Botón para activar/limpiar la búsqueda */}
-            <div className="absolute top-8 right-0 pt-2">
+            <div className="absolute top-4 right-0 pt-1">
                 <button 
                     onClick={isSearchVisible ? handleClear : () => setIsSearchVisible(true)}
                     className="p-2 text-zinc-400 hover:text-white transition-colors"
                 >
-                    {isSearchVisible ? <X size={24} /> : <Search size={24} />}
+                    {isSearchVisible ? <X size={22} /> : <Search size={22} />}
                 </button>
             </div>
         </header>
