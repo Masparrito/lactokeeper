@@ -1,56 +1,123 @@
 import Dexie, { Table } from 'dexie';
 
+export type ReproductiveStatus = 'Vacía' | 'En Servicio' | 'Preñada' | 'Post-Parto' | 'No Aplica';
+export type FemaleLifecycleStage = 'Cabrita' | 'Cabritona' | 'Cabra Primípara' | 'Cabra Multípara';
+export type MaleLifecycleStage = 'Cabrito' | 'Cabriton' | 'Macho Cabrío';
+export type EventType = 
+    | 'Nacimiento' | 'Movimiento' | 'Cambio de Estado' 
+    | 'Pesaje Lechero' | 'Pesaje Corporal' 
+    | 'Servicio' | 'Tratamiento' | 'Diagnóstico';
+
 export interface Animal {
   id: string; 
   sex: 'Hembra' | 'Macho';
-  status: 'Activo' | 'Vendido' | 'Descartado' | 'Muerto';
+  status: 'Activo' | 'Venta' | 'Muerte' | 'Descarte';
   birthDate: string;
   motherId?: string;
   fatherId?: string;
   birthWeight?: number;
-  parturitionId?: number;
+  lifecycleStage: FemaleLifecycleStage | MaleLifecycleStage; 
+  location: string;
+  weaningDate?: string;
+  weaningWeight?: number;
+  isReference?: boolean;
+  origin?: string;
+  parturitionType?: string;
+  race?: string;
+  racialComposition?: string;
+  observations?: string;
+  reproductiveStatus: ReproductiveStatus;
+  breedingGroupId?: string;
+  salePrice?: number;
+  deathReason?: string;
+  // --- NUEVO CAMPO ---
+  // Contador para los fallos reproductivos. Será opcional para no romper datos existentes.
+  breedingFailures?: number;
 }
 
-// CORRECCIÓN: Renombramos 'Sire' a 'Father'
 export interface Father {
   id: string;
   name: string;
 }
 
 export interface Parturition {
-  id?: number;
-  firestoreId: string; // <-- LÍNEA CORREGIDA
+  id: string;
   goatId: string;
   parturitionDate: string;
-  sireId: string; // Mantenemos sireId como referencia interna, pero en la UI será "Padre"
+  sireId: string;
   offspringCount: number;
   parturitionType: 'Simple' | 'Doble' | 'Triple' | 'Cuádruple' | 'Quíntuple';
-  status: 'activa' | 'en-secado' | 'seca';
+  status: 'activa' | 'en-secado' | 'seca' | 'finalizada';
+  parturitionOutcome?: 'Normal' | 'Aborto' | 'Mortinato';
   dryingStartDate?: string;
 }
 
 export interface Weighing {
-  id?: number;
+  id: string;
   goatId: string;
   date: string;
   kg: number;
 }
 
+export interface Lot {
+    id: string;
+    name: string;
+}
+
+export interface Origin {
+    id: string;
+    name: string;
+}
+
+export interface BreedingGroup {
+    id: string;
+    name: string;
+    sireId: string;
+    startDate: string;
+    endDate: string;
+    status: 'Activo' | 'Cerrado';
+}
+
+export interface ServiceRecord {
+    id?: string;
+    breedingGroupId: string;
+    femaleId: string;
+    serviceDate: string;
+}
+
+export interface Event {
+    id: string;
+    animalId: string;
+    date: string;
+    type: EventType;
+    details: string;
+    notes?: string;
+}
+
 export class LactoKeeperDB extends Dexie {
   animals!: Table<Animal>;
-  // CORRECCIÓN: Renombramos 'sires' a 'fathers'
   fathers!: Table<Father>;
   parturitions!: Table<Parturition>;
   weighings!: Table<Weighing>;
+  lots!: Table<Lot>;
+  origins!: Table<Origin>;
+  breedingGroups!: Table<BreedingGroup>;
+  serviceRecords!: Table<ServiceRecord>;
+  events!: Table<Event>;
 
   constructor() {
-    super('LactoKeeperDB_v2'); 
+    super('LactoKeeperDB_v5'); 
+    
     this.version(1).stores({
-      animals: '&id, motherId, fatherId, parturitionId, status',
-      // CORRECCIÓN: Renombramos la tabla
+      animals: '&id, motherId, fatherId, status, lifecycleStage, location, isReference, reproductiveStatus, breedingGroupId',
       fathers: '&id',
-      parturitions: '++id, goatId, sireId, status, firestoreId', // <-- Añadimos firestoreId aquí también
-      weighings: '++id, goatId, date',
+      parturitions: '&id, goatId, sireId, status',
+      weighings: '&id, goatId, date',
+      lots: '&id, name',
+      origins: '&id, name',
+      breedingGroups: '&id, sireId, status',
+      serviceRecords: '++id, breedingGroupId, femaleId, serviceDate',
+      events: '&id, animalId, date, type'
     });
   }
 }

@@ -1,14 +1,15 @@
 import { useState, useMemo } from 'react';
-import { XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar, LineChart, Line, Legend, CartesianGrid } from 'recharts';
+// --- LÍNEA CORREGIDA ---
+// Se eliminan AreaChart, Area, y ReferenceLine de la importación.
+import { XAxis, YAxis, ResponsiveContainer, BarChart, Bar, Tooltip, CartesianGrid, LineChart, Line, Legend } from 'recharts';
 import { useAnimalData } from '../hooks/useAnimalData';
 import { useComparativeData, ComparisonType } from '../hooks/useComparativeData';
 import { ArrowLeft, Droplet, TrendingUp, CalendarDays, Repeat, CalendarCheck2, Wind, Archive } from 'lucide-react';
 import { CustomTooltip } from '../components/ui/CustomTooltip';
 import { Modal } from '../components/ui/Modal';
 import { useData } from '../context/DataContext';
-import { calculateDEL } from '../utils/calculations'; // Importación necesaria
+import { calculateDEL } from '../utils/calculations';
 
-// --- Tooltip Inteligente para los Gráficos de los Modales ---
 const ModalChartTooltip = ({ active, payload, label, context }: { active?: boolean, payload?: any[], label?: string, context: 'peak' | 'del' | 'interval' | 'average' }) => {
     if (active && payload && payload.length) {
         let title = '';
@@ -29,12 +30,12 @@ const ModalChartTooltip = ({ active, payload, label, context }: { active?: boole
     return null;
 };
 
-interface AnimalProfilePageProps {
+interface LactationProfilePageProps {
   animalId: string;
   onBack: () => void;
 }
 
-export default function AnimalProfilePage({ animalId, onBack }: AnimalProfilePageProps) {
+export default function LactationProfilePage({ animalId, onBack }: LactationProfilePageProps) {
   const { animals, parturitions, weighings, startDryingProcess, setLactationAsDry } = useData();
   const { allLactations, parturitionIntervals, lastWeighingDate, isLoading } = useAnimalData(animalId);
   const [activeModal, setActiveModal] = useState<string | null>(null);
@@ -49,14 +50,11 @@ export default function AnimalProfilePage({ animalId, onBack }: AnimalProfilePag
     if (allLactations.length === 0) return null;
     const lastLactationCycle = allLactations[allLactations.length - 1];
     const correspondingParturition = parturitions.find(p => p.parturitionDate === lastLactationCycle.parturitionDate && p.goatId === animalId);
-    // CORRECCIÓN: Incluimos el firestoreId en nuestro objeto de datos
-    return { ...lastLactationCycle, id: correspondingParturition?.id, firestoreId: correspondingParturition?.firestoreId, status: correspondingParturition?.status };
+    return { ...lastLactationCycle, id: correspondingParturition?.id, status: correspondingParturition?.status };
   }, [allLactations, parturitions, animalId]);
 
-  // --- CORRECCIÓN: Lógica para el DEL en tiempo real ---
   const currentDEL = useMemo(() => {
     if (!currentLactationData) return 'N/A';
-    // Se calcula desde la fecha del parto hasta la fecha actual.
     return calculateDEL(currentLactationData.parturitionDate, new Date().toISOString().split('T')[0]);
   }, [currentLactationData]);
 
@@ -68,7 +66,7 @@ export default function AnimalProfilePage({ animalId, onBack }: AnimalProfilePag
   }), [allLactations, parturitionIntervals]);
 
   if (isLoading) {
-    return <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Cargando perfil de {animalId}...</h1></div>;
+    return <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Cargando perfil de lactancia de {animalId}...</h1></div>;
   }
   
   const currentLactation = allLactations.length > 0 ? allLactations[allLactations.length - 1] : null;
@@ -154,15 +152,12 @@ export default function AnimalProfilePage({ animalId, onBack }: AnimalProfilePag
           </div>
         </div>
 
-        {/* --- SECCIÓN DE GESTIÓN DE LACTANCIA CORREGIDA --- */}
-        {currentLactationData?.firestoreId && (
+        {currentLactationData?.id && (
           <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
             <h3 className="text-zinc-400 font-semibold text-xs uppercase mb-3">Gestión de Lactancia Actual</h3>
             <div className="flex flex-col sm:flex-row gap-4">
-              {/* CORRECCIÓN: Usamos currentLactationData.firestoreId */}
-              {currentLactationData.status === 'activa' && (<button onClick={() => startDryingProcess(currentLactationData.firestoreId!)} className="w-full flex items-center justify-center space-x-2 bg-blue-600/80 hover:bg-blue-500/80 text-white font-semibold py-3 px-4 rounded-xl transition-colors"><Wind size={20} /><span>Iniciar Proceso de Secado</span></button>)}
-              {/* CORRECCIÓN: Usamos currentLactationData.firestoreId */}
-              {currentLactationData.status === 'en-secado' && (<button onClick={() => setLactationAsDry(currentLactationData.firestoreId!)} className="w-full flex items-center justify-center space-x-2 bg-gray-600/80 hover:bg-gray-500/80 text-white font-semibold py-3 px-4 rounded-xl transition-colors"><Archive size={20} /><span>Declarar Lactancia como Seca</span></button>)}
+              {currentLactationData.status === 'activa' && (<button onClick={() => startDryingProcess(currentLactationData.id!)} className="w-full flex items-center justify-center space-x-2 bg-blue-600/80 hover:bg-blue-500/80 text-white font-semibold py-3 px-4 rounded-xl transition-colors"><Wind size={20} /><span>Iniciar Proceso de Secado</span></button>)}
+              {currentLactationData.status === 'en-secado' && (<button onClick={() => setLactationAsDry(currentLactationData.id!)} className="w-full flex items-center justify-center space-x-2 bg-gray-600/80 hover:bg-gray-500/80 text-white font-semibold py-3 px-4 rounded-xl transition-colors"><Archive size={20} /><span>Declarar Lactancia como Seca</span></button>)}
               {currentLactationData.status === 'seca' && (<div className="w-full text-center p-3 bg-black/20 rounded-xl"><p className="font-semibold text-green-400">Esta lactancia ha finalizado.</p></div>)}
             </div>
             {currentLactationData.status === 'en-secado' && (<p className="text-center text-xs text-zinc-400 mt-2">El animal está en su período de secado.</p>)}
@@ -208,3 +203,4 @@ export default function AnimalProfilePage({ animalId, onBack }: AnimalProfilePag
     </>
   );
 }
+

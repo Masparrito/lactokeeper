@@ -1,5 +1,3 @@
-// src/hooks/useGaussAnalysis.ts
-
 import { useMemo } from 'react';
 import { Animal, Parturition, Weighing } from '../db/local';
 import { calculateDEL, calculateWeightedScore } from '../utils/calculations';
@@ -11,7 +9,8 @@ export interface AnalyzedAnimal extends Animal {
     score: number;
     classification: 'Sobresaliente' | 'Promedio' | 'Pobre';
     trend: Trend;
-    weighingId?: number;
+    // --- CORRECCIÓN: El ID del pesaje ahora es un string ---
+    weighingId?: string;
     date: string;
 }
 
@@ -27,7 +26,6 @@ export const useGaussAnalysis = (
             return { classifiedAnimals: [], distribution: [], mean: 0, stdDev: 0, weightedMean: 0 };
         }
 
-        // --- LÓGICA CORREGIDA Y SIMPLIFICADA ---
         const initialAnalyzedAnimals = weighingsForDay.reduce((acc: Omit<AnalyzedAnimal, 'classification'>[], currentWeighing) => {
             const animal = allAnimals.find(a => a.id === currentWeighing.goatId);
             if (!animal) return acc;
@@ -72,7 +70,7 @@ export const useGaussAnalysis = (
             const scoreToClassify = animal[scoreToAnalyzeKey];
             let classification: AnalyzedAnimal['classification'] = 'Promedio';
             
-            if (stdDev > 0.1) { // Evita clasificar si la desviación es muy pequeña
+            if (stdDev > 0.1) {
                 if (scoreToClassify < POOR_THRESHOLD) classification = 'Pobre';
                 else if (scoreToClassify > EXCELLENT_THRESHOLD) classification = 'Sobresaliente';
             }
@@ -86,8 +84,8 @@ export const useGaussAnalysis = (
             { name: 'Sobresaliente', count: classifiedAnimals.filter(a => a.classification === 'Sobresaliente').length, fill: '#22C55E' },
         ];
         
-        const mean = initialAnalyzedAnimals.reduce((sum, a) => sum + a.latestWeighing, 0) / initialAnalyzedAnimals.length;
-        const weightedMean = initialAnalyzedAnimals.reduce((sum, a) => sum + a.score, 0) / initialAnalyzedAnimals.length;
+        const mean = initialAnalyzedAnimals.length > 0 ? initialAnalyzedAnimals.reduce((sum, a) => sum + a.latestWeighing, 0) / initialAnalyzedAnimals.length : 0;
+        const weightedMean = initialAnalyzedAnimals.length > 0 ? initialAnalyzedAnimals.reduce((sum, a) => sum + a.score, 0) / initialAnalyzedAnimals.length : 0;
 
         return { classifiedAnimals, distribution, mean, stdDev, weightedMean };
     }, [weighingsForDay, allAnimals, allWeighings, allParturitions, isWeighted]);

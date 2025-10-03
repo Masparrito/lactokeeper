@@ -1,10 +1,7 @@
-// src/firebaseConfig.ts
-
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { initializeAuth, browserLocalPersistence } from "firebase/auth";
 
-// Tu configuración de Firebase, leyendo las variables de entorno seguras
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_API_KEY,
   authDomain: import.meta.env.VITE_AUTH_DOMAIN,
@@ -14,9 +11,12 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_APP_ID,
 };
 
-// Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 
-// Exportar los servicios que usaremos en la aplicación
-export const auth = getAuth(app);
+// Se inicializa la autenticación con persistencia en localStorage
+// para resolver el conflicto con Dexie.js en IndexedDB.
+export const auth = initializeAuth(app, {
+  persistence: browserLocalPersistence
+});
+
 export const db = getFirestore(app);
