@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-// SE ELIMINA LA LÍNEA DE IMPORTACIÓN INCORRECTA
 import LotsDashboardPage from './LotsDashboardPage';
 import LotDetailPage from './LotDetailPage';
 import AddAnimalPage from './AddAnimalPage';
@@ -9,11 +8,13 @@ import ManagementPage from './ManagementPage';
 import ManageLotsPage from './ManageLotsPage';
 import BreedingGroupDetailPage from './BreedingGroupDetailPage';
 import LactationProfilePage from './LactationProfilePage';
+import FeedingPlanPage from './FeedingPlanPage'; // 1. Importar la nueva página de Alimentación
+import BatchTreatmentPage from './BatchTreatmentPage'; // 2. Importar la nueva página de Tratamientos
 import { ModuleSwitcher } from '../components/ui/ModuleSwitcher';
 import { Users, PlusCircle, Settings, LogOut, LayoutGrid } from 'lucide-react';
 import { auth } from '../firebaseConfig';
 
-// El PageState ahora es específico del módulo Rebaño y se exporta para que App.tsx lo use
+// 3. Añadir los nuevos estados de página al tipo PageState
 export type PageState = 
   | { name: 'lots-dashboard' } 
   | { name: 'lot-detail', lotName: string }
@@ -23,7 +24,9 @@ export type PageState =
   | { name: 'management' } 
   | { name: 'rebano-profile', animalId: string }
   | { name: 'lactation-profile', animalId: string }
-  | { name: 'add-animal' };
+  | { name: 'add-animal' }
+  | { name: 'feeding-plan', lotName: string }
+  | { name: 'batch-treatment', lotName: string };
 
 interface RebanoShellProps {
     initialPage: PageState | null;
@@ -63,6 +66,7 @@ const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }
     };
 
     const renderPage = () => {
+        // 4. Añadir los nuevos 'case' al router
         switch (page.name) {
             case 'lots-dashboard':
                 return <LotsDashboardPage navigateTo={navigateTo} />;
@@ -82,6 +86,10 @@ const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }
                 return <RebanoProfilePage animalId={page.animalId} onBack={navigateBack} navigateTo={navigateTo} />;
             case 'lactation-profile':
                  return <LactationProfilePage animalId={page.animalId} onBack={navigateBack} />;
+            case 'feeding-plan':
+                return <FeedingPlanPage lotName={page.lotName} onBack={navigateBack} />;
+            case 'batch-treatment':
+                return <BatchTreatmentPage lotName={page.lotName} onBack={navigateBack} />;
             default:
                 return <LotsDashboardPage navigateTo={navigateTo} />;
         }
@@ -99,9 +107,9 @@ const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }
                 {navItems.map((item) => {
                     let isActive = false;
                     if (item.label === 'Lotes') {
-                        isActive = ['lots-dashboard', 'lot-detail', 'breeding-group-detail'].includes(page.name);
+                        isActive = ['lots-dashboard', 'lot-detail', 'breeding-group-detail', 'feeding-plan', 'batch-treatment'].includes(page.name);
                     } else if (item.label === 'Rebaño') {
-                        isActive = ['herd', 'rebano-profile', 'manage-lots'].includes(page.name);
+                        isActive = ['herd', 'rebano-profile', 'manage-lots', 'add-animal'].includes(page.name);
                     } else {
                         isActive = page.name === item.page.name;
                     }

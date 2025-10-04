@@ -30,8 +30,6 @@ export interface Animal {
   breedingGroupId?: string;
   salePrice?: number;
   deathReason?: string;
-  // --- NUEVO CAMPO ---
-  // Contador para los fallos reproductivos. Será opcional para no romper datos existentes.
   breedingFailures?: number;
 }
 
@@ -86,12 +84,22 @@ export interface ServiceRecord {
 }
 
 export interface Event {
-    id: string;
+    id?: string; // Cambiado a opcional para que Dexie lo autogenere
     animalId: string;
     date: string;
     type: EventType;
     details: string;
     notes?: string;
+    // --- TAREA 3.2: CAMPO AÑADIDO ---
+    lotName?: string; // Para registrar eventos aplicados a un lote completo
+}
+
+export interface FeedingPlan {
+    id?: string;
+    lotName: string;
+    details: string;
+    startDate: string;
+    endDate?: string;
 }
 
 export class LactoKeeperDB extends Dexie {
@@ -104,9 +112,11 @@ export class LactoKeeperDB extends Dexie {
   breedingGroups!: Table<BreedingGroup>;
   serviceRecords!: Table<ServiceRecord>;
   events!: Table<Event>;
+  feedingPlans!: Table<FeedingPlan>;
 
   constructor() {
-    super('LactoKeeperDB_v5'); 
+    // La versión de la base de datos se mantiene, Dexie añadirá la nueva tabla sin borrar datos.
+    super('LactoKeeperDB_v6'); 
     
     this.version(1).stores({
       animals: '&id, motherId, fatherId, status, lifecycleStage, location, isReference, reproductiveStatus, breedingGroupId',
@@ -117,7 +127,9 @@ export class LactoKeeperDB extends Dexie {
       origins: '&id, name',
       breedingGroups: '&id, sireId, status',
       serviceRecords: '++id, breedingGroupId, femaleId, serviceDate',
-      events: '&id, animalId, date, type'
+      // --- TAREA 3.2: ÍNDICE AÑADIDO ---
+      events: '++id, animalId, date, type, lotName', 
+      feedingPlans: '++id, lotName'
     });
   }
 }

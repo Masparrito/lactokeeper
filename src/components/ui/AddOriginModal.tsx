@@ -46,15 +46,15 @@ export const AddOriginModal: React.FC<AddOriginModalProps> = ({ isOpen, onClose 
                         value={originName}
                         onChange={(e) => setOriginName(e.target.value)}
                         placeholder="Ej: Agropecuaria La Bendición"
-                        className="w-full bg-zinc-800 text-white p-3 rounded-xl focus:border-brand-amber focus:ring-0"
+                        className="w-full bg-zinc-800 text-white p-3 rounded-xl focus:border-brand-orange focus:ring-0"
                     />
                 </div>
-                {error && <p className="text-sm text-red-400">{error}</p>}
-                <div className="flex justify-end space-x-2 pt-2">
-                    <button onClick={handleClose} className="px-4 py-2 bg-zinc-600 rounded-lg hover:bg-zinc-500">
+                {error && <p className="text-sm text-brand-red">{error}</p>}
+                <div className="flex justify-end space-x-3 pt-2">
+                    <button onClick={handleClose} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg">
                         Cancelar
                     </button>
-                    <button onClick={handleSave} className="px-4 py-2 bg-brand-amber text-black font-bold rounded-lg hover:bg-yellow-500">
+                    <button onClick={handleSave} className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg">
                         Guardar Origen
                     </button>
                 </div>

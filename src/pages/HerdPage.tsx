@@ -1,18 +1,49 @@
-import { useMemo, useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { useSearch } from '../hooks/useSearch';
 import { SearchHeader } from '../components/ui/SearchHeader';
 import { Plus, ChevronRight, Settings } from 'lucide-react';
-import { PageState } from './RebanoShell'; // RUTA DE IMPORTACIÓN CORREGIDA
-import { Animal } from '../db/local';
+import { PageState } from './RebanoShell';
+import { Animal, Parturition } from '../db/local';
+import { calculateAgeInDays } from '../utils/calculations';
 
-// Componente para una fila de la lista de animales
+// Lógica de filtros zootécnicos precisos
+const PRIMARY_FILTERS = {
+    'Cabras': (animal: Animal, parturitions: Parturition[]) => {
+        const ageInDays = calculateAgeInDays(animal.birthDate);
+        const hasParturitions = parturitions.some(p => p.goatId === animal.id);
+        return animal.sex === 'Hembra' && ageInDays > 365 && hasParturitions;
+    },
+    'Cabritonas': (animal: Animal, parturitions: Parturition[]) => {
+        const ageInDays = calculateAgeInDays(animal.birthDate);
+        const hasParturitions = parturitions.some(p => p.goatId === animal.id);
+        return animal.sex === 'Hembra' && ageInDays > 60 && !hasParturitions;
+    },
+    'Cabritas': (animal: Animal) => {
+        const ageInDays = calculateAgeInDays(animal.birthDate);
+        return animal.sex === 'Hembra' && ageInDays >= 0 && ageInDays <= 60;
+    },
+    'Machos Cabríos': (animal: Animal) => {
+        const ageInDays = calculateAgeInDays(animal.birthDate);
+        return animal.sex === 'Macho' && ageInDays > 365;
+    },
+    'Machos de Levante': (animal: Animal) => {
+        const ageInDays = calculateAgeInDays(animal.birthDate);
+        return animal.sex === 'Macho' && ageInDays > 60 && ageInDays <= 365;
+    },
+    'Cabritos': (animal: Animal) => {
+        const ageInDays = calculateAgeInDays(animal.birthDate);
+        return animal.sex === 'Macho' && ageInDays >= 0 && ageInDays <= 60;
+    },
+};
+
+
 const AnimalRow = ({ animal, onSelect }: { animal: Animal, onSelect: (id: string) => void }) => (
-    <button onClick={() => onSelect(animal.id)} className="w-full text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border flex justify-between items-center hover:border-brand-amber transition-colors">
+    <button onClick={() => onSelect(animal.id)} className="w-full text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border flex justify-between items-center hover:border-brand-orange transition-colors">
         <div>
             <p className="font-bold text-lg text-white">{animal.id}</p>
             <p className="text-sm text-zinc-400">
-                {animal.sex} | {animal.lifecycleStage} | Lote: {animal.location}
+                {animal.sex} | {calculateAgeInDays(animal.birthDate)} días | Lote: {animal.location || 'N/A'}
             </p>
         </div>
         <ChevronRight className="text-zinc-600" />
@@ -25,10 +56,9 @@ interface HerdPageProps {
 }
 
 export default function HerdPage({ navigateTo, locationFilter }: HerdPageProps) {
-    const { animals, isLoading } = useData();
-    const [sexFilter, setSexFilter] = useState<'all' | 'Hembra' | 'Macho'>('all');
+    const { animals, parturitions, isLoading } = useData();
+    const [categoryFilter, setCategoryFilter] = useState<string>('Todos');
 
-    // Primero, aplica los filtros de la UI
     const filteredByUI = useMemo(() => {
         return animals
             .filter(animal => {
@@ -39,12 +69,12 @@ export default function HerdPage({ navigateTo, locationFilter }: HerdPageProps) 
                 return true;
             })
             .filter(animal => {
-                if (sexFilter === 'all') return true;
-                return animal.sex === sexFilter;
+                if (categoryFilter === 'Todos') return true;
+                const filterFn = (PRIMARY_FILTERS as any)[categoryFilter];
+                return filterFn ? filterFn(animal, parturitions) : false;
             });
-    }, [animals, sexFilter, locationFilter]);
+    }, [animals, parturitions, categoryFilter, locationFilter]);
 
-    // Luego, aplica la búsqueda sobre la lista ya filtrada
     const { searchTerm, setSearchTerm, filteredItems } = useSearch(filteredByUI, ['id']);
 
     if (isLoading) {
@@ -55,7 +85,7 @@ export default function HerdPage({ navigateTo, locationFilter }: HerdPageProps) 
         <div className="w-full max-w-2xl mx-auto space-y-4 pb-12">
             <SearchHeader 
                 title={locationFilter || "Mi Rebaño"}
-                subtitle={`${filteredItems.length} de ${animals.length} animales registrados`}
+                subtitle={`${filteredItems.length} animales en la vista`}
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
             />
@@ -63,7 +93,7 @@ export default function HerdPage({ navigateTo, locationFilter }: HerdPageProps) 
             <div className="space-y-4">
                 <button 
                     onClick={() => navigateTo({ name: 'add-animal' })}
-                    className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 px-4 rounded-xl transition-colors text-lg"
+                    className="w-full flex items-center justify-center gap-2 bg-brand-orange hover:bg-orange-600 text-white font-bold py-4 px-4 rounded-xl transition-colors text-lg"
                 >
                     <Plus size={20} /> Ingresar Nuevo Animal
                 </button>
@@ -71,17 +101,20 @@ export default function HerdPage({ navigateTo, locationFilter }: HerdPageProps) 
                 <div className="flex items-center justify-center gap-4">
                     <button
                         onClick={() => navigateTo({ name: 'manage-lots' })}
-                        className="flex items-center gap-2 text-zinc-400 hover:text-brand-amber text-sm font-semibold py-1 px-3"
+                        className="flex items-center gap-2 text-zinc-400 hover:text-brand-orange text-sm font-semibold py-1 px-3"
                     >
                         <Settings size={14} /> Gestionar Lotes
                     </button>
                 </div>
                 
-                <div className="flex bg-brand-glass rounded-xl p-1 border border-brand-border">
-                    <button onClick={() => setSexFilter('all')} className={`w-1/3 py-2 text-sm font-semibold rounded-lg transition-colors ${sexFilter === 'all' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Todos</button>
-                    <button onClick={() => setSexFilter('Hembra')} className={`w-1/3 py-2 text-sm font-semibold rounded-lg transition-colors ${sexFilter === 'Hembra' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Hembras</button>
-                    <button onClick={() => setSexFilter('Macho')} className={`w-1/3 py-2 text-sm font-semibold rounded-lg transition-colors ${sexFilter === 'Macho' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Machos</button>
-                </div>
+                <select 
+                    value={categoryFilter} 
+                    onChange={e => setCategoryFilter(e.target.value)} 
+                    className="w-full bg-brand-glass p-3 rounded-xl text-white border border-brand-border focus:border-brand-orange focus:ring-0"
+                >
+                    <option value="Todos">Todas las Categorías</option>
+                    {Object.keys(PRIMARY_FILTERS).map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
             </div>
 
             <div className="space-y-2 pt-4">

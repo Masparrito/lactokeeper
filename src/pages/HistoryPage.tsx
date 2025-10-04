@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
-import { ChevronRight, BarChart2, Calendar, ArrowLeft, TrendingUp, Droplet, ArrowUp, ArrowDown, Users } from 'lucide-react';
+import { ArrowLeft, ChevronRight, BarChart2, Calendar, TrendingUp, Droplet, ArrowUp, ArrowDown, Users } from 'lucide-react';
 import { BarChart, Bar, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, LabelList } from 'recharts';
 import { useGaussAnalysis, AnalyzedAnimal } from '../hooks/useGaussAnalysis';
 import { useHistoricalAnalysis, PeriodStats } from '../hooks/useHistoricalAnalysis';
@@ -11,13 +11,13 @@ type ViewMode = 'monthly' | 'quarterly' | 'yearly';
 const ChangeIndicator = ({ value }: { value?: number }) => {
     if (value === undefined || isNaN(value)) return null;
     const isPositive = value > 0;
-    const color = isPositive ? 'text-green-400' : 'text-red-400';
+    const color = isPositive ? 'text-brand-green' : 'text-brand-red';
     const Icon = isPositive ? ArrowUp : ArrowDown;
     return ( <span className={`flex items-center text-sm font-bold ${color}`}><Icon size={16} className="mr-0.5" />{value.toFixed(1)}%</span> );
 };
 
 const PeriodCard = ({ stats, onClick }: { stats: PeriodStats, onClick: () => void }) => (
-    <button onClick={onClick} className="w-full text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border flex justify-between items-center hover:border-brand-amber transition-colors">
+    <button onClick={onClick} className="w-full text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border flex justify-between items-center hover:border-brand-orange transition-colors">
         <div>
             <p className="font-bold text-lg text-white">{stats.periodLabel}</p>
             <p className="text-sm text-zinc-400">Prom: {stats.averageKg.toFixed(2)} Kg | {stats.animalCount} animales</p>
@@ -27,12 +27,12 @@ const PeriodCard = ({ stats, onClick }: { stats: PeriodStats, onClick: () => voi
 );
 
 const WeighingRow = ({ weighing, onSelectAnimal }: { weighing: AnalyzedAnimal, onSelectAnimal: (id: string) => void }) => (
-    <button onClick={() => onSelectAnimal(weighing.id)} className="w-full text-left bg-black/20 rounded-lg p-3 border border-zinc-700/50 flex justify-between items-center hover:border-amber-400/50">
+    <button onClick={() => onSelectAnimal(weighing.id)} className="w-full text-left bg-black/20 rounded-lg p-3 border border-zinc-700/50 flex justify-between items-center hover:border-orange-400/50">
         <div className="flex items-center gap-4">
             <div>
                 <p className="font-bold text-base text-white flex items-center gap-2">
                     {weighing.id}
-                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full text-white ${weighing.classification === 'Pobre' ? 'bg-red-500/80' : weighing.classification === 'Sobresaliente' ? 'bg-green-500/80' : 'bg-gray-500/80'}`}>
+                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full text-white ${weighing.classification === 'Pobre' ? 'bg-brand-red/80' : weighing.classification === 'Sobresaliente' ? 'bg-brand-green/80' : 'bg-gray-500/80'}`}>
                         {weighing.classification}
                     </span>
                 </p>
@@ -126,7 +126,7 @@ export default function HistoryPage({ onSelectAnimal, selectedPeriod, setSelecte
             <div className="w-full max-w-2xl mx-auto space-y-4 pb-12">
                 <header className="text-center pt-8 pb-4"><h1 className="text-4xl font-bold tracking-tight text-white">Historial de Producción</h1><p className="text-xl text-zinc-400">La película de tu rebaño</p></header>
                 <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-2 border border-brand-border"><div className="flex bg-zinc-900/80 rounded-xl p-1 w-full">
-                    <button onClick={() => setViewMode('monthly')} className={`w-1/3 px-4 py-1.5 text-sm font-semibold rounded-lg transition-colors ${viewMode === 'monthly' ? 'bg-amber-500 text-black' : 'text-zinc-300 hover:bg-zinc-700/50'}`}>Mensual</button>
+                    <button onClick={() => setViewMode('monthly')} className={`w-1/3 px-4 py-1.5 text-sm font-semibold rounded-lg transition-colors ${viewMode === 'monthly' ? 'bg-brand-orange text-white' : 'text-zinc-300 hover:bg-zinc-700/50'}`}>Mensual</button>
                     <button disabled className="w-1/3 px-4 py-1.5 text-sm font-semibold rounded-lg opacity-50 cursor-not-allowed">Trimestral</button>
                     <button disabled className="w-1/3 px-4 py-1.5 text-sm font-semibold rounded-lg opacity-50 cursor-not-allowed">Anual</button>
                 </div></div>
@@ -151,9 +151,8 @@ export default function HistoryPage({ onSelectAnimal, selectedPeriod, setSelecte
                     <div className="bg-brand-glass p-3 rounded-2xl"><div className="text-xs uppercase text-zinc-400 mb-1 flex items-center gap-1"><TrendingUp size={14}/>Total Registrado</div><p className="text-2xl font-bold text-white">{selectedPeriod.totalKg.toFixed(0)}<span className="text-lg ml-1 text-zinc-400">Kg</span></p></div>
                 </div>
 
-                {/* --- El gráfico ahora tiene porcentajes y es interactivo --- */}
                 <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
-                    <div className="flex items-center space-x-2 border-b border-brand-border pb-2 mb-4"><BarChart2 className="text-amber-400" size={18}/><h3 className="text-lg font-semibold text-white">Distribución del Período</h3></div>
+                    <div className="flex items-center space-x-2 border-b border-brand-border pb-2 mb-4"><BarChart2 className="text-brand-orange" size={18}/><h3 className="text-lg font-semibold text-white">Distribución del Período</h3></div>
                     <div className="w-full h-48">
                         <ResponsiveContainer><BarChart data={periodAnalysis.distribution} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
                             <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} /><YAxis orientation="left" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
@@ -186,11 +185,11 @@ export default function HistoryPage({ onSelectAnimal, selectedPeriod, setSelecte
                       </div>
                   </div>
                   <div className="pt-4 border-t border-zinc-700/80">
-                      {selectedPeriod.exitingAnimalCount! > 0 && <p className="text-sm text-zinc-400 mt-1">Salieron del ordeño: <span className="font-bold text-red-400">{selectedPeriod.exitingAnimalCount}</span> animales.</p>}
-                      {selectedPeriod.newAnimalsWeighings.length > 0 && <p className="text-sm text-zinc-400 mt-1">Nuevos ingresos: <span className="font-bold text-green-400">{new Set(selectedPeriod.newAnimalsWeighings.map(w => w.goatId)).size}</span> animales.</p>}
+                      {selectedPeriod.exitingAnimalCount! > 0 && <p className="text-sm text-zinc-400 mt-1">Salieron del ordeño: <span className="font-bold text-brand-red">{selectedPeriod.exitingAnimalCount}</span> animales.</p>}
+                      {selectedPeriod.newAnimalsWeighings.length > 0 && <p className="text-sm text-zinc-400 mt-1">Nuevos ingresos: <span className="font-bold text-brand-green">{new Set(selectedPeriod.newAnimalsWeighings.map(w => w.goatId)).size}</span> animales.</p>}
 
                       {selectedPeriod.newAnimalsWeighings.length > 0 && (
-                        <button onClick={() => { setAnalysisModalData({ ...selectedPeriod, weighings: selectedPeriod.newAnimalsWeighings }); setIsVariationModalOpen(false); }} className="w-full mt-4 bg-indigo-600 text-white font-semibold py-2 rounded-lg hover:bg-indigo-500">
+                        <button onClick={() => { setAnalysisModalData({ ...selectedPeriod, weighings: selectedPeriod.newAnimalsWeighings }); setIsVariationModalOpen(false); }} className="w-full mt-4 bg-brand-orange text-white font-semibold py-2 rounded-lg hover:bg-orange-600 transition-colors">
                             Analizar los {new Set(selectedPeriod.newAnimalsWeighings.map(w => w.goatId)).size} Nuevos Ingresos
                         </button>
                       )}

@@ -3,11 +3,10 @@ import { PageState as RebanoPageState } from '../RebanoShell';
 import Dashboard from '../Dashboard';
 import AnimalsPage from '../AnimalsPage';
 import HistoryPage from '../HistoryPage';
-import AddDataPage from '../AddDataPage'; // 1. Importamos la página para añadir datos
+import AddDataPage from '../AddDataPage';
 import { PeriodStats } from '../../hooks/useHistoricalAnalysis';
-import { BarChart2, ArrowLeft, CalendarClock, List, PlusCircle } from 'lucide-react'; // 2. Importamos el ícono PlusCircle
+import { BarChart2, ArrowLeft, CalendarClock, List, PlusCircle } from 'lucide-react';
 
-// 3. Añadimos 'add-data' a los tipos de página interna
 type LactoKeeperPage = 'dashboard' | 'analysis' | 'history' | 'add-data';
 
 interface LactoKeeperShellProps {
@@ -19,7 +18,6 @@ export default function LactoKeeperShell({ navigateToRebano, onExitModule }: Lac
     const [page, setPage] = useState<LactoKeeperPage>('dashboard');
     const [historySelectedPeriod, setHistorySelectedPeriod] = useState<PeriodStats | null>(null);
 
-    // 4. Añadimos el nuevo ítem a la barra de navegación
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: BarChart2 },
         { id: 'analysis', label: 'Análisis', icon: List },
@@ -39,10 +37,7 @@ export default function LactoKeeperShell({ navigateToRebano, onExitModule }: Lac
                             selectedPeriod={historySelectedPeriod}
                             setSelectedPeriod={setHistorySelectedPeriod}
                        />;
-            // 5. Añadimos el caso para renderizar la página de "Añadir Datos"
             case 'add-data':
-                // La prop 'onNavigate' ahora usa la función 'navigateToRebano' para
-                // poder navegar a páginas del módulo principal como 'add-parturition'.
                 return <AddDataPage onNavigate={(pageName: any, state: any) => navigateToRebano({ name: pageName, ...state })} />;
             default:
                 return <Dashboard onNavigateToAnalysis={() => setPage('analysis')} />;
@@ -69,7 +64,7 @@ export default function LactoKeeperShell({ navigateToRebano, onExitModule }: Lac
                         key={item.id}
                         onClick={() => setPage(item.id as LactoKeeperPage)}
                         className={`flex flex-col items-center justify-center p-3 w-full transition-colors ${
-                            page === item.id ? 'text-indigo-400' : 'text-gray-400 hover:text-indigo-400'
+                            page === item.id ? 'text-brand-orange' : 'text-gray-400 hover:text-brand-orange'
                         }`}
                     >
                         <item.icon className="w-6 h-6 mb-1" />

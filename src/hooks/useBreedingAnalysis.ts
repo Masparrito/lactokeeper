@@ -84,23 +84,19 @@ export const useBreedingAnalysis = () => {
         if (analysisResult.femalesToFlag.length > 0) {
             console.log("Detectadas hembras con posible fallo reproductivo:", analysisResult.femalesToFlag);
             
-            // --- CÓDIGO CORREGIDO ---
-            // Se elimina la función 'flagUpdates' que no se usaba y se deja la lógica
-            // comentada directamente, como estaba planeado.
-            
-            // Descomentar el siguiente bloque para activar la actualización automática.
-            /*
+            // --- CÓDIGO CORREGIDO Y ACTIVADO ---
+            // Este bloque ahora se ejecutará, actualizando el contador de fallos
+            // en la base de datos para los animales detectados.
             (async () => {
                 for (const { femaleId } of analysisResult.femalesToFlag) {
                     const animal = animals.find(a => a.id === femaleId);
                     if (animal) {
                         const currentFailures = animal.breedingFailures || 0;
-                        console.log(`Incrementando fallo para ${femaleId}. Total anterior: ${currentFailures}`);
+                        console.log(`Incrementando fallo para ${femaleId}. Total anterior: ${currentFailures}. Nuevo total: ${currentFailures + 1}`);
                         await updateAnimal(femaleId, { breedingFailures: currentFailures + 1 });
                     }
                 }
             })();
-            */
         }
     }, [analysisResult.femalesToFlag, animals, updateAnimal]);
 

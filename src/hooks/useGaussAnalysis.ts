@@ -9,7 +9,6 @@ export interface AnalyzedAnimal extends Animal {
     score: number;
     classification: 'Sobresaliente' | 'Promedio' | 'Pobre';
     trend: Trend;
-    // --- CORRECCIÓN: El ID del pesaje ahora es un string ---
     weighingId?: string;
     date: string;
 }
@@ -79,9 +78,9 @@ export const useGaussAnalysis = (
         });
 
         const distribution = [
-            { name: 'Pobre', count: classifiedAnimals.filter(a => a.classification === 'Pobre').length, fill: '#EF4444' },
+            { name: 'Pobre', count: classifiedAnimals.filter(a => a.classification === 'Pobre').length, fill: '#FF3B30' }, // brand-red
             { name: 'Promedio', count: classifiedAnimals.filter(a => a.classification === 'Promedio').length, fill: '#6B7280' },
-            { name: 'Sobresaliente', count: classifiedAnimals.filter(a => a.classification === 'Sobresaliente').length, fill: '#22C55E' },
+            { name: 'Sobresaliente', count: classifiedAnimals.filter(a => a.classification === 'Sobresaliente').length, fill: '#34C759' }, // brand-green
         ];
         
         const mean = initialAnalyzedAnimals.length > 0 ? initialAnalyzedAnimals.reduce((sum, a) => sum + a.latestWeighing, 0) / initialAnalyzedAnimals.length : 0;

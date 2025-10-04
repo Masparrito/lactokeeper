@@ -16,8 +16,8 @@ const SexSelector = ({ value, onChange }: { value: 'Hembra' | 'Macho', onChange:
         <button type="button" onClick={() => onChange('Macho')} className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors ${value === 'Macho' ? 'bg-zinc-600 text-white' : 'text-zinc-400 hover:bg-zinc-700/50'}`}>Macho</button>
     </div>
 );
-const InputField = (props: React.InputHTMLAttributes<HTMLInputElement | HTMLSelectElement>) => ( <input {...props} className="w-full bg-zinc-800/80 text-white p-3 rounded-xl border border-transparent focus:border-brand-amber focus:ring-0 focus:outline-none placeholder-zinc-400" /> );
-const SelectField = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => ( <select {...props} className="w-full bg-zinc-800/80 text-white p-3 rounded-xl border border-transparent focus:border-brand-amber focus:ring-0 focus:outline-none" /> );
+const InputField = (props: React.InputHTMLAttributes<HTMLInputElement | HTMLSelectElement>) => ( <input {...props} className="w-full bg-zinc-800/80 text-white p-3 rounded-xl border border-transparent focus:border-brand-orange focus:ring-0 focus:outline-none placeholder-zinc-400" /> );
+const SelectField = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => ( <select {...props} className="w-full bg-zinc-800/80 text-white p-3 rounded-xl border border-transparent focus:border-brand-orange focus:ring-0 focus:outline-none" /> );
 
 
 // Props que el formulario aceptará
@@ -114,7 +114,7 @@ export const AddParturitionForm: React.FC<AddParturitionFormProps> = ({ motherId
                                     <span className={selectedFatherName ? 'text-white' : 'text-zinc-400'}>{selectedFatherName || 'Seleccione el Padre'}</span>
                                     <ChevronDown className={`transition-transform ${isAccordionOpen ? 'rotate-180' : ''}`} size={20} />
                                 </button>
-                                <button type="button" onClick={() => setIsFatherModalOpen(true)} className="h-full aspect-square flex-shrink-0 bg-indigo-600/80 text-white rounded-xl flex items-center justify-center hover:bg-indigo-500" aria-label="Añadir nuevo padre"><Plus size={20} /></button>
+                                <button type="button" onClick={() => setIsFatherModalOpen(true)} className="h-full aspect-square flex-shrink-0 bg-brand-orange/80 text-white rounded-xl flex items-center justify-center hover:bg-brand-orange" aria-label="Añadir nuevo padre"><Plus size={20} /></button>
                             </div>
                             {isAccordionOpen && (
                                 <div className="absolute z-20 top-full mt-2 w-full bg-zinc-800 border border-zinc-700 rounded-xl max-h-48 overflow-y-auto">
@@ -131,7 +131,7 @@ export const AddParturitionForm: React.FC<AddParturitionFormProps> = ({ motherId
                     <h2 className="text-lg font-semibold text-zinc-300 tracking-tight flex items-center gap-2 ml-1"><Users size={20}/> Registro de Crías</h2>
                     {offspring.map((kid, index) => (
                         <div key={index} className="bg-black/20 rounded-2xl p-4 border border-zinc-800/50 space-y-4">
-                            <p className="font-semibold text-brand-amber">Cría {index + 1}</p>
+                            <p className="font-semibold text-brand-orange">Cría {index + 1}</p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                                 <SexSelector value={kid.sex} onChange={(sex) => handleOffspringChange(index, 'sex', sex)} />
                                 <InputField type="text" value={kid.correlative} onChange={e => handleOffspringChange(index, 'correlative', e.target.value)} placeholder="Nº Correlativo" required />
@@ -142,14 +142,14 @@ export const AddParturitionForm: React.FC<AddParturitionFormProps> = ({ motherId
                     ))}
                 </div>
                 <div className="space-y-3">
-                    <button type="submit" className="w-full bg-brand-amber text-black font-bold py-3 rounded-xl text-lg">Guardar Registro</button>
+                    <button type="submit" className="w-full bg-brand-green hover:bg-green-600 text-white font-bold py-3 rounded-xl text-lg">Guardar Registro</button>
                     {onCancel && (
                         <button type="button" onClick={onCancel} className="w-full bg-zinc-600 text-white font-bold py-3 rounded-xl text-lg">
                             Cancelar
                         </button>
                     )}
                     {message && (
-                        <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
+                        <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-brand-green' : 'bg-red-500/20 text-brand-red'}`}>
                             {message.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
                             <span>{message.text}</span>
                         </div>

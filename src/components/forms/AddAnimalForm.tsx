@@ -23,15 +23,15 @@ const GENDER_SPECIFIC_STAGES = {
 const ProgressBar = ({ step }: { step: number }) => (
     <div className="flex items-center gap-2 px-4">
         {[1, 2, 3].map(s => (
-            <div key={s} className={`h-2 rounded-full transition-all duration-300 ${s <= step ? 'bg-brand-amber' : 'bg-zinc-700'}`} style={{ width: `${100/3}%` }} />
+            <div key={s} className={`h-2 rounded-full transition-all duration-300 ${s <= step ? 'bg-brand-orange' : 'bg-zinc-700'}`} style={{ width: `${100/3}%` }} />
         ))}
     </div>
 );
 
 // --- Estilos CSS para el calendario ---
 const calendarCss = `
-  .rdp { --rdp-cell-size: 40px; --rdp-accent-color: #FBBF24; --rdp-background-color: #3a3a3c; --rdp-accent-color-dark: #FBBF24; --rdp-background-color-dark: #3a3a3c; --rdp-outline: 2px solid var(--rdp-accent-color); --rdp-outline-selected: 3px solid var(--rdp-accent-color); --rdp-border-radius: 6px; color: #FFF; margin: 1em; }
-  .rdp-caption_label, .rdp-nav_button { color: #FBBF24; }
+  .rdp { --rdp-cell-size: 40px; --rdp-accent-color: #FF9500; --rdp-background-color: #3a3a3c; --rdp-accent-color-dark: #FF9500; --rdp-background-color-dark: #3a3a3c; --rdp-outline: 2px solid var(--rdp-accent-color); --rdp-outline-selected: 3px solid var(--rdp-accent-color); --rdp-border-radius: 6px; color: #FFF; margin: 1em; }
+  .rdp-caption_label, .rdp-nav_button { color: #FF9500; }
   .rdp-caption_dropdowns { color: #000; }
   .rdp-head_cell { color: #8e8e93; }
   .rdp-day_selected { background-color: var(--rdp-accent-color); color: #000; font-weight: bold; }
@@ -180,7 +180,7 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
                                         <option value="">Seleccione...</option>
                                         {lots.map(lot => <option key={lot.id} value={lot.name}>{lot.name}</option>)}
                                     </select>
-                                    <button type="button" onClick={() => setLotModalOpen(true)} className="p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl">
+                                    <button type="button" onClick={() => setLotModalOpen(true)} className="p-3 bg-brand-orange hover:bg-orange-600 text-white rounded-xl">
                                         <PlusCircle size={24} />
                                     </button>
                                 </div>
@@ -192,7 +192,7 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
                                         <option value="Finca Masparrito">Finca Masparrito</option>
                                         {origins.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
                                     </select>
-                                    <button type="button" onClick={() => setOriginModalOpen(true)} className="p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl">
+                                    <button type="button" onClick={() => setOriginModalOpen(true)} className="p-3 bg-brand-orange hover:bg-orange-600 text-white rounded-xl">
                                         <PlusCircle size={24} />
                                     </button>
                                 </div>
@@ -200,17 +200,17 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
                             <div><label htmlFor="lifecycleStage" className="block text-sm font-medium text-zinc-400 mb-1">Estado de Crecimiento</label><select id="lifecycleStage" value={lifecycleStage} onChange={e => setLifecycleStage(e.target.value)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg" disabled={!sex}><option value="">Seleccione...</option>{sex && GENDER_SPECIFIC_STAGES[sex].map(stage => <option key={stage} value={stage}>{stage}</option>)}</select></div>
                             <div><label htmlFor="birthWeight" className="block text-sm font-medium text-zinc-400 mb-1">Peso al nacer (Kg)</label><input id="birthWeight" type="number" step="0.1" placeholder="Ej: 4.3" value={birthWeight} onChange={e => setBirthWeight(e.target.value)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg" /></div>
                             <div><label htmlFor="parturitionType" className="block text-sm font-medium text-zinc-400 mb-1">Tipo de Parto (origen)</label><select id="parturitionType" value={parturitionType} onChange={e => setParturitionType(e.target.value)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg"><option value="">Seleccione...</option><option>Simple</option><option>Doble</option><option>Triple</option></select></div>
-                            <div className="flex items-center gap-3 bg-zinc-800/80 p-3 rounded-xl"><input id="isReference" type="checkbox" checked={isReference} onChange={e => setIsReference(e.target.checked)} className="h-5 w-5 rounded text-brand-amber focus:ring-brand-amber" /><label htmlFor="isReference" className="text-lg text-zinc-300">¿Es un animal de Referencia?</label></div>
+                            <div className="flex items-center gap-3 bg-zinc-800/80 p-3 rounded-xl"><input id="isReference" type="checkbox" checked={isReference} onChange={e => setIsReference(e.target.checked)} className="h-5 w-5 rounded text-brand-orange focus:ring-brand-orange" /><label htmlFor="isReference" className="text-lg text-zinc-300">¿Es un animal de Referencia?</label></div>
                             <div><label htmlFor="observations" className="block text-sm font-medium text-zinc-400 mb-1">Observaciones</label><textarea id="observations" value={observations} onChange={e => setObservations(e.target.value)} rows={3} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg"></textarea></div>
                         </div>
                     )}
 
                     <div className="flex justify-between items-center pt-4 border-t border-zinc-700">
                         <button type="button" onClick={() => onCancel ? onCancel() : setStep(step - 1)} disabled={step === 1 && !onCancel} className="bg-zinc-600 hover:bg-zinc-500 text-white font-bold py-3 px-6 rounded-lg disabled:opacity-40 flex items-center gap-2"><ChevronLeft size={18} /> {step > 1 ? 'Anterior' : 'Cancelar'}</button>
-                        {step < 3 && ( <button type="button" onClick={() => setStep(step + 1)} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2"> Siguiente <ChevronsRight size={18} /> </button> )}
-                        {step === 3 && ( <button type="submit" className="bg-brand-amber hover:bg-yellow-500 text-black font-bold py-3 px-6 rounded-lg"> Agregar Animal </button> )}
+                        {step < 3 && ( <button type="button" onClick={() => setStep(step + 1)} className="bg-brand-orange hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2"> Siguiente <ChevronsRight size={18} /> </button> )}
+                        {step === 3 && ( <button type="submit" className="bg-brand-green hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg"> Agregar Animal </button> )}
                     </div>
-                    {message && ( <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}> {message.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />} <span>{message.text}</span> </div> )}
+                    {message && ( <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-brand-green' : 'bg-red-500/20 text-brand-red'}`}> {message.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />} <span>{message.text}</span> </div> )}
                 </form>
             </div>
             

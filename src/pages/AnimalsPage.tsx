@@ -30,14 +30,14 @@ const MilkingAnimalRow = ({ animal, onSelectAnimal }: { animal: AnalyzedAnimal, 
 
     return (
         <>
-            <div onClick={() => onSelectAnimal(animal.id)} className="w-full cursor-pointer text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border flex justify-between items-center hover:border-brand-amber transition-colors">
+            <div onClick={() => onSelectAnimal(animal.id)} className="w-full cursor-pointer text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border flex justify-between items-center hover:border-brand-orange transition-colors">
                 <div>
                     <p className="font-bold text-lg text-white">{animal.id}</p>
-                    <p className="text-sm text-zinc-400">DEL: {animal.del} | Score: {animal.score.toFixed(2)} | <span className="font-semibold text-amber-400"> Pesaje: {animal.latestWeighing.toFixed(2)} Kg</span></p>
+                    <p className="text-sm text-zinc-400">DEL: {animal.del} | Score: {animal.score.toFixed(2)} | <span className="font-semibold text-brand-orange"> Pesaje: {animal.latestWeighing.toFixed(2)} Kg</span></p>
                 </div>
                 <div className="flex items-center space-x-2">
                     <button onClick={handleTrendClick} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors disabled:cursor-not-allowed" disabled={!animal.trend || animal.trend === 'single'}><WeighingTrendIcon trend={animal.trend} isLongTrend={isLongTrend} /></button>
-                   <span className={`px-2 py-0.5 text-xs font-semibold rounded-full text-white ${animal.classification === 'Pobre' ? 'bg-red-500/80' : animal.classification === 'Sobresaliente' ? 'bg-green-500/80' : 'bg-gray-500/80'}`}>{animal.classification}</span>
+                   <span className={`px-2 py-0.5 text-xs font-semibold rounded-full text-white ${animal.classification === 'Pobre' ? 'bg-brand-red/80' : animal.classification === 'Sobresaliente' ? 'bg-brand-green/80' : 'bg-gray-500/80'}`}>{animal.classification}</span>
                    <ChevronRight className="text-zinc-600" />
                 </div>
             </div>
@@ -47,7 +47,7 @@ const MilkingAnimalRow = ({ animal, onSelectAnimal }: { animal: AnalyzedAnimal, 
                         <div><p className="text-sm text-zinc-400">Pesaje Anterior ({lastTwoWeighings[1] ? new Date(lastTwoWeighings[1].date).toLocaleDateString() : 'N/A'})</p><p className="text-2xl font-semibold">{lastTwoWeighings[1]?.kg.toFixed(2) || 'N/A'} Kg</p></div>
                         <div><p className="text-sm text-zinc-400">Último Pesaje ({lastTwoWeighings[0] ? new Date(lastTwoWeighings[0].date).toLocaleDateString() : 'N/A'})</p><p className="text-2xl font-semibold">{lastTwoWeighings[0]?.kg.toFixed(2) || 'N/A'} Kg</p></div>
                     </div>
-                    <div><p className="text-zinc-400 text-base mb-1">Diferencia</p><p className={`text-3xl font-bold ${difference > 0 ? 'text-green-400' : difference < 0 ? 'text-red-400' : 'text-zinc-400'}`}>{difference > 0 ? '+' : ''}{difference.toFixed(2)} Kg</p></div>
+                    <div><p className="text-zinc-400 text-base mb-1">Diferencia</p><p className={`text-3xl font-bold ${difference > 0 ? 'text-brand-green' : difference < 0 ? 'text-brand-red' : 'text-zinc-400'}`}>{difference > 0 ? '+' : ''}{difference.toFixed(2)} Kg</p></div>
                 </div>
             </Modal>
         </>
@@ -233,7 +233,7 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-                <button onClick={() => setActiveModal('media')} className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left hover:border-brand-amber transition-colors">
+                <button onClick={() => setActiveModal('media')} className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left hover:border-brand-orange transition-colors">
                     <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"><Droplets size={14} /><span>{isWeighted ? 'Media Ponderada' : 'Media de Prod.'}</span></div>
                     <p className="text-2xl font-bold text-white">{(isWeighted ? weightedMean : mean).toFixed(2)} <span className="text-lg text-zinc-400">Kg</span></p>
                 </button>
@@ -241,11 +241,11 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
                     <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"><Sigma size={14} /><span>Prod. Total</span></div>
                     <p className="text-2xl font-bold text-white">{pageData.kpi.total.toFixed(2)} <span className="text-lg text-zinc-400">Kg</span></p>
                 </div>
-                <button onClick={() => setActiveModal('stdDev')} className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left hover:border-brand-amber transition-colors">
+                <button onClick={() => setActiveModal('stdDev')} className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left hover:border-brand-orange transition-colors">
                     <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"><Target size={14} /><span>Consistencia</span></div>
                     <p className="text-2xl font-bold text-white">{stdDev.toFixed(2)} <span className="text-lg text-zinc-400">σ</span></p>
                 </button>
-                <button onClick={() => setActiveModal('rango')} className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left hover:border-brand-amber transition-colors">
+                <button onClick={() => setActiveModal('rango')} className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left hover:border-brand-orange transition-colors">
                     <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"><TrendingUp size={14} /><span>Rango Prod.</span></div>
                     <p className="text-2xl font-bold text-white">{pageData.kpi.min.toFixed(2)} - {pageData.kpi.max.toFixed(2)} <span className="text-lg text-zinc-400">Kg</span></p>
                 </button>
@@ -253,12 +253,12 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
 
             <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border animate-fade-in">
                 <div className="flex justify-between items-center border-b border-brand-border pb-2 mb-4">
-                    <div className="flex items-center space-x-2"><BarChart2 className="text-amber-400" size={18}/><h3 className="text-lg font-semibold text-white">Análisis del Día</h3><button onClick={() => setIsInfoModalOpen(true)} className="text-zinc-500 hover:text-white"><Info size={14}/></button></div>
+                    <div className="flex items-center space-x-2"><BarChart2 className="text-brand-orange" size={18}/><h3 className="text-lg font-semibold text-white">Análisis del Día</h3><button onClick={() => setIsInfoModalOpen(true)} className="text-zinc-500 hover:text-white"><Info size={14}/></button></div>
                     <label className="flex items-center space-x-2 text-sm text-zinc-300 cursor-pointer">
-                        <Zap size={14} className={isWeighted ? 'text-amber-400' : 'text-zinc-500'}/>
+                        <Zap size={14} className={isWeighted ? 'text-brand-orange' : 'text-zinc-500'}/>
                         <span>Ponderado a DEL</span>
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsScoreInfoModalOpen(true); }} className="text-zinc-500 hover:text-white -ml-1"><Info size={14}/></button>
-                        <input type="checkbox" checked={isWeighted} onChange={(e) => setIsWeighted(e.target.checked)} className="form-checkbox h-4 w-4 bg-zinc-700 border-zinc-600 rounded text-amber-500 focus:ring-offset-0"/>
+                        <input type="checkbox" checked={isWeighted} onChange={(e) => setIsWeighted(e.target.checked)} className="form-checkbox h-4 w-4 bg-zinc-700 border-zinc-600 rounded text-brand-orange focus:ring-brand-orange focus:ring-offset-0"/>
                     </label>
                 </div>
                 <div className="w-full h-48">
@@ -281,9 +281,9 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
                 <div className="flex justify-between items-center px-2 pt-2">
                    <div className="flex items-center space-x-1 sm:space-x-2">
                         <button onClick={() => setTrendFilter('all')} className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors ${trendFilter === 'all' ? 'bg-zinc-600 text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>Todos</button>
-                        <button onClick={() => setTrendFilter('up')} className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors flex items-center space-x-1 ${trendFilter === 'up' ? 'bg-green-700 text-white' : 'bg-zinc-800/50 text-green-400'}`}><ArrowUp size={14}/> <span>{trendCounts.up.toFixed(0)}%</span></button>
-                        <button onClick={() => setTrendFilter('down')} className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors flex items-center space-x-1 ${trendFilter === 'down' ? 'bg-red-700 text-white' : 'bg-zinc-800/50 text-red-400'}`}><ArrowDown size={14}/> <span>{trendCounts.down.toFixed(0)}%</span></button>
-                        <button onClick={() => setTrendFilter('single')} className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors flex items-center space-x-1 ${trendFilter === 'single' ? 'bg-blue-700 text-white' : 'bg-zinc-800/50 text-blue-400'}`}><Sparkles size={14}/> <span>{trendCounts.new.toFixed(0)}%</span></button>
+                        <button onClick={() => setTrendFilter('up')} className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors flex items-center space-x-1 ${trendFilter === 'up' ? 'bg-brand-green/80 text-white' : 'bg-zinc-800/50 text-brand-green'}`}><ArrowUp size={14}/> <span>{trendCounts.up.toFixed(0)}%</span></button>
+                        <button onClick={() => setTrendFilter('down')} className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors flex items-center space-x-1 ${trendFilter === 'down' ? 'bg-brand-red/80 text-white' : 'bg-zinc-800/50 text-brand-red'}`}><ArrowDown size={14}/> <span>{trendCounts.down.toFixed(0)}%</span></button>
+                        <button onClick={() => setTrendFilter('single')} className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors flex items-center space-x-1 ${trendFilter === 'single' ? 'bg-brand-blue/80 text-white' : 'bg-zinc-800/50 text-brand-blue'}`}><Sparkles size={14}/> <span>{trendCounts.new.toFixed(0)}%</span></button>
                    </div>
                    <div className="flex items-center space-x-2">
                        <div className="text-sm font-medium text-zinc-500">{searchedAnimals.length} / {classifiedAnimals.length}</div>
@@ -294,10 +294,10 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
                     <div className="text-xs font-semibold text-zinc-400">Fase Lactancia:</div>
                     <div className="flex items-center space-x-1 sm:space-x-2">
                         <button onClick={() => setLactationPhaseFilter('all')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'all' ? 'bg-zinc-600 text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>Todos</button>
-                        <button onClick={() => setLactationPhaseFilter('first')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'first' ? 'bg-zinc-600 text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>1er T</button>
-                        <button onClick={() => setLactationPhaseFilter('second')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'second' ? 'bg-zinc-600 text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>2do T</button>
-                        <button onClick={() => setLactationPhaseFilter('third')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'third' ? 'bg-zinc-600 text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>3er T</button>
-                        <button onClick={() => setLactationPhaseFilter('drying')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'drying' ? 'bg-red-700/80 text-white' : 'bg-zinc-800/50 text-red-300'}`}>A Secado</button>
+                        <button onClick={() => setLactationPhaseFilter('first')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'first' ? 'bg-brand-blue text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>1er T</button>
+                        <button onClick={() => setLactationPhaseFilter('second')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'second' ? 'bg-brand-blue text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>2do T</button>
+                        <button onClick={() => setLactationPhaseFilter('third')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'third' ? 'bg-brand-blue text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>3er T</button>
+                        <button onClick={() => setLactationPhaseFilter('drying')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'drying' ? 'bg-brand-red/80 text-white' : 'bg-zinc-800/50 text-brand-red'}`}>A Secado</button>
                     </div>
                 </div>
                 <div className="flex justify-between items-center p-2 border-t border-brand-border">
@@ -306,14 +306,14 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
                         <button 
                             onClick={() => setSpecialFilter(prev => prev === 'new' ? 'all' : 'new')}
                             disabled={pageData.newAnimalIds.size === 0}
-                            className={`px-3 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${specialFilter === 'new' ? 'bg-green-600 text-white shadow-lg shadow-green-500/20' : 'bg-zinc-800/50 text-zinc-300'} ${pageData.newAnimalIds.size > 0 && specialFilter !== 'new' && 'animate-pulse'} disabled:opacity-40 disabled:cursor-not-allowed`}
+                            className={`px-3 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${specialFilter === 'new' ? 'bg-brand-green text-white shadow-lg shadow-green-500/20' : 'bg-zinc-800/50 text-zinc-300'} ${pageData.newAnimalIds.size > 0 && specialFilter !== 'new' && 'animate-pulse'} disabled:opacity-40 disabled:cursor-not-allowed`}
                         >
                             <LogIn size={14}/> <span>Ingresos ({pageData.newAnimalIds.size})</span>
                         </button>
                         <button 
                             onClick={() => alert(`Animales que salieron del ordeño:\n${[...pageData.exitingAnimalIds].join('\n')}`)}
                             disabled={pageData.exitingAnimalIds.size === 0}
-                            className={`px-3 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${specialFilter === 'exiting' ? 'bg-red-600 text-white shadow-lg shadow-red-500/20' : 'bg-zinc-800/50 text-zinc-300'} ${pageData.exitingAnimalIds.size > 0 && specialFilter !== 'exiting' && 'animate-pulse'} disabled:opacity-40 disabled:cursor-not-allowed`}
+                            className={`px-3 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${specialFilter === 'exiting' ? 'bg-brand-red text-white shadow-lg shadow-red-500/20' : 'bg-zinc-800/50 text-zinc-300'} ${pageData.exitingAnimalIds.size > 0 && specialFilter !== 'exiting' && 'animate-pulse'} disabled:opacity-40 disabled:cursor-not-allowed`}
                         >
                             <LogOut size={14}/> <span>Salidas ({pageData.exitingAnimalIds.size})</span>
                         </button>
@@ -342,7 +342,7 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
                             <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
                             <YAxis orientation="left" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
                             <Tooltip cursor={{fill: 'rgba(255, 255, 255, 0.05)'}} contentStyle={{ backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)' }} />
-                            <Bar dataKey="avg" name="Promedio Kg" fill="#FBBF24" radius={[4, 4, 0, 0]}>
+                            <Bar dataKey="avg" name="Promedio Kg" fill="#FF9500" radius={[4, 4, 0, 0]}>
                                 <LabelList dataKey="avg" position="top" formatter={(value: number) => value.toFixed(2)} fill="#FFF" fontSize={12} />
                             </Bar>
                         </BarChart>
@@ -354,13 +354,13 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
                 <div className="space-y-4">
                     {pageData.topPerformer && (
                         <div className="bg-green-900/40 border border-green-500/50 rounded-2xl p-4">
-                            <h3 className="font-semibold text-green-300 mb-2">Animal Estrella (Producción Máxima)</h3>
+                            <h3 className="font-semibold text-brand-green mb-2">Animal Estrella (Producción Máxima)</h3>
                             <MilkingAnimalRow animal={pageData.topPerformer} onSelectAnimal={() => { setActiveModal(null); onSelectAnimal(pageData.topPerformer!.id); }} />
                         </div>
                     )}
                     {pageData.bottomPerformer && (
                          <div className="bg-red-900/40 border border-red-500/50 rounded-2xl p-4">
-                            <h3 className="font-semibold text-red-300 mb-2">Animal a Observar (Producción Mínima)</h3>
+                            <h3 className="font-semibold text-brand-red mb-2">Animal a Observar (Producción Mínima)</h3>
                             <MilkingAnimalRow animal={pageData.bottomPerformer} onSelectAnimal={() => { setActiveModal(null); onSelectAnimal(pageData.bottomPerformer!.id); }} />
                         </div>
                     )}
@@ -372,7 +372,7 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
                     <p>La Desviación Estándar (σ) mide qué tan dispersa está la producción de tu rebaño. Un valor **bajo** es ideal, ya que indica un rebaño consistente y predecible.</p>
                     <div className="bg-black/30 p-4 rounded-lg text-center">
                         <p className="text-sm uppercase text-zinc-400">Rebaño dentro de 1σ de la media</p>
-                        <p className="text-4xl font-bold text-amber-400 my-1">{pageData.consistency.percentage.toFixed(0)}%</p>
+                        <p className="text-4xl font-bold text-brand-orange my-1">{pageData.consistency.percentage.toFixed(0)}%</p>
                         <p className="text-sm text-zinc-400">Esto significa que la mayoría de tu rebaño tiene un rendimiento muy cercano al promedio de <span className="font-bold text-white">{mean.toFixed(2)} Kg</span>.</p>
                     </div>
                     <p className="text-xs text-zinc-500 pt-2 border-t border-zinc-700">En una distribución normal perfecta, este valor es del 68%. Un valor superior indica una consistencia excepcional.</p>
@@ -394,7 +394,7 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
                   </p>
                   <div>
                       <h4 className="font-semibold text-white mb-1">Fórmula Aplicada</h4>
-                      <div className="bg-black/30 p-3 rounded-lg text-sm font-mono text-center">
+                      <div className="bg-black/30 p-3 rounded-lg text-sm font-mono text-center text-orange-300">
                           Score = Kg × (1 + ((DEL - 50) / (DEL + 50)))
                       </div>
                   </div>

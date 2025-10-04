@@ -71,7 +71,7 @@ const MainInfoTab = ({
                         <option value="">Seleccione...</option>
                         {lots.map(lot => <option key={lot.id} value={lot.name}>{lot.name}</option>)}
                     </select>
-                    <button type="button" onClick={onAddLotClick} className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md"><PlusCircle size={20} /></button>
+                    <button type="button" onClick={onAddLotClick} className="p-2 bg-brand-orange hover:bg-orange-600 text-white rounded-md"><PlusCircle size={20} /></button>
                 </div>
             </InfoRow>
             <InfoRow label="Estado Crecimiento" value={animal.lifecycleStage} />
@@ -81,7 +81,7 @@ const MainInfoTab = ({
                         <option value="Finca Masparrito">Finca Masparrito</option>
                         {origins.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
                     </select>
-                    <button type="button" onClick={onAddOriginClick} className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md"><PlusCircle size={20} /></button>
+                    <button type="button" onClick={onAddOriginClick} className="p-2 bg-brand-orange hover:bg-orange-600 text-white rounded-md"><PlusCircle size={20} /></button>
                 </div>
             </InfoRow>
         </dl>
@@ -96,13 +96,13 @@ const GeneticsTab = ({ animalId }: { animalId: string }) => {
 
 // --- Componente para la pestaña de Eventos ---
 const EVENT_ICONS: Record<EventType, { icon: React.ElementType, color: string }> = {
-    'Nacimiento': { icon: FileText, color: 'bg-green-500/20 text-green-300' },
-    'Movimiento': { icon: Move, color: 'bg-blue-500/20 text-blue-300' },
-    'Cambio de Estado': { icon: Tag, color: 'bg-yellow-500/20 text-yellow-300' },
+    'Nacimiento': { icon: Feather, color: 'bg-green-500/20 text-brand-green' },
+    'Movimiento': { icon: Move, color: 'bg-blue-500/20 text-brand-blue' },
+    'Cambio de Estado': { icon: Tag, color: 'bg-yellow-500/20 text-amber-400' },
     'Pesaje Lechero': { icon: Milk, color: 'bg-gray-500/20 text-gray-300' },
     'Pesaje Corporal': { icon: Scale, color: 'bg-purple-500/20 text-purple-300' },
     'Servicio': { icon: HeartPulse, color: 'bg-pink-500/20 text-pink-300' },
-    'Tratamiento': { icon: Syringe, color: 'bg-red-500/20 text-red-300' },
+    'Tratamiento': { icon: Syringe, color: 'bg-red-500/20 text-brand-red' },
     'Diagnóstico': { icon: CheckCircle, color: 'bg-teal-500/20 text-teal-300' },
 };
 
@@ -157,7 +157,7 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
     
     const breedingFailures = animal?.breedingFailures || 0;
     const headerAlertClass = breedingFailures >= 2 
-        ? 'border-red-500/80 ring-2 ring-red-500/60' 
+        ? 'border-brand-red ring-2 ring-brand-red/80' 
         : 'border-brand-border';
 
     useEffect(() => {
@@ -194,7 +194,7 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
         return (
             <div className="text-center p-10">
                 <h1 className="text-2xl text-zinc-400">Animal no encontrado.</h1>
-                <button onClick={onBack} className="mt-4 text-brand-amber">Volver</button>
+                <button onClick={onBack} className="mt-4 text-brand-orange">Volver</button>
             </div>
         );
     }
@@ -207,10 +207,14 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
                         <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
                         <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
                             {animal.id}
-                            {/* --- LÍNEA CORREGIDA --- */}
                             {breedingFailures === 1 && (
                                 <span title="1 fallo reproductivo reportado">
                                     <AlertTriangle className="text-yellow-400" size={20} />
+                                </span>
+                            )}
+                            {breedingFailures >= 2 && (
+                                <span title={`${breedingFailures} fallos reproductivos reportados`}>
+                                    <AlertTriangle className="text-brand-red" size={20} />
                                 </span>
                             )}
                         </h1>
@@ -219,18 +223,18 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
                     <div className="flex justify-around bg-black/20 rounded-xl p-1">
                         {animal.sex === 'Hembra' && (
                             <>
-                                <button onClick={() => navigateTo({ name: 'lactation-profile', animalId: animal.id })} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-amber w-full rounded-lg">
+                                <button onClick={() => navigateTo({ name: 'lactation-profile', animalId: animal.id })} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-orange w-full rounded-lg">
                                     <Droplets size={22}/><span className="text-xs mt-1">Leche</span>
                                 </button>
-                                <button onClick={() => setParturitionModalOpen(true)} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-amber w-full rounded-lg">
+                                <button onClick={() => setParturitionModalOpen(true)} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-orange w-full rounded-lg">
                                     <Feather size={22}/><span className="text-xs mt-1">Parto</span>
                                 </button>
                             </>
                         )}
-                        <button onClick={() => alert('Función en desarrollo')} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-amber w-full rounded-lg"><Scale size={22}/><span className="text-xs mt-1">Peso</span></button>
-                        <button onClick={() => alert('Función en desarrollo')} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-amber w-full rounded-lg"><Syringe size={22}/><span className="text-xs mt-1">Sanidad</span></button>
-                        <button onClick={() => alert('Función en desarrollo')} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-amber w-full rounded-lg"><Replace size={22}/><span className="text-xs mt-1">Mover</span></button>
-                        <button onClick={() => setIsEditing(!isEditing)} className={`flex flex-col items-center p-2 w-full rounded-lg ${isEditing ? 'text-green-400' : 'text-zinc-400 hover:text-brand-amber'}`}><Edit size={22}/><span className="text-xs mt-1">Editar</span></button>
+                        <button onClick={() => alert('Función en desarrollo')} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-orange w-full rounded-lg"><Scale size={22}/><span className="text-xs mt-1">Peso</span></button>
+                        <button onClick={() => alert('Función en desarrollo')} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-orange w-full rounded-lg"><Syringe size={22}/><span className="text-xs mt-1">Sanidad</span></button>
+                        <button onClick={() => alert('Función en desarrollo')} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-orange w-full rounded-lg"><Replace size={22}/><span className="text-xs mt-1">Mover</span></button>
+                        <button onClick={() => setIsEditing(!isEditing)} className={`flex flex-col items-center p-2 w-full rounded-lg transition-colors ${isEditing ? 'text-brand-green' : 'text-zinc-400 hover:text-brand-orange'}`}><Edit size={22}/><span className="text-xs mt-1">Editar</span></button>
                     </div>
                 </header>
 
@@ -259,8 +263,8 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
                                         <button onClick={handleCancel} className="bg-zinc-600 hover:bg-zinc-500 text-white font-bold py-2 px-6 rounded-lg flex items-center gap-2">
                                             <X size={18}/> Cancelar
                                         </button>
-                                        <button onClick={handleSave} disabled={saveStatus !== 'idle'} className="bg-brand-amber hover:bg-yellow-500 text-black font-bold py-2 px-6 rounded-lg flex items-center gap-2 disabled:opacity-50 min-w-[130px] justify-center">
-                                            {saveStatus === 'saving' && <span className="animate-spin h-5 w-5 border-2 border-black border-t-transparent rounded-full"/>}
+                                        <button onClick={handleSave} disabled={saveStatus !== 'idle'} className="bg-brand-green hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg flex items-center gap-2 disabled:opacity-50 min-w-[130px] justify-center">
+                                            {saveStatus === 'saving' && <span className="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full"/>}
                                             {saveStatus === 'success' && <CheckCircle size={18}/>}
                                             {saveStatus === 'idle' && <Save size={18}/>}
                                             <span className="ml-2">{saveStatus === 'success' ? 'Guardado' : 'Guardar'}</span>
@@ -293,4 +297,3 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
         </>
     );
 }
-

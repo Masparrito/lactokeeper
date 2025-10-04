@@ -20,7 +20,7 @@ const ManualEntryForm = ({ onBack }: { onBack: () => void }) => {
       setMessage({ type: 'error', text: 'El ID y los Kg son obligatorios.' });
       return;
     }
-    const newEntry: Omit<Weighing, 'id' | 'firestoreId'> = {
+    const newEntry: Omit<Weighing, 'id'> = {
         goatId: goatId.toUpperCase().trim(),
         kg: parseFloat(kg),
         date: new Date().toISOString().split('T')[0]
@@ -54,7 +54,7 @@ const ManualEntryForm = ({ onBack }: { onBack: () => void }) => {
           value={goatId}
           onChange={(e) => setGoatId(e.target.value)}
           placeholder="ID del Animal"
-          className="w-full bg-black/20 text-white text-lg placeholder-zinc-500 p-4 rounded-xl border border-transparent focus:border-brand-amber focus:ring-0 focus:outline-none transition-colors"
+          className="w-full bg-black/20 text-white text-lg placeholder-zinc-500 p-4 rounded-xl border-2 border-transparent focus:border-brand-orange focus:ring-0 focus:outline-none transition-colors"
         />
         <input
           type="number"
@@ -62,13 +62,13 @@ const ManualEntryForm = ({ onBack }: { onBack: () => void }) => {
           value={kg}
           onChange={(e) => setKg(e.target.value)}
           placeholder="Producción en Kg"
-          className="w-full bg-black/20 text-white text-lg placeholder-zinc-500 p-4 rounded-xl border border-transparent focus:border-brand-amber focus:ring-0 focus:outline-none transition-colors"
+          className="w-full bg-black/20 text-white text-lg placeholder-zinc-500 p-4 rounded-xl border-2 border-transparent focus:border-brand-orange focus:ring-0 focus:outline-none transition-colors"
         />
-        <button type="submit" className="w-full bg-brand-amber hover:bg-yellow-500 text-black font-bold py-4 px-4 rounded-xl transition-colors text-lg">
+        <button type="submit" className="w-full bg-brand-green hover:bg-green-600 text-white font-bold py-4 px-4 rounded-xl transition-colors text-lg">
           Guardar Pesaje
         </button>
         {message && (
-          <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
+          <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-brand-green' : 'bg-red-500/20 text-brand-red'}`}>
             {message.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
             <span>{message.text}</span>
           </div>
@@ -89,13 +89,13 @@ const EntryRow = ({ entry, onDelete, onRegister }: { entry: any, onDelete: (temp
             </div>
             <div className="flex items-center space-x-3">
                 {isUnrecognized ? (
-                    <button onClick={() => onRegister(entry.goatId)} className="text-xs font-semibold bg-amber-500 text-black px-2 py-1 rounded-md hover:bg-amber-400">
+                    <button onClick={() => onRegister(entry.goatId)} className="text-xs font-semibold bg-brand-orange text-white px-2 py-1 rounded-md hover:bg-orange-600">
                         Registrar Parto
                     </button>
                 ) : (
                     <span className="text-zinc-300 font-semibold">{entry.kg.toFixed(2)} Kg</span>
                 )}
-                 <button onClick={() => onDelete(entry.tempId)} className="p-1 text-zinc-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                 <button onClick={() => onDelete(entry.tempId)} className="p-1 text-zinc-400 hover:text-brand-red opacity-0 group-hover:opacity-100 transition-opacity">
                     <X size={16}/>
                 </button>
             </div>
@@ -104,7 +104,7 @@ const EntryRow = ({ entry, onDelete, onRegister }: { entry: any, onDelete: (temp
 };
 
 // --- Formulario de Entrada Rápida ---
-const RapidEntryForm = ({ onBack, onNavigate }: { onBack: () => void, onNavigate: (page: 'animals', state: { selectedDate: string }) => void }) => {
+const RapidEntryForm = ({ onBack, onNavigate }: { onBack: () => void, onNavigate: (page: 'analysis', state: { selectedDate: string }) => void }) => {
     const { animals, fetchData } = useData();
     const [currentId, setCurrentId] = useState('');
     const [currentKg, setCurrentKg] = useState('');
@@ -162,7 +162,7 @@ const RapidEntryForm = ({ onBack, onNavigate }: { onBack: () => void, onNavigate
             setMessage({ type: 'success', text: `${sessionEntries.length} pesajes guardados y sincronizados con éxito.` });
             setSessionEntries([]);
             setTimeout(() => {
-                onNavigate('animals', { selectedDate: sessionDate });
+                onNavigate('analysis', { selectedDate: sessionDate });
             }, 1000);
         } catch (error) {
             setMessage({ type: 'error', text: 'Ocurrió un error al guardar en la nube.' });
@@ -197,12 +197,12 @@ const RapidEntryForm = ({ onBack, onNavigate }: { onBack: () => void, onNavigate
                 </div>
                 <div className="space-y-2 pt-2">
                     <label htmlFor="session-date" className="flex items-center gap-2 text-sm font-semibold text-zinc-400"><Calendar size={16}/>Fecha del Pesaje</label>
-                    <input id="session-date" type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} className="w-full bg-black/20 text-white text-lg p-3 rounded-xl border border-transparent focus:border-brand-amber focus:ring-0 focus:outline-none" />
+                    <input id="session-date" type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} className="w-full bg-black/20 text-white text-lg p-3 rounded-xl border-2 border-transparent focus:border-brand-orange focus:ring-0 focus:outline-none" />
                 </div>
                 <div className="flex items-center gap-2">
-                    <input ref={idInputRef} type="text" value={currentId} onChange={(e) => setCurrentId(e.target.value)} onKeyDown={handleIdKeyDown} placeholder="ID Animal" className="w-full bg-black/20 text-white text-lg placeholder-zinc-500 p-4 rounded-xl border-2 border-transparent focus:border-amber-500 focus:ring-0 focus:outline-none"/>
-                    <input ref={kgInputRef} type="number" step="0.01" value={currentKg} onChange={(e) => setCurrentKg(e.target.value)} onKeyDown={handleKgKeyDown} placeholder="Kg" className="w-32 flex-shrink-0 bg-black/20 text-white text-lg placeholder-zinc-500 p-4 rounded-xl border-2 border-transparent focus:border-amber-500 focus:ring-0 focus:outline-none"/>
-                    <button onClick={handleAddToList} disabled={!currentId || !currentKg} aria-label="Añadir a la lista" className="aspect-square h-full bg-indigo-600 text-white rounded-xl flex items-center justify-center transition-all hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed"><PlusCircle size={24} /></button>
+                    <input ref={idInputRef} type="text" value={currentId} onChange={(e) => setCurrentId(e.target.value)} onKeyDown={handleIdKeyDown} placeholder="ID Animal" className="w-full bg-black/20 text-white text-lg placeholder-zinc-500 p-4 rounded-xl border-2 border-transparent focus:border-brand-orange focus:ring-0 focus:outline-none"/>
+                    <input ref={kgInputRef} type="number" step="0.01" value={currentKg} onChange={(e) => setCurrentKg(e.target.value)} onKeyDown={handleKgKeyDown} placeholder="Kg" className="w-32 flex-shrink-0 bg-black/20 text-white text-lg placeholder-zinc-500 p-4 rounded-xl border-2 border-transparent focus:border-brand-orange focus:ring-0 focus:outline-none"/>
+                    <button onClick={handleAddToList} disabled={!currentId || !currentKg} aria-label="Añadir a la lista" className="aspect-square h-full bg-brand-orange text-white rounded-xl flex items-center justify-center transition-all hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed"><PlusCircle size={24} /></button>
                 </div>
                 <div className="max-h-60 overflow-y-auto space-y-2 pr-2 border-t border-b border-brand-border py-2">
                     {sessionEntries.length === 0 && <p className="text-center text-zinc-500 text-sm">Los pesajes añadidos aparecerán aquí.</p>}
@@ -210,10 +210,10 @@ const RapidEntryForm = ({ onBack, onNavigate }: { onBack: () => void, onNavigate
                         <EntryRow key={entry.tempId} entry={entry} onDelete={handleDeleteFromList} onRegister={handleOpenParturitionModal} />
                     ))}
                 </div>
-                <button onClick={handleFinalSave} className="w-full flex items-center justify-center gap-2 bg-brand-amber hover:bg-yellow-500 text-black font-bold py-4 px-4 rounded-xl transition-colors text-lg">
+                <button onClick={handleFinalSave} className="w-full flex items-center justify-center gap-2 bg-brand-green hover:bg-green-600 text-white font-bold py-4 px-4 rounded-xl transition-colors text-lg">
                     <Save size={20} /> Guardar {sessionEntries.length > 0 ? `(${sessionEntries.length})` : ''} Pesajes
                 </button>
-                {message && ( <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}> {message.type === 'success' ? <CheckCircle size={18} /> : <ShieldAlert size={18} />} <span>{message.text}</span> </div> )}
+                {message && ( <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-brand-green' : 'bg-red-500/20 text-brand-red'}`}> {message.type === 'success' ? <CheckCircle size={18} /> : <ShieldAlert size={18} />} <span>{message.text}</span> </div> )}
             </div>
 
             <Modal 
@@ -245,29 +245,29 @@ export default function AddDataPage({ onNavigate }: { onNavigate: (page: any, st
       <div key={keyForAnimation}>
         {entryMode === 'options' && ( 
             <div className="space-y-4 animate-fade-in"> 
-                <button onClick={() => setEntryMode('rapid')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-amber-400 text-white font-bold p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105"> 
-                    <Zap className="w-12 h-12 mb-2 text-amber-400" /> 
+                <button onClick={() => setEntryMode('rapid')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-orange text-white font-bold p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105"> 
+                    <Zap className="w-12 h-12 mb-2 text-brand-orange" /> 
                     <span className="text-lg font-semibold">Entrada Rápida</span> 
                     <span className="text-sm font-normal text-zinc-400">Para carga masiva con teclado</span> 
                 </button> 
-                <button onClick={() => onNavigate('add-parturition')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-green-400 text-white font-bold p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105"> 
-                    <Feather className="w-12 h-12 mb-2 text-green-400" /> 
+                <button onClick={() => onNavigate('add-parturition')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-orange text-white font-bold p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105"> 
+                    <Feather className="w-12 h-12 mb-2 text-brand-green" /> 
                     <span className="text-lg font-semibold">Registrar Parto</span> 
                     <span className="text-sm font-normal text-zinc-400">Inicia una nueva lactancia</span> 
                 </button> 
-                <button onClick={() => onNavigate('ocr')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-blue-400 text-white font-bold p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105"> 
-                    <ScanLine className="w-12 h-12 mb-2 text-blue-400" /> 
+                <button onClick={() => onNavigate('ocr')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-orange text-white font-bold p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105"> 
+                    <ScanLine className="w-12 h-12 mb-2 text-brand-blue" /> 
                     <span className="text-lg font-semibold">Escanear Cuaderno</span> 
                     <span className="text-sm font-normal text-zinc-400">Digitalización asistida por IA</span> 
                 </button> 
-                <button onClick={() => setEntryMode('manual')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-gray-500 text-white font-bold p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105"> 
+                <button onClick={() => setEntryMode('manual')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-orange text-white font-bold p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105"> 
                     <PlusCircle className="w-12 h-12 mb-2" /> 
                     <span className="text-lg font-semibold">Entrada Individual</span> 
                     <span className="text-sm font-normal text-zinc-400">Formulario tradicional</span> 
                 </button> 
             </div> 
         )}
-        {entryMode === 'rapid' && <RapidEntryForm onBack={() => setEntryMode('options')} onNavigate={onNavigate} />}
+        {entryMode === 'rapid' && <RapidEntryForm onBack={() => setEntryMode('options')} onNavigate={onNavigate as any} />}
         {entryMode === 'manual' && <ManualEntryForm onBack={() => setEntryMode('options')} />}
       </div>
     </div>

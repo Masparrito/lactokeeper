@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, BarChart, Bar, ReferenceLine, Tooltip, CartesianGrid } from 'recharts';
 import { useData } from '../context/DataContext';
 import { calculateDEL } from '../utils/calculations';
-import { DropletIcon, ActivitySquare, BarChartIcon, Info } from 'lucide-react';
+import { Droplet, ActivitySquare, BarChart as BarChartIconLucide, Info } from 'lucide-react'; // CORREGIDO: Usando Droplet de lucide
 import { CustomTooltip } from '../components/ui/CustomTooltip';
 import { Modal } from '../components/ui/Modal';
 
@@ -24,12 +24,9 @@ export default function Dashboard({ onNavigateToAnalysis }: DashboardProps) {
       };
     }
     
-    // --- LÓGICA CORREGIDA PARA 'ANIMALES EN ORDEÑO' ---
     let animalsInLastWeighing = 0;
     if (weighings.length > 0) {
-        // 1. Encontrar la fecha más reciente de todos los pesajes
         const latestDate = weighings.reduce((max, w) => w.date > max ? w.date : max, weighings[0].date);
-        // 2. Contar cuántos animales únicos fueron pesados en esa fecha
         animalsInLastWeighing = new Set(weighings.filter(w => w.date === latestDate).map(w => w.goatId)).size;
     }
     
@@ -95,17 +92,20 @@ export default function Dashboard({ onNavigateToAnalysis }: DashboardProps) {
       <div className="w-full max-w-2xl mx-auto space-y-4">
         <header className="text-center pt-8 pb-4">
           <h1 className="text-4xl font-bold tracking-tight text-white">Dashboard</h1>
-          <p className="text-xl text-zinc-400">Rebaño Masparrito</p>
+          <p className="text-xl text-zinc-400">Análisis de LactoKeeper</p>
         </header>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
-              <div className="flex items-center space-x-2 text-zinc-400 font-semibold mb-2 text-xs uppercase tracking-wider"><DropletIcon /><span>Promedio Global</span></div>
+              <div className="flex items-center space-x-2 text-zinc-400 font-semibold mb-2 text-xs uppercase tracking-wider">
+                <Droplet size={14} /> {/* CORREGIDO: Usando el ícono de lucide */}
+                <span>Promedio Global</span>
+              </div>
               <p className="text-4xl font-bold tracking-tight text-white">{analytics.herdAverage.toFixed(2)} <span className="text-2xl font-medium text-zinc-400">Kg</span></p>
             </div>
              <button 
                onClick={onNavigateToAnalysis}
-               className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border text-left hover:border-brand-amber transition-colors"
+               className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border text-left hover:border-brand-orange transition-colors"
              >
               <div className="flex items-center space-x-2 text-zinc-400 font-semibold mb-2 text-xs uppercase tracking-wider"><ActivitySquare /><span>Animales en Ordeño</span></div>
               <p className="text-4xl font-bold tracking-tight text-white">{analytics.activeGoats}</p>
@@ -115,17 +115,17 @@ export default function Dashboard({ onNavigateToAnalysis }: DashboardProps) {
         <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
           <div className="flex justify-between items-center border-b border-brand-border pb-2 mb-4">
               <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase tracking-wider">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M20 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 20v4"/><path d="m7.8 16.2-2.9 2.9"/><path d="M4 12H0"/><path d="m7.8 7.8-2.9-2.9"/><circle cx="12" cy="12" r="4"/></svg>
-                  <span>Producción Promedio</span>
+                  <BarChartIconLucide size={16}/>
+                  <span>Curva de Lactancia</span>
                   <button onClick={() => setIsChartInfoModalOpen(true)} className="text-zinc-500 hover:text-white transition-colors">
                       <Info size={14}/>
                   </button>
               </div>
               <div className="flex bg-zinc-900/80 rounded-lg p-0.5">
-                  <button onClick={() => setChartView('current')} className={`px-2 py-0.5 text-xs font-semibold rounded-md transition-colors ${chartView === 'current' ? 'bg-zinc-600 text-white' : 'text-zinc-400 hover:bg-zinc-700/50'}`}>
+                  <button onClick={() => setChartView('current')} className={`px-2 py-0.5 text-xs font-semibold rounded-md transition-colors ${chartView === 'current' ? 'bg-brand-orange text-white' : 'text-zinc-400 hover:bg-zinc-700/50'}`}>
                       Actual
                   </button>
-                  <button onClick={() => setChartView('historical')} className={`px-2 py-0.5 text-xs font-semibold rounded-md transition-colors ${chartView === 'historical' ? 'bg-zinc-600 text-white' : 'text-zinc-400 hover:bg-zinc-700/50'}`}>
+                  <button onClick={() => setChartView('historical')} className={`px-2 py-0.5 text-xs font-semibold rounded-md transition-colors ${chartView === 'historical' ? 'bg-brand-orange text-white' : 'text-zinc-400 hover:bg-zinc-700/50'}`}>
                       Histórico
                   </button>
               </div>
@@ -133,11 +133,11 @@ export default function Dashboard({ onNavigateToAnalysis }: DashboardProps) {
           <div className="w-full h-48">
             <ResponsiveContainer>
               <AreaChart data={analytics.herdLactationCurve} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <defs><linearGradient id="weatherGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#F59E0B" stopOpacity={0.7}/><stop offset="60%" stopColor="#10B981" stopOpacity={0.2}/><stop offset="100%" stopColor="#3B82F6" stopOpacity={0.1}/></linearGradient></defs>
+                <defs><linearGradient id="lactationGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#FF9500" stopOpacity={0.7}/><stop offset="80%" stopColor="#34C759" stopOpacity={0.1}/></linearGradient></defs>
                 <XAxis dataKey="del" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} stroke="rgba(255,255,255,0.3)" tickLine={false} axisLine={false} />
                 <YAxis orientation="right" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} stroke="rgba(255,255,255,0.3)" tickLine={false} axisLine={false} domain={['dataMin - 0.5', 'dataMax + 0.5']} width={30} />
                 <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="kg" stroke="#FBBF24" strokeWidth={2.5} fill="url(#weatherGradient)" />
+                <Area type="monotone" dataKey="kg" stroke="#FF9500" strokeWidth={2.5} fill="url(#lactationGradient)" />
             </AreaChart></ResponsiveContainer>
           </div>
         </div>
@@ -145,7 +145,7 @@ export default function Dashboard({ onNavigateToAnalysis }: DashboardProps) {
         <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
             <div className="flex justify-between items-center border-b border-brand-border pb-2 mb-4">
                 <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase tracking-wider">
-                    <BarChartIcon />
+                    <BarChartIconLucide size={16}/>
                     <span>Distribución del Rebaño</span>
                     <button onClick={() => setIsGaussInfoModalOpen(true)} className="text-zinc-500 hover:text-white transition-colors">
                         <Info size={14}/>
@@ -160,7 +160,7 @@ export default function Dashboard({ onNavigateToAnalysis }: DashboardProps) {
                         <YAxis orientation="right" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} stroke="rgba(255,255,255,0.3)" tickLine={false} axisLine={false} allowDecimals={false} width={30} />
                         <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(255, 255, 255, 0.05)'}} />
                         <Bar dataKey="count" fill="rgba(255, 255, 255, 0.4)" name="Nº de Cabras" />
-                        <ReferenceLine x={analytics.gaussData.mean.toFixed(2)} stroke="#34d399" strokeWidth={2} label={{ value: `μ`, fill: '#34d399', position: 'insideTopLeft' }} />
+                        <ReferenceLine x={analytics.gaussData.mean.toFixed(2)} stroke="#34C759" strokeWidth={2} label={{ value: `μ`, fill: '#34C759', position: 'insideTopLeft' }} />
                     </BarChart>
                 </ResponsiveContainer>
             </div>

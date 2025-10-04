@@ -1,5 +1,3 @@
-// src/utils/calculations.ts
-
 /**
  * Calcula los "Días en Leche" (DEL) para un pesaje específico.
  * El DEL es la diferencia en días entre la fecha del parto y la fecha del pesaje.
@@ -22,23 +20,36 @@ export const calculateDEL = (parturitionDate: string, weighDate: string): number
 /**
  * Calcula un puntaje ponderado que ajusta la producción en Kg 
  * según los Días en Leche (DEL).
- * --- CORREGIDO ---
  * Recompensa la persistencia lechera (producción tardía) y penaliza ligeramente la producción temprana.
  * @param kg - La producción en kilogramos.
  * @param del - Los Días en Leche.
  * @returns El puntaje ponderado.
  */
 export const calculateWeightedScore = (kg: number, del: number): number => {
-  // Día considerado como el pico ideal de lactancia.
   const idealPeakDay = 50; 
-
-  // --- FÓRMULA CORREGIDA ---
-  // El factor ahora es > 1 para DEL altos y < 1 para DEL bajos.
-  // Recompensa la producción que se mantiene alta lejos del pico de lactancia.
   const weightFactor = 1 + ((del - idealPeakDay) / (del + idealPeakDay));
-
-  // Se asegura un factor mínimo (0.5) para no penalizar en exceso la producción muy temprana.
   const weightedScore = kg * Math.max(0.5, weightFactor); 
-
   return parseFloat(weightedScore.toFixed(2));
 };
+
+/**
+ * Tarea 1.1: Calcula la edad de un animal en días.
+ * @param birthDate - La fecha de nacimiento del animal (en formato string 'YYYY-MM-DD').
+ * @returns El número de días transcurridos, o -1 si la fecha no es válida.
+ */
+export const calculateAgeInDays = (birthDate: string): number => {
+    if (!birthDate || birthDate === 'N/A') return -1;
+    
+    // Se añade 'T00:00:00' para asegurar la consistencia horaria a través de zonas
+    const birth = new Date(birthDate + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normaliza la hora para evitar cálculos imprecisos
+
+    if (isNaN(birth.getTime())) return -1;
+
+    const diffTime = today.getTime() - birth.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    return Math.max(0, diffDays);
+};
+
