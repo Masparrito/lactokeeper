@@ -8,13 +8,13 @@ import ManagementPage from './ManagementPage';
 import ManageLotsPage from './ManageLotsPage';
 import BreedingGroupDetailPage from './BreedingGroupDetailPage';
 import LactationProfilePage from './LactationProfilePage';
-import FeedingPlanPage from './FeedingPlanPage'; // 1. Importar la nueva página de Alimentación
-import BatchTreatmentPage from './BatchTreatmentPage'; // 2. Importar la nueva página de Tratamientos
+import FeedingPlanPage from './FeedingPlanPage';
+import BatchTreatmentPage from './BatchTreatmentPage';
+import GrowthProfilePage from './modules/kilos/GrowthProfilePage';
 import { ModuleSwitcher } from '../components/ui/ModuleSwitcher';
-import { Users, PlusCircle, Settings, LogOut, LayoutGrid } from 'lucide-react';
+import { Users, PlusCircle, LogOut, LayoutGrid } from 'lucide-react';
 import { auth } from '../firebaseConfig';
 
-// 3. Añadir los nuevos estados de página al tipo PageState
 export type PageState = 
   | { name: 'lots-dashboard' } 
   | { name: 'lot-detail', lotName: string }
@@ -24,6 +24,7 @@ export type PageState =
   | { name: 'management' } 
   | { name: 'rebano-profile', animalId: string }
   | { name: 'lactation-profile', animalId: string }
+  | { name: 'growth-profile', animalId: string }
   | { name: 'add-animal' }
   | { name: 'feeding-plan', lotName: string }
   | { name: 'batch-treatment', lotName: string };
@@ -47,7 +48,6 @@ const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }
         { page: { name: 'lots-dashboard' }, label: 'Lotes', icon: LayoutGrid },
         { page: { name: 'herd' }, label: 'Rebaño', icon: Users },
         { page: { name: 'add-animal' }, label: 'Añadir', icon: PlusCircle },
-        { page: { name: 'management' }, label: 'Manejo', icon: Settings },
     ] as const;
 
     const navigateTo = (newPage: PageState) => {
@@ -66,7 +66,6 @@ const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }
     };
 
     const renderPage = () => {
-        // 4. Añadir los nuevos 'case' al router
         switch (page.name) {
             case 'lots-dashboard':
                 return <LotsDashboardPage navigateTo={navigateTo} />;
@@ -86,6 +85,8 @@ const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }
                 return <RebanoProfilePage animalId={page.animalId} onBack={navigateBack} navigateTo={navigateTo} />;
             case 'lactation-profile':
                  return <LactationProfilePage animalId={page.animalId} onBack={navigateBack} />;
+            case 'growth-profile':
+                return <GrowthProfilePage animalId={page.animalId} onBack={navigateBack} />;
             case 'feeding-plan':
                 return <FeedingPlanPage lotName={page.lotName} onBack={navigateBack} />;
             case 'batch-treatment':
@@ -96,8 +97,8 @@ const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }
     };
 
     return (
-        <div className="font-sans bg-gray-900 text-gray-200 min-h-screen animate-fade-in">
-            <div className="p-4 pt-0 pb-24">
+        <div className="font-sans text-gray-200 min-h-screen animate-fade-in">
+            <div className="pb-24">
                 {renderPage()}
             </div>
             
@@ -108,10 +109,9 @@ const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }
                     let isActive = false;
                     if (item.label === 'Lotes') {
                         isActive = ['lots-dashboard', 'lot-detail', 'breeding-group-detail', 'feeding-plan', 'batch-treatment'].includes(page.name);
-                    } else if (item.label === 'Rebaño') {
-                        isActive = ['herd', 'rebano-profile', 'manage-lots', 'add-animal'].includes(page.name);
-                    } else {
-                        isActive = page.name === item.page.name;
+                    } else if (item.label === 'Rebaño' || item.label === 'Añadir') {
+                        // Agrupamos todas las subpáginas de 'Rebaño' para que el ícono permanezca activo
+                        isActive = ['herd', 'rebano-profile', 'manage-lots', 'add-animal', 'lactation-profile', 'growth-profile'].includes(page.name);
                     }
 
                     return (

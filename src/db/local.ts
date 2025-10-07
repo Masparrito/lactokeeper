@@ -9,13 +9,15 @@ export type EventType =
     | 'Servicio' | 'Tratamiento' | 'Diagnóstico';
 
 export interface Animal {
-  id: string; 
+  id: string;
+  createdAt?: number;
   sex: 'Hembra' | 'Macho';
   status: 'Activo' | 'Venta' | 'Muerte' | 'Descarte';
   birthDate: string;
   motherId?: string;
   fatherId?: string;
   birthWeight?: number;
+  conceptionMethod?: string;
   lifecycleStage: FemaleLifecycleStage | MaleLifecycleStage; 
   location: string;
   weaningDate?: string;
@@ -84,14 +86,13 @@ export interface ServiceRecord {
 }
 
 export interface Event {
-    id?: string; // Cambiado a opcional para que Dexie lo autogenere
+    id?: string;
     animalId: string;
     date: string;
     type: EventType;
     details: string;
     notes?: string;
-    // --- TAREA 3.2: CAMPO AÑADIDO ---
-    lotName?: string; // Para registrar eventos aplicados a un lote completo
+    lotName?: string;
 }
 
 export interface FeedingPlan {
@@ -102,34 +103,42 @@ export interface FeedingPlan {
     endDate?: string;
 }
 
+export interface BodyWeighing {
+    id?: string;
+    animalId: string;
+    date: string;
+    kg: number;
+}
+
 export class LactoKeeperDB extends Dexie {
   animals!: Table<Animal>;
   fathers!: Table<Father>;
   parturitions!: Table<Parturition>;
-  weighings!: Table<Weighing>;
+  weighings!: Table<Weighing>; // Pesajes de leche
   lots!: Table<Lot>;
   origins!: Table<Origin>;
   breedingGroups!: Table<BreedingGroup>;
   serviceRecords!: Table<ServiceRecord>;
   events!: Table<Event>;
   feedingPlans!: Table<FeedingPlan>;
+  bodyWeighings!: Table<BodyWeighing>;
 
   constructor() {
-    // La versión de la base de datos se mantiene, Dexie añadirá la nueva tabla sin borrar datos.
     super('LactoKeeperDB_v6'); 
     
-    this.version(1).stores({
-      animals: '&id, motherId, fatherId, status, lifecycleStage, location, isReference, reproductiveStatus, breedingGroupId',
+    // Se incrementa la versión de la base de datos a 2 para registrar los nuevos cambios.
+    this.version(2).stores({
+      animals: '&id, createdAt, motherId, fatherId, status, lifecycleStage, location, isReference, reproductiveStatus, breedingGroupId',
       fathers: '&id',
       parturitions: '&id, goatId, sireId, status',
-      weighings: '&id, goatId, date',
+      weighings: '++id, goatId, date',
       lots: '&id, name',
       origins: '&id, name',
       breedingGroups: '&id, sireId, status',
       serviceRecords: '++id, breedingGroupId, femaleId, serviceDate',
-      // --- TAREA 3.2: ÍNDICE AÑADIDO ---
       events: '++id, animalId, date, type, lotName', 
-      feedingPlans: '++id, lotName'
+      feedingPlans: '++id, lotName',
+      bodyWeighings: '++id, animalId, date',
     });
   }
 }

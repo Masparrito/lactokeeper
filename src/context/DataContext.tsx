@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { db as localDb, Animal, Weighing, Parturition, Father, Lot, Origin, BreedingGroup, ServiceRecord, Event, FeedingPlan, EventType } from '../db/local';
+import { db as localDb, Animal, Weighing, Parturition, Father, Lot, Origin, BreedingGroup, ServiceRecord, Event, FeedingPlan, EventType, BodyWeighing } from '../db/local';
 import { db as firestoreDb } from '../firebaseConfig';
 import { useAuth } from './AuthContext';
 import { 
@@ -27,6 +27,7 @@ interface IDataContext {
   serviceRecords: ServiceRecord[];
   events: Event[];
   feedingPlans: FeedingPlan[];
+  bodyWeighings: BodyWeighing[];
   isLoading: boolean;
   addAnimal: (animalData: Omit<Animal, 'id'> & { id: string }) => Promise<void>;
   updateAnimal: (animalId: string, dataToUpdate: Partial<Animal>) => Promise<void>;
@@ -38,10 +39,12 @@ interface IDataContext {
   deleteOrigin: (originId: string) => Promise<void>;
   addBreedingGroup: (groupData: Omit<BreedingGroup, 'id'>) => Promise<string>;
   updateBreedingGroup: (groupId: string, dataToUpdate: Partial<BreedingGroup>) => Promise<void>;
+  deleteBreedingGroup: (groupId: string) => Promise<void>;
   addServiceRecord: (recordData: Omit<ServiceRecord, 'id'>) => Promise<void>;
   addFeedingPlan: (planData: Omit<FeedingPlan, 'id'>) => Promise<void>;
   addBatchEvent: (data: { lotName: string; date: string; type: EventType; details: string; }) => Promise<void>;
   addWeighing: (weighing: Omit<Weighing, 'id'>) => Promise<void>;
+  addBodyWeighing: (weighing: Omit<BodyWeighing, 'id'>) => Promise<void>;
   addParturition: (data: any) => Promise<void>;
   fetchData: () => Promise<void>;
   addFather: (father: Omit<Father, 'id'>) => Promise<void>;
@@ -58,6 +61,7 @@ const DataContext = createContext<IDataContext>({
   serviceRecords: [],
   events: [],
   feedingPlans: [],
+  bodyWeighings: [],
   isLoading: true,
   addAnimal: async () => {},
   updateAnimal: async () => {},
@@ -69,10 +73,12 @@ const DataContext = createContext<IDataContext>({
   deleteOrigin: async () => {},
   addBreedingGroup: async () => '',
   updateBreedingGroup: async () => {},
+  deleteBreedingGroup: async () => {},
   addServiceRecord: async () => {},
   addFeedingPlan: async () => {},
   addBatchEvent: async () => {},
   addWeighing: async () => {},
+  addBodyWeighing: async () => {},
   addParturition: async () => {},
   fetchData: async () => {},
   addFather: async () => {},
@@ -92,11 +98,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [serviceRecords, setServiceRecords] = useState<ServiceRecord[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [feedingPlans, setFeedingPlans] = useState<FeedingPlan[]>([]);
+  const [bodyWeighings, setBodyWeighings] = useState<BodyWeighing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchDataFromLocalDb = useCallback(async () => {
     try {
-      const [animalsData, fathersData, weighingsData, partData, lotsData, originsData, breedingGroupsData, serviceRecordsData, eventsData, feedingPlansData] = await Promise.all([
+      const [animalsData, fathersData, weighingsData, partData, lotsData, originsData, breedingGroupsData, serviceRecordsData, eventsData, feedingPlansData, bodyWeighingsData] = await Promise.all([
         localDb.animals.toArray(),
         localDb.fathers.toArray(),
         localDb.weighings.toArray(),
@@ -107,6 +114,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localDb.serviceRecords.toArray(),
         localDb.events.toArray(),
         localDb.feedingPlans.toArray(),
+        localDb.bodyWeighings.toArray(),
       ]);
       setAnimals(animalsData);
       setFathers(fathersData);
@@ -118,6 +126,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setServiceRecords(serviceRecordsData);
       setEvents(eventsData);
       setFeedingPlans(feedingPlansData);
+      setBodyWeighings(bodyWeighingsData);
     } catch (error) { console.error("Error al cargar datos locales:", error); } 
     finally { setIsLoading(false); }
   }, []);
@@ -131,8 +140,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             localDb.lots.clear(), localDb.origins.clear(),
             localDb.breedingGroups.clear(), localDb.serviceRecords.clear(),
             localDb.events.clear(), localDb.feedingPlans.clear(),
+            localDb.bodyWeighings.clear(),
         ]).then(() => {
-            setAnimals([]); setFathers([]); setWeighings([]); setParturitions([]); setLots([]); setOrigins([]); setBreedingGroups([]); setServiceRecords([]); setEvents([]); setFeedingPlans([]);
+            setAnimals([]); setFathers([]); setWeighings([]); setParturitions([]); setLots([]); setOrigins([]); setBreedingGroups([]); setServiceRecords([]); setEvents([]); setFeedingPlans([]); setBodyWeighings([]);
         });
         return;
     }
@@ -142,12 +152,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             if (!localDb.isOpen()) { await localDb.open(); }
             const q = (collectionName: string) => query(collection(firestoreDb, collectionName), where("userId", "==", currentUser.uid));
+            
             const syncCollection = (collectionName: string, table: any) => {
                 const unsubscribe = onSnapshot(q(collectionName), async (snapshot) => {
-                    const firestoreData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-                    await table.bulkPut(firestoreData);
-                    fetchDataFromLocalDb();
-                }, (error) => console.error(`Error sincronizando ${collectionName}:`, error));
+                    let hasChanges = false;
+                    for (const change of snapshot.docChanges()) {
+                        hasChanges = true;
+                        const docData = { ...change.doc.data(), id: change.doc.id };
+                        if (change.type === "added" || change.type === "modified") {
+                            await table.put(docData);
+                        }
+                        if (change.type === "removed") {
+                            await table.delete(change.doc.id);
+                        }
+                    }
+                    if (hasChanges) {
+                        fetchDataFromLocalDb();
+                    }
+                }, (error) => {
+                    if (error.code === 'permission-denied') return;
+                    console.error(`Error sincronizando ${collectionName}:`, error);
+                });
                 unsubscribers.push(unsubscribe);
             };
 
@@ -161,6 +186,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             syncCollection('serviceRecords', localDb.serviceRecords);
             syncCollection('events', localDb.events);
             syncCollection('feedingPlans', localDb.feedingPlans);
+            syncCollection('bodyWeighings', localDb.bodyWeighings);
         } catch (error) { console.error("Fallo al abrir o sincronizar la base de datos local:", error); }
     };
     setupSync();
@@ -174,8 +200,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const addAnimal = async (animalData: Omit<Animal, 'id'> & { id: string }) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
-        const animalRef = doc(firestoreDb, "animals", animalData.id);
-        await setDoc(animalRef, { ...animalData, userId: currentUser.uid });
+        const animalRef = doc(firestoreDb, "animals", animalData.id.toUpperCase());
+        await setDoc(animalRef, { ...animalData, id: animalData.id.toUpperCase(), userId: currentUser.uid, createdAt: Date.now() });
     };
 
     const updateAnimal = async (animalId: string, dataToUpdate: Partial<Animal>) => {
@@ -186,8 +212,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const oldAnimalData = animalDoc.data() as Animal;
         const today = new Date().toISOString().split('T')[0];
 
-        if (dataToUpdate.location && dataToUpdate.location !== oldAnimalData.location) {
-            await addEvent({ animalId, date: today, type: 'Movimiento', details: `Movido del lote '${oldAnimalData.location || 'N/A'}' al lote '${dataToUpdate.location}'` });
+        if (dataToUpdate.location !== undefined && dataToUpdate.location !== oldAnimalData.location) {
+            await addEvent({ animalId, date: today, type: 'Movimiento', details: `Movido del lote '${oldAnimalData.location || 'N/A'}' al lote '${dataToUpdate.location || 'Sin Asignar'}'` });
         }
         if (dataToUpdate.status && dataToUpdate.status !== oldAnimalData.status) {
             let details = `Estado cambiado de '${oldAnimalData.status}' a '${dataToUpdate.status}'`;
@@ -217,37 +243,38 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const addLot = async (lotName: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
-        const lotId = lotName.toUpperCase().replace(/\s+/g, '_');
-        const lotRef = doc(firestoreDb, "lots", lotId);
-        await setDoc(lotRef, { name: lotName, userId: currentUser.uid });
+        await addDoc(collection(firestoreDb, "lots"), { name: lotName, userId: currentUser.uid });
     };
 
     const deleteLot = async (lotId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
-        const lotRef = doc(firestoreDb, "lots", lotId);
-        await deleteDoc(lotRef);
+        await deleteDoc(doc(firestoreDb, "lots", lotId));
     };
 
     const addOrigin = async (originName: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
-        const originId = originName.toUpperCase().replace(/\s+/g, '_');
-        const originRef = doc(firestoreDb, "origins", originId);
-        await setDoc(originRef, { name: originName, userId: currentUser.uid });
+        await addDoc(collection(firestoreDb, "origins"), { name: originName, userId: currentUser.uid });
     };
 
     const deleteOrigin = async (originId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
-        const originRef = doc(firestoreDb, "origins", originId);
-        await deleteDoc(originRef);
+        await deleteDoc(doc(firestoreDb, "origins", originId));
     };
 
-    const addOperation = async (collectionName: string, data: object) => {
+    const addWeighing = async (weighing: Omit<Weighing, 'id'>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
-        await addDoc(collection(firestoreDb, collectionName), { ...data, userId: currentUser.uid });
+        await addDoc(collection(firestoreDb, "weighings"), { ...weighing, userId: currentUser.uid });
+    };
+    
+    const addBodyWeighing = async (weighing: Omit<BodyWeighing, 'id'>) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        await addDoc(collection(firestoreDb, "bodyWeighings"), { ...weighing, userId: currentUser.uid });
     };
 
-    const addWeighing = async (weighing: Omit<Weighing, 'id'>) => addOperation("weighings", weighing);
-    const addFather = async (father: Omit<Father, 'id'>) => addOperation("fathers", father);
+    const addFather = async (father: Omit<Father, 'id'>) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        await addDoc(collection(firestoreDb, "fathers"), { ...father, userId: currentUser.uid });
+    };
     
     const addParturition = async (data: any) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -260,7 +287,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         data.offspring.forEach((kid: any) => {
             const upperCaseKidId = kid.id.toUpperCase();
             const animalRef = doc(firestoreDb, "animals", upperCaseKidId);
-            batch.set(animalRef, { id: upperCaseKidId, sex: kid.sex, status: kid.sex === 'Macho' ? 'Descartado' : 'Activo', birthDate: data.parturitionDate, motherId: upperCaseMotherId, fatherId: data.sireId, birthWeight: parseFloat(kid.birthWeight), userId: currentUser.uid }, { merge: true });
+            const newAnimalData = {
+                id: upperCaseKidId,
+                sex: kid.sex,
+                status: kid.sex === 'Macho' ? 'Descartado' : 'Activo',
+                birthDate: data.parturitionDate,
+                motherId: upperCaseMotherId,
+                fatherId: data.sireId,
+                birthWeight: parseFloat(kid.birthWeight),
+                userId: currentUser.uid,
+                createdAt: Date.now()
+            };
+            batch.set(animalRef, newAnimalData, { merge: true });
         });
         await batch.commit();
     };
@@ -275,6 +313,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!currentUser) throw new Error("Usuario no autenticado");
         const groupRef = doc(firestoreDb, "breedingGroups", groupId);
         await updateDoc(groupRef, dataToUpdate);
+    };
+
+    const deleteBreedingGroup = async (groupId: string) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const groupRef = doc(firestoreDb, "breedingGroups", groupId);
+        await deleteDoc(groupRef);
     };
 
     const addServiceRecord = async (recordData: Omit<ServiceRecord, 'id'>) => {
@@ -293,14 +337,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const eventsCollection = collection(firestoreDb, "events");
         animalsInLot.forEach(animal => {
             const eventRef = doc(eventsCollection);
-            const newEvent: Omit<Event, 'id'> = {
-                animalId: animal.id,
-                date: data.date,
-                type: data.type,
-                details: data.details,
-                lotName: data.lotName,
-                notes: `Evento aplicado a todo el lote: ${data.lotName}`
-            };
+            const newEvent: Omit<Event, 'id'> = { animalId: animal.id, date: data.date, type: data.type, details: data.details, lotName: data.lotName, notes: `Evento aplicado a todo el lote: ${data.lotName}` };
             batch.set(eventRef, { ...newEvent, userId: currentUser.uid });
         });
         await batch.commit();
@@ -313,7 +350,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <DataContext.Provider value={{ 
-        animals, fathers, weighings, parturitions, lots, origins, breedingGroups, serviceRecords, events, feedingPlans, isLoading, 
+        animals, fathers, weighings, parturitions, lots, origins, breedingGroups, serviceRecords, events, feedingPlans, bodyWeighings, isLoading, 
         addAnimal,
         updateAnimal,
         startDryingProcess,
@@ -324,10 +361,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteOrigin,
         addBreedingGroup,
         updateBreedingGroup,
+        deleteBreedingGroup,
         addServiceRecord,
         addFeedingPlan,
         addBatchEvent,
         addWeighing,
+        addBodyWeighing,
         addParturition,
         fetchData: fetchDataFromLocalDb,
         addFather

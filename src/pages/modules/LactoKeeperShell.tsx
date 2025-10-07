@@ -4,10 +4,11 @@ import Dashboard from '../Dashboard';
 import AnimalsPage from '../AnimalsPage';
 import HistoryPage from '../HistoryPage';
 import AddDataPage from '../AddDataPage';
+import ManagementPage from '../ManagementPage';
 import { PeriodStats } from '../../hooks/useHistoricalAnalysis';
-import { BarChart2, ArrowLeft, CalendarClock, List, PlusCircle } from 'lucide-react';
+import { BarChart2, ArrowLeft, CalendarClock, List, PlusCircle, Wind } from 'lucide-react';
 
-type LactoKeeperPage = 'dashboard' | 'analysis' | 'history' | 'add-data';
+type LactoKeeperPage = 'dashboard' | 'analysis' | 'history' | 'add-data' | 'drying';
 
 interface LactoKeeperShellProps {
     navigateToRebano: (page: RebanoPageState) => void;
@@ -23,7 +24,17 @@ export default function LactoKeeperShell({ navigateToRebano, onExitModule }: Lac
         { id: 'analysis', label: 'Análisis', icon: List },
         { id: 'history', label: 'Historial', icon: CalendarClock },
         { id: 'add-data', label: 'Añadir', icon: PlusCircle },
+        { id: 'drying', label: 'Secado', icon: Wind },
     ];
+
+    // --- NUEVA FUNCIÓN DE NAVEGACIÓN HACIA ATRÁS ---
+    const handleBackPress = () => {
+        if (page === 'dashboard') {
+            onExitModule(); // Si ya estamos en el dashboard, salimos del módulo
+        } else {
+            setPage('dashboard'); // Si estamos en otra página, volvemos al dashboard del módulo
+        }
+    };
 
     const renderContent = () => {
         switch (page) {
@@ -39,6 +50,8 @@ export default function LactoKeeperShell({ navigateToRebano, onExitModule }: Lac
                        />;
             case 'add-data':
                 return <AddDataPage onNavigate={(pageName: any, state: any) => navigateToRebano({ name: pageName, ...state })} />;
+            case 'drying':
+                return <ManagementPage onSelectAnimal={(animalId: string) => navigateToRebano({ name: 'rebano-profile', animalId })} />;
             default:
                 return <Dashboard onNavigateToAnalysis={() => setPage('analysis')} />;
         }
@@ -47,14 +60,14 @@ export default function LactoKeeperShell({ navigateToRebano, onExitModule }: Lac
     return (
         <div className="min-h-screen animate-fade-in">
             <button
-                onClick={onExitModule}
+                onClick={handleBackPress} // <-- SE USA LA NUEVA FUNCIÓN
                 className="fixed top-4 left-4 z-50 w-12 h-12 bg-zinc-800/80 backdrop-blur-md text-white rounded-full flex items-center justify-center shadow-lg hover:bg-zinc-700"
-                aria-label="Volver a Rebaño"
+                aria-label="Atrás"
             >
                 <ArrowLeft size={24} />
             </button>
 
-            <main className="pb-24">
+            <main className="pb-24 pt-4">
                 {renderContent()}
             </main>
 

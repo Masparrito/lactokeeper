@@ -1,5 +1,3 @@
-// src/pages/LoginPage.tsx
-
 import React, { useState } from 'react';
 import { 
     createUserWithEmailAndPassword, 
@@ -7,7 +5,8 @@ import {
     AuthError
 } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
-import { Droplet, AlertTriangle } from 'lucide-react';
+import { Droplet, AlertTriangle, Trash2 } from 'lucide-react';
+import { Dexie } from 'dexie';
 
 export const LoginPage: React.FC = () => {
     const [isLoginView, setIsLoginView] = useState(true);
@@ -15,6 +14,19 @@ export const LoginPage: React.FC = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+
+    const handleForceDeleteDB = async () => {
+        if (window.confirm("¿Estás seguro de que quieres forzar la eliminación de la base de datos local? Esto no afectará tus datos en la nube.")) {
+            try {
+                await Dexie.delete('LactoKeeperDB_v6');
+                alert("Base de datos local eliminada con éxito. La página se recargará.");
+                window.location.reload();
+            } catch (err) {
+                alert("Error al eliminar la base de datos.");
+                console.error(err);
+            }
+        }
+    };
 
     const handleAuthError = (err: AuthError) => {
         switch (err.code) {
@@ -43,7 +55,6 @@ export const LoginPage: React.FC = () => {
             } else {
                 await createUserWithEmailAndPassword(auth, email, password);
             }
-            // No necesitamos hacer nada más, el AuthContext se encargará del resto
         } catch (err) {
             setError(handleAuthError(err as AuthError));
         } finally {
@@ -52,11 +63,13 @@ export const LoginPage: React.FC = () => {
     };
 
     return (
-        <div className="bg-gray-900 min-h-screen flex flex-col items-center justify-center p-4 font-sans">
+        // --- CORRECCIÓN DE ESTILO: Se elimina bg-gray-900 para usar el color global del body ---
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 font-sans">
             <div className="w-full max-w-sm">
                 <div className="text-center mb-8">
                     <div className="flex items-center justify-center space-x-2 mb-2">
-                        <Droplet className="w-10 h-10 text-indigo-400" />
+                        {/* --- CORRECCIÓN DE ESTILO: Se usa el color de acento de la marca --- */}
+                        <Droplet className="w-10 h-10 text-brand-orange" />
                         <h1 className="text-4xl font-bold text-white">LactoKeeper</h1>
                     </div>
                     <p className="text-zinc-400">Tu gestión de rebaño, en la nube.</p>
@@ -85,7 +98,7 @@ export const LoginPage: React.FC = () => {
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="Correo electrónico"
                             required
-                            className="w-full bg-zinc-800/80 text-white p-3 rounded-xl border border-transparent focus:border-brand-amber focus:ring-0 focus:outline-none placeholder-zinc-400"
+                            className="w-full bg-zinc-800/80 text-white p-3 rounded-xl border border-transparent focus:border-brand-orange focus:ring-0 focus:outline-none placeholder-zinc-400"
                         />
                         <input
                             type="password"
@@ -93,11 +106,11 @@ export const LoginPage: React.FC = () => {
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="Contraseña"
                             required
-                            className="w-full bg-zinc-800/80 text-white p-3 rounded-xl border border-transparent focus:border-brand-amber focus:ring-0 focus:outline-none placeholder-zinc-400"
+                            className="w-full bg-zinc-800/80 text-white p-3 rounded-xl border border-transparent focus:border-brand-orange focus:ring-0 focus:outline-none placeholder-zinc-400"
                         />
 
                         {error && (
-                            <div className="flex items-center space-x-2 p-3 rounded-lg text-sm bg-red-500/20 text-red-300">
+                            <div className="flex items-center space-x-2 p-3 rounded-lg text-sm bg-red-500/20 text-brand-red">
                                 <AlertTriangle size={18} />
                                 <span>{error}</span>
                             </div>
@@ -106,11 +119,22 @@ export const LoginPage: React.FC = () => {
                         <button 
                             type="submit" 
                             disabled={isLoading}
-                            className="w-full bg-brand-amber text-black font-bold py-3 rounded-xl transition-colors hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full bg-brand-orange text-white font-bold py-3 rounded-xl transition-colors hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isLoading ? 'Procesando...' : (isLoginView ? 'Iniciar Sesión' : 'Crear Cuenta')}
                         </button>
                     </form>
+                </div>
+
+                {/* Botón de emergencia temporal */}
+                <div className="mt-6 text-center">
+                    <button 
+                        onClick={handleForceDeleteDB}
+                        className="flex items-center justify-center gap-2 mx-auto bg-brand-red/20 text-brand-red font-semibold py-2 px-4 rounded-lg border border-brand-red/50 hover:bg-brand-red/30 transition-colors"
+                    >
+                        <Trash2 size={16} />
+                        Forzar Reinicio de DB Local
+                    </button>
                 </div>
             </div>
         </div>

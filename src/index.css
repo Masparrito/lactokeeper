@@ -2,22 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* --- Tarea 1.1: Estilos Globales para la Nueva Estética (Plan v7.0) --- */
+/* --- Estilos Globales para la Nueva Estética --- */
 body {
   font-family: 'Inter', sans-serif;
-  background-color: #1C1C1E; /* Refuerza el color de fondo oscuro principal */
-  color: rgba(255, 255, 255, 0.85); /* Un blanco ligeramente suavizado por defecto para el texto */
+  /* El color de fondo correcto, como en LactoKeeper */
+  background-color: #1C1C1E; 
+  color: rgba(255, 255, 255, 0.85);
   
-  /* Mejora el renderizado de la fuente para un look más suave y nítido, 
-    clave para la estética estilo iOS. 
-  */
+  /* Mejora el renderizado de la fuente para un look más suave y nítido */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Definimos las animaciones base para los modales y otros elementos UI.
-  Esto nos dará una sensación más fluida y nativa.
-*/
+/* Animaciones base para los modales y otros elementos UI */
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }

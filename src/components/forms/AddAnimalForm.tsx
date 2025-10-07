@@ -1,230 +1,169 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useData } from '../../context/DataContext';
-import { CheckCircle, AlertTriangle, ChevronsRight, ChevronLeft, Calendar, Search, PlusCircle } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Calendar, Search } from 'lucide-react';
+import { AnimalSelectorModal } from '../ui/AnimalSelectorModal';
 import { Modal } from '../ui/Modal';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
-import { AnimalSelectorModal } from '../ui/AnimalSelectorModal';
-import { AddLotModal } from '../ui/AddLotModal';
-import { AddOriginModal } from '../ui/AddOriginModal';
+import { Animal } from '../../db/local';
 
-// --- Definiciones y Constantes ---
-const RACES = [
-    { name: 'Alpina', acronym: 'A' }, { name: 'Saanen', acronym: 'S' },
-    { name: 'Canaria', acronym: 'AGC' }, { name: 'Anglo Nubian', acronym: 'AN' },
-    { name: 'Toggenburger', acronym: 'T' }, { name: 'Criolla', acronym: 'C' }
-];
-const GENDER_SPECIFIC_STAGES = {
-    Hembra: ['Cabrita', 'Cabritona', 'Cabra Primípara', 'Cabra Multípara'],
-    Macho: ['Cabrito', 'Cabriton', 'Macho Cabrío'],
+// --- LÓGICA DE CÁLCULO AUTOMÁTICO DE ESTADO ---
+const calculateLifecycleStage = (birthDate: string, sex: 'Hembra' | 'Macho'): string => {
+    if (!birthDate || !sex) return 'Indefinido';
+
+    const today = new Date();
+    const birth = new Date(birthDate);
+    if (isNaN(birth.getTime())) return 'Indefinido';
+    
+    const ageInDays = (today.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24);
+
+    if (sex === 'Hembra') {
+        if (ageInDays <= 60) return 'Cabrita';
+        if (ageInDays <= 365) return 'Cabritona';
+        // Para un animal nuevo, asumimos que es primípara si tiene más de un año.
+        // La lógica para multípara depende de partos existentes, no aplica aquí.
+        return 'Cabra Primípara';
+    } else { // Macho
+        if (ageInDays <= 60) return 'Cabrito';
+        if (ageInDays <= 365) return 'Macho de Levante';
+        return 'Macho Cabrío (Reproductor)';
+    }
 };
 
-// --- Componente de la Barra de Progreso ---
-const ProgressBar = ({ step }: { step: number }) => (
-    <div className="flex items-center gap-2 px-4">
-        {[1, 2, 3].map(s => (
-            <div key={s} className={`h-2 rounded-full transition-all duration-300 ${s <= step ? 'bg-brand-orange' : 'bg-zinc-700'}`} style={{ width: `${100/3}%` }} />
-        ))}
+// --- SUB-COMPONENTES DE UI PARA EL FORMULARIO ---
+const FieldSet = ({ legend, children }: { legend: string, children: React.ReactNode }) => (
+    <fieldset className="bg-black/20 rounded-2xl p-4 border border-zinc-800/50 space-y-4">
+        <legend className="px-2 text-sm font-semibold text-zinc-400">{legend}</legend>
+        {children}
+    </fieldset>
+);
+
+const Toggle = ({ labelOn, labelOff, value, onChange }: { labelOn: string, labelOff: string, value: boolean, onChange: (newValue: boolean) => void }) => (
+    <div onClick={() => onChange(!value)} className="w-full bg-zinc-800/80 rounded-xl p-1 flex cursor-pointer">
+        <span className={`w-1/2 text-center font-semibold p-2 rounded-lg transition-all ${value ? 'bg-zinc-600 text-white' : 'text-zinc-400'}`}>{labelOn}</span>
+        <span className={`w-1/2 text-center font-semibold p-2 rounded-lg transition-all ${!value ? 'bg-zinc-600 text-white' : 'text-zinc-400'}`}>{labelOff}</span>
     </div>
 );
 
-// --- Estilos CSS para el calendario ---
-const calendarCss = `
-  .rdp { --rdp-cell-size: 40px; --rdp-accent-color: #FF9500; --rdp-background-color: #3a3a3c; --rdp-accent-color-dark: #FF9500; --rdp-background-color-dark: #3a3a3c; --rdp-outline: 2px solid var(--rdp-accent-color); --rdp-outline-selected: 3px solid var(--rdp-accent-color); --rdp-border-radius: 6px; color: #FFF; margin: 1em; }
-  .rdp-caption_label, .rdp-nav_button { color: #FF9500; }
-  .rdp-caption_dropdowns { color: #000; }
-  .rdp-head_cell { color: #8e8e93; }
-  .rdp-day_selected { background-color: var(--rdp-accent-color); color: #000; font-weight: bold; }
-`;
-
-// --- Props que el formulario aceptará ---
+// --- COMPONENTE PRINCIPAL DEL FORMULARIO ---
 interface AddAnimalFormProps {
     onSaveSuccess: () => void;
-    onCancel?: () => void; // Hacemos onCancel opcional
+    onCancel: () => void;
 }
 
 export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onCancel }) => {
-    const { animals, lots, origins, addAnimal } = useData();
-    const [step, setStep] = useState(1);
+    const { addAnimal, animals, lots } = useData();
+    
+    // Estados del formulario
+    const [sex, setSex] = useState<'Hembra' | 'Macho'>('Hembra');
+    const [isReference, setIsReference] = useState(false);
+    const [animalId, setAnimalId] = useState('');
+    const [birthDate, setBirthDate] = useState('');
+    const [conceptionMethod, setConceptionMethod] = useState('');
+    const [birthWeight, setBirthWeight] = useState('');
+    const [fatherId, setFatherId] = useState('');
+    const [motherId, setMotherId] = useState('');
+    const [racialComposition, setRacialComposition] = useState('');
+    const [location, setLocation] = useState('');
+
+    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [isDatePickerOpen, setDatePickerOpen] = useState(false);
     const [isMotherSelectorOpen, setMotherSelectorOpen] = useState(false);
     const [isFatherSelectorOpen, setFatherSelectorOpen] = useState(false);
-    const [isLotModalOpen, setLotModalOpen] = useState(false);
-    const [isOriginModalOpen, setOriginModalOpen] = useState(false);
 
-    // Estados para cada campo del formulario
-    const [animalId, setAnimalId] = useState('');
-    const [birthDate, setBirthDate] = useState('');
-    const [sex, setSex] = useState<'Hembra' | 'Macho' | ''>('');
-    const [fatherId, setFatherId] = useState('');
-    const [motherId, setMotherId] = useState('');
-    const [race, setRace] = useState('');
-    const [racialComposition, setRacialComposition] = useState('');
-    const [origin, setOrigin] = useState('Finca Masparrito');
-    const [birthWeight, setBirthWeight] = useState('');
-    const [parturitionType, setParturitionType] = useState('');
-    const [location, setLocation] = useState('');
-    const [lifecycleStage, setLifecycleStage] = useState('');
-    const [isReference, setIsReference] = useState(false);
-    const [observations, setObservations] = useState('');
-    
-    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-    const handleDateSelect = (date: Date | undefined) => {
-        if (date) {
-            const year = date.getFullYear();
-            const month = (date.getMonth() + 1).toString().padStart(2, '0');
-            const day = date.getDate().toString().padStart(2, '0');
-            setBirthDate(`${year}-${month}-${day}`);
-        }
-        setDatePickerOpen(false);
-    };
+    // Lógica de estado automático
+    const lifecycleStage = useMemo(() => calculateLifecycleStage(birthDate, sex), [birthDate, sex]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setMessage(null);
-        if (!animalId || !birthDate || !sex) {
-            setMessage({ type: 'error', text: 'Los campos del Paso 1 (ID, Fecha de Nacimiento y Sexo) son obligatorios.' });
-            setStep(1);
+        if (!animalId || !birthDate) {
+            setMessage({ type: 'error', text: 'El ID y la Fecha de Nacimiento son obligatorios.' });
             return;
         }
-        const newAnimal = { 
-            id: animalId.toUpperCase(), 
-            sex, 
-            birthDate, 
-            status: 'Activo', 
-            lifecycleStage: lifecycleStage || (sex === 'Hembra' ? 'Cabrita' : 'Cabrito'), 
-            location: location || 'N/A', 
-            origin, 
-            birthWeight: birthWeight ? parseFloat(birthWeight) : undefined, 
-            parturitionType, 
-            fatherId, 
-            motherId, 
-            race, 
-            racialComposition, 
-            isReference, 
-            observations,
-            reproductiveStatus: 'No Aplica'
+
+        const newAnimal: Omit<Animal, 'id'> = {
+            sex, isReference, birthDate,
+            lifecycleStage: lifecycleStage as any,
+            conceptionMethod,
+            birthWeight: birthWeight ? parseFloat(birthWeight) : undefined,
+            fatherId: fatherId || undefined,
+            motherId: motherId || undefined,
+            racialComposition: racialComposition || undefined,
+            location: location || '',
+            status: 'Activo',
+            reproductiveStatus: 'No Aplica',
         };
+
         try {
-            await addAnimal(newAnimal as any);
-            setMessage({ type: 'success', text: `Animal ${animalId} agregado con éxito.` });
-            setTimeout(() => { onSaveSuccess(); }, 1500); // Llama a la función de éxito
-        } catch (error) {
-            setMessage({ type: 'error', text: 'No se pudo guardar el animal.' });
+            await addAnimal({ id: animalId.toUpperCase(), ...newAnimal });
+            setMessage({ type: 'success', text: `Animal ${animalId.toUpperCase()} agregado con éxito.` });
+            setTimeout(onSaveSuccess, 1500);
+        } catch (error: any) {
+            setMessage({ type: 'error', text: error.message || 'No se pudo guardar el animal.' });
             console.error("Error al guardar animal:", error);
         }
     };
-    
+
     return (
         <>
-            <div className="space-y-6">
-                <ProgressBar step={step} />
+            <form onSubmit={handleSubmit} className="w-full space-y-6">
+                <FieldSet legend="Categoría">
+                    <Toggle labelOn="Hembra" labelOff="Macho" value={sex === 'Hembra'} onChange={(isFemale) => setSex(isFemale ? 'Hembra' : 'Macho')} />
+                    <Toggle labelOn="Activo" labelOff="Referencia" value={!isReference} onChange={(isActive) => setIsReference(!isActive)} />
+                </FieldSet>
 
-                <form onSubmit={handleSubmit} className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-brand-border space-y-6">
-                    
-                    {step === 1 && (
-                        <div className="space-y-4 animate-fade-in">
-                            <h2 className="text-lg font-semibold text-white">Identidad del Animal</h2>
-                            <div>
-                                <label htmlFor="animalId" className="block text-sm font-medium text-zinc-400 mb-1">ID (*)</label>
-                                <input autoFocus id="animalId" type="text" value={animalId} onChange={e => setAnimalId(e.target.value.toUpperCase())} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg" required />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-zinc-400 mb-1">Fecha Nacimiento (*)</label>
-                                <button type="button" onClick={() => setDatePickerOpen(true)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg text-left flex justify-between items-center">
-                                    <span className={birthDate ? 'text-white' : 'text-zinc-500'}>{birthDate ? new Date(birthDate + 'T00:00:00').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Seleccionar fecha...'}</span>
-                                    <Calendar className="text-zinc-400" size={20} />
-                                </button>
-                            </div>
-                            <div>
-                                <label htmlFor="sex" className="block text-sm font-medium text-zinc-400 mb-1">Sexo (*)</label>
-                                <select id="sex" value={sex} onChange={e => { setSex(e.target.value as any); setLifecycleStage(''); }} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg" required>
-                                    <option value="">Seleccione...</option>
-                                    <option value="Hembra">Hembra</option>
-                                    <option value="Macho">Macho</option>
-                                </select>
-                            </div>
-                        </div>
-                    )}
-
-                    {step === 2 && (
-                        <div className="space-y-4 animate-fade-in">
-                            <h2 className="text-lg font-semibold text-white">Genealogía y Raza</h2>
-                            <div>
-                                <label className="block text-sm font-medium text-zinc-400 mb-1">Madre</label>
-                                <button type="button" onClick={() => setMotherSelectorOpen(true)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg text-left flex justify-between items-center">
-                                    <span className={motherId ? 'text-white' : 'text-zinc-500'}>{motherId || 'Seleccionar...'}</span>
-                                    <Search className="text-zinc-400" size={20} />
-                                </button>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-zinc-400 mb-1">Padre (Reproductor)</label>
-                                 <button type="button" onClick={() => setFatherSelectorOpen(true)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg text-left flex justify-between items-center">
-                                    <span className={fatherId ? 'text-white' : 'text-zinc-500'}>{fatherId || 'Seleccionar...'}</span>
-                                    <Search className="text-zinc-400" size={20} />
-                                </button>
-                            </div>
-                            <div><label htmlFor="race" className="block text-sm font-medium text-zinc-400 mb-1">Raza (si es puro)</label><select id="race" value={race} onChange={e => setRace(e.target.value)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg"><option value="">Mestizo / No aplica</option>{RACES.map(r => <option key={r.name} value={r.name}>{r.name}</option>)}</select></div>
-                            <div><label htmlFor="racialComposition" className="block text-sm font-medium text-zinc-400 mb-1">Composición Racial (mestizo)</label><input id="racialComposition" type="text" placeholder="Ej: 50%A / 50%S" value={racialComposition} onChange={e => setRacialComposition(e.target.value)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg" /></div>
-                        </div>
-                    )}
-
-                    {step === 3 && (
-                        <div className="space-y-4 animate-fade-in">
-                            <h2 className="text-lg font-semibold text-white">Manejo y Detalles</h2>
-                            <div>
-                                <label htmlFor="location" className="block text-sm font-medium text-zinc-400 mb-1">Ubicación / Lote</label>
-                                <div className="flex items-center gap-2">
-                                    <select id="location" value={location} onChange={e => setLocation(e.target.value)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg">
-                                        <option value="">Seleccione...</option>
-                                        {lots.map(lot => <option key={lot.id} value={lot.name}>{lot.name}</option>)}
-                                    </select>
-                                    <button type="button" onClick={() => setLotModalOpen(true)} className="p-3 bg-brand-orange hover:bg-orange-600 text-white rounded-xl">
-                                        <PlusCircle size={24} />
-                                    </button>
-                                </div>
-                            </div>
-                            <div>
-                                <label htmlFor="origin" className="block text-sm font-medium text-zinc-400 mb-1">Origen</label>
-                                <div className="flex items-center gap-2">
-                                    <select id="origin" value={origin} onChange={e => setOrigin(e.target.value)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg">
-                                        <option value="Finca Masparrito">Finca Masparrito</option>
-                                        {origins.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
-                                    </select>
-                                    <button type="button" onClick={() => setOriginModalOpen(true)} className="p-3 bg-brand-orange hover:bg-orange-600 text-white rounded-xl">
-                                        <PlusCircle size={24} />
-                                    </button>
-                                </div>
-                            </div>
-                            <div><label htmlFor="lifecycleStage" className="block text-sm font-medium text-zinc-400 mb-1">Estado de Crecimiento</label><select id="lifecycleStage" value={lifecycleStage} onChange={e => setLifecycleStage(e.target.value)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg" disabled={!sex}><option value="">Seleccione...</option>{sex && GENDER_SPECIFIC_STAGES[sex].map(stage => <option key={stage} value={stage}>{stage}</option>)}</select></div>
-                            <div><label htmlFor="birthWeight" className="block text-sm font-medium text-zinc-400 mb-1">Peso al nacer (Kg)</label><input id="birthWeight" type="number" step="0.1" placeholder="Ej: 4.3" value={birthWeight} onChange={e => setBirthWeight(e.target.value)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg" /></div>
-                            <div><label htmlFor="parturitionType" className="block text-sm font-medium text-zinc-400 mb-1">Tipo de Parto (origen)</label><select id="parturitionType" value={parturitionType} onChange={e => setParturitionType(e.target.value)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg"><option value="">Seleccione...</option><option>Simple</option><option>Doble</option><option>Triple</option></select></div>
-                            <div className="flex items-center gap-3 bg-zinc-800/80 p-3 rounded-xl"><input id="isReference" type="checkbox" checked={isReference} onChange={e => setIsReference(e.target.checked)} className="h-5 w-5 rounded text-brand-orange focus:ring-brand-orange" /><label htmlFor="isReference" className="text-lg text-zinc-300">¿Es un animal de Referencia?</label></div>
-                            <div><label htmlFor="observations" className="block text-sm font-medium text-zinc-400 mb-1">Observaciones</label><textarea id="observations" value={observations} onChange={e => setObservations(e.target.value)} rows={3} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg"></textarea></div>
-                        </div>
-                    )}
-
-                    <div className="flex justify-between items-center pt-4 border-t border-zinc-700">
-                        <button type="button" onClick={() => onCancel ? onCancel() : setStep(step - 1)} disabled={step === 1 && !onCancel} className="bg-zinc-600 hover:bg-zinc-500 text-white font-bold py-3 px-6 rounded-lg disabled:opacity-40 flex items-center gap-2"><ChevronLeft size={18} /> {step > 1 ? 'Anterior' : 'Cancelar'}</button>
-                        {step < 3 && ( <button type="button" onClick={() => setStep(step + 1)} className="bg-brand-orange hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2"> Siguiente <ChevronsRight size={18} /> </button> )}
-                        {step === 3 && ( <button type="submit" className="bg-brand-green hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg"> Agregar Animal </button> )}
+                <FieldSet legend="Identificación">
+                    <input autoFocus value={animalId} onChange={e => setAnimalId(e.target.value)} placeholder="Identificación del Animal (ID)" className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg" required />
+                    <button type="button" onClick={() => setDatePickerOpen(true)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg text-left flex justify-between items-center">
+                        <span className={birthDate ? 'text-white' : 'text-zinc-500'}>{birthDate ? new Date(birthDate + 'T00:00:00').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Fecha de Nacimiento'}</span>
+                        <Calendar className="text-zinc-400" size={20} />
+                    </button>
+                    <div className="bg-zinc-800/80 p-3 rounded-xl text-lg flex justify-between items-center">
+                        <span className="text-zinc-400">Estado:</span>
+                        <span className="font-semibold text-white">{lifecycleStage}</span>
                     </div>
+                </FieldSet>
+                
+                <FieldSet legend="Genética y Nacimiento">
+                    <select value={conceptionMethod} onChange={e => setConceptionMethod(e.target.value)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg">
+                        <option value="">Origen / Concepción...</option>
+                        <option value="MN">Monta Natural (MN)</option>
+                        <option value="IA">Inseminación Artificial (IA)</option>
+                        <option value="TE">Transferencia de Embriones (TE)</option>
+                    </select>
+                    <input type="number" step="0.1" value={birthWeight} onChange={e => setBirthWeight(e.target.value)} placeholder="Peso al Nacer (Kg)" className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg" />
+                    <button type="button" onClick={() => setFatherSelectorOpen(true)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg text-left flex justify-between items-center">
+                        <span className={fatherId ? 'text-white' : 'text-zinc-500'}>{fatherId || 'Padre (Semental)'}</span>
+                        <Search className="text-zinc-400" size={20} />
+                    </button>
+                    <button type="button" onClick={() => setMotherSelectorOpen(true)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg text-left flex justify-between items-center">
+                        <span className={motherId ? 'text-white' : 'text-zinc-500'}>{motherId || 'Madre'}</span>
+                        <Search className="text-zinc-400" size={20} />
+                    </button>
+                    <input value={racialComposition} onChange={e => setRacialComposition(e.target.value)} placeholder="Composición Racial (Ej: 50%A 50%S)" className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg" />
+                </FieldSet>
+
+                <FieldSet legend="Manejo">
+                    <select value={location} onChange={e => setLocation(e.target.value)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg">
+                        <option value="">Ubicación / Lote (Opcional)...</option>
+                        {lots.map(lot => <option key={lot.id} value={lot.name}>{lot.name}</option>)}
+                    </select>
+                    <p className="text-xs text-zinc-500 text-center px-4">Si no se asigna un lote, se podrá encontrar en el filtro "Última Carga".</p>
+                </FieldSet>
+
+                <div className="space-y-3 pt-4">
                     {message && ( <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-brand-green' : 'bg-red-500/20 text-brand-red'}`}> {message.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />} <span>{message.text}</span> </div> )}
-                </form>
-            </div>
-            
-            <Modal isOpen={isDatePickerOpen} onClose={() => setDatePickerOpen(false)} title="Seleccionar Fecha de Nacimiento">
-                <style>{calendarCss}</style>
-                <div className="flex justify-center">
-                    <DayPicker mode="single" selected={birthDate ? new Date(birthDate + 'T00:00:00') : undefined} onSelect={handleDateSelect} captionLayout="dropdown" fromYear={new Date().getFullYear() - 20} toYear={new Date().getFullYear()} showOutsideDays />
+                    <button type="submit" className="w-full bg-brand-green hover:bg-green-600 text-white font-bold py-4 rounded-xl text-lg">Guardar Animal</button>
+                    <button type="button" onClick={onCancel} className="w-full bg-zinc-700 hover:bg-zinc-600 text-white font-semibold py-3 rounded-xl text-lg">Cancelar</button>
                 </div>
+            </form>
+
+            <Modal isOpen={isDatePickerOpen} onClose={() => setDatePickerOpen(false)} title="Seleccionar Fecha de Nacimiento">
+                <div className="flex justify-center"><DayPicker mode="single" selected={birthDate ? new Date(birthDate + 'T00:00:00') : undefined} onSelect={(d) => { if(d) setBirthDate(d.toISOString().split('T')[0]); setDatePickerOpen(false); }} captionLayout="dropdown" fromYear={new Date().getFullYear() - 20} toYear={new Date().getFullYear()} /></div>
             </Modal>
-            
-            <AnimalSelectorModal isOpen={isMotherSelectorOpen} onClose={() => setMotherSelectorOpen(false)} onSelect={(selectedId) => { setMotherId(selectedId); setMotherSelectorOpen(false); }} animals={animals} title="Seleccionar Madre" filterSex="Hembra" />
-            <AnimalSelectorModal isOpen={isFatherSelectorOpen} onClose={() => setFatherSelectorOpen(false)} onSelect={(selectedId) => { setFatherId(selectedId); setFatherSelectorOpen(false); }} animals={animals} title="Seleccionar Reproductor" filterSex="Macho" />
-            <AddLotModal isOpen={isLotModalOpen} onClose={() => setLotModalOpen(false)} />
-            <AddOriginModal isOpen={isOriginModalOpen} onClose={() => setOriginModalOpen(false)} />
+            <AnimalSelectorModal isOpen={isMotherSelectorOpen} onClose={() => setMotherSelectorOpen(false)} onSelect={(id) => { setMotherId(id); setMotherSelectorOpen(false); }} animals={animals} title="Seleccionar Madre" filterSex="Hembra" />
+            <AnimalSelectorModal isOpen={isFatherSelectorOpen} onClose={() => setFatherSelectorOpen(false)} onSelect={(id) => { setFatherId(id); setFatherSelectorOpen(false); }} animals={animals} title="Seleccionar Padre" filterSex="Macho" />
         </>
     );
 };

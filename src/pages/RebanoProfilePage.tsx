@@ -1,100 +1,31 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../context/DataContext';
-import { ArrowLeft, Edit, Save, X, Droplets, Scale, Syringe, Replace, CheckCircle, PlusCircle, Move, Tag, HeartPulse, Milk, FileText, Feather, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Edit, Save, X, Droplets, Scale, Syringe, Replace, CheckCircle, PlusCircle, Move, Tag, HeartPulse, Milk, FileText, Feather, AlertTriangle, ChevronRight } from 'lucide-react';
 import { AddParturitionForm } from '../components/forms/AddParturitionForm';
 import { Modal } from '../components/ui/Modal';
 import { PageState } from './RebanoShell';
-import { Animal, Lot, Origin, EventType } from '../db/local';
+import { Animal, Origin, EventType, Parturition } from '../db/local';
 import { AddLotModal } from '../components/ui/AddLotModal';
 import { AddOriginModal } from '../components/ui/AddOriginModal';
 import { useEvents } from '../hooks/useEvents';
 import { usePedigree } from '../hooks/usePedigree';
 import { PedigreeChart } from '../components/pedigree/PedigreeChart';
+import { formatAge, getAnimalZootecnicCategory } from '../utils/calculations';
 
-// --- Componente reutilizable para mostrar una fila de información ---
-const InfoRow = ({ label, value, isEditing, children }: { label: string, value: React.ReactNode, isEditing?: boolean, children?: React.ReactNode }) => (
+// --- SUB-COMPONENTES DE LA PÁGINA ---
+
+const InfoRow = ({ label, value, isEditing, children }: { label: string, value?: React.ReactNode, isEditing?: boolean, children?: React.ReactNode }) => (
     <div>
         <dt className="text-sm font-medium text-zinc-400">{label}</dt>
-        {isEditing ? children : <dd className="mt-1 text-lg font-semibold text-white">{value || 'N/A'}</dd>}
+        {isEditing && children ? children : <dd className="mt-1 text-lg font-semibold text-white">{value || 'N/A'}</dd>}
     </div>
 );
 
-// --- Contenido de la Pestaña "Ficha Principal" ---
-const MainInfoTab = ({ 
-    animal, 
-    isEditing, 
-    editedData, 
-    setEditedData,
-    lots,
-    onAddLotClick,
-    origins,
-    onAddOriginClick
-}: { 
-    animal: Animal, 
-    isEditing: boolean, 
-    editedData: Partial<Animal>,
-    setEditedData: React.Dispatch<React.SetStateAction<Partial<Animal>>>,
-    lots: Lot[],
-    onAddLotClick: () => void,
-    origins: Origin[],
-    onAddOriginClick: () => void
-}) => {
-    
-    const handleChange = (field: keyof Animal, value: any) => {
-        setEditedData(prev => ({ ...prev, [field]: value }));
-    };
-
-    const age = useMemo(() => {
-        if (!animal.birthDate || animal.birthDate === 'N/A') return 'N/A';
-        const birthDate = new Date(animal.birthDate);
-        const today = new Date();
-        let years = today.getFullYear() - birthDate.getFullYear();
-        let months = today.getMonth() - birthDate.getMonth();
-        if (months < 0 || (months === 0 && today.getDate() < birthDate.getDate())) {
-            years--;
-            months += 12;
-        }
-        return `${years} años, ${months} meses`;
-    }, [animal.birthDate]);
-
-    return (
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-6">
-            <InfoRow label="ID" value={animal.id} />
-            <InfoRow label="Sexo" value={animal.sex} />
-            <InfoRow label="Fecha Nacimiento" value={animal.birthDate} isEditing={isEditing}>
-                <input type="date" value={editedData.birthDate || ''} onChange={e => handleChange('birthDate', e.target.value)} className="w-full bg-zinc-700 p-2 rounded-md mt-1" />
-            </InfoRow>
-            <InfoRow label="Edad" value={age} />
-            <InfoRow label="Ubicación / Lote" value={animal.location} isEditing={isEditing}>
-                <div className="flex items-center gap-2 mt-1">
-                    <select value={editedData.location || ''} onChange={e => handleChange('location', e.target.value)} className="w-full bg-zinc-700 p-2 rounded-md">
-                        <option value="">Seleccione...</option>
-                        {lots.map(lot => <option key={lot.id} value={lot.name}>{lot.name}</option>)}
-                    </select>
-                    <button type="button" onClick={onAddLotClick} className="p-2 bg-brand-orange hover:bg-orange-600 text-white rounded-md"><PlusCircle size={20} /></button>
-                </div>
-            </InfoRow>
-            <InfoRow label="Estado Crecimiento" value={animal.lifecycleStage} />
-            <InfoRow label="Origen" value={animal.origin} isEditing={isEditing}>
-                 <div className="flex items-center gap-2 mt-1">
-                    <select value={editedData.origin || ''} onChange={e => handleChange('origin', e.target.value)} className="w-full bg-zinc-700 p-2 rounded-md">
-                        <option value="Finca Masparrito">Finca Masparrito</option>
-                        {origins.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
-                    </select>
-                    <button type="button" onClick={onAddOriginClick} className="p-2 bg-brand-orange hover:bg-orange-600 text-white rounded-md"><PlusCircle size={20} /></button>
-                </div>
-            </InfoRow>
-        </dl>
-    );
-};
-
-// --- Pestaña de Genealogía ---
 const GeneticsTab = ({ animalId }: { animalId: string }) => {
     const pedigreeRoot = usePedigree(animalId);
     return <PedigreeChart rootNode={pedigreeRoot} />;
 };
 
-// --- Componente para la pestaña de Eventos ---
 const EVENT_ICONS: Record<EventType, { icon: React.ElementType, color: string }> = {
     'Nacimiento': { icon: Feather, color: 'bg-green-500/20 text-brand-green' },
     'Movimiento': { icon: Move, color: 'bg-blue-500/20 text-brand-blue' },
@@ -108,11 +39,9 @@ const EVENT_ICONS: Record<EventType, { icon: React.ElementType, color: string }>
 
 const EventsTab = ({ animalId }: { animalId: string }) => {
     const events = useEvents(animalId);
-
     if (events.length === 0) {
-        return <div className="text-center p-8 text-zinc-500">No hay eventos registrados para este animal.</div>;
+        return <div className="text-center p-8 text-zinc-500">Este animal no tiene eventos registrados.</div>;
     }
-
     return (
         <div className="space-y-3">
             {events.map(event => {
@@ -120,9 +49,7 @@ const EventsTab = ({ animalId }: { animalId: string }) => {
                 const IconComponent = eventMeta.icon;
                 return (
                     <div key={event.id} className="flex items-start gap-4 p-3 bg-black/20 rounded-lg">
-                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${eventMeta.color}`}>
-                            <IconComponent size={20} />
-                        </div>
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${eventMeta.color}`}><IconComponent size={20} /></div>
                         <div>
                             <p className="font-semibold text-white">{event.type}</p>
                             <p className="text-sm text-zinc-300">{event.details}</p>
@@ -135,38 +62,91 @@ const EventsTab = ({ animalId }: { animalId: string }) => {
     );
 };
 
+const ProgenyTab = ({ offspring, navigateTo }: { offspring: Animal[], navigateTo: (page: PageState) => void }) => {
+    if (offspring.length === 0) {
+        return <div className="text-center p-8 text-zinc-500">Este animal no tiene descendencia registrada.</div>;
+    }
+    return (
+        <div className="space-y-2">
+            {offspring.map(child => (
+                <button 
+                    key={child.id} 
+                    onClick={() => navigateTo({ name: 'rebano-profile', animalId: child.id })}
+                    className="w-full text-left p-3 bg-black/20 hover:bg-zinc-800/60 rounded-lg transition-colors flex justify-between items-center"
+                >
+                   <div>
+                       <p className="font-bold text-lg text-white">{child.id}</p>
+                       <p className="text-sm text-zinc-400">{child.sex} | Nacimiento: {child.birthDate}</p>
+                   </div>
+                   <ChevronRight className="text-zinc-600" />
+                </button>
+            ))}
+        </div>
+    );
+};
 
-// --- Componente Principal de la Página de Perfil ---
-interface RebanoProfilePageProps {
-  animalId: string;
-  onBack: () => void;
-  navigateTo: (page: PageState) => void;
-}
+const MainInfoTab = ({ animal, parturitions, isEditing, editedData, setEditedData, origins, onAddOriginClick, onLocationClick, }: { animal: Animal, parturitions: Parturition[], isEditing: boolean, editedData: Partial<Animal>, setEditedData: React.Dispatch<React.SetStateAction<Partial<Animal>>>, origins: Origin[], onAddOriginClick: () => void, onLocationClick: () => void, }) => {
+    const handleChange = (field: keyof Animal, value: any) => { setEditedData(prev => ({ ...prev, [field]: value })); };
+    
+    const formattedAge = formatAge(animal.birthDate);
+    const zootecnicCategory = getAnimalZootecnicCategory(animal, parturitions);
+
+    return (
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-6">
+            <InfoRow label="ID" value={animal.id} />
+            <InfoRow label="Sexo" value={animal.sex} />
+            <InfoRow label="Fecha Nacimiento" value={animal.birthDate} isEditing={isEditing}>
+                <input type="date" value={editedData.birthDate || ''} onChange={e => handleChange('birthDate', e.target.value)} className="w-full bg-zinc-700 p-2 rounded-md mt-1" />
+            </InfoRow>
+            <InfoRow label="Edad" value={formattedAge} />
+            <InfoRow label="Ubicación / Lote">{!isEditing && ( <dd className="mt-1 text-lg"><button onClick={onLocationClick} className="font-semibold text-brand-orange hover:underline text-left">{animal.location || 'Sin Asignar'}</button></dd> )}</InfoRow>
+            <InfoRow label="Estado Fisiológico" value={zootecnicCategory} />
+            <InfoRow label="Origen" value={animal.origin} isEditing={isEditing}>
+                 <div className="flex items-center gap-2 mt-1">
+                    <select value={editedData.origin || ''} onChange={e => handleChange('origin', e.target.value)} className="w-full bg-zinc-700 p-2 rounded-md">
+                        <option value="Finca Masparrito">Finca Masparrito</option>
+                        {origins.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
+                    </select>
+                    <button type="button" onClick={onAddOriginClick} className="p-2 bg-brand-orange hover:bg-orange-600 text-white rounded-md"><PlusCircle size={20} /></button>
+                </div>
+            </InfoRow>
+        </dl>
+    );
+};
+
+interface RebanoProfilePageProps { animalId: string; onBack: () => void; navigateTo: (page: PageState) => void; }
 
 export default function RebanoProfilePage({ animalId, onBack, navigateTo }: RebanoProfilePageProps) {
-    const { animals, lots, origins, updateAnimal } = useData();
-    const [activeTab, setActiveTab] = useState<'main' | 'genetics' | 'events'>('main');
+    const { animals, lots, origins, parturitions, updateAnimal } = useData();
+    const [activeTab, setActiveTab] = useState<'main' | 'genetics' | 'events' | 'progeny'>('main');
     const [isEditing, setIsEditing] = useState(false);
     const [editedData, setEditedData] = useState<Partial<Animal>>({});
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
-    const [isLotModalOpen, setLotModalOpen] = useState(false);
-    const [isOriginModalOpen, setOriginModalOpen] = useState(false);
+    const [isAddLotModalOpen, setAddLotModalOpen] = useState(false);
+    const [isAddOriginModalOpen, setAddOriginModalOpen] = useState(false);
     const [isParturitionModalOpen, setParturitionModalOpen] = useState(false);
-
+    const [isLotChangeModalOpen, setLotChangeModalOpen] = useState(false);
+    const [selectedNewLot, setSelectedNewLot] = useState('');
     const animal = useMemo(() => animals.find(a => a.id === animalId), [animals, animalId]);
     
+    const progeny = useMemo(() => {
+        if (!animal) return [];
+        if (animal.sex === 'Hembra') {
+            return animals.filter(a => a.motherId === animal.id).sort((a, b) => new Date(b.birthDate).getTime() - new Date(a.birthDate).getTime());
+        }
+        if (animal.sex === 'Macho') {
+            return animals.filter(a => a.fatherId === animal.id).sort((a, b) => new Date(b.birthDate).getTime() - new Date(a.birthDate).getTime());
+        }
+        return [];
+    }, [animals, animal]);
+    
     const breedingFailures = animal?.breedingFailures || 0;
-    const headerAlertClass = breedingFailures >= 2 
-        ? 'border-brand-red ring-2 ring-brand-red/80' 
-        : 'border-brand-border';
+    const headerAlertClass = breedingFailures >= 2 ? 'border-brand-red ring-2 ring-brand-red/80' : 'border-brand-border';
 
     useEffect(() => {
-        if (animal && isEditing) {
-            setEditedData({
-                birthDate: animal.birthDate,
-                location: animal.location,
-                origin: animal.origin,
-            });
+        if (animal) {
+            if (isEditing) { setEditedData({ birthDate: animal.birthDate, origin: animal.origin }); }
+            setSelectedNewLot(animal.location || '');
         }
     }, [animal, isEditing]);
 
@@ -185,114 +165,76 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
             setSaveStatus('idle');
         }
     };
-
-    const handleCancel = () => {
-        setIsEditing(false);
+    const handleCancel = () => { setIsEditing(false); };
+    const handleUpdateLocation = async () => {
+        if (!animal) return;
+        try {
+            await updateAnimal(animal.id, { location: selectedNewLot });
+            setLotChangeModalOpen(false);
+        } catch (error) {
+            console.error("Error al actualizar la ubicación:", error);
+        }
     };
     
     if (!animal) {
-        return (
-            <div className="text-center p-10">
-                <h1 className="text-2xl text-zinc-400">Animal no encontrado.</h1>
-                <button onClick={onBack} className="mt-4 text-brand-orange">Volver</button>
-            </div>
-        );
+        return ( <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Animal no encontrado.</h1><button onClick={onBack} className="mt-4 text-brand-orange">Volver</button></div> );
     }
     
     return (
         <>
             <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in pb-12">
                 <header className={`bg-brand-glass backdrop-blur-xl rounded-b-2xl p-4 border-b border-x sticky top-0 z-10 transition-all ${headerAlertClass}`}>
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center mb-1">
                         <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
-                        <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-                            {animal.id}
-                            {breedingFailures === 1 && (
-                                <span title="1 fallo reproductivo reportado">
-                                    <AlertTriangle className="text-yellow-400" size={20} />
-                                </span>
-                            )}
-                            {breedingFailures >= 2 && (
-                                <span title={`${breedingFailures} fallos reproductivos reportados`}>
-                                    <AlertTriangle className="text-brand-red" size={20} />
-                                </span>
-                            )}
-                        </h1>
+                        <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">{animal.id} {breedingFailures === 1 && ( <span title="1 fallo reproductivo reportado"><AlertTriangle className="text-yellow-400" size={20} /></span> )} {breedingFailures >= 2 && ( <span title={`${breedingFailures} fallos reproductivos reportados`}><AlertTriangle className="text-brand-red" size={20} /></span> )}</h1>
                         <div className="w-8"></div>
                     </div>
+                    <p className="text-center text-brand-orange font-semibold text-sm -mt-1 mb-3">{animal.location || 'Sin Asignar'}</p>
                     <div className="flex justify-around bg-black/20 rounded-xl p-1">
-                        {animal.sex === 'Hembra' && (
-                            <>
-                                <button onClick={() => navigateTo({ name: 'lactation-profile', animalId: animal.id })} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-orange w-full rounded-lg">
-                                    <Droplets size={22}/><span className="text-xs mt-1">Leche</span>
-                                </button>
-                                <button onClick={() => setParturitionModalOpen(true)} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-orange w-full rounded-lg">
-                                    <Feather size={22}/><span className="text-xs mt-1">Parto</span>
-                                </button>
-                            </>
-                        )}
-                        <button onClick={() => alert('Función en desarrollo')} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-orange w-full rounded-lg"><Scale size={22}/><span className="text-xs mt-1">Peso</span></button>
+                        {animal.sex === 'Hembra' && ( <> <button onClick={() => navigateTo({ name: 'lactation-profile', animalId: animal.id })} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-orange w-full rounded-lg"><Droplets size={22}/><span className="text-xs mt-1">Leche</span></button> <button onClick={() => setParturitionModalOpen(true)} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-orange w-full rounded-lg"><Feather size={22}/><span className="text-xs mt-1">Parto</span></button> </> )}
+                        <button onClick={() => navigateTo({ name: 'growth-profile', animalId: animal.id })} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-orange w-full rounded-lg"><Scale size={22}/><span className="text-xs mt-1">Peso</span></button>
                         <button onClick={() => alert('Función en desarrollo')} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-orange w-full rounded-lg"><Syringe size={22}/><span className="text-xs mt-1">Sanidad</span></button>
-                        <button onClick={() => alert('Función en desarrollo')} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-orange w-full rounded-lg"><Replace size={22}/><span className="text-xs mt-1">Mover</span></button>
+                        <button onClick={() => setLotChangeModalOpen(true)} className="flex flex-col items-center p-2 text-zinc-400 hover:text-brand-orange w-full rounded-lg"><Replace size={22}/><span className="text-xs mt-1">Mover</span></button>
                         <button onClick={() => setIsEditing(!isEditing)} className={`flex flex-col items-center p-2 w-full rounded-lg transition-colors ${isEditing ? 'text-brand-green' : 'text-zinc-400 hover:text-brand-orange'}`}><Edit size={22}/><span className="text-xs mt-1">Editar</span></button>
                     </div>
                 </header>
-
                 <main className="p-4 space-y-4">
                     <div className="flex bg-brand-glass rounded-xl p-1 border border-brand-border">
-                        <button onClick={() => setActiveTab('main')} className={`w-1/3 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'main' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Ficha</button>
-                        <button onClick={() => setActiveTab('genetics')} className={`w-1/3 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'genetics' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Genealogía</button>
-                        <button onClick={() => setActiveTab('events')} className={`w-1/3 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'events' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Eventos</button>
+                        <button onClick={() => setActiveTab('main')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'main' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Ficha</button>
+                        <button onClick={() => setActiveTab('genetics')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'genetics' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Genealogía</button>
+                        <button onClick={() => setActiveTab('progeny')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'progeny' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Progenie</button>
+                        <button onClick={() => setActiveTab('events')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'events' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Eventos</button>
                     </div>
-
                     <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
-                        {activeTab === 'main' && (
-                            <div className="space-y-6">
-                                <MainInfoTab 
-                                    animal={animal} 
-                                    isEditing={isEditing} 
-                                    editedData={editedData}
-                                    setEditedData={setEditedData}
-                                    lots={lots}
-                                    onAddLotClick={() => setLotModalOpen(true)}
-                                    origins={origins}
-                                    onAddOriginClick={() => setOriginModalOpen(true)}
-                                />
-                                {isEditing && (
-                                    <div className="flex justify-end gap-4 pt-4 border-t border-zinc-700">
-                                        <button onClick={handleCancel} className="bg-zinc-600 hover:bg-zinc-500 text-white font-bold py-2 px-6 rounded-lg flex items-center gap-2">
-                                            <X size={18}/> Cancelar
-                                        </button>
-                                        <button onClick={handleSave} disabled={saveStatus !== 'idle'} className="bg-brand-green hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg flex items-center gap-2 disabled:opacity-50 min-w-[130px] justify-center">
-                                            {saveStatus === 'saving' && <span className="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full"/>}
-                                            {saveStatus === 'success' && <CheckCircle size={18}/>}
-                                            {saveStatus === 'idle' && <Save size={18}/>}
-                                            <span className="ml-2">{saveStatus === 'success' ? 'Guardado' : 'Guardar'}</span>
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        {activeTab === 'main' && ( <div className="space-y-6"> <MainInfoTab animal={animal} parturitions={parturitions} isEditing={isEditing} editedData={editedData} setEditedData={setEditedData} origins={origins} onAddOriginClick={() => setAddOriginModalOpen(true)} onLocationClick={() => setLotChangeModalOpen(true)} /> {isEditing && ( <div className="flex justify-end gap-4 pt-4 border-t border-zinc-700"> <button onClick={handleCancel} className="bg-zinc-600 hover:bg-zinc-500 text-white font-bold py-2 px-6 rounded-lg flex items-center gap-2"><X size={18}/> Cancelar</button> <button onClick={handleSave} disabled={saveStatus !== 'idle'} className="bg-brand-green hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg flex items-center gap-2 disabled:opacity-50 min-w-[130px] justify-center"> {saveStatus === 'saving' && <span className="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full"/>} {saveStatus === 'success' && <CheckCircle size={18}/>} {saveStatus === 'idle' && <Save size={18}/>} <span className="ml-2">{saveStatus === 'success' ? 'Guardado' : 'Guardar'}</span> </button> </div> )} </div> )}
                         {activeTab === 'genetics' && <GeneticsTab animalId={animal.id} />}
+                        {activeTab === 'progeny' && <ProgenyTab offspring={progeny} navigateTo={navigateTo} />}
                         {activeTab === 'events' && <EventsTab animalId={animal.id} />}
                     </div>
                 </main>
             </div>
-            <AddLotModal 
-                isOpen={isLotModalOpen}
-                onClose={() => setLotModalOpen(false)}
-            />
-            <AddOriginModal
-                isOpen={isOriginModalOpen}
-                onClose={() => setOriginModalOpen(false)}
-            />
-            
+            <Modal isOpen={isLotChangeModalOpen} onClose={() => setLotChangeModalOpen(false)} title={`Cambiar Lote para ${animal.id}`}>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-zinc-400 mb-1">Seleccionar nuevo lote</label>
+                        <div className="flex items-center gap-2">
+                            <select value={selectedNewLot} onChange={e => setSelectedNewLot(e.target.value)} className="w-full bg-zinc-800 p-3 rounded-xl text-lg">
+                                <option value="">Sin Asignar</option>
+                                {lots.map(lot => <option key={lot.id} value={lot.name}>{lot.name}</option>)}
+                            </select>
+                            <button type="button" onClick={() => {setLotChangeModalOpen(false); setAddLotModalOpen(true);}} className="p-3 bg-brand-orange hover:bg-orange-600 text-white rounded-xl"><PlusCircle size={24} /></button>
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-3 pt-2">
+                        <button onClick={() => setLotChangeModalOpen(false)} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg">Cancelar</button>
+                        <button onClick={handleUpdateLocation} className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg">Guardar Cambio</button>
+                    </div>
+                </div>
+            </Modal>
+            <AddLotModal isOpen={isAddLotModalOpen} onClose={() => setAddLotModalOpen(false)} />
+            <AddOriginModal isOpen={isAddOriginModalOpen} onClose={() => setAddOriginModalOpen(false)} />
             <Modal isOpen={isParturitionModalOpen} onClose={() => setParturitionModalOpen(false)} title={`Registrar Parto para ${animal.id}`}>
-                <AddParturitionForm
-                    motherId={animal.id}
-                    onSaveSuccess={() => setParturitionModalOpen(false)}
-                    onCancel={() => setParturitionModalOpen(false)}
-                />
+                <AddParturitionForm motherId={animal.id} onSaveSuccess={() => setParturitionModalOpen(false)} onCancel={() => setParturitionModalOpen(false)} />
             </Modal>
         </>
     );

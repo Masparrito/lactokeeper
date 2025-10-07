@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore, memoryLocalCache } from "firebase/firestore"; // <-- Asegúrate que la importación sea esta
 import { initializeAuth, browserLocalPersistence } from "firebase/auth";
 
 const firebaseConfig = {
@@ -13,10 +13,14 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Se inicializa la autenticación con persistencia en localStorage
-// para resolver el conflicto con Dexie.js en IndexedDB.
+// La autenticación se mantiene en localStorage, esto es correcto.
 export const auth = initializeAuth(app, {
   persistence: browserLocalPersistence
 });
 
-export const db = getFirestore(app);
+// --- SOLUCIÓN AL CONFLICTO DE INDEXEDDB ---
+// Esta es la línea crucial. Le decimos a Firestore que use solo una caché en memoria
+// y que no toque IndexedDB, evitando la "pelea" con Dexie.
+export const db = initializeFirestore(app, {
+  localCache: memoryLocalCache(),
+});

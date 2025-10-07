@@ -1,7 +1,5 @@
-import { ArrowLeft } from 'lucide-react';
+import { X } from 'lucide-react';
 import { AddAnimalForm } from '../components/forms/AddAnimalForm';
-
-// La página ahora es un simple "contenedor"
 
 interface AddAnimalPageProps {
     onBack: () => void;
@@ -9,26 +7,39 @@ interface AddAnimalPageProps {
 
 export default function AddAnimalPage({ onBack }: AddAnimalPageProps) {
     return (
-        <div className="w-full max-w-2xl mx-auto space-y-6 animate-fade-in pb-12">
-            <header className="flex items-center pt-8 pb-4 px-4">
-                <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors">
-                    <ArrowLeft size={24} />
-                </button>
-                <div className="text-center flex-grow">
-                    <h1 className="text-2xl font-bold tracking-tight text-white">Ingresar Animal</h1>
-                    {/* El subtítulo se manejará dentro del propio formulario */}
-                </div>
-                <div className="w-8"></div>
-            </header>
-            
-            {/* Aquí renderizamos nuestro nuevo componente de formulario.
-              Le pasamos la función 'onBack' para que, tanto al guardar con éxito
-              como al cancelar, la app regrese a la pantalla anterior.
-            */}
-            <AddAnimalForm 
-                onSaveSuccess={onBack}
-                onCancel={onBack}
-            />
+        // Contenedor principal del modal: ocupa toda la pantalla, con fondo translúcido y blur
+        <div 
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex flex-col justify-end animate-fade-in"
+            onClick={onBack} // Permite cerrar el modal al tocar fuera del contenido
+        >
+            {/* Contenedor del contenido que se desliza desde abajo */}
+            <div 
+                className="bg-ios-modal-bg w-full max-w-4xl mx-auto h-[95vh] rounded-t-2xl flex flex-col animate-slide-up"
+                onClick={(e) => e.stopPropagation()} // Evita que el modal se cierre al tocar dentro
+            >
+                {/* Encabezado del Modal */}
+                <header className="flex-shrink-0 flex items-center justify-between p-4 border-b border-brand-border">
+                    <div className="w-10"></div> {/* Espaciador para centrar el título */}
+                    <h1 className="text-xl font-bold tracking-tight text-white">Ingresar Nuevo Animal</h1>
+                    <button 
+                        onClick={onBack} 
+                        className="p-2 text-zinc-400 hover:text-white rounded-full hover:bg-zinc-700/50 transition-colors"
+                        aria-label="Cerrar"
+                    >
+                        <X size={24} />
+                    </button>
+                </header>
+
+                {/* Área de contenido con scroll */}
+                <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+                    <div className="max-w-2xl mx-auto">
+                        <AddAnimalForm 
+                            onSaveSuccess={onBack}
+                            onCancel={onBack}
+                        />
+                    </div>
+                </main>
+            </div>
         </div>
     );
 }
