@@ -1,7 +1,8 @@
+// src/components/lots/BreedingLotsView.tsx
+
 import { useState, useMemo, useEffect, useRef } from 'react';
+import type { PageState } from '../../types/navigation'; // <-- LÍNEA CORREGIDA
 import { useData } from '../../context/DataContext';
-import { PageState } from '../../pages/RebanoShell';
-// --- CORRECCIÓN: Se añade 'GripVertical' y se elimina 'Zap' ---
 import { ChevronRight, Plus, AlertTriangle, Trash2, Edit, Archive, GripVertical } from 'lucide-react';
 import { BreedingGroup } from '../../db/local';
 import { AddBreedingGroupModal } from '../ui/AddBreedingGroupModal';
@@ -99,7 +100,6 @@ export default function BreedingLotsView({ navigateTo }: { navigateTo: (page: Pa
                             group={{...group, hasAlert: false}} 
                             navigateTo={navigateTo} 
                             onEdit={(groupToEdit) => { setSelectedGroup(groupToEdit); setActionSheetOpen(true); }} 
-                            // --- CORRECCIÓN: Se usa la variable para un mensaje más claro ---
                             onDelete={(groupToDelete) => alert(`El lote concluido '${groupToDelete.name}' no se puede eliminar permanentemente.`)} 
                         /> 
                     ))

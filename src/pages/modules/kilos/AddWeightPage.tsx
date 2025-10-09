@@ -1,14 +1,13 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { useData } from '../../../context/DataContext';
-import { PlusCircle, Save, CheckCircle, AlertTriangle, X, Calendar } from 'lucide-react';
+import { PlusCircle, Save, CheckCircle, AlertTriangle, X, Calendar, ArrowLeft, Zap, ScanLine } from 'lucide-react';
 import { auth, db as firestoreDb } from '../../../firebaseConfig';
 import { writeBatch, doc, collection } from "firebase/firestore";
 import { Modal } from '../../../components/ui/Modal';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 
-// --- SUB-COMPONENTES DE LA PÁGINA ---
-
+// --- SUB-COMPONENTE: SELECTOR DE FECHA RÁPIDO ---
 const QuickDatePicker = ({ selectedDate, onDateChange, onOpenCalendar }: { selectedDate: Date, onDateChange: (date: Date) => void, onOpenCalendar: () => void }) => {
     const dates = useMemo(() => {
         const today = new Date();
@@ -39,12 +38,8 @@ const QuickDatePicker = ({ selectedDate, onDateChange, onOpenCalendar }: { selec
                 {dates.map(date => {
                     const isSelected = date.getTime() === selectedDate.getTime();
                     return (
-                        <button 
-                            key={date.toISOString()} 
-                            type="button"
-                            onClick={() => onDateChange(date)}
-                            className={`flex flex-col items-center justify-center rounded-lg p-2 w-16 h-16 flex-shrink-0 transition-colors ${isSelected ? 'bg-brand-green text-white' : 'bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700'}`}
-                        >
+                        <button key={date.toISOString()} type="button" onClick={() => onDateChange(date)}
+                            className={`flex flex-col items-center justify-center rounded-lg p-2 w-16 h-16 flex-shrink-0 transition-colors ${isSelected ? 'bg-brand-green text-white' : 'bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700'}`}>
                             <span className="text-xs capitalize">{formatDateLabel(date, dates[0])}</span>
                             <span className="font-bold text-2xl">{date.getDate()}</span>
                             <span className="text-xs">{date.toLocaleDateString('es-VE', { month: 'short' }).replace('.', '')}</span>
@@ -56,6 +51,7 @@ const QuickDatePicker = ({ selectedDate, onDateChange, onOpenCalendar }: { selec
     );
 };
 
+// --- SUB-COMPONENTE: FILA DE LA LISTA ---
 const EntryRow = ({ entry, onDelete }: { entry: any, onDelete: (tempId: number) => void }) => {
     const isUnrecognized = !entry.isRecognized;
     return (
@@ -72,9 +68,8 @@ const EntryRow = ({ entry, onDelete }: { entry: any, onDelete: (tempId: number) 
     );
 };
 
-
-// --- COMPONENTE PRINCIPAL DE LA PÁGINA ---
-export default function AddWeightPage({ onSaveSuccess }: { onSaveSuccess: (date: string) => void }) {
+// --- SUB-COMPONENTE: FORMULARIO DE CARGA RÁPIDA ---
+const RapidWeightForm = ({ onBack, onSaveSuccess }: { onBack: () => void, onSaveSuccess: (date: string) => void }) => {
     const { animals } = useData();
     const [currentId, setCurrentId] = useState('');
     const [currentKg, setCurrentKg] = useState('');
@@ -85,12 +80,19 @@ export default function AddWeightPage({ onSaveSuccess }: { onSaveSuccess: (date:
     
     const idInputRef = useRef<HTMLInputElement>(null);
     const kgInputRef = useRef<HTMLInputElement>(null);
-    const animalIdSet = useMemo(() => new Set(animals.map(a => a.id)), [animals]);
 
     const handleAddToList = () => {
         if (!currentId || !currentKg) return;
         const id = currentId.toUpperCase().trim();
-        const newEntry = { tempId: Date.now(), animalId: id, kg: parseFloat(currentKg), date: sessionDate.toISOString().split('T')[0], isRecognized: animalIdSet.has(id) };
+
+        // --- VALIDACIÓN PARA ANIMALES DE REFERENCIA ---
+        const animal = animals.find(a => a.id === id);
+        if (animal && animal.isReference) {
+            setMessage({ type: 'error', text: `${id} es un animal de Referencia y no se le pueden añadir pesajes.` });
+            return; // Detiene el proceso
+        }
+
+        const newEntry = { tempId: Date.now(), animalId: id, kg: parseFloat(currentKg), date: sessionDate.toISOString().split('T')[0], isRecognized: !!animal };
         setSessionEntries(prev => [newEntry, ...prev]);
         setCurrentId('');
         setCurrentKg('');
@@ -100,67 +102,46 @@ export default function AddWeightPage({ onSaveSuccess }: { onSaveSuccess: (date:
     const handleFinalSave = async () => {
         setMessage(null);
         const { currentUser } = auth;
-        if (!currentUser) {
-            setMessage({ type: 'error', text: 'Error de autenticación.' });
-            return;
-        }
-        if (sessionEntries.length === 0) {
-            setMessage({ type: 'error', text: 'No hay pesajes para guardar.' });
-            return;
-        }
+        if (!currentUser) { setMessage({ type: 'error', text: 'Error de autenticación.' }); return; }
+        if (sessionEntries.length === 0) { setMessage({ type: 'error', text: 'No hay pesajes para guardar.' }); return; }
 
         try {
             const batch = writeBatch(firestoreDb);
             const weighingsCollection = collection(firestoreDb, 'bodyWeighings');
             sessionEntries.forEach(entry => {
                 const newWeighingRef = doc(weighingsCollection);
-                const dataToSave = {
-                    animalId: entry.animalId,
-                    kg: entry.kg,
-                    date: entry.date,
-                    userId: currentUser.uid
-                };
+                const dataToSave = { animalId: entry.animalId, kg: entry.kg, date: entry.date, userId: currentUser.uid };
                 batch.set(newWeighingRef, dataToSave);
             });
-
             await batch.commit();
             setMessage({ type: 'success', text: `${sessionEntries.length} pesajes guardados con éxito.` });
             setSessionEntries([]);
-            setTimeout(() => {
-                onSaveSuccess(sessionDate.toISOString().split('T')[0]);
-            }, 1500);
+            setTimeout(() => onSaveSuccess(sessionDate.toISOString().split('T')[0]), 1500);
         } catch (error) {
             setMessage({ type: 'error', text: 'Ocurrió un error al guardar en la nube.' });
             console.error("Error en escritura por lote:", error);
         }
     };
-
+    
     const handleIdKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter' && currentId) { e.preventDefault(); kgInputRef.current?.focus(); } };
     const handleKgKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter' && currentKg) { e.preventDefault(); handleAddToList(); } };
     const handleDeleteFromList = (tempId: number) => { setSessionEntries(prev => prev.filter(e => e.tempId !== tempId)); };
-    
-    const handleDateSelect = (date: Date | undefined) => {
-        if (date) {
-            date.setHours(0,0,0,0);
-            setSessionDate(date);
-        }
-        setCalendarOpen(false);
-    };
+    const handleDateSelect = (date: Date | undefined) => { if (date) { date.setHours(0,0,0,0); setSessionDate(date); } setCalendarOpen(false); };
 
     return (
         <>
             <div className="flex flex-col h-full animate-fade-in">
                 <div className="flex-shrink-0 space-y-4">
-                    <header className="text-center px-4">
-                        <h1 className="text-2xl font-bold tracking-tight text-white">Añadir Pesaje Corporal</h1>
-                        <p className="text-md text-zinc-400">Entrada Rápida</p>
+                    <header className="text-center px-4 flex items-center">
+                        <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
+                        <div className="flex-grow">
+                            <h1 className="text-2xl font-bold tracking-tight text-white">Carga Rápida de Peso</h1>
+                            <p className="text-md text-zinc-400">Sesión de Pesaje</p>
+                        </div>
+                        <div className="w-8"></div>
                     </header>
                     <div className="space-y-4">
-                        <QuickDatePicker 
-                            selectedDate={sessionDate} 
-                            onDateChange={setSessionDate} 
-                            onOpenCalendar={() => setCalendarOpen(true)} 
-                        />
+                        <QuickDatePicker selectedDate={sessionDate} onDateChange={setSessionDate} onOpenCalendar={() => setCalendarOpen(true)} />
                         <div className="flex items-center gap-2 px-4">
                             <input ref={idInputRef} type="text" value={currentId} onChange={(e) => setCurrentId(e.target.value)} onKeyDown={handleIdKeyDown} placeholder="ID Animal" className="w-full bg-brand-glass p-4 rounded-xl text-lg placeholder-zinc-500 border-2 border-transparent focus:border-brand-green focus:ring-0"/>
                             <input ref={kgInputRef} type="number" step="0.01" value={currentKg} onChange={(e) => setCurrentKg(e.target.value)} onKeyDown={handleKgKeyDown} placeholder="Kg" className="w-32 flex-shrink-0 bg-brand-glass p-4 rounded-xl text-lg placeholder-zinc-500 border-2 border-transparent focus:border-brand-green focus:ring-0"/>
@@ -178,20 +159,43 @@ export default function AddWeightPage({ onSaveSuccess }: { onSaveSuccess: (date:
 
                 <div className="flex-shrink-0 p-4 border-t border-brand-border bg-gray-900/80 backdrop-blur-sm">
                     {message && ( <div className={`mb-3 flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-brand-green' : 'bg-red-500/20 text-brand-red'}`}> {message.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />} <span>{message.text}</span> </div> )}
-                    <button 
-                        onClick={handleFinalSave} 
-                        className="w-full flex items-center justify-center gap-2 bg-brand-green/20 border border-brand-green text-brand-green hover:bg-brand-green/30 font-bold py-4 px-4 rounded-xl transition-colors text-lg"
-                    >
+                    <button onClick={handleFinalSave} className="w-full flex items-center justify-center gap-2 bg-brand-green/20 border border-brand-green text-brand-green hover:bg-brand-green/30 font-bold py-4 px-4 rounded-xl transition-colors text-lg">
                         <Save size={20} /> Guardar {sessionEntries.length > 0 ? `(${sessionEntries.length})` : ''} Pesajes
                     </button>
                 </div>
             </div>
             
-            <Modal isOpen={isCalendarOpen} onClose={() => setCalendarOpen(false)} title="Seleccionar Fecha">
-                <div className="flex justify-center">
-                    <DayPicker mode="single" selected={sessionDate} onSelect={handleDateSelect} />
-                </div>
-            </Modal>
+            <Modal isOpen={isCalendarOpen} onClose={() => setCalendarOpen(false)} title="Seleccionar Fecha"><div className="flex justify-center"><DayPicker mode="single" selected={sessionDate} onSelect={handleDateSelect} /></div></Modal>
         </>
     );
 };
+
+// --- COMPONENTE PRINCIPAL DE LA PÁGINA (MENÚ) ---
+export default function AddWeightPage({ onNavigate, onSaveSuccess }: { onNavigate: (page: any, state?: any) => void; onSaveSuccess: (date: string) => void; }) {
+  const [entryMode, setEntryMode] = useState<'options' | 'rapid'>('options');
+
+  if (entryMode === 'rapid') {
+    return <RapidWeightForm onBack={() => setEntryMode('options')} onSaveSuccess={onSaveSuccess} />;
+  }
+
+  return (
+    <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in px-4">
+      <header className="text-center">
+        <h1 className="text-3xl font-bold tracking-tight text-white">Añadir Pesaje Corporal</h1>
+        <p className="text-lg text-zinc-400">Carga de Datos de Crecimiento</p>
+      </header>
+      <div className="space-y-4">
+        <button onClick={() => setEntryMode('rapid')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-green text-white p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
+          <Zap className="w-12 h-12 mb-2 text-brand-green" />
+          <span className="text-lg font-semibold">Carga Rápida</span>
+          <span className="text-sm font-normal text-zinc-400">Para carga masiva con teclado</span>
+        </button>
+        <button onClick={() => onNavigate('ocr', {})} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-blue text-white p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
+          <ScanLine className="w-12 h-12 mb-2 text-brand-blue" />
+          <span className="text-lg font-semibold">Escanear Cuaderno</span>
+          <span className="text-sm font-normal text-zinc-400">Digitalización asistida por IA</span>
+        </button>
+      </div>
+    </div>
+  );
+}

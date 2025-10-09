@@ -1,7 +1,11 @@
+// src/hooks/useAnimalStatus.ts
+
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { Animal } from '../db/local';
-import { Baby, Heart, HeartHandshake, CircleOff, Wind, Archive, Droplets, Waypoints } from 'lucide-react';
+import { Baby, Heart, HeartHandshake, CircleOff, Wind, Archive, Waypoints } from 'lucide-react';
+// --- CORRECCIÓN: Se usa el nombre singular 'GiUdder' ---
+import { GiUdder } from 'react-icons/gi';
 
 // Definimos los posibles estados y sus propiedades visuales
 export const STATUS_DEFINITIONS = {
@@ -11,8 +15,10 @@ export const STATUS_DEFINITIONS = {
     IN_SERVICE: { key: 'IN_SERVICE', Icon: Heart, color: 'text-red-400', label: 'En Monta' },
     EMPTY: { key: 'EMPTY', Icon: CircleOff, color: 'text-zinc-500', label: 'Vacía' },
     SIRE_IN_SERVICE: { key: 'SIRE_IN_SERVICE', Icon: Waypoints, color: 'text-blue-400', label: 'Reproductor Activo' },
+    
     // Productivos
-    MILKING: { key: 'MILKING', Icon: Droplets, color: 'text-blue-300', label: 'En Ordeño' },
+    // --- CORRECCIÓN: Se usa el componente 'GiUdder' ---
+    MILKING: { key: 'MILKING', Icon: GiUdder, color: 'text-blue-300', label: 'En Ordeño' },
     DRYING_OFF: { key: 'DRYING_OFF', Icon: Wind, color: 'text-yellow-400', label: 'Secando' },
     DRY: { key: 'DRY', Icon: Archive, color: 'text-zinc-400', label: 'Seca' },
 };

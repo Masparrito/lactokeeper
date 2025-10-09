@@ -1,10 +1,18 @@
+// src/pages/modules/KilosShell.tsx
+
 import { useState } from 'react';
-import { PageState as RebanoPageState } from '../RebanoShell';
-import { ArrowLeft, BarChart2, GitMerge, PlusCircle, Scale } from 'lucide-react';
+import type { PageState as RebanoPageState } from '../../types/navigation';
+import { ArrowLeft, BarChart2, PlusCircle, Scale } from 'lucide-react';
+import { GiChart } from 'react-icons/gi';
 import AddWeightPage from './kilos/AddWeightPage';
 import KilosDashboard from './kilos/KilosDashboard';
+// --- CAMBIO CLAVE 1: Se importa la nueva página de análisis ---
+import KilosAnalysisPage from './kilos/KilosAnalysisPage';
+import { useData } from '../../context/DataContext';
+import { SyncStatusIcon } from '../../components/ui/SyncStatusIcon';
 
-const KilosAnalysis = () => ( <div className="text-center p-8 animate-fade-in"><h1 className="text-3xl font-bold">Análisis de GDP</h1><p className="text-zinc-400 mt-2">Aquí estará la Campana de Gauss y análisis de precocidad.</p></div> );
+// --- CAMBIO CLAVE 2: Eliminamos el componente placeholder 'KilosAnalysis' ---
+// const KilosAnalysis = () => ( ... ); // <- ESTA LÍNEA SE ELIMINA
 
 type KilosPage = 'dashboard' | 'analysis' | 'add-data';
 
@@ -14,11 +22,12 @@ interface KilosShellProps {
 }
 
 export default function KilosShell({ navigateToRebano, onExitModule }: KilosShellProps) {
+    const { syncStatus } = useData();
     const [page, setPage] = useState<KilosPage>('dashboard');
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: BarChart2 },
-        { id: 'analysis', label: 'Análisis', icon: GitMerge },
+        { id: 'analysis', label: 'Análisis', icon: GiChart },
         { id: 'add-data', label: 'Añadir', icon: PlusCircle },
     ];
 
@@ -32,21 +41,23 @@ export default function KilosShell({ navigateToRebano, onExitModule }: KilosShel
 
     const renderContent = () => {
         switch (page) {
-            case 'dashboard':
+            case 'dashboard': 
                 return <KilosDashboard onSelectAnimal={(animalId) => navigateToRebano({ name: 'rebano-profile', animalId })} />;
-            case 'analysis':
-                return <KilosAnalysis />;
-            case 'add-data':
-                return <AddWeightPage onSaveSuccess={() => setPage('dashboard')} />;
-            default:
+            // --- CAMBIO CLAVE 3: Se renderiza la nueva página ---
+            case 'analysis': 
+                return <KilosAnalysisPage onSelectAnimal={(animalId) => navigateToRebano({ name: 'rebano-profile', animalId })} />;
+            case 'add-data': 
+                return <AddWeightPage onNavigate={navigateToRebano} onSaveSuccess={() => setPage('dashboard')} />;
+            default: 
                 return <KilosDashboard onSelectAnimal={(animalId) => navigateToRebano({ name: 'rebano-profile', animalId })} />;
         }
     };
 
     return (
         <div className="min-h-screen animate-fade-in text-white flex flex-col">
+            
             <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border">
-                <div className="max-w-4xl mx-auto flex items-center justify-between p-4">
+                <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-16">
                     <button onClick={handleBackPress} className="p-2 -ml-2 text-zinc-400 hover:text-white" aria-label="Atrás">
                         <ArrowLeft size={24} />
                     </button>
@@ -54,11 +65,13 @@ export default function KilosShell({ navigateToRebano, onExitModule }: KilosShel
                         <Scale className="text-brand-green" />
                         <h1 className="text-xl font-bold">Kilos</h1>
                     </div>
-                    <div className="w-8"></div> {/* Espaciador */}
+                    <div className="w-8 flex justify-end">
+                        <SyncStatusIcon status={syncStatus} />
+                    </div>
                 </div>
             </header>
             
-            <main className="flex-grow pt-20 pb-24">
+            <main className="flex-grow pt-16 pb-24">
                 {renderContent()}
             </main>
 

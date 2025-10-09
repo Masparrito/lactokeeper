@@ -29,18 +29,24 @@ export const LoginPage: React.FC = () => {
     };
 
     const handleAuthError = (err: AuthError) => {
+        if (err.code === 'auth/network-request-failed') {
+            return 'No hay conexión a internet. Se requiere conexión para iniciar sesión.';
+        }
+        
         switch (err.code) {
             case 'auth/invalid-email':
                 return 'El formato del correo electrónico no es válido.';
             case 'auth/user-not-found':
             case 'auth/wrong-password':
+            case 'auth/invalid-credential':
                 return 'Correo electrónico o contraseña incorrectos.';
             case 'auth/email-already-in-use':
                 return 'Este correo electrónico ya está registrado.';
             case 'auth/weak-password':
                 return 'La contraseña debe tener al menos 6 caracteres.';
             default:
-                return 'Ocurrió un error. Por favor, intenta de nuevo.';
+                console.error("Firebase Auth Error:", err);
+                return 'Ocurrió un error inesperado. Por favor, intenta de nuevo.';
         }
     };
 
@@ -63,12 +69,10 @@ export const LoginPage: React.FC = () => {
     };
 
     return (
-        // --- CORRECCIÓN DE ESTILO: Se elimina bg-gray-900 para usar el color global del body ---
         <div className="min-h-screen flex flex-col items-center justify-center p-4 font-sans">
             <div className="w-full max-w-sm">
                 <div className="text-center mb-8">
                     <div className="flex items-center justify-center space-x-2 mb-2">
-                        {/* --- CORRECCIÓN DE ESTILO: Se usa el color de acento de la marca --- */}
                         <Droplet className="w-10 h-10 text-brand-orange" />
                         <h1 className="text-4xl font-bold text-white">LactoKeeper</h1>
                     </div>
@@ -77,16 +81,10 @@ export const LoginPage: React.FC = () => {
 
                 <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-6 border border-brand-border">
                     <div className="flex bg-zinc-900/80 rounded-xl p-1 w-full mb-6">
-                        <button
-                            onClick={() => setIsLoginView(true)}
-                            className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors ${isLoginView ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:bg-zinc-800/50'}`}
-                        >
+                        <button onClick={() => setIsLoginView(true)} className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors ${isLoginView ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:bg-zinc-800/50'}`}>
                             Iniciar Sesión
                         </button>
-                        <button
-                            onClick={() => setIsLoginView(false)}
-                            className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors ${!isLoginView ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:bg-zinc-800/50'}`}
-                        >
+                        <button onClick={() => setIsLoginView(false)} className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors ${!isLoginView ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:bg-zinc-800/50'}`}>
                             Registrarse
                         </button>
                     </div>
@@ -125,8 +123,7 @@ export const LoginPage: React.FC = () => {
                         </button>
                     </form>
                 </div>
-
-                {/* Botón de emergencia temporal */}
+                
                 <div className="mt-6 text-center">
                     <button 
                         onClick={handleForceDeleteDB}
@@ -135,6 +132,7 @@ export const LoginPage: React.FC = () => {
                         <Trash2 size={16} />
                         Forzar Reinicio de DB Local
                     </button>
+                    <p className="text-xs text-zinc-600 mt-2">Si la app no carga, usa este botón.</p>
                 </div>
             </div>
         </div>

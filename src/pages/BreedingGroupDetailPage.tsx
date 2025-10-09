@@ -1,6 +1,8 @@
+// src/pages/BreedingGroupDetailPage.tsx
+
 import { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
-import { PageState } from './RebanoShell';
+import type { PageState } from '../types/navigation';
 import { ArrowLeft, Plus, Heart, Search, Feather } from 'lucide-react';
 import { AddParturitionForm } from '../components/forms/AddParturitionForm';
 import { Animal, ServiceRecord } from '../db/local';
@@ -8,9 +10,12 @@ import { AdvancedAnimalSelector } from '../components/ui/AdvancedAnimalSelector'
 import { Modal } from '../components/ui/Modal';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
+// --- CAMBIO CLAVE 1: Importamos la función para formatear la edad ---
+import { formatAge } from '../utils/calculations';
 
 const calendarCss = ` .rdp { --rdp-cell-size: 40px; --rdp-accent-color: #FBBF24; --rdp-background-color: #3a3a3c; --rdp-accent-color-dark: #FBBF24; --rdp-background-color-dark: #3a3a3c; --rdp-outline: 2px solid var(--rdp-accent-color); --rdp-outline-selected: 3px solid var(--rdp-accent-color); --rdp-border-radius: 6px; color: #FFF; margin: 1em; } .rdp-caption_label, .rdp-nav_button { color: #FBBF24; } .rdp-head_cell { color: #8e8e93; } .rdp-day_selected { background-color: var(--rdp-accent-color); color: #000; font-weight: bold; } `;
 
+// --- COMPONENTE DE FILA ACTUALIZADO ---
 const AssignedFemaleRow = ({ animal, services, onDeclareService, onDeclareParturition, onSelect }: { animal: Animal, services: ServiceRecord[], onDeclareService: (femaleId: string) => void, onDeclareParturition: (femaleId: string) => void, onSelect: (id: string) => void }) => {
     const serviceCount = services.length;
     const lastServiceDate = serviceCount > 0 ? new Date(services[services.length - 1].serviceDate + 'T00:00:00').toLocaleDateString('es-VE') : null;
@@ -19,7 +24,12 @@ const AssignedFemaleRow = ({ animal, services, onDeclareService, onDeclarePartur
         <div className="w-full text-left bg-zinc-800/50 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <button onClick={() => onSelect(animal.id)} className="w-full sm:w-auto text-left">
                 <p className="font-bold text-lg text-white">{animal.id}</p>
-                <div className="flex items-center gap-2 text-sm text-zinc-400">
+                {/* --- CAMBIO CLAVE 2: Se añade la línea de información estándar --- */}
+                <p className="text-sm text-zinc-400">
+                    {animal.sex} | {formatAge(animal.birthDate)} | Lote: {animal.location || 'Sin Asignar'}
+                </p>
+                {/* Se mantiene la información de servicios, específica de este módulo */}
+                <div className="flex items-center gap-2 text-sm text-zinc-400 mt-1">
                     {serviceCount > 0 ? ( <div className="flex items-center gap-1 text-pink-400 font-semibold"><Heart size={14} fill="currentColor" /><span>{serviceCount} {serviceCount > 1 ? 'Servicios' : 'Servicio'} ({lastServiceDate})</span></div> ) : ( <span>Sin servicios reportados</span> )}
                 </div>
             </button>
@@ -96,7 +106,6 @@ export default function BreedingGroupDetailPage({ groupId, navigateTo, onBack }:
                                         animal={animal} 
                                         services={animalServices} 
                                         onDeclareService={(id) => setServiceModal({ isOpen: true, femaleId: id })} 
-                                        // --- CORRECCIÓN DE SINTAXIS ---
                                         onDeclareParturition={(id) => setParturitionModal({ isOpen: true, femaleId: id })} 
                                         onSelect={(id) => navigateTo({ name: 'rebano-profile', animalId: id })} 
                                     />

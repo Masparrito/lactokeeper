@@ -1,15 +1,14 @@
+// src/utils/calculations.ts
+
 import { Animal, Parturition, BodyWeighing } from '../db/local';
 
 /**
  * Calcula la edad de un animal en días completados.
- * Es una función interna robusta para ser usada por otras funciones.
- * @param birthDate La fecha de nacimiento del animal ('YYYY-MM-DD').
- * @returns El número de días de vida, o -1 si la fecha no es válida.
  */
 export const calculateAgeInDays = (birthDate: string): number => {
     if (!birthDate || birthDate === 'N/A') return -1;
     
-    const birth = new Date(birthDate + 'T00:00:00Z'); // Forzar UTC para consistencia
+    const birth = new Date(birthDate + 'T00:00:00Z');
     const today = new Date();
     const todayUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
 
@@ -23,8 +22,6 @@ export const calculateAgeInDays = (birthDate: string): number => {
 
 /**
  * Formatea la edad de un animal según las reglas especificadas.
- * @param birthDate La fecha de nacimiento del animal ('YYYY-MM-DD').
- * @returns Un string con la edad formateada (ej: "45 días", "3 meses y 10 días", "2 años y 5 meses").
  */
 export const formatAge = (birthDate: string): string => {
     const totalDays = calculateAgeInDays(birthDate);
@@ -92,16 +89,8 @@ export const calculateWeightedScore = (kg: number, del: number): number => {
   return parseFloat(weightedScore.toFixed(2));
 };
 
-
-// ==================================================
-// --- NUEVAS FUNCIONES PARA EL MÓDULO "KILOS" ---
-// ==================================================
-
 /**
  * Calcula la Ganancia Diaria de Peso (GDP) de un animal.
- * @param birthWeight Peso al nacer del animal.
- * @param weighings Array de todos los pesajes corporales del animal, ordenados por fecha.
- * @returns Un objeto con la GDP general y la GDP reciente (entre los dos últimos pesajes).
  */
 export const calculateGDP = (birthWeight: number | undefined, weighings: BodyWeighing[]): { overall: number | null, recent: number | null } => {
     if (weighings.length === 0) return { overall: null, recent: null };
@@ -111,9 +100,9 @@ export const calculateGDP = (birthWeight: number | undefined, weighings: BodyWei
     
     let overall: number | null = null;
     if (birthWeight && birthWeight > 0) {
-        const ageInDays = calculateAgeInDays(sortedWeighings[0].date); // Asumimos que el primer pesaje es el de nacimiento
-        if (ageInDays > 0) {
-            overall = (latestWeighing.kg - birthWeight) / ageInDays;
+        const ageAtLastWeighing = calculateAgeInDays(latestWeighing.date) - calculateAgeInDays(new Date().toISOString().split('T')[0]) + calculateAgeInDays(new Date(latestWeighing.date).toISOString().split('T')[0]);
+        if (ageAtLastWeighing > 0) {
+            overall = (latestWeighing.kg - birthWeight) / ageAtLastWeighing;
         }
     }
     
@@ -121,7 +110,7 @@ export const calculateGDP = (birthWeight: number | undefined, weighings: BodyWei
     if (sortedWeighings.length >= 2) {
         const last = latestWeighing;
         const secondLast = sortedWeighings[sortedWeighings.length - 2];
-        const daysBetween = calculateAgeInDays(secondLast.date) - calculateAgeInDays(last.date);
+        const daysBetween = (new Date(last.date).getTime() - new Date(secondLast.date).getTime()) / (1000 * 60 * 60 * 24);
         if (daysBetween > 0) {
             recent = (last.kg - secondLast.kg) / daysBetween;
         }
@@ -132,25 +121,23 @@ export const calculateGDP = (birthWeight: number | undefined, weighings: BodyWei
 
 /**
  * Estima el peso de un animal en una edad objetivo usando interpolación lineal.
- * Resuelve el problema de la "proximidad".
- * @param weighings Array de pesajes corporales del animal, ordenados por fecha.
- * @param birthDate Fecha de nacimiento del animal.
- * @param targetAgeInDays Edad objetivo en días (ej: 60, 90, 180).
- * @returns El peso estimado en Kg, o null si no se puede calcular.
  */
 export const getInterpolatedWeight = (weighings: BodyWeighing[], birthDate: string, targetAgeInDays: number): number | null => {
-    if (weighings.length < 2) return null;
-
     const weighingsWithAge = weighings.map(w => ({
-        age: calculateAgeInDays(birthDate),
+        age: (new Date(w.date).getTime() - new Date(birthDate).getTime()) / (1000 * 60 * 60 * 24),
         kg: w.kg,
     })).sort((a, b) => a.age - b.age);
+
+    if (weighingsWithAge.length < 1) return null;
 
     const before = weighingsWithAge.filter(w => w.age <= targetAgeInDays).pop();
     const after = weighingsWithAge.find(w => w.age >= targetAgeInDays);
 
-    if (!before || !after) return null; // No hay suficientes datos para interpolar
-    if (before.age === after.age) return before.kg; // Coincidencia exacta
+    if (before && before.age === targetAgeInDays) return before.kg;
+    if (after && after.age === targetAgeInDays) return after.kg;
+
+    if (!before || !after) return null;
+    if (before.age === after.age) return before.kg;
 
     const ageRange = after.age - before.age;
     if (ageRange === 0) return before.kg;
@@ -165,19 +152,40 @@ export const getInterpolatedWeight = (weighings: BodyWeighing[], birthDate: stri
 
 /**
  * Calcula un índice de crecimiento ponderado que premia la precocidad.
- * Compara la GDP de un animal con la media del grupo en un periodo.
- * @param individualGdp La Ganancia Diaria de Peso del animal.
- * @param averageGdp La Ganancia Diaria de Peso promedio del grupo de comparación.
- * @param ageInDays La edad actual del animal.
- * @returns Un puntaje (ej: 110 = 10% por encima del promedio). Un puntaje más alto es mejor.
  */
 export const calculateGrowthScore = (individualGdp: number, averageGdp: number, ageInDays: number): number => {
-    if (averageGdp === 0) return 100; // Evitar división por cero
-
+    if (averageGdp === 0) return 100;
     const baseScore = (individualGdp / averageGdp) * 100;
-    
-    // Pequeño bonus por precocidad: un animal más joven con la misma GDP relativa obtiene un mejor puntaje.
-    const ageFactor = 1 + ((180 - Math.min(ageInDays, 180)) / 180) * 0.1; // Bonus de hasta el 10% para los más jóvenes
-
+    const ageFactor = 1 + ((180 - Math.min(ageInDays, 180)) / 180) * 0.1;
     return Math.round(baseScore * ageFactor);
+};
+
+// --- NUEVA FUNCIÓN: ÍNDICE DE DESTETE ---
+/**
+ * Calcula el peso ajustado al destete (ej: a 60 días).
+ * @param animal El objeto del animal.
+ * @returns El peso ajustado a 60 días, o null si no se puede calcular.
+ */
+export const calculateWeaningIndex = (animal: Animal): number | null => {
+    if (!animal.weaningWeight || !animal.weaningDate || !animal.birthWeight || !animal.birthDate) {
+        return null;
+    }
+    const ageAtWeaning = (new Date(animal.weaningDate).getTime() - new Date(animal.birthDate).getTime()) / (1000 * 60 * 60 * 24);
+    if (ageAtWeaning <= 0) return null;
+
+    const gdpToWeaning = (animal.weaningWeight - animal.birthWeight) / ageAtWeaning;
+    const adjustedWeight = animal.birthWeight + (gdpToWeaning * 60); // Ajustado a 60 días
+    return parseFloat(adjustedWeight.toFixed(2));
+};
+
+// --- NUEVA FUNCIÓN: ÍNDICE DE PRECOCIDAD ---
+/**
+ * Estima el peso a los 7 meses (210 días) como indicador de precocidad.
+ * @param animal El objeto del animal.
+ * @param allWeighings Todos los pesajes corporales.
+ * @returns El peso estimado a los 210 días, o null si no se puede calcular.
+ */
+export const calculatePrecocityIndex = (animal: Animal, allWeighings: BodyWeighing[]): number | null => {
+    const animalWeighings = allWeighings.filter(w => w.animalId === animal.id);
+    return getInterpolatedWeight(animalWeighings, animal.birthDate, 210); // 7 meses = 210 días
 };

@@ -1,17 +1,18 @@
-import { useState, useMemo } from 'react';
+// src/pages/LotDetailPage.tsx
+
+import { useState, useMemo, useRef } from 'react';
 import { useData } from '../context/DataContext';
-import { PageState } from './RebanoShell';
+import type { PageState } from '../types/navigation';
 import { ArrowLeft, Plus, Edit, Trash2, MoveRight, CheckSquare, Square } from 'lucide-react';
 import { Animal } from '../db/local';
 import { AdvancedAnimalSelector } from '../components/ui/AdvancedAnimalSelector';
 import { TransferAnimalsModal } from '../components/ui/TransferAnimalsModal';
-import { getAnimalZootecnicCategory, formatAge } from '../utils/calculations';
+import { formatAge } from '../utils/calculations';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
-// --- TARJETA DE ANIMAL MEJORADA ---
+// --- ANIMAL ROW ACTUALIZADO ---
 const AnimalRow = ({ animal, onSelect, isEditing, isSelected }: { animal: Animal, onSelect: (id: string) => void, isEditing: boolean, isSelected: boolean }) => {
-    const { parturitions } = useData();
     const formattedAge = formatAge(animal.birthDate);
-    const zootecnicCategory = getAnimalZootecnicCategory(animal, parturitions);
 
     return (
         <div 
@@ -24,7 +25,10 @@ const AnimalRow = ({ animal, onSelect, isEditing, isSelected }: { animal: Animal
                 )}
                 <div>
                     <p className="font-bold text-lg text-white">{animal.id}</p>
-                    <p className="text-sm text-zinc-400">{animal.sex} | {formattedAge} | {zootecnicCategory}</p>
+                    {/* --- CAMBIO CLAVE: Se unifica la información base según la nueva norma --- */}
+                    <p className="text-sm text-zinc-400">
+                        {animal.sex} | {formattedAge} | Lote: {animal.location || 'Sin Asignar'}
+                    </p>
                 </div>
             </div>
         </div>
@@ -35,8 +39,6 @@ const AnimalRow = ({ animal, onSelect, isEditing, isSelected }: { animal: Animal
 export default function LotDetailPage({ lotName, onBack, navigateTo }: { lotName: string; onBack: () => void; navigateTo: (page: PageState) => void; }) {
     const { animals, parturitions, serviceRecords, breedingGroups, updateAnimal } = useData();
     const [isSelectorOpen, setSelectorOpen] = useState(false);
-
-    // --- ESTADOS PARA EL MODO EDICIÓN ---
     const [isEditing, setIsEditing] = useState(false);
     const [selectedAnimals, setSelectedAnimals] = useState<Set<string>>(new Set());
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
@@ -45,27 +47,29 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: { lotName
         return animals.filter(animal => (animal.location || 'Sin Asignar') === lotName).sort((a, b) => a.id.localeCompare(b.id));
     }, [animals, lotName]);
 
+    const parentRef = useRef<HTMLDivElement>(null);
+    const rowVirtualizer = useVirtualizer({
+        count: animalsInLot.length,
+        getScrollElement: () => parentRef.current,
+        estimateSize: () => 92,
+        overscan: 5,
+    });
+
     const handleToggleAnimalSelection = (animalId: string) => {
         setSelectedAnimals(prev => {
             const newSet = new Set(prev);
-            if (newSet.has(animalId)) {
-                newSet.delete(animalId);
-            } else {
-                newSet.add(animalId);
-            }
+            if (newSet.has(animalId)) { newSet.delete(animalId); } else { newSet.add(animalId); }
             return newSet;
         });
     };
 
     const handleRemoveFromLot = async () => {
-        const updatePromises = Array.from(selectedAnimals).map(animalId => updateAnimal(animalId, { location: '' })); // Envia a "Sin Asignar"
+        const updatePromises = Array.from(selectedAnimals).map(animalId => updateAnimal(animalId, { location: '' }));
         try {
             await Promise.all(updatePromises);
             setIsEditing(false);
             setSelectedAnimals(new Set());
-        } catch (error) {
-            console.error("Error al quitar animales del lote:", error);
-        }
+        } catch (error) { console.error("Error al quitar animales del lote:", error); }
     };
 
     const handleAssignAnimals = async (selectedIds: string[]) => {
@@ -94,21 +98,43 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: { lotName
                         <button onClick={() => setSelectorOpen(true)} className="w-full flex items-center justify-center gap-2 bg-brand-orange hover:bg-orange-600 text-white font-bold py-4 px-4 rounded-xl transition-colors text-lg"><Plus size={20} /> Añadir Animales</button>
                     </div>
                 )}
-
-                <div className="space-y-2 pt-4 px-4">
-                    {animalsInLot.map(animal => (
-                        <AnimalRow 
-                            key={animal.id} 
-                            animal={animal} 
-                            isEditing={isEditing}
-                            isSelected={selectedAnimals.has(animal.id)}
-                            onSelect={(id) => isEditing ? handleToggleAnimalSelection(id) : navigateTo({ name: 'rebano-profile', animalId: id })} 
-                        />
-                    ))}
+                
+                <div ref={parentRef} className="pt-4" style={{ height: 'calc(100vh - 250px)', overflowY: 'auto' }}>
+                    {animalsInLot.length > 0 ? (
+                        <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
+                            {rowVirtualizer.getVirtualItems().map((virtualItem) => {
+                                const animal = animalsInLot[virtualItem.index];
+                                return (
+                                    <div
+                                        key={virtualItem.key}
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            width: '100%',
+                                            height: `${virtualItem.size}px`,
+                                            transform: `translateY(${virtualItem.start}px)`,
+                                            padding: '0 1rem 0.5rem 1rem'
+                                        }}
+                                    >
+                                        <AnimalRow 
+                                            animal={animal} 
+                                            isEditing={isEditing}
+                                            isSelected={selectedAnimals.has(animal.id)}
+                                            onSelect={(id) => isEditing ? handleToggleAnimalSelection(id) : navigateTo({ name: 'rebano-profile', animalId: id })} 
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                         <div className="text-center py-10 bg-brand-glass rounded-2xl mx-4">
+                            <p className="text-zinc-500">Este lote está vacío.</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* --- PIE DE PÁGINA QUE APARECE EN MODO EDICIÓN --- */}
             {isEditing && selectedAnimals.size > 0 && (
                 <div className="fixed bottom-0 left-0 right-0 bg-black/50 backdrop-blur-md p-4 border-t border-brand-border animate-slide-up z-20">
                     <div className="max-w-2xl mx-auto flex gap-4">

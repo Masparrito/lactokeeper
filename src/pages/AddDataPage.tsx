@@ -86,12 +86,19 @@ const RapidEntryForm = ({ onBack, onSaveSuccess }: { onBack: () => void, onSaveS
 
     const idInputRef = useRef<HTMLInputElement>(null);
     const kgInputRef = useRef<HTMLInputElement>(null);
-    const animalIdSet = useMemo(() => new Set(animals.map(a => a.id)), [animals]);
 
     const handleAddToList = () => {
         if (!currentId || !currentKg) return;
         const id = currentId.toUpperCase().trim();
-        const newEntry = { tempId: Date.now(), animalId: id, kg: parseFloat(currentKg), date: sessionDate.toISOString().split('T')[0], isRecognized: animalIdSet.has(id) };
+
+        // --- VALIDACIÓN PARA ANIMALES DE REFERENCIA ---
+        const animal = animals.find(a => a.id === id);
+        if (animal && animal.isReference) {
+            setMessage({ type: 'error', text: `${id} es un animal de Referencia y no se le pueden añadir pesajes.` });
+            return; // Detiene el proceso
+        }
+
+        const newEntry = { tempId: Date.now(), animalId: id, kg: parseFloat(currentKg), date: sessionDate.toISOString().split('T')[0], isRecognized: !!animal };
         setSessionEntries(prev => [newEntry, ...prev]);
         setCurrentId('');
         setCurrentKg('');
@@ -136,7 +143,7 @@ const RapidEntryForm = ({ onBack, onSaveSuccess }: { onBack: () => void, onSaveS
 
     return (
         <>
-            <div className="flex flex-col h-full animate-fade-in">
+            <div className="flex flex-col h-full">
                 <div className="flex-shrink-0 space-y-4">
                     <header className="text-center px-4 flex items-center">
                         <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
@@ -177,7 +184,7 @@ const RapidEntryForm = ({ onBack, onSaveSuccess }: { onBack: () => void, onSaveS
     );
 };
 
-// --- COMPONENTE PRINCIPAL DE LA PÁGINA (AHORA ES UN MENÚ) ---
+// --- COMPONENTE PRINCIPAL DE LA PÁGINA (MENÚ) ---
 export default function AddDataPage({ onNavigate }: { onNavigate: (page: any, state?: any) => void; }) {
   const [entryMode, setEntryMode] = useState<'options' | 'rapid'>('options');
 

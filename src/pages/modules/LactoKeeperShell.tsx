@@ -1,5 +1,7 @@
+// src/pages/modules/LactoKeeperShell.tsx
+
 import { useState } from 'react';
-import { PageState as RebanoPageState } from '../RebanoShell';
+import type { PageState as RebanoPageState } from '../../types/navigation';
 import Dashboard from '../Dashboard';
 import AnimalsPage from '../AnimalsPage';
 import HistoryPage from '../HistoryPage';
@@ -7,6 +9,10 @@ import AddDataPage from '../AddDataPage';
 import ManagementPage from '../ManagementPage';
 import { PeriodStats } from '../../hooks/useHistoricalAnalysis';
 import { BarChart2, ArrowLeft, CalendarClock, List, PlusCircle, Wind } from 'lucide-react';
+// --- CAMBIO CLAVE 1: Se importa el nuevo ícono ---
+import { GiMilkCarton } from 'react-icons/gi';
+import { useData } from '../../context/DataContext';
+import { SyncStatusIcon } from '../../components/ui/SyncStatusIcon';
 
 type LactoKeeperPage = 'dashboard' | 'analysis' | 'history' | 'add-data' | 'drying';
 
@@ -16,6 +22,7 @@ interface LactoKeeperShellProps {
 }
 
 export default function LactoKeeperShell({ navigateToRebano, onExitModule }: LactoKeeperShellProps) {
+    const { syncStatus } = useData();
     const [page, setPage] = useState<LactoKeeperPage>('dashboard');
     const [historySelectedPeriod, setHistorySelectedPeriod] = useState<PeriodStats | null>(null);
 
@@ -27,47 +34,45 @@ export default function LactoKeeperShell({ navigateToRebano, onExitModule }: Lac
         { id: 'drying', label: 'Secado', icon: Wind },
     ];
 
-    // --- NUEVA FUNCIÓN DE NAVEGACIÓN HACIA ATRÁS ---
     const handleBackPress = () => {
         if (page === 'dashboard') {
-            onExitModule(); // Si ya estamos en el dashboard, salimos del módulo
+            onExitModule();
         } else {
-            setPage('dashboard'); // Si estamos en otra página, volvemos al dashboard del módulo
+            setPage('dashboard');
         }
     };
 
     const renderContent = () => {
         switch (page) {
-            case 'dashboard':
-                return <Dashboard onNavigateToAnalysis={() => setPage('analysis')} />;
-            case 'analysis':
-                return <AnimalsPage onSelectAnimal={(animalId: string) => navigateToRebano({ name: 'rebano-profile', animalId })} />;
-            case 'history':
-                return <HistoryPage 
-                            onSelectAnimal={(animalId: string) => navigateToRebano({ name: 'rebano-profile', animalId })} 
-                            selectedPeriod={historySelectedPeriod}
-                            setSelectedPeriod={setHistorySelectedPeriod}
-                       />;
-            case 'add-data':
-                return <AddDataPage onNavigate={(pageName: any, state: any) => navigateToRebano({ name: pageName, ...state })} />;
-            case 'drying':
-                return <ManagementPage onSelectAnimal={(animalId: string) => navigateToRebano({ name: 'rebano-profile', animalId })} />;
-            default:
-                return <Dashboard onNavigateToAnalysis={() => setPage('analysis')} />;
+            case 'dashboard': return <Dashboard onNavigateToAnalysis={() => setPage('analysis')} />;
+            case 'analysis': return <AnimalsPage onSelectAnimal={(animalId: string) => navigateToRebano({ name: 'rebano-profile', animalId })} />;
+            case 'history': return <HistoryPage onSelectAnimal={(animalId: string) => navigateToRebano({ name: 'rebano-profile', animalId })} selectedPeriod={historySelectedPeriod} setSelectedPeriod={setHistorySelectedPeriod} />;
+            case 'add-data': return <AddDataPage onNavigate={(pageName: any, state: any) => navigateToRebano({ name: pageName, ...state })} />;
+            case 'drying': return <ManagementPage onSelectAnimal={(animalId: string) => navigateToRebano({ name: 'rebano-profile', animalId })} />;
+            default: return <Dashboard onNavigateToAnalysis={() => setPage('analysis')} />;
         }
     };
 
     return (
-        <div className="min-h-screen animate-fade-in">
-            <button
-                onClick={handleBackPress} // <-- SE USA LA NUEVA FUNCIÓN
-                className="fixed top-4 left-4 z-50 w-12 h-12 bg-zinc-800/80 backdrop-blur-md text-white rounded-full flex items-center justify-center shadow-lg hover:bg-zinc-700"
-                aria-label="Atrás"
-            >
-                <ArrowLeft size={24} />
-            </button>
+        <div className="min-h-screen animate-fade-in text-white flex flex-col">
+            
+            <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border">
+                <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-16">
+                    <button onClick={handleBackPress} className="p-2 -ml-2 text-zinc-400 hover:text-white" aria-label="Atrás">
+                        <ArrowLeft size={24} />
+                    </button>
+                    <div className="flex items-center gap-2">
+                        {/* --- CAMBIO CLAVE 2: Se reemplaza Droplets por GiMilkCarton --- */}
+                        <GiMilkCarton className="text-brand-orange" size={28} />
+                        <h1 className="text-xl font-bold">LactoKeeper</h1>
+                    </div>
+                    <div className="w-8 flex justify-end">
+                        <SyncStatusIcon status={syncStatus} />
+                    </div>
+                </div>
+            </header>
 
-            <main className="pb-24 pt-4">
+            <main className="flex-grow pt-16 pb-24">
                 {renderContent()}
             </main>
 

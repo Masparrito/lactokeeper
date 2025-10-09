@@ -1,16 +1,16 @@
-import { useMemo } from 'react'; // Se elimina la importación innecesaria de 'React'
+import { useMemo } from 'react';
 import { useData } from '../../../context/DataContext';
-// --- CORRECCIÓN: Se añade la importación de 'calculateAgeInDays' ---
-import { calculateGDP, calculateGrowthScore, formatAge, calculateAgeInDays } from '../../../utils/calculations';
+import { calculateAgeInDays, calculateGDP, formatAge, getAnimalZootecnicCategory, calculateGrowthScore } from '../../../utils/calculations';
 import { ChevronRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 import { CustomTooltip } from '../../../components/ui/CustomTooltip';
 
 // --- SUB-COMPONENTES DE LA PÁGINA ---
 
-const GDPTrendIcon = ({ gdp, averageGdp }: { gdp: number, averageGdp: number }) => {
+const GDPTrendIcon = ({ gdp, averageGdp }: { gdp: number | null, averageGdp: number }) => {
     if (!gdp || !averageGdp || averageGdp === 0) return null;
     const diff = gdp / averageGdp;
+
     if (diff > 1.1) return <TrendingUp size={18} className="text-brand-green" />;
     if (diff < 0.9) return <TrendingDown size={18} className="text-brand-red" />;
     return <Minus size={18} className="text-zinc-500" />;
@@ -25,7 +25,10 @@ const AnimalRow = ({ animal, onSelect, averageGdp }: { animal: any, onSelect: (i
             </div>
             <div className="flex items-center gap-4">
                 <div className="text-right">
-                    <p className="font-semibold text-white">{(animal.gdp.overall * 1000).toFixed(0)} <span className="text-sm text-zinc-400">g/día</span></p>
+                    <p className="font-semibold text-white">
+                        {animal.gdp.overall ? `${(animal.gdp.overall * 1000).toFixed(0)}` : '--'}
+                        <span className="text-sm text-zinc-400"> g/día</span>
+                    </p>
                     <p className={`font-bold text-sm ${animal.classification === 'Sobresaliente' ? 'text-brand-green' : animal.classification === 'Pobre' ? 'text-brand-red' : 'text-zinc-400'}`}>{animal.classification}</p>
                 </div>
                 <GDPTrendIcon gdp={animal.gdp.overall} averageGdp={averageGdp} />
@@ -37,12 +40,13 @@ const AnimalRow = ({ animal, onSelect, averageGdp }: { animal: any, onSelect: (i
 
 // --- COMPONENTE PRINCIPAL DEL DASHBOARD DE KILOS ---
 export default function KilosDashboard({ onSelectAnimal }: { onSelectAnimal: (animalId: string) => void }) {
-    const { animals, bodyWeighings } = useData();
+    const { animals, bodyWeighings, parturitions } = useData();
 
     const analysis = useMemo(() => {
-        const animalsInGrowth = animals.filter(a => 
-            ['Cabrita', 'Cabritona', 'Cabrito', 'Macho de Levante'].includes(a.lifecycleStage)
-        );
+        const animalsInGrowth = animals.filter(a => {
+            const category = getAnimalZootecnicCategory(a, parturitions);
+            return ['Cabrita', 'Cabritona', 'Cabrito', 'Macho de Levante'].includes(category);
+        });
 
         if (animalsInGrowth.length === 0) {
             return { analyzedAnimals: [], distribution: [], averageGdp: 0 };
@@ -96,7 +100,7 @@ export default function KilosDashboard({ onSelectAnimal }: { onSelectAnimal: (an
 
         return { analyzedAnimals: classified.sort((a,b) => b.score - a.score), distribution, averageGdp };
 
-    }, [animals, bodyWeighings]);
+    }, [animals, bodyWeighings, parturitions]);
 
     return (
         <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in">

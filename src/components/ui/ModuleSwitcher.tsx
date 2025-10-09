@@ -1,20 +1,26 @@
-import React, { useState } from 'react';
-import { Layers, Droplets, Scale, X } from 'lucide-react';
+// src/components/ui/ModuleSwitcher.tsx
 
-// Se actualizan los colores a nuestra paleta de marca
+import React, { useState } from 'react';
+import { Layers, Droplets, Scale, HeartPulse, X } from 'lucide-react';
+
+// Se actualiza el tipo para incluir 'salud'
+type AppModule = 'lactokeeper' | 'kilos' | 'salud';
+
+// --- CAMBIO CLAVE: Se añade el nuevo módulo de Salud a la lista ---
 const modules = [
     { id: 'lactokeeper', name: 'LactoKeeper', icon: Droplets, color: 'bg-brand-blue' },
-    { id: 'kilos', name: 'Kilos', icon: Scale, color: 'bg-brand-green' }
+    { id: 'kilos', name: 'Kilos', icon: Scale, color: 'bg-brand-green' },
+    { id: 'salud', name: 'Salud', icon: HeartPulse, color: 'bg-teal-500' } // Nuevo módulo
 ];
 
 interface ModuleSwitcherProps {
-    onSwitchModule: (module: 'lactokeeper' | 'kilos') => void;
+    onSwitchModule: (module: AppModule) => void;
 }
 
 export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ onSwitchModule }) => {
     const [isOpen, setIsOpen] = useState(false);
 
-    const handleModuleSelect = (moduleId: 'lactokeeper' | 'kilos') => {
+    const handleModuleSelect = (moduleId: AppModule) => {
         setIsOpen(false);
         onSwitchModule(moduleId);
     };
@@ -30,7 +36,7 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ onSwitchModule }
                             {module.name}
                         </span>
                         <button
-                            onClick={() => handleModuleSelect(module.id as 'lactokeeper' | 'kilos')}
+                            onClick={() => handleModuleSelect(module.id as AppModule)}
                             className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg ${module.color} transform transition-transform hover:scale-110 pointer-events-auto`}
                             aria-label={`Cambiar al módulo ${module.name}`}
                         >

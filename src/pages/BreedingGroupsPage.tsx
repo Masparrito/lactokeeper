@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
-import { PageState } from './RebanoShell'; // RUTA CORREGIDA
+import type { PageState } from '../types/navigation';
 import { ArrowLeft, Plus, ChevronRight } from 'lucide-react';
 import { AddBreedingGroupModal } from '../components/ui/AddBreedingGroupModal';
 import { BreedingGroup } from '../db/local';

@@ -1,3 +1,5 @@
+// src/pages/RebanoShell.tsx
+
 import React, { useState, useEffect } from 'react';
 import LotsDashboardPage from './LotsDashboardPage';
 import LotDetailPage from './LotDetailPage';
@@ -11,23 +13,15 @@ import LactationProfilePage from './LactationProfilePage';
 import FeedingPlanPage from './FeedingPlanPage';
 import BatchTreatmentPage from './BatchTreatmentPage';
 import GrowthProfilePage from './modules/kilos/GrowthProfilePage';
+import OcrPage from './OcrPage';
 import { ModuleSwitcher } from '../components/ui/ModuleSwitcher';
-import { Users, PlusCircle, LogOut, LayoutGrid } from 'lucide-react';
+import { PlusCircle, LogOut } from 'lucide-react';
+import { GiGoat, GiBarn } from 'react-icons/gi';
+import { FaCow } from "react-icons/fa6";
 import { auth } from '../firebaseConfig';
-
-export type PageState = 
-  | { name: 'lots-dashboard' } 
-  | { name: 'lot-detail', lotName: string }
-  | { name: 'breeding-group-detail', groupId: string }
-  | { name: 'herd', locationFilter?: string }
-  | { name: 'manage-lots' }
-  | { name: 'management' } 
-  | { name: 'rebano-profile', animalId: string }
-  | { name: 'lactation-profile', animalId: string }
-  | { name: 'growth-profile', animalId: string }
-  | { name: 'add-animal' }
-  | { name: 'feeding-plan', lotName: string }
-  | { name: 'batch-treatment', lotName: string };
+import { useData } from '../context/DataContext';
+import { SyncStatusIcon } from '../components/ui/SyncStatusIcon';
+import type { PageState } from '../types/navigation';
 
 interface RebanoShellProps {
     initialPage: PageState | null;
@@ -35,6 +29,7 @@ interface RebanoShellProps {
 }
 
 const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }) => {
+    const { syncStatus } = useData();
     const [page, setPage] = useState<PageState>({ name: 'lots-dashboard' });
     const [history, setHistory] = useState<PageState[]>([]);
 
@@ -45,8 +40,8 @@ const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }
     }, [initialPage]);
 
     const navItems = [
-        { page: { name: 'lots-dashboard' }, label: 'Lotes', icon: LayoutGrid },
-        { page: { name: 'herd' }, label: 'Rebaño', icon: Users },
+        { page: { name: 'lots-dashboard' }, label: 'Lotes', icon: GiBarn },
+        { page: { name: 'herd' }, label: 'Rebaño', icon: FaCow },
         { page: { name: 'add-animal' }, label: 'Añadir', icon: PlusCircle },
     ] as const;
 
@@ -67,40 +62,41 @@ const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }
 
     const renderPage = () => {
         switch (page.name) {
-            case 'lots-dashboard':
-                return <LotsDashboardPage navigateTo={navigateTo} />;
-            case 'lot-detail':
-                return <LotDetailPage lotName={page.lotName} onBack={navigateBack} navigateTo={navigateTo} />;
-            case 'breeding-group-detail':
-                return <BreedingGroupDetailPage groupId={page.groupId} onBack={navigateBack} navigateTo={navigateTo} />;
-            case 'herd':
-                return <HerdPage navigateTo={navigateTo} locationFilter={page.locationFilter} />;
-            case 'manage-lots':
-                return <ManageLotsPage onBack={() => setPage({ name: 'herd' })} />;
-            case 'management':
-                return <ManagementPage onSelectAnimal={(animalId) => navigateTo({ name: 'rebano-profile', animalId })} />;
-            case 'add-animal':
-                return <AddAnimalPage onBack={() => setPage({ name: 'herd' })} />;
-            case 'rebano-profile':
-                return <RebanoProfilePage animalId={page.animalId} onBack={navigateBack} navigateTo={navigateTo} />;
-            case 'lactation-profile':
-                 return <LactationProfilePage animalId={page.animalId} onBack={navigateBack} />;
-            case 'growth-profile':
-                return <GrowthProfilePage animalId={page.animalId} onBack={navigateBack} />;
-            case 'feeding-plan':
-                return <FeedingPlanPage lotName={page.lotName} onBack={navigateBack} />;
-            case 'batch-treatment':
-                return <BatchTreatmentPage lotName={page.lotName} onBack={navigateBack} />;
-            default:
-                return <LotsDashboardPage navigateTo={navigateTo} />;
+            case 'lots-dashboard': return <LotsDashboardPage navigateTo={navigateTo} />;
+            case 'lot-detail': return <LotDetailPage lotName={page.lotName} onBack={navigateBack} navigateTo={navigateTo} />;
+            case 'breeding-group-detail': return <BreedingGroupDetailPage groupId={page.groupId} onBack={navigateBack} navigateTo={navigateTo} />;
+            case 'herd': return <HerdPage navigateTo={navigateTo} locationFilter={page.locationFilter} />;
+            case 'manage-lots': return <ManageLotsPage onBack={() => setPage({ name: 'herd' })} />;
+            case 'management': return <ManagementPage onSelectAnimal={(animalId) => navigateTo({ name: 'rebano-profile', animalId })} />;
+            case 'add-animal': return <AddAnimalPage onBack={() => setPage({ name: 'herd' })} />;
+            case 'rebano-profile': return <RebanoProfilePage animalId={page.animalId} onBack={navigateBack} navigateTo={navigateTo} />;
+            case 'lactation-profile': return <LactationProfilePage animalId={page.animalId} onBack={navigateBack} />;
+            case 'growth-profile': return <GrowthProfilePage animalId={page.animalId} onBack={navigateBack} />;
+            case 'ocr': return <OcrPage onBack={navigateBack} />;
+            case 'feeding-plan': return <FeedingPlanPage lotName={page.lotName} onBack={navigateBack} />;
+            case 'batch-treatment': return <BatchTreatmentPage lotName={page.lotName} onBack={navigateBack} />;
+            default: return <LotsDashboardPage navigateTo={navigateTo} />;
         }
     };
 
     return (
         <div className="font-sans text-gray-200 min-h-screen animate-fade-in">
-            <div className="pb-24">
+            
+            <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border">
+                <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-16">
+                    <div className="flex items-center gap-2">
+                        <GiGoat className="text-brand-orange" size={28}/>
+                        <h1 className="text-xl font-bold text-white">Rebaño</h1>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <SyncStatusIcon status={syncStatus} />
+                    </div>
+                </div>
+            </header>
+
+            <main className="pt-16 pb-24">
                 {renderPage()}
-            </div>
+            </main>
             
             <ModuleSwitcher onSwitchModule={onSwitchModule} />
       
@@ -110,14 +106,13 @@ const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }
                     if (item.label === 'Lotes') {
                         isActive = ['lots-dashboard', 'lot-detail', 'breeding-group-detail', 'feeding-plan', 'batch-treatment'].includes(page.name);
                     } else if (item.label === 'Rebaño' || item.label === 'Añadir') {
-                        // Agrupamos todas las subpáginas de 'Rebaño' para que el ícono permanezca activo
-                        isActive = ['herd', 'rebano-profile', 'manage-lots', 'add-animal', 'lactation-profile', 'growth-profile'].includes(page.name);
+                        isActive = ['herd', 'rebano-profile', 'manage-lots', 'add-animal', 'lactation-profile', 'growth-profile', 'ocr', 'management'].includes(page.name);
                     }
 
                     return (
                         <button key={item.label} onClick={() => { setHistory([]); setPage(item.page as any); }}
                             className={`relative flex flex-col items-center justify-center pt-3 pb-2 w-full transition-colors ${isActive ? 'text-amber-400' : 'text-gray-500 hover:text-white'}`}>
-                            <item.icon />
+                            <item.icon className="w-6 h-6" />
                             <span className="text-xs font-semibold mt-1">{item.label}</span>
                         </button>
                     );
@@ -126,7 +121,7 @@ const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }
                     onClick={() => auth.signOut()}
                     className="relative flex flex-col items-center justify-center pt-3 pb-2 w-full text-gray-500 hover:text-red-400 transition-colors"
                 >
-                    <LogOut />
+                    <LogOut className="w-6 h-6" />
                     <span className="text-xs font-semibold mt-1">Salir</span>
                 </button>
             </nav>

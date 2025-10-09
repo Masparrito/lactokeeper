@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PageState } from './RebanoShell';
+import type { PageState } from '../types/navigation';
 import { Users, Zap, Plus } from 'lucide-react';
 import { AddLotModal } from '../components/ui/AddLotModal';
 import PhysicalLotsView from '../components/lots/PhysicalLotsView';

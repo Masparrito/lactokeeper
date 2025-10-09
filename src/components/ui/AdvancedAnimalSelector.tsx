@@ -1,15 +1,14 @@
+// src/components/ui/AdvancedAnimalSelector.tsx
+
 import React, { useState, useMemo } from 'react';
 import { Modal } from './Modal';
 import { Animal, Parturition, ServiceRecord, BreedingGroup } from '../../db/local';
-import { CheckSquare, Square, AlertTriangle, Search, ChevronDown, History, FilterX, Baby, Heart, HeartHandshake, CircleOff, Wind, Archive, Droplets, Waypoints } from 'lucide-react';
+import { CheckSquare, Square, AlertTriangle, Search, ChevronDown, History, FilterX } from 'lucide-react';
 import { useInbreedingCheck } from '../../hooks/useInbreedingCheck';
 import { formatAge, getAnimalZootecnicCategory } from '../../utils/calculations';
+import { STATUS_DEFINITIONS, AnimalStatusKey } from '../../hooks/useAnimalStatus';
 
-// --- DEFINICIONES DE ESTADO Y FILTROS ---
-const STATUS_DEFINITIONS = { PREGNANT: { key: 'PREGNANT', Icon: Baby, color: 'text-pink-400', label: 'Preñada' }, IN_SERVICE_CONFIRMED: { key: 'IN_SERVICE_CONFIRMED', Icon: HeartHandshake, color: 'text-pink-500', label: 'Servicio Visto' }, IN_SERVICE: { key: 'IN_SERVICE', Icon: Heart, color: 'text-red-400', label: 'En Monta' }, EMPTY: { key: 'EMPTY', Icon: CircleOff, color: 'text-zinc-500', label: 'Vacía' }, SIRE_IN_SERVICE: { key: 'SIRE_IN_SERVICE', Icon: Waypoints, color: 'text-blue-400', label: 'Reproductor Activo' }, MILKING: { key: 'MILKING', Icon: Droplets, color: 'text-blue-300', label: 'En Ordeño' }, DRYING_OFF: { key: 'DRYING_OFF', Icon: Wind, color: 'text-yellow-400', label: 'Secando' }, DRY: { key: 'DRY', Icon: Archive, color: 'text-zinc-400', label: 'Seca' }};
-type AnimalStatusKey = keyof typeof STATUS_DEFINITIONS;
 
-// --- LÓGICA DE CÁLCULO Y FILTRADO (UNIFICADA) ---
 const getAnimalStatuses = (animal: Animal, allParturitions: Parturition[], allServiceRecords: ServiceRecord[], allBreedingGroups: BreedingGroup[]): AnimalStatusKey[] => {
     const s: AnimalStatusKey[] = []; if (!animal) return [];
     if (animal.sex === 'Hembra') { const lp = allParturitions.filter(p=>p.goatId===animal.id&&p.status!=='finalizada').sort((a,b)=>new Date(b.parturitionDate).getTime()-new Date(a.parturitionDate).getTime())[0]; if (lp) { if (lp.status==='activa') s.push('MILKING'); else if (lp.status==='en-secado') s.push('DRYING_OFF'); else if (lp.status==='seca') s.push('DRY'); } }
@@ -103,7 +102,10 @@ export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({ 
                                     {selectedIds.has(animal.id) ? <CheckSquare className="text-brand-orange flex-shrink-0" /> : <Square className="text-zinc-500 flex-shrink-0" />}
                                     <div className="flex-grow">
                                         <p className="font-bold text-white flex items-center gap-2">{animal.id} {hasInbreedingRisk && <AlertTriangle className="text-yellow-400" size={16} />}</p>
-                                        <p className="text-xs text-zinc-400">{animal.sex} | {animal.formattedAge} | {animal.zootecnicCategory} {animal.location && `| Lote: ${animal.location}`}</p>
+                                        {/* --- CAMBIO CLAVE: Se aplica la nueva norma --- */}
+                                        <p className="text-xs text-zinc-400">
+                                            {animal.sex} | {animal.formattedAge} | Lote: {animal.location || 'Sin Asignar'}
+                                        </p>
                                     </div>
                                 </div>
                             );

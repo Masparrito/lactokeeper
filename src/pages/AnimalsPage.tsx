@@ -1,6 +1,8 @@
+// src/pages/AnimalsPage.tsx
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../context/DataContext';
-import { ChevronRight, Zap, BarChart2, ArrowUp, ArrowDown, Sparkles, ChevronLeft, FilterX, Info, Sigma, Droplets, TrendingUp, LogIn, LogOut, Target } from 'lucide-react';
+import { ChevronRight, BarChart2, ArrowUp, ArrowDown, Sparkles, ChevronLeft, FilterX, Info, Sigma, Droplets, TrendingUp, LogIn, LogOut, Target } from 'lucide-react';
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, LabelList, CartesianGrid } from 'recharts';
 import { useGaussAnalysis, AnalyzedAnimal } from '../hooks/useGaussAnalysis';
 import { WeighingTrendIcon } from '../components/ui/WeighingTrendIcon';
@@ -8,8 +10,8 @@ import { Modal } from '../components/ui/Modal';
 import { useWeighingTrend } from '../hooks/useWeighingTrend';
 import { useSearch } from '../hooks/useSearch';
 import { SearchHeader } from '../components/ui/SearchHeader';
+import { formatAge } from '../utils/calculations';
 
-// --- SUB-COMPONENTE PARA ETIQUETAS DE PORCENTAJE ---
 const CustomBarLabel = (props: any) => {
     const { x, y, width, height, value, total } = props;
     if (total === 0 || value === 0) return null;
@@ -21,23 +23,29 @@ const CustomBarLabel = (props: any) => {
     );
 };
 
-// --- SUB-COMPONENTE PARA LA FILA DE UN ANIMAL EN ANÁLISIS ---
 const MilkingAnimalRow = ({ animal, onSelectAnimal }: { animal: AnalyzedAnimal, onSelectAnimal: (id: string) => void }) => {
     const { weighings } = useData();
     const { isLongTrend, lastTwoWeighings, difference } = useWeighingTrend(animal.id, weighings);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const handleTrendClick = (e: React.MouseEvent) => { e.stopPropagation(); if (animal.trend && animal.trend !== 'single') setIsModalOpen(true); };
+    const formattedAge = formatAge(animal.birthDate);
 
     return (
         <>
             <div onClick={() => onSelectAnimal(animal.id)} className="w-full cursor-pointer text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border flex justify-between items-center hover:border-brand-orange transition-colors">
                 <div>
                     <p className="font-bold text-lg text-white">{animal.id}</p>
-                    <p className="text-sm text-zinc-400">DEL: {animal.del} | Score: {animal.score.toFixed(2)} | <span className="font-semibold text-brand-orange"> Pesaje: {animal.latestWeighing.toFixed(2)} Kg</span></p>
+                    <p className="text-sm text-zinc-400 mt-1">
+                        {animal.sex} | {formattedAge} | Lote: {animal.location || 'Sin Asignar'}
+                    </p>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
+                    <div className="text-right">
+                        <p className="font-semibold text-brand-orange">{animal.latestWeighing.toFixed(2)} Kg</p>
+                        <p className="text-xs text-zinc-400">DEL: {animal.del}</p>
+                    </div>
                     <button onClick={handleTrendClick} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors disabled:cursor-not-allowed" disabled={!animal.trend || animal.trend === 'single'}><WeighingTrendIcon trend={animal.trend} isLongTrend={isLongTrend} /></button>
-                   <span className={`px-2 py-0.5 text-xs font-semibold rounded-full text-white ${animal.classification === 'Pobre' ? 'bg-brand-red/80' : animal.classification === 'Sobresaliente' ? 'bg-brand-green/80' : 'bg-gray-500/80'}`}>{animal.classification}</span>
+                   <span className={`hidden sm:block px-2 py-0.5 text-xs font-semibold rounded-full text-white ${animal.classification === 'Pobre' ? 'bg-brand-red/80' : animal.classification === 'Sobresaliente' ? 'bg-brand-green/80' : 'bg-gray-500/80'}`}>{animal.classification}</span>
                    <ChevronRight className="text-zinc-600" />
                 </div>
             </div>
@@ -255,7 +263,7 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
                 <div className="flex justify-between items-center border-b border-brand-border pb-2 mb-4">
                     <div className="flex items-center space-x-2"><BarChart2 className="text-brand-orange" size={18}/><h3 className="text-lg font-semibold text-white">Análisis del Día</h3><button onClick={() => setIsInfoModalOpen(true)} className="text-zinc-500 hover:text-white"><Info size={14}/></button></div>
                     <label className="flex items-center space-x-2 text-sm text-zinc-300 cursor-pointer">
-                        <Zap size={14} className={isWeighted ? 'text-brand-orange' : 'text-zinc-500'}/>
+                        <Sparkles size={14} className={isWeighted ? 'text-brand-orange' : 'text-zinc-500'}/>
                         <span>Ponderado a DEL</span>
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsScoreInfoModalOpen(true); }} className="text-zinc-500 hover:text-white -ml-1"><Info size={14}/></button>
                         <input type="checkbox" checked={isWeighted} onChange={(e) => setIsWeighted(e.target.checked)} className="form-checkbox h-4 w-4 bg-zinc-700 border-zinc-600 rounded text-brand-orange focus:ring-brand-orange focus:ring-offset-0"/>
@@ -383,7 +391,7 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
                 <div className="text-zinc-300 space-y-4 text-base">
                     <p>Este panel clasifica a los animales en ordeño según su rendimiento, permitiéndote identificar rápidamente a los individuos de mayor y menor producción.</p>
                     <div><h4 className="font-semibold text-white mb-1">Clasificación (Pobre, Promedio, Sobresaliente)</h4><p className="text-sm">Se calcula usando la media (μ) y la desviación estándar (σ) de la producción. Los animales que se desvían significativamente del promedio se marcan como pobres o sobresalientes.</p></div>
-                    <div><h4 className="font-semibold text-white mb-1">Ponderado a DEL</h4><p className="text-sm">Al activar este interruptor (<Zap size={12} className="inline-block mb-0.5"/>), el análisis se vuelve más inteligente. Otorga un mayor "score" a los animales que producen bien al inicio de su lactancia, ya que es más valioso que la misma producción en una etapa tardía.</p></div>
+                    <div><h4 className="font-semibold text-white mb-1">Ponderado a DEL</h4><p className="text-sm">Al activar este interruptor (<Sparkles size={12} className="inline-block mb-0.5"/>), el análisis se vuelve más inteligente. Otorga un mayor "score" a los animales que producen bien al inicio de su lactancia, ya que es más valioso que la misma producción en una etapa tardía.</p></div>
                 </div>
             </Modal>
             

@@ -1,8 +1,8 @@
 // src/hooks/useAnimalData.ts
 
 import { useState, useEffect, useMemo } from 'react';
-// CORRECCIÓN: Se actualizan los nombres de las tablas y los tipos importados
-import { db, Weighing, Parturition } from '../db/local';
+// 1. CORRECCIÓN: Importamos getDB en lugar de db.
+import { getDB, Weighing, Parturition } from '../db/local';
 import { calculateDEL } from '../utils/calculations';
 
 export interface LactationCycle {
@@ -16,7 +16,6 @@ export interface LactationCycle {
 
 export const useAnimalData = (animalId: string) => {
   const [weighings, setWeighings] = useState<Weighing[]>([]);
-  // CORRECCIÓN: Se cambia 'births' por 'parturitions'
   const [parturitions, setParturitions] = useState<Parturition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -25,13 +24,16 @@ export const useAnimalData = (animalId: string) => {
     const fetchDataForAnimal = async () => {
       setIsLoading(true);
       try {
-        // CORRECCIÓN: Se consulta 'db.weighings' y 'db.parturitions'
+        // 2. CORRECCIÓN: Obtenemos la instancia de la DB con la nueva función.
+        const localDb = getDB(); 
+
+        // Usamos la instancia 'localDb' para las consultas.
         const [weighingData, parturitionData] = await Promise.all([
-          db.weighings.where('goatId').equals(animalId).toArray(),
-          db.parturitions.where('goatId').equals(animalId).toArray(),
+          localDb.weighings.where('goatId').equals(animalId).toArray(),
+          localDb.parturitions.where('goatId').equals(animalId).toArray(),
         ]);
+
         setWeighings(weighingData);
-        // Ordenamos los partos desde el más antiguo al más reciente
         setParturitions(parturitionData.sort((a, b) => new Date(a.parturitionDate).getTime() - new Date(b.parturitionDate).getTime()));
       } catch (error) {
         console.error(`Error al cargar datos para ${animalId}:`, error);
@@ -43,12 +45,15 @@ export const useAnimalData = (animalId: string) => {
   }, [animalId]);
 
   const processedData = useMemo(() => {
-    // CORRECCIÓN: Se cambia 'births' por 'parturitions' en toda la lógica
     if (parturitions.length === 0) return { allLactations: [], parturitionIntervals: [], lastWeighingDate: null };
 
     const allLactations: LactationCycle[] = parturitions.map((parturition, index) => {
       const startDate = new Date(parturition.parturitionDate);
-      const endDate = index < parturitions.length - 1 ? new Date(parturitions[index + 1].parturitionDate) : new Date();
+      // Si es el último parto, la fecha final es hoy. Si no, es la fecha del siguiente parto.
+      const endDate = index < parturitions.length - 1 
+        ? new Date(parturitions[index + 1].parturitionDate) 
+        : new Date(9999, 11, 31); // Una fecha muy en el futuro para incluir todos los pesajes hasta hoy
+
       const cycleWeighings = weighings.filter(w => {
         const weighDate = new Date(w.date);
         return weighDate >= startDate && weighDate < endDate;

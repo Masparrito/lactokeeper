@@ -1,6 +1,8 @@
+// src/components/lots/PhysicalLotsView.tsx
+
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useData } from '../../context/DataContext';
-import { PageState } from '../../pages/RebanoShell';
+import type { PageState } from '../../types/navigation'; // <-- LÍNEA CORREGIDA
 import { Zap, Trash2, Edit, Move, ClipboardList, TestTube, GripVertical } from 'lucide-react';
 import { Reorder, motion, useAnimation, PanInfo, useDragControls } from 'framer-motion';
 import { ActionSheetModal, ActionSheetAction } from '../ui/ActionSheetModal';
