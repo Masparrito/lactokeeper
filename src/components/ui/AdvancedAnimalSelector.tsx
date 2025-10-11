@@ -2,18 +2,28 @@
 
 import React, { useState, useMemo } from 'react';
 import { Modal } from './Modal';
-import { Animal, Parturition, ServiceRecord, BreedingGroup } from '../../db/local';
+// --- CAMBIO CLAVE 1: Se importa BreedingSeason y SireLot ---
+import { Animal, Parturition, ServiceRecord, BreedingSeason, SireLot } from '../../db/local';
 import { CheckSquare, Square, AlertTriangle, Search, ChevronDown, History, FilterX } from 'lucide-react';
 import { useInbreedingCheck } from '../../hooks/useInbreedingCheck';
 import { formatAge, getAnimalZootecnicCategory } from '../../utils/calculations';
 import { STATUS_DEFINITIONS, AnimalStatusKey } from '../../hooks/useAnimalStatus';
 
 
-const getAnimalStatuses = (animal: Animal, allParturitions: Parturition[], allServiceRecords: ServiceRecord[], allBreedingGroups: BreedingGroup[]): AnimalStatusKey[] => {
+// --- CAMBIO CLAVE 2: La función ahora usa la nueva estructura de datos ---
+const getAnimalStatuses = (animal: Animal, allParturitions: Parturition[], allServiceRecords: ServiceRecord[], allSireLots: SireLot[], allBreedingSeasons: BreedingSeason[]): AnimalStatusKey[] => {
     const s: AnimalStatusKey[] = []; if (!animal) return [];
     if (animal.sex === 'Hembra') { const lp = allParturitions.filter(p=>p.goatId===animal.id&&p.status!=='finalizada').sort((a,b)=>new Date(b.parturitionDate).getTime()-new Date(a.parturitionDate).getTime())[0]; if (lp) { if (lp.status==='activa') s.push('MILKING'); else if (lp.status==='en-secado') s.push('DRYING_OFF'); else if (lp.status==='seca') s.push('DRY'); } }
-    if (animal.reproductiveStatus==='Preñada') s.push('PREGNANT'); else if (animal.reproductiveStatus==='En Servicio') { if (allServiceRecords.some(sr=>sr.femaleId===animal.id&&sr.breedingGroupId===animal.breedingGroupId)) s.push('IN_SERVICE_CONFIRMED'); else s.push('IN_SERVICE'); } else if (animal.reproductiveStatus==='Vacía'||animal.reproductiveStatus==='Post-Parto') s.push('EMPTY');
-    if (animal.sex === 'Macho') { if (allBreedingGroups.some(bg=>bg.sireId===animal.id&&bg.status==='Activo')) s.push('SIRE_IN_SERVICE'); }
+    if (animal.reproductiveStatus==='Preñada') s.push('PREGNANT'); else if (animal.reproductiveStatus==='En Servicio') { 
+        const hasServiceRecord = allServiceRecords.some(sr=>sr.femaleId===animal.id&&sr.sireLotId===animal.sireLotId);
+        if (hasServiceRecord) s.push('IN_SERVICE_CONFIRMED'); else s.push('IN_SERVICE'); 
+    } else if (animal.reproductiveStatus==='Vacía'||animal.reproductiveStatus==='Post-Parto') s.push('EMPTY');
+    if (animal.sex === 'Macho') { 
+        const activeSeasons = allBreedingSeasons.filter(bs => bs.status === 'Activo');
+        const activeSeasonIds = new Set(activeSeasons.map(s => s.id));
+        const isActiveSire = allSireLots.some(sl => sl.sireId === animal.id && activeSeasonIds.has(sl.seasonId));
+        if(isActiveSire) s.push('SIRE_IN_SERVICE'); 
+    }
     return Array.from(new Set(s));
 };
 
@@ -36,12 +46,14 @@ interface AdvancedAnimalSelectorProps {
     animals: Animal[];
     parturitions: Parturition[];
     serviceRecords: ServiceRecord[];
-    breedingGroups: BreedingGroup[];
+    // --- CAMBIO CLAVE 3: Se aceptan las nuevas props ---
+    breedingSeasons: BreedingSeason[];
+    sireLots: SireLot[];
     title: string;
     sireIdForInbreedingCheck?: string;
 }
 
-export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({ isOpen, onClose, onSelect, animals, parturitions, serviceRecords, breedingGroups, title, sireIdForInbreedingCheck }) => {
+export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({ isOpen, onClose, onSelect, animals, parturitions, serviceRecords, breedingSeasons, sireLots, title, sireIdForInbreedingCheck }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const { isRelated } = useInbreedingCheck();
@@ -53,10 +65,11 @@ export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({ 
 
     const animalsWithAllData = useMemo(() => animals.map(animal => ({ 
         ...animal, 
-        statuses: getAnimalStatuses(animal, parturitions, serviceRecords, breedingGroups),
+        // --- CAMBIO CLAVE 4: Se pasan las nuevas entidades a la función ---
+        statuses: getAnimalStatuses(animal, parturitions, serviceRecords, sireLots, breedingSeasons),
         formattedAge: formatAge(animal.birthDate),
         zootecnicCategory: getAnimalZootecnicCategory(animal, parturitions),
-    })), [animals, parturitions, serviceRecords, breedingGroups]);
+    })), [animals, parturitions, serviceRecords, sireLots, breedingSeasons]);
 
     const filteredAnimals = useMemo(() => {
         let filtered = animalsWithAllData;
@@ -102,7 +115,6 @@ export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({ 
                                     {selectedIds.has(animal.id) ? <CheckSquare className="text-brand-orange flex-shrink-0" /> : <Square className="text-zinc-500 flex-shrink-0" />}
                                     <div className="flex-grow">
                                         <p className="font-bold text-white flex items-center gap-2">{animal.id} {hasInbreedingRisk && <AlertTriangle className="text-yellow-400" size={16} />}</p>
-                                        {/* --- CAMBIO CLAVE: Se aplica la nueva norma --- */}
                                         <p className="text-xs text-zinc-400">
                                             {animal.sex} | {animal.formattedAge} | Lote: {animal.location || 'Sin Asignar'}
                                         </p>

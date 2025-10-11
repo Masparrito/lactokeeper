@@ -9,7 +9,6 @@ import AddDataPage from '../AddDataPage';
 import ManagementPage from '../ManagementPage';
 import { PeriodStats } from '../../hooks/useHistoricalAnalysis';
 import { BarChart2, ArrowLeft, CalendarClock, List, PlusCircle, Wind } from 'lucide-react';
-// --- CAMBIO CLAVE 1: Se importa el nuevo ícono ---
 import { GiMilkCarton } from 'react-icons/gi';
 import { useData } from '../../context/DataContext';
 import { SyncStatusIcon } from '../../components/ui/SyncStatusIcon';
@@ -42,14 +41,28 @@ export default function LactoKeeperShell({ navigateToRebano, onExitModule }: Lac
         }
     };
 
+    // --- MEJORA DE NAVEGACIÓN: Se define la navegación contextual ---
+    const handleSelectAnimal = (animalId: string) => {
+        // Al seleccionar un animal desde este módulo, siempre vamos al perfil de lactancia.
+        navigateToRebano({ name: 'lactation-profile', animalId });
+    };
+
     const renderContent = () => {
         switch (page) {
-            case 'dashboard': return <Dashboard onNavigateToAnalysis={() => setPage('analysis')} />;
-            case 'analysis': return <AnimalsPage onSelectAnimal={(animalId: string) => navigateToRebano({ name: 'rebano-profile', animalId })} />;
-            case 'history': return <HistoryPage onSelectAnimal={(animalId: string) => navigateToRebano({ name: 'rebano-profile', animalId })} selectedPeriod={historySelectedPeriod} setSelectedPeriod={setHistorySelectedPeriod} />;
-            case 'add-data': return <AddDataPage onNavigate={(pageName: any, state: any) => navigateToRebano({ name: pageName, ...state })} />;
-            case 'drying': return <ManagementPage onSelectAnimal={(animalId: string) => navigateToRebano({ name: 'rebano-profile', animalId })} />;
-            default: return <Dashboard onNavigateToAnalysis={() => setPage('analysis')} />;
+            case 'dashboard': 
+                return <Dashboard onNavigateToAnalysis={() => setPage('analysis')} />;
+            case 'analysis': 
+                // Se pasa la nueva función de navegación a la página de análisis
+                return <AnimalsPage onSelectAnimal={handleSelectAnimal} />;
+            case 'history': 
+                // Se pasa la nueva función de navegación a la página de historial
+                return <HistoryPage onSelectAnimal={handleSelectAnimal} selectedPeriod={historySelectedPeriod} setSelectedPeriod={setHistorySelectedPeriod} />;
+            case 'add-data': 
+                return <AddDataPage onNavigate={(pageName: any, state: any) => navigateToRebano({ name: pageName, ...state })} />;
+            case 'drying': 
+                return <ManagementPage onSelectAnimal={handleSelectAnimal} />;
+            default: 
+                return <Dashboard onNavigateToAnalysis={() => setPage('analysis')} />;
         }
     };
 
@@ -62,7 +75,6 @@ export default function LactoKeeperShell({ navigateToRebano, onExitModule }: Lac
                         <ArrowLeft size={24} />
                     </button>
                     <div className="flex items-center gap-2">
-                        {/* --- CAMBIO CLAVE 2: Se reemplaza Droplets por GiMilkCarton --- */}
                         <GiMilkCarton className="text-brand-orange" size={28} />
                         <h1 className="text-xl font-bold">LactoKeeper</h1>
                     </div>
@@ -71,7 +83,7 @@ export default function LactoKeeperShell({ navigateToRebano, onExitModule }: Lac
                     </div>
                 </div>
             </header>
-
+            
             <main className="flex-grow pt-16 pb-24">
                 {renderContent()}
             </main>

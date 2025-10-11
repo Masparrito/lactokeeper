@@ -1,39 +1,109 @@
 // src/pages/modules/salud/HealthPlannerPage.tsx
 
-import React, { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useData } from '../../../context/DataContext';
-import { Plus, ChevronRight, ClipboardList } from 'lucide-react';
+import { Plus, ChevronRight, ClipboardList, Edit, Trash2 } from 'lucide-react';
 import { HealthPlan } from '../../../db/local';
-import { Modal } from '../../../components/ui/Modal'; // <-- Se importa el componente Modal
-import { HealthPlanForm } from '../../../components/forms/HealthPlanForm'; // <-- Se importa el nuevo formulario
+import { Modal } from '../../../components/ui/Modal';
+import { HealthPlanForm } from '../../../components/forms/HealthPlanForm';
+import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
+import { motion, useAnimation, PanInfo } from 'framer-motion';
 
-// Sub-componente para la tarjeta de un plan
-const PlanCard = ({ plan, onClick }: { plan: HealthPlan, onClick: () => void }) => {
+// Definimos el tipo para la función de navegación que recibiremos
+type SaludPageNavigation = { name: 'plan-detail', planId: string };
+
+// --- MEJORA: Convertimos PlanCard en un componente interactivo con Swipe ---
+const SwipeablePlanCard = ({ plan, onClick, onEdit, onDelete }: { plan: HealthPlan, onClick: () => void, onEdit: () => void, onDelete: () => void }) => {
+    const swipeControls = useAnimation();
+    const dragStarted = useRef(false);
+    const buttonsWidth = 160; // 80px para Editar + 80px para Eliminar
+
+    const onDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+        const offset = info.offset.x;
+        const velocity = info.velocity.x;
+        // Si el arrastre es mínimo, lo tratamos como un clic
+        if (Math.abs(offset) < 5) { onClick(); return; }
+        
+        // Si se desliza lo suficiente hacia la izquierda, muestra los botones
+        if (offset < -buttonsWidth / 2 || velocity < -500) {
+            swipeControls.start({ x: -buttonsWidth });
+        } else {
+            swipeControls.start({ x: 0 }); // Vuelve a la posición original
+        }
+        setTimeout(() => { dragStarted.current = false; }, 100);
+    };
+
     return (
-        <button onClick={onClick} className="w-full text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border flex justify-between items-center hover:border-teal-400 transition-colors">
-            <div>
-                <p className="font-bold text-lg text-white">{plan.name}</p>
-                <p className="text-sm text-zinc-400 mt-1">{plan.description}</p>
+        <div className="relative w-full overflow-hidden rounded-2xl bg-brand-glass border border-brand-border">
+            {/* Botones de acción ocultos */}
+            <div className="absolute inset-y-0 right-0 flex items-center z-0 h-full">
+                <button onClick={onEdit} onPointerDown={(e) => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-blue text-white">
+                    <Edit size={22} /><span className="text-xs mt-1 font-semibold">Editar</span>
+                </button>
+                <button onClick={onDelete} onPointerDown={(e) => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-red text-white">
+                    <Trash2 size={22} /><span className="text-xs mt-1 font-semibold">Eliminar</span>
+                </button>
             </div>
-            <ChevronRight className="text-zinc-600" />
-        </button>
+
+            {/* Contenido principal arrastrable */}
+            <motion.div
+                drag="x"
+                dragConstraints={{ left: -buttonsWidth, right: 0 }}
+                dragElastic={0.1}
+                onDragStart={() => { dragStarted.current = true; }}
+                onDragEnd={onDragEnd}
+                onTap={() => { if (!dragStarted.current) { onClick(); } }}
+                animate={swipeControls}
+                transition={{ type: "spring", stiffness: 400, damping: 40 }}
+                className="relative w-full z-10 cursor-pointer bg-ios-modal-bg p-4"
+            >
+                <div className="flex justify-between items-center">
+                    <div>
+                        <p className="font-bold text-lg text-white">{plan.name}</p>
+                        <p className="text-sm text-zinc-400 mt-1">{plan.description}</p>
+                    </div>
+                    <ChevronRight className="text-zinc-600" />
+                </div>
+            </motion.div>
+        </div>
     );
 };
 
-export default function HealthPlannerPage() {
-    const { healthPlans, addHealthPlan } = useData();
-    // --- CAMBIO CLAVE 1: Los estados del modal ahora se utilizan ---
-    const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // --- CAMBIO CLAVE 2: La función ahora abre el modal ---
-    const handleCreatePlan = () => {
+interface HealthPlannerPageProps {
+    navigateTo: (page: SaludPageNavigation) => void;
+}
+
+export default function HealthPlannerPage({ navigateTo }: HealthPlannerPageProps) {
+    const { healthPlans, addHealthPlan, updateHealthPlan, deleteHealthPlan } = useData();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingPlan, setEditingPlan] = useState<HealthPlan | undefined>(undefined);
+    const [deleteConfirmation, setDeleteConfirmation] = useState<HealthPlan | null>(null);
+
+    const handleOpenModal = (plan?: HealthPlan) => {
+        setEditingPlan(plan);
         setIsModalOpen(true);
     };
+    
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setEditingPlan(undefined);
+    };
 
-    // --- CAMBIO CLAVE 3: Nueva función para guardar el plan ---
     const handleSavePlan = async (planData: Omit<HealthPlan, 'id'>) => {
-        await addHealthPlan(planData);
-        setIsModalOpen(false); // Cierra el modal después de guardar
+        if (editingPlan?.id) {
+            await updateHealthPlan(editingPlan.id, planData);
+        } else {
+            await addHealthPlan(planData);
+        }
+        handleCloseModal();
+    };
+    
+    const handleDelete = async () => {
+        if (deleteConfirmation?.id) {
+            await deleteHealthPlan(deleteConfirmation.id);
+        }
+        setDeleteConfirmation(null);
     };
 
     return (
@@ -44,8 +114,8 @@ export default function HealthPlannerPage() {
                     <p className="text-lg text-zinc-400">Define tus Protocolos y Planes</p>
                 </header>
 
-                <button 
-                    onClick={handleCreatePlan}
+                <button    
+                    onClick={() => handleOpenModal()}
                     className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-500 text-white font-bold py-3 px-4 rounded-xl transition-colors text-base">
                     <Plus size={18} /> Crear Nuevo Plan Sanitario
                 </button>
@@ -53,10 +123,12 @@ export default function HealthPlannerPage() {
                 <div className="space-y-3 pt-4">
                     {healthPlans.length > 0 ? (
                         healthPlans.map(plan => (
-                            <PlanCard 
-                                key={plan.id} 
-                                plan={plan} 
-                                onClick={() => alert(`Próximamente: Ver detalles del plan ${plan.name}`)} 
+                            <SwipeablePlanCard    
+                                key={plan.id}    
+                                plan={plan}    
+                                onClick={() => navigateTo({ name: 'plan-detail', planId: plan.id! })}
+                                onEdit={() => handleOpenModal(plan)}
+                                onDelete={() => setDeleteConfirmation(plan)}
                             />
                         ))
                     ) : (
@@ -69,13 +141,21 @@ export default function HealthPlannerPage() {
                 </div>
             </div>
 
-            {/* --- CAMBIO CLAVE 4: Se añade el Modal con el formulario --- */}
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Plan Sanitario">
-                <HealthPlanForm 
+            <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingPlan ? "Editar Plan Sanitario" : "Crear Nuevo Plan Sanitario"}>
+                <HealthPlanForm    
                     onSave={handleSavePlan}
-                    onCancel={() => setIsModalOpen(false)}
+                    onCancel={handleCloseModal}
+                    existingPlan={editingPlan}
                 />
             </Modal>
+            
+            <ConfirmationModal
+                isOpen={!!deleteConfirmation}
+                onClose={() => setDeleteConfirmation(null)}
+                onConfirm={handleDelete}
+                title={`Eliminar Plan "${deleteConfirmation?.name}"`}
+                message="¿Estás seguro? Al eliminar el plan, también se eliminarán todas sus tareas asociadas. Esta acción no se puede deshacer."
+            />
         </>
     );
 }

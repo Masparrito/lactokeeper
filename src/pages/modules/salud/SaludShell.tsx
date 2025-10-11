@@ -1,37 +1,34 @@
 // src/pages/modules/salud/SaludShell.tsx
 
-import React, { useState } from 'react';
-import type { PageState as RebanoPageState } from '../../../types/navigation';
+import { useState } from 'react';
 import { ArrowLeft, CalendarCheck, ClipboardList, Syringe, DollarSign, HeartPulse } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { SyncStatusIcon } from '../../../components/ui/SyncStatusIcon';
 import ProductManagerPage from './ProductManagerPage';
 import HealthPlannerPage from './HealthPlannerPage';
-// --- CAMBIO CLAVE 1: Se importa la nueva página de la Agenda ---
 import AgendaPage from './AgendaPage';
+import PlanDetailPage from './PlanDetailPage';
+// --- CAMBIO CLAVE 1: Se importa la nueva página de Análisis de Costos ---
+import CostAnalysisPage from './CostAnalysisPage';
 
-// Definimos los tipos para las páginas internas del módulo de Salud
-type SaludPage = 'agenda' | 'planes' | 'inventario' | 'costos';
 
-// Componente placeholder para las secciones que construiremos en el futuro
-const PlaceholderPage = ({ title }: { title: string }) => (
-    <div className="text-center p-8 animate-fade-in">
-        <h1 className="text-3xl font-bold">{title}</h1>
-        <p className="text-zinc-400 mt-2">Esta sección estará disponible próximamente.</p>
-    </div>
-);
+type SaludPage = 
+    | { name: 'agenda' }
+    | { name: 'planes' }
+    | { name: 'inventario' }
+    | { name: 'costos' }
+    | { name: 'plan-detail', planId: string };
 
 interface SaludShellProps {
-    navigateToRebano: (page: RebanoPageState) => void;
     onExitModule: () => void;
 }
 
-export default function SaludShell({ navigateToRebano, onExitModule }: SaludShellProps) {
+export default function SaludShell({ onExitModule }: SaludShellProps) {
     const { syncStatus } = useData();
-    // --- CAMBIO CLAVE 2: Hacemos que la página inicial sea "Agenda" para ver nuestro cambio ---
-    const [page, setPage] = useState<SaludPage>('agenda');
+    // --- CAMBIO CLAVE 2: Hacemos que la página inicial sea "Costos" para ver nuestro cambio ---
+    const [page, setPage] = useState<SaludPage>({ name: 'costos' });
+    const [history, setHistory] = useState<SaludPage[]>([]);
 
-    // Items de navegación para el módulo de Salud
     const navItems = [
         { id: 'agenda', label: 'Agenda', icon: CalendarCheck },
         { id: 'planes', label: 'Planes', icon: ClipboardList },
@@ -39,17 +36,39 @@ export default function SaludShell({ navigateToRebano, onExitModule }: SaludShel
         { id: 'costos', label: 'Costos', icon: DollarSign },
     ];
 
+    const navigateTo = (newPage: SaludPage) => {
+        setHistory(current => [...current, page]);
+        setPage(newPage);
+    };
+
+    const navigateBack = () => {
+        const lastPage = history[history.length - 1];
+        if (lastPage) {
+            setHistory(current => current.slice(0, -1));
+            setPage(lastPage);
+        } else {
+            setPage({ name: 'agenda' });
+        }
+    };
+
+    const handleNavClick = (pageName: SaludPage['name']) => {
+        setHistory([]);
+        setPage({ name: pageName } as SaludPage);
+    };
+
     const renderContent = () => {
-        switch (page) {
+        switch (page.name) {
             case 'inventario':
                 return <ProductManagerPage />;
-            // --- CAMBIO CLAVE 3: Se renderiza la nueva página en lugar del placeholder ---
             case 'agenda':
                 return <AgendaPage />;
             case 'planes':
-                return <HealthPlannerPage />;
+                return <HealthPlannerPage navigateTo={navigateTo} />;
+            case 'plan-detail':
+                return <PlanDetailPage planId={page.planId} onBack={navigateBack} />;
+            // --- CAMBIO CLAVE 3: Se renderiza la nueva página en lugar del placeholder ---
             case 'costos':
-                return <PlaceholderPage title="Análisis de Costos" />;
+                return <CostAnalysisPage />;
             default:
                 return <AgendaPage />;
         }
@@ -65,7 +84,7 @@ export default function SaludShell({ navigateToRebano, onExitModule }: SaludShel
                     </button>
                     <div className="flex items-center gap-2">
                         <HeartPulse className="text-teal-400" />
-                        <h1 className="text-xl font-bold">Salud</h1>
+                        <h1 className="text-xl font-bold">StockCare</h1>
                     </div>
                     <div className="w-8 flex justify-end">
                         <SyncStatusIcon status={syncStatus} />
@@ -81,8 +100,8 @@ export default function SaludShell({ navigateToRebano, onExitModule }: SaludShel
                 {navItems.map((item) => (
                     <button
                         key={item.id}
-                        onClick={() => setPage(item.id as SaludPage)}
-                        className={`flex flex-col items-center justify-center p-3 w-full transition-colors ${page === item.id ? 'text-teal-400' : 'text-gray-400 hover:text-teal-400'}`}
+                        onClick={() => handleNavClick(item.id as SaludPage['name'])}
+                        className={`flex flex-col items-center justify-center p-3 w-full transition-colors ${page.name === item.id ? 'text-teal-400' : 'text-gray-400 hover:text-teal-400'}`}
                     >
                         <item.icon className="w-6 h-6 mb-1" />
                         <span className="text-xs font-semibold">{item.label}</span>

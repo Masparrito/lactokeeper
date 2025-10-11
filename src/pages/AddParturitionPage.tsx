@@ -1,33 +1,22 @@
-import { ArrowLeft } from 'lucide-react';
-import { AddParturitionForm } from '../components/forms/AddParturitionForm';
+// src/pages/AddParturitionPage.tsx
 
-// La página ahora es mucho más simple.
+// --- CAMBIO CLAVE 1: Se importa el nuevo Modal unificado en lugar del formulario antiguo ---
+import { ParturitionModal } from '../components/modals/ParturitionModal';
+
+
 interface AddParturitionPageProps {
     onBack: () => void;
     motherId?: string;
 }
 
 export default function AddParturitionPage({ onBack, motherId = '' }: AddParturitionPageProps) {
+    // --- CAMBIO CLAVE 2: La página ahora simplemente renderiza y controla el nuevo modal ---
+    // Esto asegura que la experiencia sea la misma desde cualquier parte de la app.
     return (
-        <div className="w-full max-w-2xl mx-auto space-y-6 animate-fade-in pb-12">
-            <header className="flex items-center pt-8 pb-4">
-                <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors">
-                    <ArrowLeft size={24} />
-                </button>
-                <div className="text-center flex-grow">
-                    <h1 className="text-4xl font-bold tracking-tight text-white">Registrar Parto</h1>
-                    <p className="text-xl text-zinc-400">Y sus crías</p>
-                </div>
-                <div className="w-8"></div>
-            </header>
-
-            {/* Aquí simplemente renderizamos el formulario reutilizable.
-              Cuando el guardado sea exitoso, llamará a onBack para volver a la página anterior.
-            */}
-            <AddParturitionForm 
-                motherId={motherId}
-                onSaveSuccess={onBack} 
-            />
-        </div>
+        <ParturitionModal
+            isOpen={true} // El modal está siempre abierto cuando esta página está activa
+            onClose={onBack} // Al cerrar el modal, se ejecuta la función de volver atrás
+            motherId={motherId}
+        />
     );
 }

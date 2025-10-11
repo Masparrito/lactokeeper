@@ -1,3 +1,5 @@
+// src/pages/ManageLotsPage.tsx
+
 import { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { ArrowLeft, Plus, Trash2, Users } from 'lucide-react';
@@ -8,8 +10,8 @@ interface ManageLotsPageProps {
 }
 
 export default function ManageLotsPage({ onBack }: ManageLotsPageProps) {
-    // --- CORRECCIÓN 1: Obtener todos los datos necesarios del contexto ---
-    const { lots, animals, parturitions, serviceRecords, breedingGroups, addLot, deleteLot, updateAnimal } = useData();
+    // --- CAMBIO CLAVE 1: Se obtienen las nuevas entidades del contexto ---
+    const { lots, animals, parturitions, serviceRecords, breedingSeasons, sireLots, addLot, deleteLot, updateAnimal } = useData();
     const [newLotName, setNewLotName] = useState('');
     const [isSelectorOpen, setSelectorOpen] = useState(false);
     const [selectedLot, setSelectedLot] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export default function ManageLotsPage({ onBack }: ManageLotsPageProps) {
                 <header className="flex items-center pt-8 pb-4 px-4">
                     <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
                     <div className="text-center flex-grow">
-                        <h1 className="text-2xl font-bold tracking-tight text-white">Gestionar Lotes</h1>
+                        <h1 className="text-2xl font-bold tracking-tight text-white">Gestionar Lotes Físicos</h1>
                         <p className="text-md text-zinc-400">Crea ubicaciones y asigna animales</p>
                     </div>
                     <div className="w-8"></div>
@@ -75,7 +77,7 @@ export default function ManageLotsPage({ onBack }: ManageLotsPageProps) {
                 </div>
             </div>
 
-            {/* --- CORRECCIÓN 2: Pasar los props que faltan al selector --- */}
+            {/* --- CAMBIO CLAVE 2: Se pasan las nuevas props al selector --- */}
             <AdvancedAnimalSelector
                 isOpen={isSelectorOpen}
                 onClose={() => setSelectorOpen(false)}
@@ -83,7 +85,8 @@ export default function ManageLotsPage({ onBack }: ManageLotsPageProps) {
                 animals={animals}
                 parturitions={parturitions}
                 serviceRecords={serviceRecords}
-                breedingGroups={breedingGroups}
+                breedingSeasons={breedingSeasons}
+                sireLots={sireLots}
                 title={`Asignar animales a: ${selectedLot}`}
             />
         </>

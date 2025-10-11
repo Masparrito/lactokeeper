@@ -9,19 +9,31 @@ interface WeighingTrendIconProps {
 }
 
 export const WeighingTrendIcon: React.FC<WeighingTrendIconProps> = ({ trend, isLongTrend }) => {
+    // Si no hay tendencia o es un único pesaje, no se muestra nada.
     if (!trend || trend === 'single') return null;
 
-    const trendClasses = {
-        up: 'text-green-400',
-        down: 'text-red-400',
-        stable: 'text-zinc-500',
+    // --- MEJORA: Se definen clases de color más claras para cada estado ---
+    const trendConfig = {
+        up: {
+            Icon: ArrowUp,
+            color: 'text-brand-green',
+        },
+        down: {
+            Icon: ArrowDown,
+            color: 'text-brand-red',
+        },
+        stable: {
+            // --- MEJORA: Se usa un ícono 'Minus' en lugar de un guion para mayor visibilidad ---
+            Icon: Minus,
+            color: 'text-zinc-400', // Un color neutro pero visible
+        },
     };
 
+    const { Icon, color } = trendConfig[trend];
+
     return (
-        <div className={`flex items-center font-semibold text-sm ${trendClasses[trend]}`}>
-            {trend === 'up' && <ArrowUp size={16} />}
-            {trend === 'down' && <ArrowDown size={16} />}
-            {trend === 'stable' && <Minus size={16} />}
+        <div className={`flex items-center font-semibold text-sm ${color}`}>
+            <Icon size={18} strokeWidth={3} />
             {isLongTrend && <span className="ml-0.5 font-bold">+</span>}
         </div>
     );

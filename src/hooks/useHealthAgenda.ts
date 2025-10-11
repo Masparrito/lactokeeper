@@ -3,10 +3,12 @@
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { getAnimalZootecnicCategory, calculateAgeInDays } from '../utils/calculations';
-import { Animal, HealthPlan, HealthPlanTask, HealthEvent } from '../db/local';
+import { Animal, HealthPlan, HealthPlanTask } from '../db/local';
+// --- MEJORA: Se importa el hook de proyección de partos ---
+import { useBirthingForecast } from './useBirthingForecast';
 
 export interface AgendaTask {
-    key: string; // ID único para la tarea, ej: "animalId-taskId"
+    key: string; // ID único para la tarea, ej: "animalId-taskId-year"
     animal: Animal;
     plan: HealthPlan;
     task: HealthPlanTask;
@@ -14,62 +16,106 @@ export interface AgendaTask {
     status: 'Atrasada' | 'Para Hoy' | 'Próxima';
 }
 
+const getDateForFixedTask = (year: number, month: number, week: number): Date => {
+    const targetDayOfMonth = (week - 1) * 7 + 1;
+    const date = new Date(Date.UTC(year, month - 1, targetDayOfMonth));
+    return date;
+};
+
+
 export const useHealthAgenda = () => {
     const { animals, healthPlans, healthPlanTasks, healthEvents, parturitions } = useData();
+    // --- MEJORA: Se utiliza el hook para obtener las proyecciones ---
+    const { forecastBySeason } = useBirthingForecast();
 
     const pendingTasks = useMemo(() => {
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        today.setUTCHours(0, 0, 0, 0);
+        const currentYear = today.getUTCFullYear();
 
         const generatedTasks: AgendaTask[] = [];
 
-        // 1. Iterar sobre cada animal activo
         const activeAnimals = animals.filter(a => a.status === 'Activo' && !a.isReference);
         
         for (const animal of activeAnimals) {
             const ageInDays = calculateAgeInDays(animal.birthDate);
-            if (ageInDays < 0) continue; // Saltar si no hay fecha de nacimiento
+            if (ageInDays < 0) continue;
 
-            // 2. Encontrar los planes que aplican a este animal
             const applicablePlans = healthPlans.filter(plan => {
-                const { minAgeDays, maxAgeDays, categories } = plan.targetCriteria;
+                const { minAgeDays, maxAgeDays, categories, targetStatus } = plan.targetCriteria;
                 const category = getAnimalZootecnicCategory(animal, parturitions);
-
+                
                 const ageMatch = (!minAgeDays || ageInDays >= minAgeDays) && (!maxAgeDays || ageInDays <= maxAgeDays);
                 const categoryMatch = !categories || categories.length === 0 || categories.includes(category as any);
-                
-                return ageMatch && categoryMatch;
+                // --- MEJORA: Se añade la comprobación del estado reproductivo ---
+                const statusMatch = !targetStatus || targetStatus.length === 0 || targetStatus.includes(animal.reproductiveStatus as any);
+
+                return ageMatch && categoryMatch && statusMatch;
             });
 
-            // 3. Para cada plan aplicable, revisar sus tareas
             for (const plan of applicablePlans) {
                 const tasksForPlan = healthPlanTasks.filter(t => t.healthPlanId === plan.id);
 
                 for (const task of tasksForPlan) {
                     let dueDate: Date | null = null;
+                    let taskKey: string | null = null;
 
-                    // 4. Calcular la fecha de vencimiento (dueDate) de la tarea
                     if (task.trigger.type === 'age' && task.trigger.days) {
-                        const birthDate = new Date(animal.birthDate);
-                        birthDate.setDate(birthDate.getDate() + task.trigger.days);
+                        const birthDate = new Date(animal.birthDate + 'T00:00:00Z');
+                        birthDate.setUTCDate(birthDate.getUTCDate() + task.trigger.days);
                         dueDate = birthDate;
+                        taskKey = `${animal.id}-${task.id}`;
+                    } else if (task.trigger.type === 'fixed_date_period' && task.trigger.month && task.trigger.week) {
+                        const thisYearDate = getDateForFixedTask(currentYear, task.trigger.month, task.trigger.week);
+                        dueDate = thisYearDate;
+                        taskKey = `${animal.id}-${task.id}-${currentYear}`;
+                        
+                        if ((thisYearDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24) > 90) {
+                            const lastYearDate = getDateForFixedTask(currentYear - 1, task.trigger.month, task.trigger.week);
+                            const lastYearKey = `${animal.id}-${task.id}-${currentYear - 1}`;
+                            const lastYearDone = healthEvents.some(event => 
+                                event.animalId === animal.id && 
+                                event.taskId === task.id &&
+                                new Date(event.date).getUTCFullYear() === currentYear - 1
+                            );
+                            if (!lastYearDone) {
+                                dueDate = lastYearDate;
+                                taskKey = lastYearKey;
+                            }
+                        }
+                    // --- MEJORA: Lógica para el nuevo disparador cíclico ---
+                    } else if (task.trigger.type === 'birthing_season_event' && task.trigger.offsetDays !== undefined) {
+                        // 1. Encontrar la temporada de partos a la que pertenece este animal
+                        const animalSeason = forecastBySeason.find(season => 
+                            season.events.some(event => event.animal.id === animal.id)
+                        );
+
+                        if (animalSeason && animalSeason.projectedStartDate) {
+                            // 2. Calcular la fecha de la tarea
+                            const seasonStartDate = new Date(animalSeason.projectedStartDate);
+                            seasonStartDate.setUTCDate(seasonStartDate.getUTCDate() + task.trigger.offsetDays);
+                            dueDate = seasonStartDate;
+                            taskKey = `${animal.id}-${task.id}-${animalSeason.seasonId}`;
+                        }
                     }
-                    // (Aquí se podrían añadir más tipos de triggers, como 'fixed_date_period')
 
-                    if (!dueDate) continue;
-                    dueDate.setHours(0, 0, 0, 0);
+                    if (!dueDate || !taskKey) continue;
+                    
+                    dueDate.setUTCHours(0, 0, 0, 0);
 
-                    // 5. Verificar si la tarea ya se completó
-                    const taskKey = `${animal.id}-${task.id}`;
-                    const hasBeenDone = healthEvents.some(event => 
-                        event.animalId === animal.id &&
-                        event.taskId === task.id &&
-                        // Consideramos la tarea hecha si se registró en una ventana de +/- 7 días de la fecha de vencimiento
-                        Math.abs(new Date(event.date).getTime() - dueDate.getTime()) <= 7 * 24 * 60 * 60 * 1000
-                    );
+                    const hasBeenDone = healthEvents.some(event => {
+                        if (event.animalId !== animal.id || event.taskId !== task.id) return false;
+                        
+                        if (task.trigger.type === 'age') {
+                            return true; 
+                        } else if (task.trigger.type === 'fixed_date_period' || task.trigger.type === 'birthing_season_event') {
+                            // Para tareas anuales o por temporada, verificamos si se hizo en el año correcto
+                            return new Date(event.date).getUTCFullYear() === dueDate.getUTCFullYear();
+                        }
+                        return false;
+                    });
 
-                    // 6. Si no se ha hecho y no es muy lejana en el futuro, añadirla a la lista
-                    const daysUntilDue = (dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+                    const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
                     if (!hasBeenDone && daysUntilDue < 90) { // Mostramos tareas hasta 90 días en el futuro
                         let status: AgendaTask['status'] = 'Próxima';
@@ -89,12 +135,10 @@ export const useHealthAgenda = () => {
             }
         }
         
-        // 7. Ordenar las tareas por fecha
         return generatedTasks.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
 
-    }, [animals, healthPlans, healthPlanTasks, healthEvents, parturitions]);
+    }, [animals, healthPlans, healthPlanTasks, healthEvents, parturitions, forecastBySeason]);
     
-    // 8. Agrupar por estado para fácil renderizado en la UI
     const groupedTasks = useMemo(() => {
         return {
             overdue: pendingTasks.filter(t => t.status === 'Atrasada'),

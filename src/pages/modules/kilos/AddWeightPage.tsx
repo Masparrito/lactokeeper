@@ -1,3 +1,5 @@
+// src/pages/modules/kilos/AddWeightPage.tsx
+
 import React, { useState, useRef, useMemo } from 'react';
 import { useData } from '../../../context/DataContext';
 import { PlusCircle, Save, CheckCircle, AlertTriangle, X, Calendar, ArrowLeft, Zap, ScanLine } from 'lucide-react';
@@ -7,7 +9,8 @@ import { Modal } from '../../../components/ui/Modal';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 
-// --- SUB-COMPONENTE: SELECTOR DE FECHA RÁPIDO ---
+// --- SUB-COMPONENTES DE LA PÁGINA ---
+
 const QuickDatePicker = ({ selectedDate, onDateChange, onOpenCalendar }: { selectedDate: Date, onDateChange: (date: Date) => void, onOpenCalendar: () => void }) => {
     const dates = useMemo(() => {
         const today = new Date();
@@ -51,7 +54,6 @@ const QuickDatePicker = ({ selectedDate, onDateChange, onOpenCalendar }: { selec
     );
 };
 
-// --- SUB-COMPONENTE: FILA DE LA LISTA ---
 const EntryRow = ({ entry, onDelete }: { entry: any, onDelete: (tempId: number) => void }) => {
     const isUnrecognized = !entry.isRecognized;
     return (
@@ -68,7 +70,6 @@ const EntryRow = ({ entry, onDelete }: { entry: any, onDelete: (tempId: number) 
     );
 };
 
-// --- SUB-COMPONENTE: FORMULARIO DE CARGA RÁPIDA ---
 const RapidWeightForm = ({ onBack, onSaveSuccess }: { onBack: () => void, onSaveSuccess: (date: string) => void }) => {
     const { animals } = useData();
     const [currentId, setCurrentId] = useState('');
@@ -84,15 +85,21 @@ const RapidWeightForm = ({ onBack, onSaveSuccess }: { onBack: () => void, onSave
     const handleAddToList = () => {
         if (!currentId || !currentKg) return;
         const id = currentId.toUpperCase().trim();
+        const kgValue = parseFloat(currentKg);
 
-        // --- VALIDACIÓN PARA ANIMALES DE REFERENCIA ---
+        // --- MEJORA: Validación de Pesaje Irracional ---
+        if (kgValue > 100) {
+            setMessage({ type: 'error', text: `El peso de ${kgValue} Kg es irracional. Verifique el dato.` });
+            return;
+        }
+
         const animal = animals.find(a => a.id === id);
         if (animal && animal.isReference) {
             setMessage({ type: 'error', text: `${id} es un animal de Referencia y no se le pueden añadir pesajes.` });
-            return; // Detiene el proceso
+            return;
         }
 
-        const newEntry = { tempId: Date.now(), animalId: id, kg: parseFloat(currentKg), date: sessionDate.toISOString().split('T')[0], isRecognized: !!animal };
+        const newEntry = { tempId: Date.now(), animalId: id, kg: kgValue, date: sessionDate.toISOString().split('T')[0], isRecognized: !!animal };
         setSessionEntries(prev => [newEntry, ...prev]);
         setCurrentId('');
         setCurrentKg('');
@@ -170,32 +177,31 @@ const RapidWeightForm = ({ onBack, onSaveSuccess }: { onBack: () => void, onSave
     );
 };
 
-// --- COMPONENTE PRINCIPAL DE LA PÁGINA (MENÚ) ---
 export default function AddWeightPage({ onNavigate, onSaveSuccess }: { onNavigate: (page: any, state?: any) => void; onSaveSuccess: (date: string) => void; }) {
-  const [entryMode, setEntryMode] = useState<'options' | 'rapid'>('options');
+    const [entryMode, setEntryMode] = useState<'options' | 'rapid'>('options');
 
-  if (entryMode === 'rapid') {
-    return <RapidWeightForm onBack={() => setEntryMode('options')} onSaveSuccess={onSaveSuccess} />;
-  }
+    if (entryMode === 'rapid') {
+        return <RapidWeightForm onBack={() => setEntryMode('options')} onSaveSuccess={onSaveSuccess} />;
+    }
 
-  return (
-    <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in px-4">
-      <header className="text-center">
-        <h1 className="text-3xl font-bold tracking-tight text-white">Añadir Pesaje Corporal</h1>
-        <p className="text-lg text-zinc-400">Carga de Datos de Crecimiento</p>
-      </header>
-      <div className="space-y-4">
-        <button onClick={() => setEntryMode('rapid')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-green text-white p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
-          <Zap className="w-12 h-12 mb-2 text-brand-green" />
-          <span className="text-lg font-semibold">Carga Rápida</span>
-          <span className="text-sm font-normal text-zinc-400">Para carga masiva con teclado</span>
-        </button>
-        <button onClick={() => onNavigate('ocr', {})} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-blue text-white p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
-          <ScanLine className="w-12 h-12 mb-2 text-brand-blue" />
-          <span className="text-lg font-semibold">Escanear Cuaderno</span>
-          <span className="text-sm font-normal text-zinc-400">Digitalización asistida por IA</span>
-        </button>
-      </div>
-    </div>
-  );
+    return (
+        <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in px-4">
+            <header className="text-center">
+                <h1 className="text-3xl font-bold tracking-tight text-white">Añadir Pesaje Corporal</h1>
+                <p className="text-lg text-zinc-400">Carga de Datos de Crecimiento</p>
+            </header>
+            <div className="space-y-4">
+                <button onClick={() => setEntryMode('rapid')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-green text-white p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
+                    <Zap className="w-12 h-12 mb-2 text-brand-green" />
+                    <span className="text-lg font-semibold">Carga Rápida</span>
+                    <span className="text-sm font-normal text-zinc-400">Para carga masiva con teclado</span>
+                </button>
+                <button onClick={() => onNavigate('ocr', {})} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-blue text-white p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
+                    <ScanLine className="w-12 h-12 mb-2 text-brand-blue" />
+                    <span className="text-lg font-semibold">Escanear Cuaderno</span>
+                    <span className="text-sm font-normal text-zinc-400">Digitalización asistida por IA</span>
+                </button>
+            </div>
+        </div>
+    );
 }

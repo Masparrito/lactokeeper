@@ -10,7 +10,6 @@ import { TransferAnimalsModal } from '../components/ui/TransferAnimalsModal';
 import { formatAge } from '../utils/calculations';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
-// --- ANIMAL ROW ACTUALIZADO ---
 const AnimalRow = ({ animal, onSelect, isEditing, isSelected }: { animal: Animal, onSelect: (id: string) => void, isEditing: boolean, isSelected: boolean }) => {
     const formattedAge = formatAge(animal.birthDate);
 
@@ -25,7 +24,6 @@ const AnimalRow = ({ animal, onSelect, isEditing, isSelected }: { animal: Animal
                 )}
                 <div>
                     <p className="font-bold text-lg text-white">{animal.id}</p>
-                    {/* --- CAMBIO CLAVE: Se unifica la información base según la nueva norma --- */}
                     <p className="text-sm text-zinc-400">
                         {animal.sex} | {formattedAge} | Lote: {animal.location || 'Sin Asignar'}
                     </p>
@@ -37,7 +35,8 @@ const AnimalRow = ({ animal, onSelect, isEditing, isSelected }: { animal: Animal
 
 
 export default function LotDetailPage({ lotName, onBack, navigateTo }: { lotName: string; onBack: () => void; navigateTo: (page: PageState) => void; }) {
-    const { animals, parturitions, serviceRecords, breedingGroups, updateAnimal } = useData();
+    // --- CAMBIO CLAVE 1: Se obtienen las nuevas entidades del contexto ---
+    const { animals, parturitions, serviceRecords, breedingSeasons, sireLots, updateAnimal } = useData();
     const [isSelectorOpen, setSelectorOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [selectedAnimals, setSelectedAnimals] = useState<Set<string>>(new Set());
@@ -144,7 +143,18 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: { lotName
                 </div>
             )}
 
-            <AdvancedAnimalSelector isOpen={isSelectorOpen} onClose={() => setSelectorOpen(false)} onSelect={handleAssignAnimals} animals={animals} parturitions={parturitions} serviceRecords={serviceRecords} breedingGroups={breedingGroups} title={`Añadir animales a: ${lotName}`} />
+            {/* --- CAMBIO CLAVE 2: Se pasan las nuevas props al selector --- */}
+            <AdvancedAnimalSelector 
+                isOpen={isSelectorOpen} 
+                onClose={() => setSelectorOpen(false)} 
+                onSelect={handleAssignAnimals} 
+                animals={animals} 
+                parturitions={parturitions}
+                serviceRecords={serviceRecords}
+                breedingSeasons={breedingSeasons}
+                sireLots={sireLots}
+                title={`Añadir animales a: ${lotName}`} 
+            />
             <TransferAnimalsModal isOpen={isTransferModalOpen} onClose={() => { setIsTransferModalOpen(false); setIsEditing(false); setSelectedAnimals(new Set()); }} animalsToTransfer={Array.from(selectedAnimals)} fromLot={lotName} />
         </>
     );

@@ -1,22 +1,10 @@
 // src/context/DataContext.tsx
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { Animal, Weighing, Parturition, Father, Lot, Origin, BreedingGroup, ServiceRecord, Event, FeedingPlan, EventType, BodyWeighing, Product, HealthPlan, HealthPlanTask, HealthEvent, initDB, getDB } from '../db/local';
+import { Animal, Weighing, Parturition, Father, Lot, Origin, BreedingSeason, SireLot, ServiceRecord, Event, FeedingPlan, EventType, BodyWeighing, Product, HealthPlan, HealthPlanTask, HealthEvent, initDB, getDB } from '../db/local';
 import { db as firestoreDb } from '../firebaseConfig';
 import { useAuth } from './AuthContext';
-import { 
-    collection, 
-    query, 
-    where, 
-    onSnapshot, 
-    addDoc,
-    updateDoc,
-    deleteDoc,
-    doc,
-    setDoc,
-    writeBatch,
-    getDoc
-} from "firebase/firestore";
+import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch, getDoc } from "firebase/firestore";
 
 export type SyncStatus = 'idle' | 'syncing' | 'offline';
 
@@ -27,7 +15,8 @@ interface IDataContext {
   parturitions: Parturition[];
   lots: Lot[];
   origins: Origin[];
-  breedingGroups: BreedingGroup[];
+  breedingSeasons: BreedingSeason[];
+  sireLots: SireLot[];
   serviceRecords: ServiceRecord[];
   events: Event[];
   feedingPlans: FeedingPlan[];
@@ -47,9 +36,12 @@ interface IDataContext {
   deleteLot: (lotId: string) => Promise<void>;
   addOrigin: (originName: string) => Promise<void>;
   deleteOrigin: (originId: string) => Promise<void>;
-  addBreedingGroup: (groupData: Omit<BreedingGroup, 'id'>) => Promise<string>;
-  updateBreedingGroup: (groupId: string, dataToUpdate: Partial<BreedingGroup>) => Promise<void>;
-  deleteBreedingGroup: (groupId: string) => Promise<void>;
+  addBreedingSeason: (seasonData: Omit<BreedingSeason, 'id'>) => Promise<string>;
+  updateBreedingSeason: (seasonId: string, dataToUpdate: Partial<BreedingSeason>) => Promise<void>;
+  deleteBreedingSeason: (seasonId: string) => Promise<void>;
+  addSireLot: (lotData: Omit<SireLot, 'id'>) => Promise<string>;
+  updateSireLot: (lotId: string, dataToUpdate: Partial<SireLot>) => Promise<void>;
+  deleteSireLot: (lotId: string) => Promise<void>;
   addServiceRecord: (recordData: Omit<ServiceRecord, 'id'>) => Promise<void>;
   addFeedingPlan: (planData: Omit<FeedingPlan, 'id'>) => Promise<void>;
   addBatchEvent: (data: { lotName: string; date: string; type: EventType; details: string; }) => Promise<void>;
@@ -71,11 +63,11 @@ interface IDataContext {
 }
 
 const DataContext = createContext<IDataContext>({
-  animals: [], fathers: [], weighings: [], parturitions: [], lots: [], origins: [], breedingGroups: [], serviceRecords: [], events: [], feedingPlans: [], bodyWeighings: [], products: [], healthPlans: [], healthPlanTasks: [], healthEvents: [],
+  animals: [], fathers: [], weighings: [], parturitions: [], lots: [], origins: [], breedingSeasons: [], sireLots: [], serviceRecords: [], events: [], feedingPlans: [], bodyWeighings: [], products: [], healthPlans: [], healthPlanTasks: [], healthEvents: [],
   isLoading: true,
   syncStatus: 'idle',
   addAnimal: async () => {}, updateAnimal: async () => {}, deleteAnimalPermanently: async () => {}, startDryingProcess: async () => {}, setLactationAsDry: async () => {}, addLot: async () => {}, deleteLot: async () => {}, addOrigin: async () => {}, deleteOrigin: async () => {},
-  addBreedingGroup: async () => '', updateBreedingGroup: async () => {}, deleteBreedingGroup: async () => {}, addServiceRecord: async () => {}, addFeedingPlan: async () => {}, addBatchEvent: async () => {}, addWeighing: async () => {}, addBodyWeighing: async () => {},
+  addBreedingSeason: async () => '', updateBreedingSeason: async () => {}, deleteBreedingSeason: async () => {}, addSireLot: async () => '', updateSireLot: async () => {}, deleteSireLot: async () => {}, addServiceRecord: async () => {}, addFeedingPlan: async () => {}, addBatchEvent: async () => {}, addWeighing: async () => {}, addBodyWeighing: async () => {},
   addParturition: async () => {}, fetchData: async () => {}, addFather: async () => {}, addProduct: async () => {}, updateProduct: async () => {}, deleteProduct: async () => {}, addHealthPlan: async () => {}, updateHealthPlan: async () => {}, deleteHealthPlan: async () => {},
   addHealthPlanTask: async () => {}, updateHealthPlanTask: async () => {}, deleteHealthPlanTask: async () => {}, addHealthEvent: async () => {},
 });
@@ -90,7 +82,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [parturitions, setParturitions] = useState<Parturition[]>([]);
   const [lots, setLots] = useState<Lot[]>([]);
   const [origins, setOrigins] = useState<Origin[]>([]);
-  const [breedingGroups, setBreedingGroups] = useState<BreedingGroup[]>([]);
+  const [breedingSeasons, setBreedingSeasons] = useState<BreedingSeason[]>([]);
+  const [sireLots, setSireLots] = useState<SireLot[]>([]);
   const [serviceRecords, setServiceRecords] = useState<ServiceRecord[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [feedingPlans, setFeedingPlans] = useState<FeedingPlan[]>([]);
@@ -106,17 +99,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchDataFromLocalDb = useCallback(async () => {
     try {
       const localDb = getDB();
-      const [animalsData, fathersData, weighingsData, partData, lotsData, originsData, breedingGroupsData, serviceRecordsData, eventsData, feedingPlansData, bodyWeighingsData, productsData, healthPlansData, healthPlanTasksData, healthEventsData] = await Promise.all([
+      const [animalsData, fathersData, weighingsData, partData, lotsData, originsData, breedingSeasonsData, sireLotsData, serviceRecordsData, eventsData, feedingPlansData, bodyWeighingsData, productsData, healthPlansData, healthPlanTasksData, healthEventsData] = await Promise.all([
         localDb.animals.toArray(), localDb.fathers.toArray(), localDb.weighings.toArray(),
         localDb.parturitions.toArray(), localDb.lots.toArray(), localDb.origins.toArray(),
-        localDb.breedingGroups.toArray(), localDb.serviceRecords.toArray(), localDb.events.toArray(),
-        localDb.feedingPlans.toArray(), localDb.bodyWeighings.toArray(), localDb.products.toArray(),
-        localDb.healthPlans.toArray(), localDb.healthPlanTasks.toArray(), localDb.healthEvents.toArray(),
+        localDb.breedingSeasons.toArray(), localDb.sireLots.toArray(), localDb.serviceRecords.toArray(), 
+        localDb.events.toArray(), localDb.feedingPlans.toArray(), localDb.bodyWeighings.toArray(), 
+        localDb.products.toArray(), localDb.healthPlans.toArray(), localDb.healthPlanTasks.toArray(), 
+        localDb.healthEvents.toArray(),
       ]);
       setAnimals(animalsData); setFathers(fathersData); setWeighings(weighingsData); setParturitions(partData);
-      setLots(lotsData); setOrigins(originsData); setBreedingGroups(breedingGroupsData); setServiceRecords(serviceRecordsData);
-      setEvents(eventsData); setFeedingPlans(feedingPlansData); setBodyWeighings(bodyWeighingsData); setProducts(productsData);
-      setHealthPlans(healthPlansData); setHealthPlanTasks(healthPlanTasksData); setHealthEvents(healthEventsData);
+      setLots(lotsData); setOrigins(originsData); setBreedingSeasons(breedingSeasonsData); setSireLots(sireLotsData); 
+      setServiceRecords(serviceRecordsData); setEvents(eventsData); setFeedingPlans(feedingPlansData); 
+      setBodyWeighings(bodyWeighingsData); setProducts(productsData); setHealthPlans(healthPlansData); 
+      setHealthPlanTasks(healthPlanTasksData); setHealthEvents(healthEventsData);
     } catch (error) { console.error("Error al cargar datos locales:", error); } 
     finally { setIsLoading(false); }
   }, []);
@@ -132,8 +127,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!currentUser) {
             setIsLoading(false);
             setAnimals([]); setFathers([]); setWeighings([]); setParturitions([]); setLots([]); setOrigins([]);
-            setBreedingGroups([]); setServiceRecords([]); setEvents([]); setFeedingPlans([]); setBodyWeighings([]);
-            setProducts([]); setHealthPlans([]); setHealthPlanTasks([]); setHealthEvents([]);
+            setBreedingSeasons([]); setSireLots([]); setServiceRecords([]); setEvents([]); setFeedingPlans([]); 
+            setBodyWeighings([]); setProducts([]); setHealthPlans([]); setHealthPlanTasks([]); setHealthEvents([]);
             return;
         }
 
@@ -145,6 +140,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             const syncCollection = (collectionName: string, table: any) => {
                 const unsubscribe = onSnapshot(q(collectionName), async (snapshot) => {
+                    // --- CAMBIO CLAVE: Se elimina la condición 'hasPendingWrites' para una experiencia Offline-First real ---
+                    // if (snapshot.metadata.hasPendingWrites) return;
+
                     if (snapshot.docChanges().length > 0) {
                         console.log(`[Sync] Recibidos ${snapshot.docChanges().length} cambios para '${collectionName}'. Actualizando DB local.`);
                         if (navigator.onLine) {
@@ -153,7 +151,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             syncTimeoutRef.current = setTimeout(() => setSyncStatus('idle'), 2000);
                         }
                     }
-                    if (snapshot.metadata.hasPendingWrites) return;
+                    
                     const batch = [];
                     for (const change of snapshot.docChanges()) {
                         const docData = { ...change.doc.data(), id: change.doc.id };
@@ -171,7 +169,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             syncCollection('weighings', localDb.weighings);
             syncCollection('lots', localDb.lots);
             syncCollection('origins', localDb.origins);
-            syncCollection('breedingGroups', localDb.breedingGroups);
+            syncCollection('breedingSeasons', localDb.breedingSeasons);
+            syncCollection('sireLots', localDb.sireLots);
             syncCollection('serviceRecords', localDb.serviceRecords);
             syncCollection('events', localDb.events);
             syncCollection('feedingPlans', localDb.feedingPlans);
@@ -190,13 +189,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!currentUser) throw new Error("Usuario no autenticado");
         await addDoc(collection(firestoreDb, "events"), { ...eventData, userId: currentUser.uid });
     };
-
     const addAnimal = async (animalData: Omit<Animal, 'id'> & { id: string }) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const animalRef = doc(firestoreDb, "animals", animalData.id.toUpperCase());
         await setDoc(animalRef, { ...animalData, id: animalData.id.toUpperCase(), userId: currentUser.uid, createdAt: Date.now() });
     };
-
     const updateAnimal = async (animalId: string, dataToUpdate: Partial<Animal>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const animalRef = doc(firestoreDb, "animals", animalId);
@@ -216,7 +213,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         await updateDoc(animalRef, dataToUpdate);
     };
-    
     const deleteAnimalPermanently = async (animalId: string) => { if (!currentUser) throw new Error("Usuario no autenticado"); await deleteDoc(doc(firestoreDb, "animals", animalId)); };
     const startDryingProcess = async (parturitionId: string) => { if (!currentUser) throw new Error("Usuario no autenticado"); await updateDoc(doc(firestoreDb, "parturitions", parturitionId), { status: 'en-secado', dryingStartDate: new Date().toISOString().split('T')[0], }); };
     const setLactationAsDry = async (parturitionId: string) => { if (!currentUser) throw new Error("Usuario no autenticado"); await updateDoc(doc(firestoreDb, "parturitions", parturitionId), { status: 'seca', }); };
@@ -243,9 +239,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         await batch.commit();
     };
-    const addBreedingGroup = async (groupData: Omit<BreedingGroup, 'id'>) => { if (!currentUser) throw new Error("Usuario no autenticado"); const docRef = await addDoc(collection(firestoreDb, "breedingGroups"), { ...groupData, userId: currentUser.uid }); return docRef.id; };
-    const updateBreedingGroup = async (groupId: string, dataToUpdate: Partial<BreedingGroup>) => { if (!currentUser) throw new Error("Usuario no autenticado"); await updateDoc(doc(firestoreDb, "breedingGroups", groupId), dataToUpdate); };
-    const deleteBreedingGroup = async (groupId: string) => { if (!currentUser) throw new Error("Usuario no autenticado"); await deleteDoc(doc(firestoreDb, "breedingGroups", groupId)); };
     const addServiceRecord = async (recordData: Omit<ServiceRecord, 'id'>) => { if (!currentUser) throw new Error("Usuario no autenticado"); await addDoc(collection(firestoreDb, "serviceRecords"), { ...recordData, userId: currentUser.uid }); };
     const addBatchEvent = async (data: { lotName: string; date: string; type: EventType; details: string; }) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -267,14 +260,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updateHealthPlanTask = async (taskId: string, dataToUpdate: Partial<HealthPlanTask>) => { if (!currentUser) throw new Error("Usuario no autenticado"); await updateDoc(doc(firestoreDb, "healthPlanTasks", taskId), dataToUpdate); };
     const deleteHealthPlanTask = async (taskId: string) => { if (!currentUser) throw new Error("Usuario no autenticado"); await deleteDoc(doc(firestoreDb, "healthPlanTasks", taskId)); };
     const addHealthEvent = async (eventData: Omit<HealthEvent, 'id'>) => { if (!currentUser) throw new Error("Usuario no autenticado"); await addDoc(collection(firestoreDb, "healthEvents"), { ...eventData, userId: currentUser.uid }); };
+    const addBreedingSeason = async (seasonData: Omit<BreedingSeason, 'id'>) => { if (!currentUser) throw new Error("Usuario no autenticado"); const docRef = await addDoc(collection(firestoreDb, "breedingSeasons"), { ...seasonData, userId: currentUser.uid }); return docRef.id; };
+    const updateBreedingSeason = async (seasonId: string, dataToUpdate: Partial<BreedingSeason>) => { if (!currentUser) throw new Error("Usuario no autenticado"); await updateDoc(doc(firestoreDb, "breedingSeasons", seasonId), dataToUpdate); };
+    const deleteBreedingSeason = async (seasonId: string) => { if (!currentUser) throw new Error("Usuario no autenticado"); await deleteDoc(doc(firestoreDb, "breedingSeasons", seasonId)); };
+    const addSireLot = async (lotData: Omit<SireLot, 'id'>) => { if (!currentUser) throw new Error("Usuario no autenticado"); const docRef = await addDoc(collection(firestoreDb, "sireLots"), { ...lotData, userId: currentUser.uid }); return docRef.id; };
+    const updateSireLot = async (lotId: string, dataToUpdate: Partial<SireLot>) => { if (!currentUser) throw new Error("Usuario no autenticado"); await updateDoc(doc(firestoreDb, "sireLots", lotId), dataToUpdate); };
+    const deleteSireLot = async (lotId: string) => { if (!currentUser) throw new Error("Usuario no autenticado"); await deleteDoc(doc(firestoreDb, "sireLots", lotId)); };
 
   return (
     <DataContext.Provider value={{ 
-        animals, fathers, weighings, parturitions, lots, origins, breedingGroups, serviceRecords, events, feedingPlans, bodyWeighings, products, healthPlans, healthPlanTasks, healthEvents, isLoading, syncStatus,
+        animals, fathers, weighings, parturitions, lots, origins, breedingSeasons, sireLots, serviceRecords, events, feedingPlans, bodyWeighings, products, healthPlans, healthPlanTasks, healthEvents, isLoading, syncStatus,
         addAnimal, updateAnimal, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot, deleteLot, addOrigin, deleteOrigin,
-        addBreedingGroup, updateBreedingGroup, deleteBreedingGroup, addServiceRecord, addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing,
-        addParturition, fetchData: fetchDataFromLocalDb, addFather, addProduct, updateProduct, deleteProduct,
-        addHealthPlan, updateHealthPlan, deleteHealthPlan, addHealthPlanTask, updateHealthPlanTask, deleteHealthPlanTask, addHealthEvent
+        addBreedingSeason, updateBreedingSeason, deleteBreedingSeason, addSireLot, updateSireLot, deleteSireLot, addServiceRecord, 
+        addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, addParturition, fetchData: fetchDataFromLocalDb, addFather, 
+        addProduct, updateProduct, deleteProduct, addHealthPlan, updateHealthPlan, deleteHealthPlan, 
+        addHealthPlanTask, updateHealthPlanTask, deleteHealthPlanTask, addHealthEvent
       }}
     >
       {children}

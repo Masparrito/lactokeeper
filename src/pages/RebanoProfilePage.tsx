@@ -3,7 +3,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { ArrowLeft, Edit, Save, X, Droplets, Scale, Syringe, Replace, CheckCircle, PlusCircle, Move, Tag, HeartPulse, Milk, FileText, Feather, AlertTriangle, ChevronRight, Archive, DollarSign, HeartCrack, Ban, RefreshCw, Trash2, Award } from 'lucide-react';
-import { AddParturitionForm } from '../components/forms/AddParturitionForm';
 import { Modal } from '../components/ui/Modal';
 import { ActionSheetModal, ActionSheetAction } from '../components/ui/ActionSheetModal';
 import type { PageState } from '../types/navigation';
@@ -15,6 +14,7 @@ import { usePedigree } from '../hooks/usePedigree';
 import { PedigreeChart } from '../components/pedigree/PedigreeChart';
 import { formatAge, getAnimalZootecnicCategory } from '../utils/calculations';
 import { WeanAnimalForm } from '../components/forms/WeanAnimalForm';
+import { ParturitionModal } from '../components/modals/ParturitionModal';
 
 // --- SUB-COMPONENTES DE LA PÁGINA ---
 
@@ -69,7 +69,6 @@ const EventsTab = ({ animalId }: { animalId: string }) => {
     );
 };
 
-// --- PROGENY TAB ACTUALIZADO ---
 const ProgenyTab = ({ offspring, navigateTo }: { offspring: Animal[], navigateTo: (page: PageState) => void }) => {
     if (offspring.length === 0) {
         return <div className="text-center p-8 text-zinc-500">Este animal no tiene descendencia registrada.</div>;
@@ -84,7 +83,6 @@ const ProgenyTab = ({ offspring, navigateTo }: { offspring: Animal[], navigateTo
                 >
                    <div>
                        <p className="font-bold text-lg text-white">{child.id}</p>
-                       {/* --- CAMBIO CLAVE: Se aplica la nueva norma a la tarjeta de la cría --- */}
                        <p className="text-sm text-zinc-400">
                            {child.sex} | {formatAge(child.birthDate)} | Lote: {child.location || 'Sin Asignar'}
                        </p>
@@ -370,9 +368,11 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
             <ConfirmationModal isOpen={isDeleteConfirmationOpen} onClose={() => setIsDeleteConfirmationOpen(false)} onConfirm={handlePermanentDelete} title={`¿Eliminar ${animal.id} Permanentemente?`} message="Esta acción borrará el registro del animal de la base de datos para siempre y no se puede deshacer." />
             <AddLotModal isOpen={isAddLotModalOpen} onClose={() => setAddLotModalOpen(false)} />
             <AddOriginModal isOpen={isAddOriginModalOpen} onClose={() => setAddOriginModalOpen(false)} />
-            <Modal isOpen={isParturitionModalOpen} onClose={() => setParturitionModalOpen(false)} title={`Registrar Parto para ${animal.id}`}>
-                <AddParturitionForm motherId={animal.id} onSaveSuccess={() => setParturitionModalOpen(false)} onCancel={() => setParturitionModalOpen(false)} />
-            </Modal>
+            <ParturitionModal
+                isOpen={isParturitionModalOpen}
+                onClose={() => setParturitionModalOpen(false)}
+                motherId={animal.id}
+            />
             <Modal isOpen={isWeanModalOpen} onClose={() => setWeanModalOpen(false)} title={`Registrar Destete de ${animal.id}`}>
                 <WeanAnimalForm
                     animalId={animal.id}

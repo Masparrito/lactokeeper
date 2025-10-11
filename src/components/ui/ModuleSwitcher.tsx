@@ -1,16 +1,18 @@
 // src/components/ui/ModuleSwitcher.tsx
 
 import React, { useState } from 'react';
-import { Layers, Droplets, Scale, HeartPulse, X } from 'lucide-react';
+// --- MEJORA: Se importa el ícono para el nuevo módulo ---
+import { Layers, Droplets, Scale, HeartPulse, X, DollarSign } from 'lucide-react';
 
-// Se actualiza el tipo para incluir 'salud'
-type AppModule = 'lactokeeper' | 'kilos' | 'salud';
+// --- MEJORA: Se añade 'economia' a los tipos de módulos ---
+type AppModule = 'lactokeeper' | 'kilos' | 'salud' | 'economia';
 
-// --- CAMBIO CLAVE: Se añade el nuevo módulo de Salud a la lista ---
 const modules = [
     { id: 'lactokeeper', name: 'LactoKeeper', icon: Droplets, color: 'bg-brand-blue' },
     { id: 'kilos', name: 'Kilos', icon: Scale, color: 'bg-brand-green' },
-    { id: 'salud', name: 'Salud', icon: HeartPulse, color: 'bg-teal-500' } // Nuevo módulo
+    { id: 'salud', name: 'StockCare', icon: HeartPulse, color: 'bg-teal-500' },
+    // --- MEJORA: Se añade el nuevo módulo de Economía a la lista ---
+    { id: 'economia', name: 'Economía', icon: DollarSign, color: 'bg-yellow-500' }
 ];
 
 interface ModuleSwitcherProps {
@@ -27,7 +29,7 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ onSwitchModule }
 
     return (
         <div className="fixed bottom-24 right-4 z-40 flex flex-col items-end gap-4 pointer-events-none">
-            <div 
+            <div    
                 className={`flex flex-col items-end gap-4 transition-all duration-300 ease-in-out ${isOpen ? 'opacity-100' : 'opacity-0 translate-y-4'}`}
             >
                 {modules.map((module) => (

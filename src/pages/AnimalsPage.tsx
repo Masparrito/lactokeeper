@@ -1,6 +1,6 @@
 // src/pages/AnimalsPage.tsx
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useData } from '../context/DataContext';
 import { ChevronRight, BarChart2, ArrowUp, ArrowDown, Sparkles, ChevronLeft, FilterX, Info, Sigma, Droplets, TrendingUp, LogIn, LogOut, Target } from 'lucide-react';
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, LabelList, CartesianGrid } from 'recharts';
@@ -11,6 +11,9 @@ import { useWeighingTrend } from '../hooks/useWeighingTrend';
 import { useSearch } from '../hooks/useSearch';
 import { SearchHeader } from '../components/ui/SearchHeader';
 import { formatAge } from '../utils/calculations';
+import { useVirtualizer } from '@tanstack/react-virtual';
+
+// --- SUB-COMPONENTES DE LA PÁGINA ---
 
 const CustomBarLabel = (props: any) => {
     const { x, y, width, height, value, total } = props;
@@ -23,44 +26,92 @@ const CustomBarLabel = (props: any) => {
     );
 };
 
-const MilkingAnimalRow = ({ animal, onSelectAnimal }: { animal: AnalyzedAnimal, onSelectAnimal: (id: string) => void }) => {
+const MilkingAnimalRow = ({ animal, onSelectAnimal, onTrendClick }: { animal: AnalyzedAnimal, onSelectAnimal: (id: string) => void, onTrendClick: (animal: AnalyzedAnimal) => void }) => {
     const { weighings } = useData();
-    const { isLongTrend, lastTwoWeighings, difference } = useWeighingTrend(animal.id, weighings);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const handleTrendClick = (e: React.MouseEvent) => { e.stopPropagation(); if (animal.trend && animal.trend !== 'single') setIsModalOpen(true); };
+    const { trend, isLongTrend } = useWeighingTrend(animal.id, weighings);
+    
+    const handleTrendClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (trend && trend !== 'single') {
+            onTrendClick(animal);
+        }
+    };
     const formattedAge = formatAge(animal.birthDate);
 
     return (
-        <>
-            <div onClick={() => onSelectAnimal(animal.id)} className="w-full cursor-pointer text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border flex justify-between items-center hover:border-brand-orange transition-colors">
-                <div>
-                    <p className="font-bold text-lg text-white">{animal.id}</p>
-                    <p className="text-sm text-zinc-400 mt-1">
-                        {animal.sex} | {formattedAge} | Lote: {animal.location || 'Sin Asignar'}
-                    </p>
-                </div>
-                <div className="flex items-center space-x-3">
-                    <div className="text-right">
-                        <p className="font-semibold text-brand-orange">{animal.latestWeighing.toFixed(2)} Kg</p>
-                        <p className="text-xs text-zinc-400">DEL: {animal.del}</p>
-                    </div>
-                    <button onClick={handleTrendClick} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors disabled:cursor-not-allowed" disabled={!animal.trend || animal.trend === 'single'}><WeighingTrendIcon trend={animal.trend} isLongTrend={isLongTrend} /></button>
-                   <span className={`hidden sm:block px-2 py-0.5 text-xs font-semibold rounded-full text-white ${animal.classification === 'Pobre' ? 'bg-brand-red/80' : animal.classification === 'Sobresaliente' ? 'bg-brand-green/80' : 'bg-gray-500/80'}`}>{animal.classification}</span>
-                   <ChevronRight className="text-zinc-600" />
-                </div>
+        <div onClick={() => onSelectAnimal(animal.id)} className="w-full cursor-pointer text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border flex justify-between items-center hover:border-brand-orange transition-colors">
+            <div>
+                <p className="font-bold text-lg text-white">{animal.id}</p>
+                <p className="text-sm text-zinc-400 mt-1">
+                    {animal.sex} | {formattedAge} | Lote: {animal.location || 'Sin Asignar'}
+                </p>
             </div>
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={`Tendencia de ${animal.id}`}>
-                <div className="text-center text-white space-y-4">
-                    <div className="grid grid-cols-2 gap-4 text-center">
-                        <div><p className="text-sm text-zinc-400">Pesaje Anterior ({lastTwoWeighings[1] ? new Date(lastTwoWeighings[1].date).toLocaleDateString() : 'N/A'})</p><p className="text-2xl font-semibold">{lastTwoWeighings[1]?.kg.toFixed(2) || 'N/A'} Kg</p></div>
-                        <div><p className="text-sm text-zinc-400">Último Pesaje ({lastTwoWeighings[0] ? new Date(lastTwoWeighings[0].date).toLocaleDateString() : 'N/A'})</p><p className="text-2xl font-semibold">{lastTwoWeighings[0]?.kg.toFixed(2) || 'N/A'} Kg</p></div>
-                    </div>
-                    <div><p className="text-zinc-400 text-base mb-1">Diferencia</p><p className={`text-3xl font-bold ${difference > 0 ? 'text-brand-green' : difference < 0 ? 'text-brand-red' : 'text-zinc-400'}`}>{difference > 0 ? '+' : ''}{difference.toFixed(2)} Kg</p></div>
+            <div className="flex items-center space-x-3">
+                <div className="text-right">
+                    <p className="font-semibold text-brand-orange">{animal.latestWeighing.toFixed(2)} Kg</p>
+                    <p className="text-xs text-zinc-400">DEL: {animal.del}</p>
                 </div>
-            </Modal>
-        </>
+                <button onClick={handleTrendClick} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors disabled:cursor-not-allowed" disabled={!trend || trend === 'single'}>
+                    <WeighingTrendIcon trend={trend} isLongTrend={isLongTrend} />
+                </button>
+                <span className={`hidden sm:block px-2 py-0.5 text-xs font-semibold rounded-full text-white ${animal.classification === 'Pobre' ? 'bg-brand-red/80' : animal.classification === 'Sobresaliente' ? 'bg-brand-green/80' : 'bg-gray-500/80'}`}>{animal.classification}</span>
+                <ChevronRight className="text-zinc-600" />
+            </div>
+        </div>
     );
 };
+
+const ExitingAnimalsModal = ({ isOpen, onClose, animalIds, onSelectAnimal }: { isOpen: boolean, onClose: () => void, animalIds: string[], onSelectAnimal: (id: string) => void }) => {
+    if (!isOpen) return null;
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Animales que Salieron del Ordeño">
+            <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
+                {animalIds.length > 0 ? animalIds.map(id => (
+                    <button
+                        key={id}
+                        onClick={() => {
+                            onSelectAnimal(id);
+                            onClose();
+                        }}
+                        className="w-full text-left p-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors flex justify-between items-center"
+                    >
+                        <span className="font-semibold text-white">{id}</span>
+                        <ChevronRight className="text-zinc-500" />
+                    </button>
+                )) : <p className="text-center text-zinc-500 py-4">No hay animales que hayan salido en este período.</p>}
+            </div>
+        </Modal>
+    );
+};
+
+const TrendModalContent = ({ animalId }: { animalId: string }) => {
+    const { weighings } = useData();
+    const { lastTwoWeighings, difference } = useWeighingTrend(animalId, weighings);
+    
+    if (lastTwoWeighings.length < 2) return <p>No hay suficientes datos para comparar.</p>;
+
+    return (
+        <div className="text-center text-white space-y-4">
+            <div className="grid grid-cols-2 gap-4 text-center">
+                <div>
+                    <p className="text-sm text-zinc-400">Pesaje Anterior ({new Date(lastTwoWeighings[1].date + 'T00:00:00').toLocaleDateString()})</p>
+                    <p className="text-2xl font-semibold">{lastTwoWeighings[1]?.kg.toFixed(2) || 'N/A'} Kg</p>
+                </div>
+                <div>
+                    <p className="text-sm text-zinc-400">Último Pesaje ({new Date(lastTwoWeighings[0].date + 'T00:00:00').toLocaleDateString()})</p>
+                    <p className="text-2xl font-semibold">{lastTwoWeighings[0]?.kg.toFixed(2) || 'N/A'} Kg</p>
+                </div>
+            </div>
+            <div>
+                <p className="text-zinc-400 text-base mb-1">Diferencia</p>
+                <p className={`text-3xl font-bold ${difference > 0.15 ? 'text-brand-green' : difference < -0.15 ? 'text-brand-red' : 'text-zinc-400'}`}>
+                    {difference > 0 ? '+' : ''}{difference.toFixed(2)} Kg
+                </p>
+            </div>
+        </div>
+    );
+};
+
 
 interface AnimalsPageProps {
     onSelectAnimal: (animalId: string) => void;
@@ -77,6 +128,8 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
     const [specialFilter, setSpecialFilter] = useState<'all' | 'new' | 'exiting'>('all');
     const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
     const [isScoreInfoModalOpen, setIsScoreInfoModalOpen] = useState(false);
+    const [isExitingAnimalsModalOpen, setIsExitingAnimalsModalOpen] = useState(false);
+    const [trendModalAnimal, setTrendModalAnimal] = useState<AnalyzedAnimal | null>(null);
 
     const { weighingsByDate, availableDates } = useMemo(() => {
         const groups: Record<string, any[]> = {};
@@ -176,7 +229,13 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
         }
         
         if (trendFilter !== 'all') {
-            list = list.filter(animal => animal.trend === trendFilter);
+            const trendAnimals = new Set(
+                weighings.filter(w => {
+                    const { trend } = useWeighingTrend(w.goatId, weighings);
+                    return trend === trendFilter;
+                }).map(w => w.goatId)
+            );
+            list = list.filter(animal => trendAnimals.has(animal.id));
         }
 
         if (lactationPhaseFilter !== 'all') {
@@ -191,16 +250,16 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
         }
 
         return list.sort((a,b) => a.id.localeCompare(b.id));
-    }, [classifiedAnimals, classificationFilter, trendFilter, lactationPhaseFilter, specialFilter, pageData.newAnimalIds]);
+    }, [classifiedAnimals, classificationFilter, trendFilter, lactationPhaseFilter, specialFilter, pageData.newAnimalIds, weighings]);
 
     const { searchTerm, setSearchTerm, filteredItems: searchedAnimals } = useSearch(filteredAnalysisList, ['id']);
-
+    
     const trendCounts = useMemo(() => {
         const total = classifiedAnimals.length;
         if (total === 0) return { up: 0, down: 0, new: 0, stable: 0, total: 0 };
-        const up = classifiedAnimals.filter(a => a.trend === 'up').length; 
-        const down = classifiedAnimals.filter(a => a.trend === 'down').length; 
-        const stable = classifiedAnimals.filter(a => a.trend === 'stable').length; 
+        const up = classifiedAnimals.filter(a => a.trend === 'up').length;    
+        const down = classifiedAnimals.filter(a => a.trend === 'down').length;    
+        const stable = classifiedAnimals.filter(a => a.trend === 'stable').length;    
         const single = classifiedAnimals.filter(a => a.trend === 'single').length;
         return { up: (up / total) * 100, down: (down / total) * 100, stable: (stable / total) * 100, new: (single / total) * 100, total };
     }, [classifiedAnimals]);
@@ -212,135 +271,172 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
         setSpecialFilter('all');
     };
 
-    const handleBarClick = (data: any) => { 
-        if (data?.name) { 
-            const newFilter = data.name as 'Pobre' | 'Promedio' | 'Sobresaliente'; 
-            setClassificationFilter(prev => prev === newFilter ? 'all' : newFilter); 
+    const handleBarClick = (data: any) => {    
+        if (data?.name) {    
+            const newFilter = data.name as 'Pobre' | 'Promedio' | 'Sobresaliente';    
+            setClassificationFilter(prev => prev === newFilter ? 'all' : newFilter);    
         }
     };
+
+    const parentRef = useRef<HTMLDivElement>(null);
+    const rowVirtualizer = useVirtualizer({
+        count: searchedAnimals.length,
+        getScrollElement: () => parentRef.current,
+        estimateSize: () => 104,
+        overscan: 5,
+    });
 
     if (isLoading) {
         return <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Cargando animales...</h1></div>;
     }
     
     return (
-        <div className="w-full max-w-2xl mx-auto space-y-4 pb-12">
-            <SearchHeader 
-                title="Análisis de Rebaño"
-                subtitle="Animales en Ordeño"
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
+        <>
+            <div className="w-full max-w-2xl mx-auto space-y-4 pb-12">
+                <SearchHeader   
+                    title="Análisis de Rebaño"
+                    subtitle="Animales en Ordeño"
+                    searchTerm={searchTerm}
+                    setSearchTerm={setSearchTerm}
+                />
+                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border flex justify-between items-center">
+                    <button onClick={() => setDateIndex(i => Math.min(i + 1, availableDates.length - 1))} disabled={dateIndex >= availableDates.length - 1} className="p-2 rounded-full hover:bg-zinc-700/50 disabled:opacity-30"><ChevronLeft /></button>
+                    <div className="text-center">
+                        <p className="text-lg font-semibold text-white">{currentDate ? new Date(currentDate + 'T00:00:00').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Sin Datos'}</p>
+                        <p className="text-sm text-zinc-400">{selectedWeighings.length} animales pesados</p>
+                    </div>
+                    <button onClick={() => setDateIndex(i => Math.max(i - 1, 0))} disabled={dateIndex === 0} className="p-2 rounded-full hover:bg-zinc-700/50 disabled:opacity-30"><ChevronRight /></button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <button onClick={() => setActiveModal('media')} className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left hover:border-brand-orange transition-colors">
+                        <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"><Droplets size={14} /><span>{isWeighted ? 'Media Ponderada' : 'Media de Prod.'}</span></div>
+                        <p className="text-2xl font-bold text-white">{(isWeighted ? weightedMean : mean).toFixed(2)} <span className="text-lg text-zinc-400">Kg</span></p>
+                    </button>
+                    <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border">
+                        <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"><Sigma size={14} /><span>Prod. Total</span></div>
+                        <p className="text-2xl font-bold text-white">{pageData.kpi.total.toFixed(2)} <span className="text-lg text-zinc-400">Kg</span></p>
+                    </div>
+                    <button onClick={() => setActiveModal('stdDev')} className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left hover:border-brand-orange transition-colors">
+                        <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"><Target size={14} /><span>Consistencia</span></div>
+                        <p className="text-2xl font-bold text-white">{stdDev.toFixed(2)} <span className="text-lg text-zinc-400">σ</span></p>
+                    </button>
+                    <button onClick={() => setActiveModal('rango')} className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left hover:border-brand-orange transition-colors">
+                        <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"><TrendingUp size={14} /><span>Rango Prod.</span></div>
+                        <p className="text-2xl font-bold text-white">{pageData.kpi.min.toFixed(2)} - {pageData.kpi.max.toFixed(2)} <span className="text-lg text-zinc-400">Kg</span></p>
+                    </button>
+                </div>
+
+                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border animate-fade-in">
+                    <div className="flex justify-between items-center border-b border-brand-border pb-2 mb-4">
+                        <div className="flex items-center space-x-2"><BarChart2 className="text-brand-orange" size={18}/><h3 className="text-lg font-semibold text-white">Análisis del Día</h3><button onClick={() => setIsInfoModalOpen(true)} className="text-zinc-500 hover:text-white"><Info size={14}/></button></div>
+                        <label className="flex items-center space-x-2 text-sm text-zinc-300 cursor-pointer">
+                            <Sparkles size={14} className={isWeighted ? 'text-brand-orange' : 'text-zinc-500'}/>
+                            <span>Ponderado a DEL</span>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsScoreInfoModalOpen(true); }} className="text-zinc-500 hover:text-white -ml-1"><Info size={14}/></button>
+                            <input type="checkbox" checked={isWeighted} onChange={(e) => setIsWeighted(e.target.checked)} className="form-checkbox h-4 w-4 bg-zinc-700 border-zinc-600 rounded text-brand-orange focus:ring-brand-orange focus:ring-offset-0"/>
+                        </label>
+                    </div>
+                    <div className="w-full h-48">
+                        <ResponsiveContainer>
+                            <BarChart data={distribution} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                                <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
+                                <YAxis orientation="left" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
+                                <Tooltip cursor={{fill: 'rgba(255, 255, 255, 0.05)'}} />
+                                <Bar dataKey="count" onClick={handleBarClick} cursor="pointer">
+                                    {distribution.map((entry) => (<Cell key={entry.name} fill={entry.fill} className={`${classificationFilter !== 'all' && classificationFilter !== entry.name ? 'opacity-30' : 'opacity-100'} transition-opacity`} />))}
+                                    <LabelList dataKey="count" content={<CustomBarLabel total={classifiedAnimals.length} />} />
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="text-center text-xs text-zinc-400 mt-2"><span>μ = {mean.toFixed(2)}</span> | <span>σ = {stdDev.toFixed(2)}</span></div>
+                </div>
+                
+                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-2 border border-brand-border space-y-2">
+                    <div className="flex justify-between items-center px-2 pt-2">
+                       <div className="flex items-center space-x-1 sm:space-x-2">
+                            <button onClick={() => setTrendFilter('all')} className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors ${trendFilter === 'all' ? 'bg-zinc-600 text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>Todos</button>
+                            <button onClick={() => setTrendFilter('up')} className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors flex items-center space-x-1 ${trendFilter === 'up' ? 'bg-brand-green/80 text-white' : 'bg-zinc-800/50 text-brand-green'}`}><ArrowUp size={14}/> <span>{trendCounts.up.toFixed(0)}%</span></button>
+                            <button onClick={() => setTrendFilter('down')} className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors flex items-center space-x-1 ${trendFilter === 'down' ? 'bg-brand-red/80 text-white' : 'bg-zinc-800/50 text-brand-red'}`}><ArrowDown size={14}/> <span>{trendCounts.down.toFixed(0)}%</span></button>
+                            <button onClick={() => setTrendFilter('single')} className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors flex items-center space-x-1 ${trendFilter === 'single' ? 'bg-brand-blue/80 text-white' : 'bg-zinc-800/50 text-brand-blue'}`}><Sparkles size={14}/> <span>{trendCounts.new.toFixed(0)}%</span></button>
+                       </div>
+                       <div className="flex items-center space-x-2">
+                            <div className="text-sm font-medium text-zinc-500">{searchedAnimals.length} / {classifiedAnimals.length}</div>
+                            <button onClick={resetFilters} title="Limpiar todos los filtros" className="text-zinc-500 hover:text-white"><FilterX size={16}/></button>
+                       </div>
+                    </div>
+                    <div className="flex justify-between items-center p-2 border-t border-brand-border">
+                        <div className="text-xs font-semibold text-zinc-400">Fase Lactancia:</div>
+                        <div className="flex items-center space-x-1 sm:space-x-2">
+                            <button onClick={() => setLactationPhaseFilter('all')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'all' ? 'bg-zinc-600 text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>Todos</button>
+                            <button onClick={() => setLactationPhaseFilter('first')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'first' ? 'bg-brand-blue text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>1er T</button>
+                            <button onClick={() => setLactationPhaseFilter('second')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'second' ? 'bg-brand-blue text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>2do T</button>
+                            <button onClick={() => setLactationPhaseFilter('third')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'third' ? 'bg-brand-blue text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>3er T</button>
+                            <button onClick={() => setLactationPhaseFilter('drying')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'drying' ? 'bg-brand-red/80 text-white' : 'bg-zinc-800/50 text-brand-red'}`}>A Secado</button>
+                        </div>
+                    </div>
+                    <div className="flex justify-between items-center p-2 border-t border-brand-border">
+                        <div className="text-xs font-semibold text-zinc-400">Movimientos:</div>
+                        <div className="flex items-center space-x-2">
+                            <button   
+                                onClick={() => setSpecialFilter(prev => prev === 'new' ? 'all' : 'new')}
+                                disabled={pageData.newAnimalIds.size === 0}
+                                className={`px-3 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${specialFilter === 'new' ? 'bg-brand-green text-white shadow-lg shadow-green-500/20' : 'bg-zinc-800/50 text-zinc-300'} ${pageData.newAnimalIds.size > 0 && specialFilter !== 'new' && 'animate-pulse'} disabled:opacity-40 disabled:cursor-not-allowed`}
+                            >
+                                <LogIn size={14}/> <span>Ingresos ({pageData.newAnimalIds.size})</span>
+                            </button>
+                            <button   
+                                onClick={() => setIsExitingAnimalsModalOpen(true)}
+                                disabled={pageData.exitingAnimalIds.size === 0}
+                                className={`px-3 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all bg-zinc-800/50 text-zinc-300 ${pageData.exitingAnimalIds.size > 0 && 'animate-pulse'} disabled:opacity-40 disabled:cursor-not-allowed`}
+                            >
+                                <LogOut size={14}/> <span>Salidas ({pageData.exitingAnimalIds.size})</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div ref={parentRef} className="pt-4" style={{ height: '600px', overflowY: 'auto' }}>
+                    {searchedAnimals.length > 0 ? (
+                        <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
+                            {rowVirtualizer.getVirtualItems().map((virtualItem) => {
+                                const animal = searchedAnimals[virtualItem.index];
+                                return (
+                                    <div
+                                        key={virtualItem.key}
+                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: `${virtualItem.size}px`, transform: `translateY(${virtualItem.start}px)`, padding: '0 1rem 0.5rem 1rem' }}
+                                    >
+                                        <MilkingAnimalRow 
+                                            animal={animal} 
+                                            onSelectAnimal={onSelectAnimal}
+                                            onTrendClick={setTrendModalAnimal}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="text-center py-10 bg-brand-glass rounded-2xl mx-4">
+                            <p className="text-zinc-400">
+                                {searchTerm ? `No se encontraron resultados para "${searchTerm}"` : "No hay animales con los filtros."}
+                            </p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {trendModalAnimal && (
+                <Modal isOpen={!!trendModalAnimal} onClose={() => setTrendModalAnimal(null)} title={`Tendencia de ${trendModalAnimal.id}`}>
+                    <TrendModalContent animalId={trendModalAnimal.id} />
+                </Modal>
+            )}
+
+            <ExitingAnimalsModal
+                isOpen={isExitingAnimalsModalOpen}
+                onClose={() => setIsExitingAnimalsModalOpen(false)}
+                animalIds={Array.from(pageData.exitingAnimalIds)}
+                onSelectAnimal={onSelectAnimal}
             />
-            <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border flex justify-between items-center">
-                <button onClick={() => setDateIndex(i => Math.min(i + 1, availableDates.length - 1))} disabled={dateIndex >= availableDates.length - 1} className="p-2 rounded-full hover:bg-zinc-700/50 disabled:opacity-30"><ChevronLeft /></button>
-                <div className="text-center">
-                    <p className="text-lg font-semibold text-white">{currentDate ? new Date(currentDate).toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Sin Datos'}</p>
-                    <p className="text-sm text-zinc-400">{selectedWeighings.length} animales pesados</p>
-                </div>
-                <button onClick={() => setDateIndex(i => Math.max(i - 1, 0))} disabled={dateIndex === 0} className="p-2 rounded-full hover:bg-zinc-700/50 disabled:opacity-30"><ChevronRight /></button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-                <button onClick={() => setActiveModal('media')} className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left hover:border-brand-orange transition-colors">
-                    <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"><Droplets size={14} /><span>{isWeighted ? 'Media Ponderada' : 'Media de Prod.'}</span></div>
-                    <p className="text-2xl font-bold text-white">{(isWeighted ? weightedMean : mean).toFixed(2)} <span className="text-lg text-zinc-400">Kg</span></p>
-                </button>
-                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border">
-                    <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"><Sigma size={14} /><span>Prod. Total</span></div>
-                    <p className="text-2xl font-bold text-white">{pageData.kpi.total.toFixed(2)} <span className="text-lg text-zinc-400">Kg</span></p>
-                </div>
-                <button onClick={() => setActiveModal('stdDev')} className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left hover:border-brand-orange transition-colors">
-                    <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"><Target size={14} /><span>Consistencia</span></div>
-                    <p className="text-2xl font-bold text-white">{stdDev.toFixed(2)} <span className="text-lg text-zinc-400">σ</span></p>
-                </button>
-                <button onClick={() => setActiveModal('rango')} className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left hover:border-brand-orange transition-colors">
-                    <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"><TrendingUp size={14} /><span>Rango Prod.</span></div>
-                    <p className="text-2xl font-bold text-white">{pageData.kpi.min.toFixed(2)} - {pageData.kpi.max.toFixed(2)} <span className="text-lg text-zinc-400">Kg</span></p>
-                </button>
-            </div>
-
-            <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border animate-fade-in">
-                <div className="flex justify-between items-center border-b border-brand-border pb-2 mb-4">
-                    <div className="flex items-center space-x-2"><BarChart2 className="text-brand-orange" size={18}/><h3 className="text-lg font-semibold text-white">Análisis del Día</h3><button onClick={() => setIsInfoModalOpen(true)} className="text-zinc-500 hover:text-white"><Info size={14}/></button></div>
-                    <label className="flex items-center space-x-2 text-sm text-zinc-300 cursor-pointer">
-                        <Sparkles size={14} className={isWeighted ? 'text-brand-orange' : 'text-zinc-500'}/>
-                        <span>Ponderado a DEL</span>
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsScoreInfoModalOpen(true); }} className="text-zinc-500 hover:text-white -ml-1"><Info size={14}/></button>
-                        <input type="checkbox" checked={isWeighted} onChange={(e) => setIsWeighted(e.target.checked)} className="form-checkbox h-4 w-4 bg-zinc-700 border-zinc-600 rounded text-brand-orange focus:ring-brand-orange focus:ring-offset-0"/>
-                    </label>
-                </div>
-                <div className="w-full h-48">
-                    <ResponsiveContainer>
-                        <BarChart data={distribution} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                            <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
-                            <YAxis orientation="left" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
-                            <Tooltip cursor={{fill: 'rgba(255, 255, 255, 0.05)'}} />
-                            <Bar dataKey="count" onClick={handleBarClick} cursor="pointer">
-                                {distribution.map((entry) => (<Cell key={entry.name} fill={entry.fill} className={`${classificationFilter !== 'all' && classificationFilter !== entry.name ? 'opacity-30' : 'opacity-100'} transition-opacity`} />))}
-                                <LabelList dataKey="count" content={<CustomBarLabel total={classifiedAnimals.length} />} />
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-                <div className="text-center text-xs text-zinc-400 mt-2"><span>μ = {mean.toFixed(2)}</span> | <span>σ = {stdDev.toFixed(2)}</span></div>
-            </div>
-            
-            <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-2 border border-brand-border space-y-2">
-                <div className="flex justify-between items-center px-2 pt-2">
-                   <div className="flex items-center space-x-1 sm:space-x-2">
-                        <button onClick={() => setTrendFilter('all')} className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors ${trendFilter === 'all' ? 'bg-zinc-600 text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>Todos</button>
-                        <button onClick={() => setTrendFilter('up')} className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors flex items-center space-x-1 ${trendFilter === 'up' ? 'bg-brand-green/80 text-white' : 'bg-zinc-800/50 text-brand-green'}`}><ArrowUp size={14}/> <span>{trendCounts.up.toFixed(0)}%</span></button>
-                        <button onClick={() => setTrendFilter('down')} className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors flex items-center space-x-1 ${trendFilter === 'down' ? 'bg-brand-red/80 text-white' : 'bg-zinc-800/50 text-brand-red'}`}><ArrowDown size={14}/> <span>{trendCounts.down.toFixed(0)}%</span></button>
-                        <button onClick={() => setTrendFilter('single')} className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors flex items-center space-x-1 ${trendFilter === 'single' ? 'bg-brand-blue/80 text-white' : 'bg-zinc-800/50 text-brand-blue'}`}><Sparkles size={14}/> <span>{trendCounts.new.toFixed(0)}%</span></button>
-                   </div>
-                   <div className="flex items-center space-x-2">
-                       <div className="text-sm font-medium text-zinc-500">{searchedAnimals.length} / {classifiedAnimals.length}</div>
-                       <button onClick={resetFilters} title="Limpiar todos los filtros" className="text-zinc-500 hover:text-white"><FilterX size={16}/></button>
-                   </div>
-                </div>
-                <div className="flex justify-between items-center p-2 border-t border-brand-border">
-                    <div className="text-xs font-semibold text-zinc-400">Fase Lactancia:</div>
-                    <div className="flex items-center space-x-1 sm:space-x-2">
-                        <button onClick={() => setLactationPhaseFilter('all')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'all' ? 'bg-zinc-600 text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>Todos</button>
-                        <button onClick={() => setLactationPhaseFilter('first')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'first' ? 'bg-brand-blue text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>1er T</button>
-                        <button onClick={() => setLactationPhaseFilter('second')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'second' ? 'bg-brand-blue text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>2do T</button>
-                        <button onClick={() => setLactationPhaseFilter('third')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'third' ? 'bg-brand-blue text-white' : 'bg-zinc-800/50 text-zinc-300'}`}>3er T</button>
-                        <button onClick={() => setLactationPhaseFilter('drying')} className={`px-2 py-1 text-xs font-semibold rounded-md ${lactationPhaseFilter === 'drying' ? 'bg-brand-red/80 text-white' : 'bg-zinc-800/50 text-brand-red'}`}>A Secado</button>
-                    </div>
-                </div>
-                <div className="flex justify-between items-center p-2 border-t border-brand-border">
-                    <div className="text-xs font-semibold text-zinc-400">Movimientos:</div>
-                    <div className="flex items-center space-x-2">
-                        <button 
-                            onClick={() => setSpecialFilter(prev => prev === 'new' ? 'all' : 'new')}
-                            disabled={pageData.newAnimalIds.size === 0}
-                            className={`px-3 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${specialFilter === 'new' ? 'bg-brand-green text-white shadow-lg shadow-green-500/20' : 'bg-zinc-800/50 text-zinc-300'} ${pageData.newAnimalIds.size > 0 && specialFilter !== 'new' && 'animate-pulse'} disabled:opacity-40 disabled:cursor-not-allowed`}
-                        >
-                            <LogIn size={14}/> <span>Ingresos ({pageData.newAnimalIds.size})</span>
-                        </button>
-                        <button 
-                            onClick={() => alert(`Animales que salieron del ordeño:\n${[...pageData.exitingAnimalIds].join('\n')}`)}
-                            disabled={pageData.exitingAnimalIds.size === 0}
-                            className={`px-3 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${specialFilter === 'exiting' ? 'bg-brand-red text-white shadow-lg shadow-red-500/20' : 'bg-zinc-800/50 text-zinc-300'} ${pageData.exitingAnimalIds.size > 0 && specialFilter !== 'exiting' && 'animate-pulse'} disabled:opacity-40 disabled:cursor-not-allowed`}
-                        >
-                            <LogOut size={14}/> <span>Salidas ({pageData.exitingAnimalIds.size})</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <div className="space-y-2">
-                {searchedAnimals.length > 0 ? ( 
-                    searchedAnimals.map((animal) => (<MilkingAnimalRow key={animal.weighingId || animal.id} animal={animal} onSelectAnimal={onSelectAnimal}/>))
-                ) : (
-                    <div className="text-center py-10 bg-brand-glass rounded-2xl">
-                        <p className="text-zinc-400">
-                            {searchTerm 
-                                ? `No se encontraron resultados para "${searchTerm}"` 
-                                : "No se encontraron animales con los filtros actuales."}
-                        </p>
-                    </div>
-                )}
-            </div>
             
             <Modal isOpen={activeModal === 'media'} onClose={() => setActiveModal(null)} title="Tendencia de Producción Promedio">
                 <div className="w-full h-56 -ml-4">
@@ -357,19 +453,19 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
                     </ResponsiveContainer>
                 </div>
             </Modal>
-            
+
             <Modal isOpen={activeModal === 'rango'} onClose={() => setActiveModal(null)} title="Extremos de Producción del Día">
                 <div className="space-y-4">
                     {pageData.topPerformer && (
                         <div className="bg-green-900/40 border border-green-500/50 rounded-2xl p-4">
                             <h3 className="font-semibold text-brand-green mb-2">Animal Estrella (Producción Máxima)</h3>
-                            <MilkingAnimalRow animal={pageData.topPerformer} onSelectAnimal={() => { setActiveModal(null); onSelectAnimal(pageData.topPerformer!.id); }} />
+                            <MilkingAnimalRow animal={pageData.topPerformer} onSelectAnimal={() => { setActiveModal(null); onSelectAnimal(pageData.topPerformer!.id); }} onTrendClick={setTrendModalAnimal} />
                         </div>
                     )}
                     {pageData.bottomPerformer && (
                          <div className="bg-red-900/40 border border-red-500/50 rounded-2xl p-4">
                             <h3 className="font-semibold text-brand-red mb-2">Animal a Observar (Producción Mínima)</h3>
-                            <MilkingAnimalRow animal={pageData.bottomPerformer} onSelectAnimal={() => { setActiveModal(null); onSelectAnimal(pageData.bottomPerformer!.id); }} />
+                            <MilkingAnimalRow animal={pageData.bottomPerformer} onSelectAnimal={() => { setActiveModal(null); onSelectAnimal(pageData.bottomPerformer!.id); }} onTrendClick={setTrendModalAnimal} />
                         </div>
                     )}
                 </div>
@@ -397,20 +493,20 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
             
             <Modal isOpen={isScoreInfoModalOpen} onClose={() => setIsScoreInfoModalOpen(false)} title="¿Qué es el Score Ponderado?">
               <div className="text-zinc-300 space-y-4 text-base">
-                  <p>
-                      El Score Ponderado ajusta la producción de un animal para premiar la **persistencia lechera**, un indicador clave de la calidad genética y la eficiencia.
-                  </p>
-                  <div>
-                      <h4 className="font-semibold text-white mb-1">Fórmula Aplicada</h4>
-                      <div className="bg-black/30 p-3 rounded-lg text-sm font-mono text-center text-orange-300">
-                          Score = Kg × (1 + ((DEL - 50) / (DEL + 50)))
-                      </div>
-                  </div>
-                  <p className="pt-2 border-t border-zinc-700/80 text-sm">
-                      Esto significa que 2 Kg en el día **200** de lactancia obtendrán un score **mucho más alto** que 2 Kg en el día 40, ayudándote a identificar a tus animales más eficientes y persistentes.
-                  </p>
-              </div>
+                    <p>
+                        El Score Ponderado ajusta la producción de un animal para premiar la **persistencia lechera**, un indicador clave de la calidad genética y la eficiencia.
+                    </p>
+                    <div>
+                        <h4 className="font-semibold text-white mb-1">Fórmula Aplicada</h4>
+                        <div className="bg-black/30 p-3 rounded-lg text-sm font-mono text-center text-orange-300">
+                            Score = Kg × (1 + ((DEL - 50) / (DEL + 50)))
+                        </div>
+                    </div>
+                    <p className="pt-2 border-t border-zinc-700/80 text-sm">
+                        Esto significa que 2 Kg en el día **200** de lactancia obtendrán un score **mucho más alto** que 2 Kg en el día 40, ayudándote a identificar a tus animales más eficientes y persistentes.
+                    </p>
+                </div>
             </Modal>
-        </div>
+        </>
     );
 }

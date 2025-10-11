@@ -1,12 +1,13 @@
 // src/pages/modules/salud/AgendaPage.tsx
 
-import React, { useState } from 'react'; // <-- Se añade useState
+import React, { useState } from 'react';
 import { useHealthAgenda, AgendaTask } from '../../../hooks/useHealthAgenda';
-import { AlertTriangle, CalendarCheck, CalendarClock } from 'lucide-react';
-import { Modal } from '../../../components/ui/Modal'; // <-- Se importa el Modal
-import { LogHealthEventForm } from '../../../components/forms/LogHealthEventForm'; // <-- Se importa el nuevo formulario
+import { AlertTriangle, CalendarCheck, CalendarClock, Plus } from 'lucide-react';
+import { Modal } from '../../../components/ui/Modal';
+import { LogHealthEventForm } from '../../../components/forms/LogHealthEventForm';
+// --- MEJORA: Se importa el nuevo formulario para tratamientos no planificados ---
+import { LogUnplannedHealthEventForm } from '../../../components/forms/LogUnplannedHealthEventForm';
 
-// --- CAMBIO CLAVE 1: El componente TaskCard ahora necesita una función para abrir el modal ---
 const TaskCard = ({ task, onRegisterClick }: { task: AgendaTask, onRegisterClick: (task: AgendaTask) => void }) => {
     const { animal, task: planTask, dueDate } = task;
 
@@ -28,8 +29,8 @@ const TaskCard = ({ task, onRegisterClick }: { task: AgendaTask, onRegisterClick
                         {dueDate.toLocaleDateString('es-VE', { weekday: 'short' })}
                     </p>
                 </div>
-                <button 
-                    onClick={() => onRegisterClick(task)} // Llama a la función del componente padre
+                <button    
+                    onClick={() => onRegisterClick(task)}
                     className="bg-brand-green hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
                 >
                     Registrar
@@ -57,11 +58,11 @@ const AgendaSection = ({ title, tasks, icon: Icon, colorClass, onRegisterClick }
 
 export default function AgendaPage() {
     const { overdue, today, upcoming, allTasks } = useHealthAgenda();
-    // --- CAMBIO CLAVE 2: Estado para controlar el modal y la tarea seleccionada ---
     const [loggingTask, setLoggingTask] = useState<AgendaTask | null>(null);
+    // --- MEJORA: Estado para el nuevo modal de tratamientos no planificados ---
+    const [isUnplannedModalOpen, setIsUnplannedModalOpen] = useState(false);
 
     const handleSaveSuccess = () => {
-        // Simplemente cerramos el modal. El hook se actualizará automáticamente y la tarea desaparecerá de la lista.
         setLoggingTask(null);
     };
 
@@ -73,11 +74,19 @@ export default function AgendaPage() {
                     <p className="text-lg text-zinc-400">Tareas de salud pendientes</p>
                 </header>
 
+                {/* --- MEJORA: Botón para añadir tratamiento no planificado --- */}
+                <button
+                    onClick={() => setIsUnplannedModalOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 bg-brand-blue/20 border border-brand-blue text-brand-blue hover:bg-brand-blue/30 font-bold py-3 px-4 rounded-xl transition-colors text-base"
+                >
+                    <Plus size={18} /> Registrar Tratamiento No Planificado
+                </button>
+
                 {allTasks.length === 0 ? (
                     <div className="text-center py-10 bg-brand-glass rounded-2xl flex flex-col items-center gap-4">
                         <CalendarCheck size={48} className="text-zinc-600" />
                         <p className="text-zinc-400 font-semibold text-lg">¡Todo al día!</p>
-                        <p className="text-zinc-500 text-sm">No hay tareas sanitarias pendientes en tu agenda.</p>
+                        <p className="text-zinc-500 text-sm">No hay tareas sanitarias programadas en tu agenda.</p>
                     </div>
                 ) : (
                     <div className="space-y-6">
@@ -88,20 +97,31 @@ export default function AgendaPage() {
                 )}
             </div>
 
-            {/* --- CAMBIO CLAVE 3: Se añade el Modal de registro --- */}
             {loggingTask && (
-                <Modal 
-                    isOpen={!!loggingTask} 
-                    onClose={() => setLoggingTask(null)} 
+                <Modal    
+                    isOpen={!!loggingTask}    
+                    onClose={() => setLoggingTask(null)}    
                     title={`Registrar: ${loggingTask.task.name}`}
                 >
-                    <LogHealthEventForm 
+                    <LogHealthEventForm    
                         task={loggingTask}
                         onSave={handleSaveSuccess}
                         onCancel={() => setLoggingTask(null)}
                     />
                 </Modal>
             )}
+
+            {/* --- MEJORA: Modal para el formulario de evento no planificado --- */}
+            <Modal
+                isOpen={isUnplannedModalOpen}
+                onClose={() => setIsUnplannedModalOpen(false)}
+                title="Registrar Tratamiento No Planificado"
+            >
+                <LogUnplannedHealthEventForm
+                    onSaveSuccess={() => setIsUnplannedModalOpen(false)}
+                    onCancel={() => setIsUnplannedModalOpen(false)}
+                />
+            </Modal>
         </>
     );
 }

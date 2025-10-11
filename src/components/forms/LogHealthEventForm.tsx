@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../../context/DataContext';
 import { AgendaTask } from '../../hooks/useHealthAgenda';
-import { Product } from '../../db/local';
 import { AlertTriangle } from 'lucide-react';
 
 interface LogHealthEventFormProps {

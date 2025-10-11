@@ -1,12 +1,10 @@
 // src/types/navigation.ts
 
-// Este archivo ahora contiene la definición centralizada para la navegación del módulo Rebaño.
-// Cualquier componente que necesite saber sobre estas páginas, importará el tipo desde aquí.
-
 export type PageState = 
   | { name: 'lots-dashboard' } 
   | { name: 'lot-detail', lotName: string }
-  | { name: 'breeding-group-detail', groupId: string }
+  | { name: 'sire-lot-detail', lotId: string }
+  | { name: 'breeding-season-detail', seasonId: string }
   | { name: 'herd', locationFilter?: string }
   | { name: 'manage-lots' }
   | { name: 'management' } 
@@ -16,4 +14,7 @@ export type PageState =
   | { name: 'add-animal' }
   | { name: 'ocr' }
   | { name: 'feeding-plan', lotName: string }
-  | { name: 'batch-treatment', lotName: string };
+  | { name: 'batch-treatment', lotName: string }
+  | { name: 'farm-calendar' }
+  // --- NUEVA PÁGINA ---
+  | { name: 'birthing-season-detail', seasonId: string };

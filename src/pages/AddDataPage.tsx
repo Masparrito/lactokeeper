@@ -1,14 +1,15 @@
+// src/pages/AddDataPage.tsx
+
 import React, { useState, useRef, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { PlusCircle, Save, CheckCircle, AlertTriangle, X, Calendar, ArrowLeft, Zap, ScanLine } from 'lucide-react';
 import { auth, db as firestoreDb } from '../firebaseConfig';
 import { writeBatch, doc, collection } from "firebase/firestore";
 import { Modal } from '../components/ui/Modal';
-import { AddParturitionForm } from '../components/forms/AddParturitionForm';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
+import { ParturitionModal } from '../components/modals/ParturitionModal';
 
-// --- SUB-COMPONENTE: SELECTOR DE FECHA RÁPIDO ---
 const QuickDatePicker = ({ selectedDate, onDateChange, onOpenCalendar }: { selectedDate: Date, onDateChange: (date: Date) => void, onOpenCalendar: () => void }) => {
     const dates = useMemo(() => {
         const today = new Date();
@@ -52,7 +53,6 @@ const QuickDatePicker = ({ selectedDate, onDateChange, onOpenCalendar }: { selec
     );
 };
 
-// --- SUB-COMPONENTE: FILA DE LA LISTA ---
 const EntryRow = ({ entry, onDelete, onRegister }: { entry: any, onDelete: (tempId: number) => void, onRegister: (animalId: string) => void }) => {
     const isUnrecognized = !entry.isRecognized;
     return (
@@ -73,9 +73,8 @@ const EntryRow = ({ entry, onDelete, onRegister }: { entry: any, onDelete: (temp
     );
 };
 
-// --- SUB-COMPONENTE: FORMULARIO DE CARGA RÁPIDA ---
 const RapidEntryForm = ({ onBack, onSaveSuccess }: { onBack: () => void, onSaveSuccess: (date: string) => void }) => {
-    const { animals, fetchData } = useData();
+    const { animals, weighings, fetchData } = useData();
     const [currentId, setCurrentId] = useState('');
     const [currentKg, setCurrentKg] = useState('');
     const [sessionEntries, setSessionEntries] = useState<any[]>([]);
@@ -88,17 +87,41 @@ const RapidEntryForm = ({ onBack, onSaveSuccess }: { onBack: () => void, onSaveS
     const kgInputRef = useRef<HTMLInputElement>(null);
 
     const handleAddToList = () => {
+        setMessage(null);
         if (!currentId || !currentKg) return;
-        const id = currentId.toUpperCase().trim();
 
-        // --- VALIDACIÓN PARA ANIMALES DE REFERENCIA ---
-        const animal = animals.find(a => a.id === id);
-        if (animal && animal.isReference) {
-            setMessage({ type: 'error', text: `${id} es un animal de Referencia y no se le pueden añadir pesajes.` });
-            return; // Detiene el proceso
+        const id = currentId.toUpperCase().trim();
+        const kgValue = parseFloat(currentKg);
+        const dateString = sessionDate.toISOString().split('T')[0];
+
+        // --- MEJORA: Validación de Pesaje Irracional (ej. > 100) ---
+        if (kgValue > 100) {
+            setMessage({ type: 'error', text: `El valor de ${kgValue} Kg es irracional. Verifique el dato.` });
+            return;
         }
 
-        const newEntry = { tempId: Date.now(), animalId: id, kg: parseFloat(currentKg), date: sessionDate.toISOString().split('T')[0], isRecognized: !!animal };
+        if (kgValue > 8.5) {
+            setMessage({ type: 'error', text: `Producción de ${kgValue} Kg es muy alta. Límite: 8.5 Kg.` });
+            return;
+        }
+
+        if (sessionEntries.some(entry => entry.animalId === id)) {
+            setMessage({ type: 'error', text: `${id} ya tiene un pesaje en esta sesión.` });
+            return;
+        }
+        
+        if (weighings.some(w => w.goatId === id && w.date === dateString)) {
+            setMessage({ type: 'error', text: `${id} ya tiene un pesaje guardado para esta fecha.` });
+            return;
+        }
+
+        const animal = animals.find(a => a.id === id);
+        if (animal && animal.isReference) {
+            setMessage({ type: 'error', text: `${id} es un animal de Referencia. No se pueden añadir pesajes.` });
+            return;
+        }
+
+        const newEntry = { tempId: Date.now(), animalId: id, kg: kgValue, date: dateString, isRecognized: !!animal };
         setSessionEntries(prev => [newEntry, ...prev]);
         setCurrentId('');
         setCurrentKg('');
@@ -109,9 +132,16 @@ const RapidEntryForm = ({ onBack, onSaveSuccess }: { onBack: () => void, onSaveS
         setMessage(null);
         const { currentUser } = auth;
         if (!currentUser) { setMessage({ type: 'error', text: 'Error de autenticación.' }); return; }
+        
         const unrecognizedCount = sessionEntries.filter(e => !e.isRecognized).length;
-        if (unrecognizedCount > 0) { setMessage({ type: 'error', text: `No se puede guardar. Tienes ${unrecognizedCount} animal(es) sin registrar.` }); return; }
-        if (sessionEntries.length === 0) { setMessage({ type: 'error', text: 'No hay pesajes para guardar.' }); return; }
+        if (unrecognizedCount > 0) {
+            setMessage({ type: 'error', text: `No se puede guardar. Tienes ${unrecognizedCount} animal(es) sin registrar.` });
+            return;
+        }
+        if (sessionEntries.length === 0) {
+            setMessage({ type: 'error', text: 'No hay pesajes para guardar.' });
+            return;
+        }
 
         try {
             const batch = writeBatch(firestoreDb);
@@ -135,9 +165,10 @@ const RapidEntryForm = ({ onBack, onSaveSuccess }: { onBack: () => void, onSaveS
     const handleKgKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter' && currentKg) { e.preventDefault(); handleAddToList(); } };
     const handleDeleteFromList = (tempId: number) => { setSessionEntries(prev => prev.filter(e => e.tempId !== tempId)); };
     const handleDateSelect = (date: Date | undefined) => { if (date) { date.setHours(0,0,0,0); setSessionDate(date); } setCalendarOpen(false); };
-    const handleSaveParturitionSuccess = () => {
-        setSessionEntries(prev => prev.map(entry => entry.animalId === parturitionModal.motherId ? { ...entry, isRecognized: true } : entry ));
+    
+    const handleCloseParturitionModal = () => {
         fetchData();
+        setSessionEntries(prev => prev.map(entry => entry.animalId === parturitionModal.motherId ? { ...entry, isRecognized: true } : entry ));
         setParturitionModal({ isOpen: false, motherId: '' });
     };
 
@@ -177,39 +208,41 @@ const RapidEntryForm = ({ onBack, onSaveSuccess }: { onBack: () => void, onSaveS
             </div>
             
             <Modal isOpen={isCalendarOpen} onClose={() => setCalendarOpen(false)} title="Seleccionar Fecha"><div className="flex justify-center"><DayPicker mode="single" selected={sessionDate} onSelect={handleDateSelect} /></div></Modal>
-            <Modal isOpen={parturitionModal.isOpen} onClose={() => setParturitionModal({ isOpen: false, motherId: '' })} title={`Registrar Parto para: ${parturitionModal.motherId}`}>
-                <AddParturitionForm motherId={parturitionModal.motherId} onSaveSuccess={handleSaveParturitionSuccess} onCancel={() => setParturitionModal({ isOpen: false, motherId: '' })} />
-            </Modal>
+            
+            <ParturitionModal
+                isOpen={parturitionModal.isOpen}
+                onClose={handleCloseParturitionModal}
+                motherId={parturitionModal.motherId}
+            />
         </>
     );
 };
 
-// --- COMPONENTE PRINCIPAL DE LA PÁGINA (MENÚ) ---
 export default function AddDataPage({ onNavigate }: { onNavigate: (page: any, state?: any) => void; }) {
-  const [entryMode, setEntryMode] = useState<'options' | 'rapid'>('options');
+    const [entryMode, setEntryMode] = useState<'options' | 'rapid'>('options');
 
-  if (entryMode === 'rapid') {
-    return <RapidEntryForm onBack={() => setEntryMode('options')} onSaveSuccess={() => { if(onNavigate) onNavigate('dashboard'); }} />;
-  }
+    if (entryMode === 'rapid') {
+        return <RapidEntryForm onBack={() => setEntryMode('options')} onSaveSuccess={() => { if(onNavigate) onNavigate('dashboard', {}); }} />;
+    }
 
-  return (
-    <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in">
-      <header className="text-center pt-8 pb-4">
-        <h1 className="text-3xl font-bold tracking-tight text-white">Añadir Datos de Leche</h1>
-        <p className="text-lg text-zinc-400">Selecciona un método de carga</p>
-      </header>
-      <div className="space-y-4">
-        <button onClick={() => setEntryMode('rapid')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-orange text-white p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
-          <Zap className="w-12 h-12 mb-2 text-brand-orange" />
-          <span className="text-lg font-semibold">Carga Rápida</span>
-          <span className="text-sm font-normal text-zinc-400">Para carga masiva con teclado</span>
-        </button>
-        <button onClick={() => onNavigate('ocr')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-blue text-white p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
-          <ScanLine className="w-12 h-12 mb-2 text-brand-blue" />
-          <span className="text-lg font-semibold">Escanear Cuaderno</span>
-          <span className="text-sm font-normal text-zinc-400">Digitalización asistida por IA</span>
-        </button>
-      </div>
-    </div>
-  );
+    return (
+        <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in">
+            <header className="text-center pt-8 pb-4">
+                <h1 className="text-3xl font-bold tracking-tight text-white">Añadir Datos de Leche</h1>
+                <p className="text-lg text-zinc-400">Selecciona un método de carga</p>
+            </header>
+            <div className="space-y-4">
+                <button onClick={() => setEntryMode('rapid')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-orange text-white p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
+                    <Zap className="w-12 h-12 mb-2 text-brand-orange" />
+                    <span className="text-lg font-semibold">Carga Rápida</span>
+                    <span className="text-sm font-normal text-zinc-400">Para carga masiva con teclado</span>
+                </button>
+                <button onClick={() => onNavigate('ocr', {})} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-blue text-white p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
+                    <ScanLine className="w-12 h-12 mb-2 text-brand-blue" />
+                    <span className="text-lg font-semibold">Escanear Cuaderno</span>
+                    <span className="text-sm font-normal text-zinc-400">Digitalización asistida por IA</span>
+                </button>
+            </div>
+        </div>
+    );
 }

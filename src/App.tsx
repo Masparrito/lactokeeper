@@ -7,11 +7,13 @@ import { LoginPage } from './pages/LoginPage';
 import RebanoShell from './pages/RebanoShell';
 import LactoKeeperShell from './pages/modules/LactoKeeperShell';
 import KilosShell from './pages/modules/KilosShell';
-import SaludShell from './pages/modules/salud/SaludShell'; 
+import SaludShell from './pages/modules/salud/SaludShell';
+// --- RUTA CORREGIDA: Se importa el Shell desde su ubicación correcta en /modules/ ---
+import EconomyShell from './pages/modules/EconomyShell';
 import type { PageState as RebanoPageState } from './types/navigation';
 import { LoadingOverlay } from './components/ui/LoadingOverlay';
 
-type ActiveModule = 'rebano' | 'lactokeeper' | 'kilos' | 'salud';
+type ActiveModule = 'rebano' | 'lactokeeper' | 'kilos' | 'salud' | 'economia';
 
 export default function App() {
     const { currentUser, isLoading: isAuthLoading } = useAuth();
@@ -21,9 +23,6 @@ export default function App() {
     const [initialRebanoPage, setInitialRebanoPage] = useState<RebanoPageState | null>(null);
 
     const handleSwitchModule = (module: ActiveModule) => {
-        // --- Línea de diagnóstico que añadimos ---
-        console.log(`[Debug] App.tsx: Recibida la orden de cambiar a: ${module}. Actualizando estado.`);
-
         setInitialRebanoPage(null);
         setActiveModule(module);
     };
@@ -48,7 +47,7 @@ export default function App() {
     switch (activeModule) {
         case 'lactokeeper':
             return (
-                <LactoKeeperShell 
+                <LactoKeeperShell    
                     onExitModule={handleExitToRebano}
                     navigateToRebano={handleNavigateToRebanoPage}
                 />
@@ -56,7 +55,7 @@ export default function App() {
         
         case 'kilos':
             return (
-                <KilosShell 
+                <KilosShell    
                     onExitModule={handleExitToRebano}
                     navigateToRebano={handleNavigateToRebanoPage}
                 />
@@ -66,14 +65,20 @@ export default function App() {
             return (
                 <SaludShell
                     onExitModule={handleExitToRebano}
-                    navigateToRebano={handleNavigateToRebanoPage}
+                />
+            );
+        
+        case 'economia':
+            return (
+                <EconomyShell
+                    onExitModule={handleExitToRebano}
                 />
             );
 
         case 'rebano':
         default:
             return (
-                <RebanoShell 
+                <RebanoShell    
                     initialPage={initialRebanoPage}
                     onSwitchModule={handleSwitchModule}
                 />
