@@ -1,3 +1,5 @@
+// src/components/ui/Modal.tsx
+
 import { X } from 'lucide-react';
 import React from 'react';
 
@@ -6,16 +8,15 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
-  size?: 'default' | 'large' | 'fullscreen'; // <-- Se añade la opción 'fullscreen'
+  size?: 'default' | 'large' | 'fullscreen';
 }
 
 export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'default' }) => {
   if (!isOpen) return null;
 
-  // --- LÓGICA DE ESTILOS MEJORADA ---
   const containerClasses = size === 'fullscreen'
-    ? 'items-end' // Para modales de pantalla completa, alinea abajo
-    : 'items-center'; // Para modales normales, alinea al centro
+    ? 'items-end'
+    : 'items-center';
 
   const modalSizeClasses = {
     default: 'max-w-md m-4 rounded-2xl',
@@ -38,8 +39,8 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
             <X size={20} />
           </button>
         </header>
-        {/* Para pantalla completa, permitimos que el contenido tenga scroll */}
-        <div className={size === 'fullscreen' ? 'flex-1 overflow-y-auto p-4' : 'p-6'}>
+        {/* --- CAMBIO CLAVE: Contenido con scroll interno y altura máxima --- */}
+        <div className={size === 'fullscreen' ? 'flex-1 overflow-y-auto p-4' : 'overflow-y-auto max-h-[85vh] p-6'}>
           {children}
         </div>
       </div>

@@ -1,6 +1,6 @@
-// src/pages/modules/salud/SaludShell.tsx
-
 import { useState } from 'react';
+// --- CAMBIO CLAVE: Corregidas las rutas de importación ---
+import type { AppModule } from '../../../types/navigation';
 import { ArrowLeft, CalendarCheck, ClipboardList, Syringe, DollarSign, HeartPulse } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { SyncStatusIcon } from '../../../components/ui/SyncStatusIcon';
@@ -8,9 +8,8 @@ import ProductManagerPage from './ProductManagerPage';
 import HealthPlannerPage from './HealthPlannerPage';
 import AgendaPage from './AgendaPage';
 import PlanDetailPage from './PlanDetailPage';
-// --- CAMBIO CLAVE 1: Se importa la nueva página de Análisis de Costos ---
 import CostAnalysisPage from './CostAnalysisPage';
-
+import { ModuleSwitcher } from '../../../components/ui/ModuleSwitcher';
 
 type SaludPage = 
     | { name: 'agenda' }
@@ -20,13 +19,12 @@ type SaludPage =
     | { name: 'plan-detail', planId: string };
 
 interface SaludShellProps {
-    onExitModule: () => void;
+    onSwitchModule: (module: AppModule) => void;
 }
 
-export default function SaludShell({ onExitModule }: SaludShellProps) {
+export default function SaludShell({ onSwitchModule }: SaludShellProps) {
     const { syncStatus } = useData();
-    // --- CAMBIO CLAVE 2: Hacemos que la página inicial sea "Costos" para ver nuestro cambio ---
-    const [page, setPage] = useState<SaludPage>({ name: 'costos' });
+    const [page, setPage] = useState<SaludPage>({ name: 'agenda' });
     const [history, setHistory] = useState<SaludPage[]>([]);
 
     const navItems = [
@@ -42,12 +40,12 @@ export default function SaludShell({ onExitModule }: SaludShellProps) {
     };
 
     const navigateBack = () => {
-        const lastPage = history[history.length - 1];
+        const lastPage = history.pop();
         if (lastPage) {
-            setHistory(current => current.slice(0, -1));
+            setHistory([...history]);
             setPage(lastPage);
         } else {
-            setPage({ name: 'agenda' });
+            onSwitchModule('rebano');
         }
     };
 
@@ -66,7 +64,6 @@ export default function SaludShell({ onExitModule }: SaludShellProps) {
                 return <HealthPlannerPage navigateTo={navigateTo} />;
             case 'plan-detail':
                 return <PlanDetailPage planId={page.planId} onBack={navigateBack} />;
-            // --- CAMBIO CLAVE 3: Se renderiza la nueva página en lugar del placeholder ---
             case 'costos':
                 return <CostAnalysisPage />;
             default:
@@ -79,12 +76,15 @@ export default function SaludShell({ onExitModule }: SaludShellProps) {
             
             <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border">
                 <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-16">
-                    <button onClick={onExitModule} className="p-2 -ml-2 text-zinc-400 hover:text-white" aria-label="Salir del módulo">
+                    <button onClick={navigateBack} className="p-2 -ml-2 text-zinc-400 hover:text-white" aria-label="Atrás">
                         <ArrowLeft size={24} />
                     </button>
                     <div className="flex items-center gap-2">
                         <HeartPulse className="text-teal-400" />
-                        <h1 className="text-xl font-bold">StockCare</h1>
+                        <div>
+                            <h1 className="text-xl font-bold text-white leading-none">GanaderoOS</h1>
+                            <p className="text-xs text-zinc-400 leading-none">StockCare</p>
+                        </div>
                     </div>
                     <div className="w-8 flex justify-end">
                         <SyncStatusIcon status={syncStatus} />
@@ -95,6 +95,8 @@ export default function SaludShell({ onExitModule }: SaludShellProps) {
             <main className="flex-grow pt-16 pb-24">
                 {renderContent()}
             </main>
+
+            <ModuleSwitcher onSwitchModule={onSwitchModule} />
 
             <nav className="flex-shrink-0 fixed bottom-0 left-0 right-0 bg-black/30 backdrop-blur-xl border-t border-white/20 flex justify-around">
                 {navItems.map((item) => (
@@ -111,3 +113,4 @@ export default function SaludShell({ onExitModule }: SaludShellProps) {
         </div>
     );
 }
+

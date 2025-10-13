@@ -1,7 +1,7 @@
 {
-  "name": "lactokeeper",
+  "name": "ganadero-os",
   "private": true,
-  "version": "0.0.0",
+  "version": "3.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,13 +12,14 @@
     "@tanstack/react-virtual": "^3.13.12",
     "dexie": "^4.0.7",
     "dexie-react-hooks": "^1.1.7",
-    "firebase": "^12.3.0",
+    "firebase": "^10.12.2",
     "framer-motion": "^11.2.10",
     "lucide-react": "^0.378.0",
     "react": "^18.2.0",
-    "react-day-picker": "^9.11.0",
+    "react-day-picker": "^8.10.1",
     "react-dom": "^18.2.0",
-    "react-icons": "^5.5.0",
+    "react-icons": "^5.2.1",
+    "react-is": "^18.3.1",
     "recharts": "^2.12.7"
   },
   "devDependencies": {
@@ -30,6 +31,6 @@
     "tailwindcss": "^3.4.3",
     "typescript": "^5.2.2",
     "vite": "^5.2.0",
-    "vite-plugin-pwa": "^1.0.3"
+    "vite-plugin-pwa": "^0.2.0-beta-20240523T152010"
   }
 }

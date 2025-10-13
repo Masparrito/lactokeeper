@@ -1,27 +1,23 @@
-// src/pages/modules/KilosShell.tsx
-
 import { useState } from 'react';
-import type { PageState as RebanoPageState } from '../../types/navigation';
+// --- CAMBIO CLAVE: Se importan los tipos centralizados ---
+import type { PageState as RebanoPageState, AppModule } from '../../types/navigation';
 import { ArrowLeft, BarChart2, PlusCircle, Scale } from 'lucide-react';
 import { GiChart } from 'react-icons/gi';
 import AddWeightPage from './kilos/AddWeightPage';
 import KilosDashboard from './kilos/KilosDashboard';
-// --- CAMBIO CLAVE 1: Se importa la nueva página de análisis ---
 import KilosAnalysisPage from './kilos/KilosAnalysisPage';
 import { useData } from '../../context/DataContext';
 import { SyncStatusIcon } from '../../components/ui/SyncStatusIcon';
-
-// --- CAMBIO CLAVE 2: Eliminamos el componente placeholder 'KilosAnalysis' ---
-// const KilosAnalysis = () => ( ... ); // <- ESTA LÍNEA SE ELIMINA
+import { ModuleSwitcher } from '../../components/ui/ModuleSwitcher';
 
 type KilosPage = 'dashboard' | 'analysis' | 'add-data';
 
 interface KilosShellProps {
     navigateToRebano: (page: RebanoPageState) => void;
-    onExitModule: () => void;
+    onSwitchModule: (module: AppModule) => void;
 }
 
-export default function KilosShell({ navigateToRebano, onExitModule }: KilosShellProps) {
+export default function KilosShell({ navigateToRebano, onSwitchModule }: KilosShellProps) {
     const { syncStatus } = useData();
     const [page, setPage] = useState<KilosPage>('dashboard');
 
@@ -32,24 +28,23 @@ export default function KilosShell({ navigateToRebano, onExitModule }: KilosShel
     ];
 
     const handleBackPress = () => {
-        if (page === 'dashboard') {
-            onExitModule();
-        } else {
+        if (page !== 'dashboard') {
             setPage('dashboard');
+        } else {
+            onSwitchModule('rebano');
         }
     };
 
     const renderContent = () => {
         switch (page) {
             case 'dashboard': 
-                return <KilosDashboard onSelectAnimal={(animalId) => navigateToRebano({ name: 'rebano-profile', animalId })} />;
-            // --- CAMBIO CLAVE 3: Se renderiza la nueva página ---
+                return <KilosDashboard onSelectAnimal={(animalId) => navigateToRebano({ name: 'growth-profile', animalId })} />;
             case 'analysis': 
-                return <KilosAnalysisPage onSelectAnimal={(animalId) => navigateToRebano({ name: 'rebano-profile', animalId })} />;
+                return <KilosAnalysisPage onSelectAnimal={(animalId) => navigateToRebano({ name: 'growth-profile', animalId })} />;
             case 'add-data': 
-                return <AddWeightPage onNavigate={navigateToRebano} onSaveSuccess={() => setPage('dashboard')} />;
+                return <AddWeightPage onNavigate={navigateToRebano} onSaveSuccess={() => setPage('analysis')} />;
             default: 
-                return <KilosDashboard onSelectAnimal={(animalId) => navigateToRebano({ name: 'rebano-profile', animalId })} />;
+                return <KilosDashboard onSelectAnimal={(animalId) => navigateToRebano({ name: 'growth-profile', animalId })} />;
         }
     };
 
@@ -63,7 +58,10 @@ export default function KilosShell({ navigateToRebano, onExitModule }: KilosShel
                     </button>
                     <div className="flex items-center gap-2">
                         <Scale className="text-brand-green" />
-                        <h1 className="text-xl font-bold">Kilos</h1>
+                        <div>
+                            <h1 className="text-xl font-bold text-white leading-none">GanaderoOS</h1>
+                            <p className="text-xs text-zinc-400 leading-none">Kilos</p>
+                        </div>
                     </div>
                     <div className="w-8 flex justify-end">
                         <SyncStatusIcon status={syncStatus} />
@@ -74,6 +72,8 @@ export default function KilosShell({ navigateToRebano, onExitModule }: KilosShel
             <main className="flex-grow pt-16 pb-24">
                 {renderContent()}
             </main>
+
+            <ModuleSwitcher onSwitchModule={onSwitchModule} />
 
             <nav className="flex-shrink-0 fixed bottom-0 left-0 right-0 bg-black/30 backdrop-blur-xl border-t border-white/20 flex justify-around">
                 {navItems.map((item) => (

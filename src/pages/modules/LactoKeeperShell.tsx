@@ -1,32 +1,41 @@
-// src/pages/modules/LactoKeeperShell.tsx
-
-import { useState } from 'react';
-import type { PageState as RebanoPageState } from '../../types/navigation';
-import Dashboard from '../Dashboard';
-import AnimalsPage from '../AnimalsPage';
-import HistoryPage from '../HistoryPage';
-import AddDataPage from '../AddDataPage';
-import ManagementPage from '../ManagementPage';
-import { PeriodStats } from '../../hooks/useHistoricalAnalysis';
-import { BarChart2, ArrowLeft, CalendarClock, List, PlusCircle, Wind } from 'lucide-react';
-import { GiMilkCarton } from 'react-icons/gi';
+import { useState, useEffect } from 'react';
+import type { PageState as RebanoPageState, AppModule } from '../../types/navigation'; // <-- CAMBIO CLAVE
+import { ArrowLeft, BarChart3, CalendarClock, List, PlusCircle, Wind } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { SyncStatusIcon } from '../../components/ui/SyncStatusIcon';
+import { GiMilkCarton } from 'react-icons/gi';
+import { ModuleSwitcher } from '../../components/ui/ModuleSwitcher';
 
-type LactoKeeperPage = 'dashboard' | 'analysis' | 'history' | 'add-data' | 'drying';
+// Se importan las páginas específicas del módulo
+import LactoKeeperDashboardPage from './lactokeeper/LactoKeeperDashboardPage';
+import LactoKeeperAnalysisPage from './lactokeeper/LactoKeeperAnalysisPage';
+import LactoKeeperHistoryPage from './lactokeeper/LactoKeeperHistoryPage';
+import LactoKeeperAddDataPage from './lactokeeper/LactoKeeperAddDataPage';
+import LactoKeeperDryOffPage from './lactokeeper/LactoKeeperDryOffPage';
+
+export type LactoKeeperPage = 'dashboard' | 'analysis' | 'history' | 'add-data' | 'drying';
 
 interface LactoKeeperShellProps {
+    initialPage: LactoKeeperPage;
+    onPageStateChange: (page: LactoKeeperPage) => void;
     navigateToRebano: (page: RebanoPageState) => void;
-    onExitModule: () => void;
+    onSwitchModule: (module: AppModule) => void;
 }
 
-export default function LactoKeeperShell({ navigateToRebano, onExitModule }: LactoKeeperShellProps) {
+export default function LactoKeeperShell({ initialPage, onPageStateChange, navigateToRebano, onSwitchModule }: LactoKeeperShellProps) {
     const { syncStatus } = useData();
-    const [page, setPage] = useState<LactoKeeperPage>('dashboard');
-    const [historySelectedPeriod, setHistorySelectedPeriod] = useState<PeriodStats | null>(null);
+    const [page, setPage] = useState<LactoKeeperPage>(initialPage || 'dashboard');
+
+    useEffect(() => {
+        onPageStateChange(page);
+    }, [page, onPageStateChange]);
+    
+    useEffect(() => {
+        setPage(initialPage || 'dashboard');
+    }, [initialPage]);
 
     const navItems = [
-        { id: 'dashboard', label: 'Dashboard', icon: BarChart2 },
+        { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
         { id: 'analysis', label: 'Análisis', icon: List },
         { id: 'history', label: 'Historial', icon: CalendarClock },
         { id: 'add-data', label: 'Añadir', icon: PlusCircle },
@@ -34,35 +43,32 @@ export default function LactoKeeperShell({ navigateToRebano, onExitModule }: Lac
     ];
 
     const handleBackPress = () => {
-        if (page === 'dashboard') {
-            onExitModule();
-        } else {
+        if (page !== 'dashboard') {
             setPage('dashboard');
+        } else {
+            onSwitchModule('rebano');
         }
     };
 
-    // --- MEJORA DE NAVEGACIÓN: Se define la navegación contextual ---
     const handleSelectAnimal = (animalId: string) => {
-        // Al seleccionar un animal desde este módulo, siempre vamos al perfil de lactancia.
+        onPageStateChange(page); 
         navigateToRebano({ name: 'lactation-profile', animalId });
     };
 
     const renderContent = () => {
         switch (page) {
-            case 'dashboard': 
-                return <Dashboard onNavigateToAnalysis={() => setPage('analysis')} />;
-            case 'analysis': 
-                // Se pasa la nueva función de navegación a la página de análisis
-                return <AnimalsPage onSelectAnimal={handleSelectAnimal} />;
-            case 'history': 
-                // Se pasa la nueva función de navegación a la página de historial
-                return <HistoryPage onSelectAnimal={handleSelectAnimal} selectedPeriod={historySelectedPeriod} setSelectedPeriod={setHistorySelectedPeriod} />;
-            case 'add-data': 
-                return <AddDataPage onNavigate={(pageName: any, state: any) => navigateToRebano({ name: pageName, ...state })} />;
-            case 'drying': 
-                return <ManagementPage onSelectAnimal={handleSelectAnimal} />;
-            default: 
-                return <Dashboard onNavigateToAnalysis={() => setPage('analysis')} />;
+            case 'dashboard':
+                return <LactoKeeperDashboardPage onNavigateToAnalysis={() => setPage('analysis')} />;
+            case 'analysis':
+                return <LactoKeeperAnalysisPage onSelectAnimal={handleSelectAnimal} />;
+            case 'history':
+                return <LactoKeeperHistoryPage navigateToRebano={navigateToRebano} />;
+            case 'add-data':
+                return <LactoKeeperAddDataPage onNavigate={(pageName, state) => navigateToRebano({ name: pageName, ...state })} onSaveSuccess={() => setPage('analysis')} />;
+            case 'drying':
+                return <LactoKeeperDryOffPage navigateToRebano={navigateToRebano} />;
+            default:
+                return <LactoKeeperDashboardPage onNavigateToAnalysis={() => setPage('analysis')} />;
         }
     };
 
@@ -76,7 +82,10 @@ export default function LactoKeeperShell({ navigateToRebano, onExitModule }: Lac
                     </button>
                     <div className="flex items-center gap-2">
                         <GiMilkCarton className="text-brand-orange" size={28} />
-                        <h1 className="text-xl font-bold">LactoKeeper</h1>
+                        <div>
+                            <h1 className="text-xl font-bold text-white leading-none">GanaderoOS</h1>
+                            <p className="text-xs text-zinc-400 leading-none">LactoKeeper</p>
+                        </div>
                     </div>
                     <div className="w-8 flex justify-end">
                         <SyncStatusIcon status={syncStatus} />
@@ -87,6 +96,8 @@ export default function LactoKeeperShell({ navigateToRebano, onExitModule }: Lac
             <main className="flex-grow pt-16 pb-24">
                 {renderContent()}
             </main>
+            
+            <ModuleSwitcher onSwitchModule={onSwitchModule} />
 
             <nav className="fixed bottom-0 left-0 right-0 bg-black/30 backdrop-blur-xl border-t border-white/20 flex justify-around">
                 {navItems.map((item) => (

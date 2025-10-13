@@ -1,3 +1,5 @@
+// src/hooks/useGaussAnalysis.ts
+
 import { useMemo } from 'react';
 import { Animal, Parturition, Weighing } from '../db/local';
 import { calculateDEL, calculateWeightedScore } from '../utils/calculations';
@@ -35,19 +37,25 @@ export const useGaussAnalysis = (
 
             if (!parturitionForWeighing) return acc;
 
-            const animalHistory = allWeighings.filter(w => w.goatId === animal.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            
             const del = calculateDEL(parturitionForWeighing.parturitionDate, currentWeighing.date);
             const score = isWeighted ? calculateWeightedScore(currentWeighing.kg, del) : currentWeighing.kg;
 
-            let trend: Trend = 'single';
-            const margin = 0.15;
-            const currentIndexInHistory = animalHistory.findIndex(w => w.id === currentWeighing.id);
+            // --- LÓGICA DE TENDENCIA CORREGIDA Y DEFINITIVA ---
+            const animalHistory = allWeighings
+                .filter(w => w.goatId === animal.id)
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-            if (currentIndexInHistory > 0) {
-                const previousWeighing = animalHistory[currentIndexInHistory - 1];
+            let trend: Trend = 'single';
+            const currentIndexInHistory = animalHistory.findIndex(w => w.date === currentWeighing.date);
+
+            // El pesaje anterior es el que está en el índice siguiente del array ordenado por fecha descendente.
+            if (currentIndexInHistory !== -1 && currentIndexInHistory + 1 < animalHistory.length) {
+                const previousWeighing = animalHistory[currentIndexInHistory + 1];
                 const diff = currentWeighing.kg - previousWeighing.kg;
-                if (diff > margin) trend = 'up'; else if (diff < -margin) trend = 'down'; else trend = 'stable';
+                const margin = 0.15; // 150g de margen
+                if (diff > margin) trend = 'up';
+                else if (diff < -margin) trend = 'down';
+                else trend = 'stable';
             }
             
             acc.push({ ...animal, latestWeighing: currentWeighing.kg, weighingId: currentWeighing.id, del, score, trend, date: currentWeighing.date });
@@ -78,9 +86,9 @@ export const useGaussAnalysis = (
         });
 
         const distribution = [
-            { name: 'Pobre', count: classifiedAnimals.filter(a => a.classification === 'Pobre').length, fill: '#FF3B30' }, // brand-red
+            { name: 'Pobre', count: classifiedAnimals.filter(a => a.classification === 'Pobre').length, fill: '#FF3B30' },
             { name: 'Promedio', count: classifiedAnimals.filter(a => a.classification === 'Promedio').length, fill: '#6B7280' },
-            { name: 'Sobresaliente', count: classifiedAnimals.filter(a => a.classification === 'Sobresaliente').length, fill: '#34C759' }, // brand-green
+            { name: 'Sobresaliente', count: classifiedAnimals.filter(a => a.classification === 'Sobresaliente').length, fill: '#34C759' },
         ];
         
         const mean = initialAnalyzedAnimals.length > 0 ? initialAnalyzedAnimals.reduce((sum, a) => sum + a.latestWeighing, 0) / initialAnalyzedAnimals.length : 0;

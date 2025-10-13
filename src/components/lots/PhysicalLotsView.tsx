@@ -2,13 +2,14 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useData } from '../../context/DataContext';
-import type { PageState } from '../../types/navigation'; // <-- LÍNEA CORREGIDA
-import { Zap, Trash2, Edit, Move, ClipboardList, TestTube, GripVertical } from 'lucide-react';
-import { Reorder, motion, useAnimation, PanInfo, useDragControls } from 'framer-motion';
+import type { PageState } from '../../types/navigation';
+import { Trash2, Edit, Move, GripVertical } from 'lucide-react';
+import { Reorder, motion, useAnimation, useDragControls } from 'framer-motion';
 import { ActionSheetModal, ActionSheetAction } from '../ui/ActionSheetModal';
 import { Modal } from '../ui/Modal';
+import { GiBarn } from 'react-icons/gi';
 
-// --- SUB-COMPONENTES (VIVEN DENTRO DE ESTE ARCHIVO) ---
+// --- SUB-COMPONENTES ---
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }: { isOpen: boolean, onClose: () => void, onConfirm: () => void, title: string, message: string }) => {
     if (!isOpen) return null;
@@ -31,20 +32,24 @@ const SwipeableLotCard = ({ lot, onEdit, onDelete, onClick, dragControls }: { lo
     const showEdit = lot.count > 0;
     const showDelete = lot.name !== 'Sin Asignar';
     const buttonsWidth = (showEdit ? 80 : 0) + (showDelete ? 80 : 0);
-    const onDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-        const offset = info.offset.x;
-        const velocity = info.velocity.x;
-        if (Math.abs(offset) < 2) { onClick(); return; }
-        if (offset < -buttonsWidth / 2 || velocity < -500) { swipeControls.start({ x: -buttonsWidth }); } else { swipeControls.start({ x: 0 }); }
-        setTimeout(() => { dragStarted.current = false; }, 100);
-    };
+
     return (
         <div className="relative w-full overflow-hidden rounded-2xl bg-brand-glass border border-brand-border">
             <div className="absolute inset-y-0 right-0 flex items-center z-0 h-full">
                 {showEdit && <button onClick={onEdit} onPointerDown={(e) => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-orange text-white"><Edit size={22} /><span className="text-xs mt-1 font-semibold">Editar</span></button>}
                 {showDelete && <button onClick={onDelete} onPointerDown={(e) => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-red text-white"><Trash2 size={22} /><span className="text-xs mt-1 font-semibold">Borrar</span></button>}
             </div>
-            <motion.div drag="x" dragConstraints={{ left: -buttonsWidth, right: 0 }} dragElastic={0.1} onDragStart={() => { dragStarted.current = true; }} onDragEnd={onDragEnd} onTap={() => { if (!dragStarted.current) { onClick(); } }} animate={swipeControls} transition={{ type: "spring", stiffness: 400, damping: 40 }} className="relative w-full z-10 cursor-pointer bg-ios-modal-bg">
+            <motion.div 
+                drag="x" 
+                dragConstraints={{ left: -buttonsWidth, right: 0 }} 
+                dragElastic={0.1} 
+                onPanStart={() => { dragStarted.current = true; }}
+                onPanEnd={() => { setTimeout(() => { dragStarted.current = false; }, 50); }}
+                onTap={() => { if (!dragStarted.current) { onClick(); } }} 
+                animate={swipeControls} 
+                transition={{ type: "spring", stiffness: 400, damping: 40 }} 
+                className="relative w-full z-10 cursor-pointer bg-ios-modal-bg"
+            >
                 <LotCardContent lotName={lot.name} count={lot.count} dragControls={dragControls} />
             </motion.div>
         </div>
@@ -79,15 +84,22 @@ export default function PhysicalLotsView({ navigateTo }: { navigateTo: (page: Pa
 
     const lotActions: ActionSheetAction[] = [
         { label: "Mover Animales", icon: Move, onClick: () => navigateTo({ name: 'lot-detail', lotName: selectedLot?.name || '' }) },
-        { label: "Asignar Alimentación", icon: ClipboardList, onClick: () => navigateTo({ name: 'feeding-plan', lotName: selectedLot?.name || '' }) },
-        { label: "Asignar Tratamiento", icon: TestTube, onClick: () => navigateTo({ name: 'batch-treatment', lotName: selectedLot?.name || '' }) },
-        { label: "Convertir en Lote de Monta", icon: Zap, onClick: () => alert(`FUNCIONALIDAD FUTURA: Convertir ${selectedLot?.name} en Lote de Monta`) },
     ];
     
     const handleDelete = () => {
         if (!deleteConfirmation) return;
         deleteLot(deleteConfirmation.id);
     };
+
+    if (orderedLots.length === 0) {
+        return (
+            <div className="text-center py-10 bg-brand-glass rounded-2xl flex flex-col items-center gap-2">
+                <GiBarn size={32} className="text-zinc-600" />
+                <p className="text-zinc-500 font-semibold">No hay lotes físicos creados.</p>
+                <p className="text-xs text-zinc-600">Usa el botón '+' para empezar a organizar tu rebaño.</p>
+            </div>
+        );
+    }
 
     return (
         <>

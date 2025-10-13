@@ -1,5 +1,9 @@
-// src/types/navigation.ts
+// --- ESTE ES EL NUEVO ARCHIVO CENTRAL DE TIPOS ---
 
+// El tipo para los módulos de la aplicación, ahora en un solo lugar.
+export type AppModule = 'rebano' | 'lactokeeper' | 'kilos' | 'salud' | 'cents';
+
+// El tipo para la navegación interna del módulo Rebaño
 export type PageState = 
   | { name: 'lots-dashboard' } 
   | { name: 'lot-detail', lotName: string }
@@ -16,5 +20,4 @@ export type PageState =
   | { name: 'feeding-plan', lotName: string }
   | { name: 'batch-treatment', lotName: string }
   | { name: 'farm-calendar' }
-  // --- NUEVA PÁGINA ---
   | { name: 'birthing-season-detail', seasonId: string };

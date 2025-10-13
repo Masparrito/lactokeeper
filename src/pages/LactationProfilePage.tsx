@@ -1,18 +1,17 @@
 // src/pages/LactationProfilePage.tsx
 
-import { useState, useMemo } from 'react';
+import  { useState, useMemo } from 'react';
 import { XAxis, YAxis, ResponsiveContainer, BarChart, Bar, Tooltip, CartesianGrid, LineChart, Line, Legend } from 'recharts';
 import { useAnimalData } from '../hooks/useAnimalData';
 import { useComparativeData, ComparisonType } from '../hooks/useComparativeData';
-// --- MEJORA: Se importa el ícono de "User" para el nuevo botón ---
-import { ArrowLeft, Droplet, TrendingUp, CalendarDays, Repeat, CalendarCheck2, Wind, Archive, User } from 'lucide-react';
+import { ArrowLeft, Droplet, TrendingUp, CalendarDays, Repeat, CalendarCheck2, Wind, Archive, FileText } from 'lucide-react';
 import { CustomTooltip } from '../components/ui/CustomTooltip';
 import { Modal } from '../components/ui/Modal';
 import { useData } from '../context/DataContext';
 import { calculateDEL } from '../utils/calculations';
-import type { PageState } from '../types/navigation'; // Se importa el tipo para la navegación
+import type { PageState } from '../types/navigation';
 
-// --- Sub-componentes sin cambios ---
+// --- SUB-COMPONENTE CORREGIDO: Este componente ahora será utilizado ---
 const ModalChartTooltip = ({ active, payload, label, context }: { active?: boolean, payload?: any[], label?: string, context: 'peak' | 'del' | 'interval' | 'average' }) => {
     if (active && payload && payload.length) {
         let title = '';
@@ -33,11 +32,9 @@ const ModalChartTooltip = ({ active, payload, label, context }: { active?: boole
     return null;
 };
 
-
 interface LactationProfilePageProps {
     animalId: string;
     onBack: () => void;
-    // --- MEJORA: Se añade la prop navigateTo para poder ir al perfil general ---
     navigateTo: (page: PageState) => void;
 }
 
@@ -66,6 +63,7 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
         return calculateDEL(currentLactationData.parturitionDate, new Date().toISOString().split('T')[0]);
     }, [currentLactationData]);
 
+    // --- CORRECCIÓN: Esta variable ahora se usará en los modales restaurados ---
     const chartData = useMemo(() => ({
         average: allLactations.map(l => ({ name: new Date(l.parturitionDate).getFullYear().toString(), value: l.averageProduction })),
         peak: allLactations.map(l => ({ name: new Date(l.parturitionDate).getFullYear().toString(), value: l.peakProduction.kg })),
@@ -95,20 +93,19 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
 
     return (
         <>
-            <div className="w-full max-w-4xl mx-auto space-y-4 animate-fade-in">
+            <div className="w-full max-w-4xl mx-auto space-y-4 animate-fade-in px-4">
                 <header className="flex items-center pt-8 pb-4">
                     <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
                     <div className="text-center flex-grow">
                         <h1 className="text-4xl font-bold tracking-tight text-white">{animalId}</h1>
                         <p className="text-xl text-zinc-400">Perfil de Lactancia</p>
                     </div>
-                    {/* --- MEJORA: Botón para ir al perfil general del animal --- */}
                     <button
                         onClick={() => navigateTo({ name: 'rebano-profile', animalId })}
                         className="p-2 -mr-2 text-zinc-400 hover:text-white transition-colors"
                         title="Ir a la ficha general del animal"
                     >
-                        <User size={24} />
+                        <FileText size={24} />
                     </button>
                 </header>
 
@@ -151,7 +148,7 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                             )}
                         </div>
                     </div>
-                    <div className="w-full h-56 -ml-4">
+                    <div className="w-full h-56">
                         <ResponsiveContainer>
                             <LineChart margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
@@ -202,6 +199,7 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                 )}
             </div>
             
+            {/* --- CORRECCIÓN: Se restaura el contenido de los modales --- */}
             <Modal isOpen={activeModal === 'average'} onClose={() => setActiveModal(null)} title="Historial de Promedios">
                 <div className="space-y-6">
                     <div className="w-full h-48 -ml-4"><ResponsiveContainer><BarChart data={chartData.average} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>

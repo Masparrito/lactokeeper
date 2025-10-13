@@ -1,12 +1,16 @@
+// src/pages/LoginPage.tsx
+
 import React, { useState } from 'react';
-import { 
+import {
     createUserWithEmailAndPassword, 
     signInWithEmailAndPassword,
     AuthError
 } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
-import { Droplet, AlertTriangle, Trash2 } from 'lucide-react';
+import { AlertTriangle, Trash2 } from 'lucide-react';
 import { Dexie } from 'dexie';
+// --- CAMBIO: Se importa el nuevo ícono que representa el OS ---
+import { GiGoat } from 'react-icons/gi'; 
 
 export const LoginPage: React.FC = () => {
     const [isLoginView, setIsLoginView] = useState(true);
@@ -18,7 +22,8 @@ export const LoginPage: React.FC = () => {
     const handleForceDeleteDB = async () => {
         if (window.confirm("¿Estás seguro de que quieres forzar la eliminación de la base de datos local? Esto no afectará tus datos en la nube.")) {
             try {
-                await Dexie.delete('LactoKeeperDB_v6');
+                // El nombre de la base de datos ahora es GanaderoOS_DB
+                await Dexie.delete('GanaderoOS_DB');
                 alert("Base de datos local eliminada con éxito. La página se recargará.");
                 window.location.reload();
             } catch (err) {
@@ -72,11 +77,13 @@ export const LoginPage: React.FC = () => {
         <div className="min-h-screen flex flex-col items-center justify-center p-4 font-sans">
             <div className="w-full max-w-sm">
                 <div className="text-center mb-8">
-                    <div className="flex items-center justify-center space-x-2 mb-2">
-                        <Droplet className="w-10 h-10 text-brand-orange" />
-                        <h1 className="text-4xl font-bold text-white">LactoKeeper</h1>
+                    <div className="flex items-center justify-center space-x-3 mb-2">
+                        {/* --- CAMBIO DE MARCA --- */}
+                        <GiGoat className="w-12 h-12 text-brand-orange" />
+                        <h1 className="text-4xl font-bold text-white">GanaderoOS</h1>
                     </div>
-                    <p className="text-zinc-400">Tu gestión de rebaño, en la nube.</p>
+                    {/* --- CAMBIO DE ESLOGAN --- */}
+                    <p className="text-zinc-400">El sistema operativo para tu finca.</p>
                 </div>
 
                 <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-6 border border-brand-border">

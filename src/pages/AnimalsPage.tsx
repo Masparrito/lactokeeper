@@ -1,9 +1,9 @@
 // src/pages/AnimalsPage.tsx
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useData } from '../context/DataContext';
-import { ChevronRight, BarChart2, ArrowUp, ArrowDown, Sparkles, ChevronLeft, FilterX, Info, Sigma, Droplets, TrendingUp, LogIn, LogOut, Target } from 'lucide-react';
-import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, LabelList, CartesianGrid } from 'recharts';
+import { ChevronRight, ArrowUp, ArrowDown, Sparkles, ChevronLeft, FilterX, Info, Sigma, Droplets, TrendingUp, LogIn, LogOut, Target, BarChart } from 'lucide-react';
+import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, LabelList, CartesianGrid } from 'recharts';
 import { useGaussAnalysis, AnalyzedAnimal } from '../hooks/useGaussAnalysis';
 import { WeighingTrendIcon } from '../components/ui/WeighingTrendIcon';
 import { Modal } from '../components/ui/Modal';
@@ -294,8 +294,8 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
         <>
             <div className="w-full max-w-2xl mx-auto space-y-4 pb-12">
                 <SearchHeader   
-                    title="Análisis de Rebaño"
-                    subtitle="Animales en Ordeño"
+                    title={selectedDate ? new Date(selectedDate).toLocaleDateString() : "Mi Rebaño"}
+                    subtitle={`${searchedAnimals.length} animales en la vista`}
                     searchTerm={searchTerm}
                     setSearchTerm={setSearchTerm}
                 />
@@ -329,7 +329,7 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
 
                 <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border animate-fade-in">
                     <div className="flex justify-between items-center border-b border-brand-border pb-2 mb-4">
-                        <div className="flex items-center space-x-2"><BarChart2 className="text-brand-orange" size={18}/><h3 className="text-lg font-semibold text-white">Análisis del Día</h3><button onClick={() => setIsInfoModalOpen(true)} className="text-zinc-500 hover:text-white"><Info size={14}/></button></div>
+                        <div className="flex items-center space-x-2"><BarChart className="text-brand-orange" size={18}/><h3 className="text-lg font-semibold text-white">Análisis del Día</h3><button onClick={() => setIsInfoModalOpen(true)} className="text-zinc-500 hover:text-white"><Info size={14}/></button></div>
                         <label className="flex items-center space-x-2 text-sm text-zinc-300 cursor-pointer">
                             <Sparkles size={14} className={isWeighted ? 'text-brand-orange' : 'text-zinc-500'}/>
                             <span>Ponderado a DEL</span>
@@ -339,7 +339,7 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
                     </div>
                     <div className="w-full h-48">
                         <ResponsiveContainer>
-                            <BarChart data={distribution} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                            <RechartsBarChart data={distribution} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
                                 <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
                                 <YAxis orientation="left" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
                                 <Tooltip cursor={{fill: 'rgba(255, 255, 255, 0.05)'}} />
@@ -347,7 +347,7 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
                                     {distribution.map((entry) => (<Cell key={entry.name} fill={entry.fill} className={`${classificationFilter !== 'all' && classificationFilter !== entry.name ? 'opacity-30' : 'opacity-100'} transition-opacity`} />))}
                                     <LabelList dataKey="count" content={<CustomBarLabel total={classifiedAnimals.length} />} />
                                 </Bar>
-                            </BarChart>
+                            </RechartsBarChart>
                         </ResponsiveContainer>
                     </div>
                     <div className="text-center text-xs text-zinc-400 mt-2"><span>μ = {mean.toFixed(2)}</span> | <span>σ = {stdDev.toFixed(2)}</span></div>
@@ -404,7 +404,15 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
                                 return (
                                     <div
                                         key={virtualItem.key}
-                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: `${virtualItem.size}px`, transform: `translateY(${virtualItem.start}px)`, padding: '0 1rem 0.5rem 1rem' }}
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            width: '100%',
+                                            height: `${virtualItem.size}px`,
+                                            transform: `translateY(${virtualItem.start}px)`,
+                                            padding: '0 1rem 0.5rem 1rem'
+                                        }}
                                     >
                                         <MilkingAnimalRow 
                                             animal={animal} 
@@ -441,15 +449,15 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
             <Modal isOpen={activeModal === 'media'} onClose={() => setActiveModal(null)} title="Tendencia de Producción Promedio">
                 <div className="w-full h-56 -ml-4">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={pageData.trendData} margin={{ top: 20, right: 20, left: -20, bottom: 5 }}>
+                        <RechartsBarChart data={pageData.trendData} margin={{ top: 20, right: 20, left: -20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                             <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
                             <YAxis orientation="left" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
                             <Tooltip cursor={{fill: 'rgba(255, 255, 255, 0.05)'}} contentStyle={{ backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)' }} />
                             <Bar dataKey="avg" name="Promedio Kg" fill="#FF9500" radius={[4, 4, 0, 0]}>
-                                <LabelList dataKey="avg" position="top" formatter={(value: number) => value.toFixed(2)} fill="#FFF" fontSize={12} />
+                                <LabelList dataKey="avg" position="top" formatter={(value: any) => typeof value === 'number' ? value.toFixed(2) : value} fill="#FFF" fontSize={12} />
                             </Bar>
-                        </BarChart>
+                        </RechartsBarChart>
                     </ResponsiveContainer>
                 </div>
             </Modal>
@@ -473,7 +481,7 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
 
             <Modal isOpen={activeModal === 'stdDev'} onClose={() => setActiveModal(null)} title="Análisis de Consistencia (σ)">
                 <div className="text-zinc-300 space-y-4 text-base">
-                    <p>La Desviación Estándar (σ) mide qué tan dispersa está la producción de tu rebaño. Un valor **bajo** es ideal, ya que indica un rebaño consistente y predecible.</p>
+                    <p>La Desviación Estándar (σ) de **{stdDev.toFixed(2)}** mide qué tan dispersa está la producción. Un valor **bajo** es ideal, ya que indica un rebaño consistente.</p>
                     <div className="bg-black/30 p-4 rounded-lg text-center">
                         <p className="text-sm uppercase text-zinc-400">Rebaño dentro de 1σ de la media</p>
                         <p className="text-4xl font-bold text-brand-orange my-1">{pageData.consistency.percentage.toFixed(0)}%</p>
@@ -493,19 +501,19 @@ export default function AnimalsPage({ onSelectAnimal, selectedDate }: AnimalsPag
             
             <Modal isOpen={isScoreInfoModalOpen} onClose={() => setIsScoreInfoModalOpen(false)} title="¿Qué es el Score Ponderado?">
               <div className="text-zinc-300 space-y-4 text-base">
-                    <p>
-                        El Score Ponderado ajusta la producción de un animal para premiar la **persistencia lechera**, un indicador clave de la calidad genética y la eficiencia.
-                    </p>
-                    <div>
-                        <h4 className="font-semibold text-white mb-1">Fórmula Aplicada</h4>
-                        <div className="bg-black/30 p-3 rounded-lg text-sm font-mono text-center text-orange-300">
-                            Score = Kg × (1 + ((DEL - 50) / (DEL + 50)))
-                        </div>
-                    </div>
-                    <p className="pt-2 border-t border-zinc-700/80 text-sm">
-                        Esto significa que 2 Kg en el día **200** de lactancia obtendrán un score **mucho más alto** que 2 Kg en el día 40, ayudándote a identificar a tus animales más eficientes y persistentes.
-                    </p>
-                </div>
+                  <p>
+                      El Score Ponderado ajusta la producción de un animal para premiar la **persistencia lechera**, un indicador clave de la calidad genética y la eficiencia.
+                  </p>
+                  <div>
+                      <h4 className="font-semibold text-white mb-1">Fórmula Aplicada</h4>
+                      <div className="bg-black/30 p-3 rounded-lg text-sm font-mono text-center text-orange-300">
+                          Score = Kg × (1 + ((DEL - 50) / (DEL + 50)))
+                      </div>
+                  </div>
+                  <p className="pt-2 border-t border-zinc-700/80 text-sm">
+                      Esto significa que 2 Kg en el día **200** de lactancia obtendrán un score **mucho más alto** que 2 Kg en el día 40, ayudándote a identificar a tus animales más eficientes y persistentes.
+                  </p>
+              </div>
             </Modal>
         </>
     );

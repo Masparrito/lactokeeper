@@ -1,18 +1,16 @@
 // src/components/ui/ModuleSwitcher.tsx
 
 import React, { useState } from 'react';
-// --- MEJORA: Se importa el ícono para el nuevo módulo ---
 import { Layers, Droplets, Scale, HeartPulse, X, DollarSign } from 'lucide-react';
-
-// --- MEJORA: Se añade 'economia' a los tipos de módulos ---
-type AppModule = 'lactokeeper' | 'kilos' | 'salud' | 'economia';
+import { GiGoat } from 'react-icons/gi';
+import { AppModule } from '../../types/navigation';
 
 const modules = [
+    { id: 'rebano', name: 'Rebaño', icon: GiGoat, color: 'bg-amber-600' },
     { id: 'lactokeeper', name: 'LactoKeeper', icon: Droplets, color: 'bg-brand-blue' },
     { id: 'kilos', name: 'Kilos', icon: Scale, color: 'bg-brand-green' },
     { id: 'salud', name: 'StockCare', icon: HeartPulse, color: 'bg-teal-500' },
-    // --- MEJORA: Se añade el nuevo módulo de Economía a la lista ---
-    { id: 'economia', name: 'Economía', icon: DollarSign, color: 'bg-yellow-500' }
+    { id: 'cents', name: 'Cents', icon: DollarSign, color: 'bg-yellow-500' }
 ];
 
 interface ModuleSwitcherProps {
@@ -28,9 +26,14 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ onSwitchModule }
     };
 
     return (
-        <div className="fixed bottom-24 right-4 z-40 flex flex-col items-end gap-4 pointer-events-none">
-            <div    
-                className={`flex flex-col items-end gap-4 transition-all duration-300 ease-in-out ${isOpen ? 'opacity-100' : 'opacity-0 translate-y-4'}`}
+        <div className="fixed bottom-24 right-4 z-40 flex flex-col items-end gap-4">
+            {/* --- SOLUCIÓN DEFINITIVA: Colapsar el contenedor cuando está cerrado --- */}
+            <div
+                className={`flex flex-col items-end gap-4 transition-all duration-300 ease-in-out overflow-hidden ${
+                    isOpen 
+                    ? 'max-h-[500px] opacity-100' 
+                    : 'max-h-0 opacity-0'
+                }`}
             >
                 {modules.map((module) => (
                     <div key={module.id} className="flex items-center gap-3">
@@ -39,7 +42,7 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ onSwitchModule }
                         </span>
                         <button
                             onClick={() => handleModuleSelect(module.id as AppModule)}
-                            className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg ${module.color} transform transition-transform hover:scale-110 pointer-events-auto`}
+                            className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg ${module.color} transform transition-transform hover:scale-110`}
                             aria-label={`Cambiar al módulo ${module.name}`}
                         >
                             <module.icon size={28} />

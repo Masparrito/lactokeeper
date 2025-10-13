@@ -1,6 +1,6 @@
 // src/pages/RebanoShell.tsx
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import LotsDashboardPage from './LotsDashboardPage';
 import LotDetailPage from './LotDetailPage';
 import AddAnimalPage from './AddAnimalPage';
@@ -24,15 +24,15 @@ import { FaCow } from "react-icons/fa6";
 import { auth } from '../firebaseConfig';
 import { useData } from '../context/DataContext';
 import { SyncStatusIcon } from '../components/ui/SyncStatusIcon';
-import type { PageState } from '../types/navigation';
+import type { PageState, AppModule } from '../types/navigation';
+
 
 interface RebanoShellProps {
     initialPage: PageState | null;
-    // --- LÍNEA CORREGIDA: Se añade 'economia' a los tipos permitidos ---
-    onSwitchModule: (module: 'lactokeeper' | 'kilos' | 'salud' | 'economia') => void;
+    onSwitchModule: (module: AppModule) => void;
 }
 
-const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }) => {
+export default function RebanoShell({ initialPage, onSwitchModule }: RebanoShellProps) {
     const { syncStatus } = useData();
     const [page, setPage] = useState<PageState>({ name: 'lots-dashboard' });
     const [history, setHistory] = useState<PageState[]>([]);
@@ -40,14 +40,15 @@ const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }
     useEffect(() => {
         if (initialPage) {
             setPage(initialPage);
+            setHistory([]);
         }
     }, [initialPage]);
 
     const navItems = [
-        { page: { name: 'lots-dashboard' }, label: 'Lotes', icon: GiBarn },
-        { page: { name: 'herd' }, label: 'Rebaño', icon: FaCow },
-        { page: { name: 'farm-calendar' }, label: 'Calendario', icon: CalendarDays },
-        { page: { name: 'add-animal' }, label: 'Añadir', icon: PlusCircle },
+        { page: { name: 'lots-dashboard' }, label: 'Lotes', icon: GiBarn, mapsTo: ['lots-dashboard', 'lot-detail', 'breeding-season-detail', 'sire-lot-detail', 'feeding-plan', 'batch-treatment'] },
+        { page: { name: 'herd' }, label: 'Rebaño', icon: FaCow, mapsTo: ['herd', 'rebano-profile', 'manage-lots', 'lactation-profile', 'growth-profile'] },
+        { page: { name: 'farm-calendar' }, label: 'Calendario', icon: CalendarDays, mapsTo: ['farm-calendar', 'birthing-season-detail'] },
+        { page: { name: 'add-animal' }, label: 'Añadir', icon: PlusCircle, mapsTo: ['add-animal', 'ocr'] },
     ] as const;
 
     const navigateTo = (newPage: PageState) => {
@@ -56,13 +57,18 @@ const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }
     };
 
     const navigateBack = () => {
-        const lastPage = history[history.length - 1];
+        const lastPage = history.pop();
         if (lastPage) {
-            setHistory(currentHistory => currentHistory.slice(0, -1));
+            setHistory([...history]);
             setPage(lastPage);
         } else {
             setPage({ name: 'lots-dashboard' });
         }
+    };
+    
+    const handleNavClick = (newPage: PageState) => {
+        setHistory([]);
+        setPage(newPage);
     };
 
     const renderPage = () => {
@@ -72,9 +78,9 @@ const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }
             case 'breeding-season-detail': return <BreedingSeasonDetailPage seasonId={page.seasonId} onBack={navigateBack} navigateTo={navigateTo} />;
             case 'sire-lot-detail': return <SireLotDetailPage lotId={page.lotId} onBack={navigateBack} navigateTo={navigateTo} />;
             case 'herd': return <HerdPage navigateTo={navigateTo} locationFilter={page.locationFilter} />;
-            case 'manage-lots': return <ManageLotsPage onBack={() => setPage({ name: 'herd' })} />;
+            case 'manage-lots': return <ManageLotsPage onBack={() => handleNavClick({ name: 'herd' })} />;
             case 'management': return <ManagementPage onSelectAnimal={(animalId) => navigateTo({ name: 'rebano-profile', animalId })} />;
-            case 'add-animal': return <AddAnimalPage onBack={() => setPage({ name: 'herd' })} />;
+            case 'add-animal': return <AddAnimalPage onBack={() => handleNavClick({ name: 'herd' })} />;
             case 'rebano-profile': return <RebanoProfilePage animalId={page.animalId} onBack={navigateBack} navigateTo={navigateTo} />;
             case 'lactation-profile': return <LactationProfilePage animalId={page.animalId} onBack={navigateBack} navigateTo={navigateTo} />;
             case 'growth-profile': return <GrowthProfilePage animalId={page.animalId} onBack={navigateBack} />;
@@ -93,7 +99,10 @@ const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }
                 <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-16">
                     <div className="flex items-center gap-2">
                         <GiGoat className="text-brand-orange" size={28}/>
-                        <h1 className="text-xl font-bold text-white">Rebaño</h1>
+                        <div>
+                            <h1 className="text-xl font-bold text-white leading-none">GanaderoOS</h1>
+                            <p className="text-xs text-zinc-400 leading-none">Rebaño</p>
+                        </div>
                     </div>
                     <div className="flex items-center gap-4">
                         <SyncStatusIcon status={syncStatus} />
@@ -102,19 +111,14 @@ const RebanoShell: React.FC<RebanoShellProps> = ({ initialPage, onSwitchModule }
             </header>
             <main className="pt-16 pb-24">{renderPage()}</main>
             <ModuleSwitcher onSwitchModule={onSwitchModule} />
-            <nav className="fixed bottom-0 left-0 right-0 bg-black/30 backdrop-blur-xl border-t border-white/20 flex justify-around">
+            {/* --- CAMBIO CLAVE: Se añade z-20 para asegurar que la barra esté por encima del contenido --- */}
+            <nav className="fixed bottom-0 left-0 right-0 z-20 bg-black/30 backdrop-blur-xl border-t border-white/20 flex justify-around">
                 {navItems.map((item) => {
-                    let isActive = false;
-                    if (item.label === 'Lotes') isActive = ['lots-dashboard', 'lot-detail', 'breeding-season-detail', 'sire-lot-detail'].includes(page.name);
-                    else if (item.label === 'Rebaño') isActive = ['herd', 'rebano-profile', 'manage-lots', 'lactation-profile', 'growth-profile'].includes(page.name);
-                    else if (item.label === 'Calendario') isActive = ['farm-calendar', 'birthing-season-detail'].includes(page.name);
-                    else if (item.label === 'Añadir') isActive = ['add-animal', 'ocr'].includes(page.name);
-                    return (<button key={item.label} onClick={() => { setHistory([]); setPage(item.page as any); }} className={`relative flex flex-col items-center justify-center pt-3 pb-2 w-full transition-colors ${isActive ? 'text-amber-400' : 'text-gray-500 hover:text-white'}`}><item.icon className="w-6 h-6" /><span className="text-xs font-semibold mt-1">{item.label}</span></button>);
+                    const isActive = (item.mapsTo as readonly string[]).includes(page.name);
+                    return (<button key={item.label} onClick={() => handleNavClick(item.page)} className={`relative flex flex-col items-center justify-center pt-3 pb-2 w-full transition-colors ${isActive ? 'text-amber-400' : 'text-gray-500 hover:text-white'}`}><item.icon className="w-6 h-6" /><span className="text-xs font-semibold mt-1">{item.label}</span></button>);
                 })}
                 <button onClick={() => auth.signOut()} className="relative flex flex-col items-center justify-center pt-3 pb-2 w-full text-gray-500 hover:text-red-400 transition-colors"><LogOut className="w-6 h-6" /><span className="text-xs font-semibold mt-1">Salir</span></button>
             </nav>
         </div>
     );
 };
-
-export default RebanoShell;

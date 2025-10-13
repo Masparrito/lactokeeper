@@ -10,7 +10,7 @@ export default {
         sans: ['Inter', 'sans-serif'],
       },
       colors: {
-        // --- Colores base existentes ---
+        // --- Colores base existentes (INTACTOS) ---
         'brand-dark': '#1C1C1E',
         'brand-light-gray': 'rgba(255, 255, 255, 0.7)',
         'brand-medium-gray': 'rgba(255, 255, 255, 0.4)',
@@ -24,6 +24,10 @@ export default {
         'brand-red': '#FF3B30',    // Rojo para acciones destructivas (eliminar, borrar)
         'brand-blue': '#007AFF',   // Azul para acciones informativas o secundarias
         'ios-modal-bg': '#2C2C2E', // Un gris oscuro profundo para los fondos de los modales
+
+        // --- ADICIONES EXCLUSIVAS PARA EL DASHBOARD DE REBAÑO ---
+        'dashboard-surface': 'rgba(44, 44, 46, 0.7)', // Un "glass" más oscuro y sutil para tarjetas y módulos
+        'dashboard-surface-hover': 'rgba(58, 58, 60, 0.9)', // Efecto al pasar el mouse
       }
     },
   },

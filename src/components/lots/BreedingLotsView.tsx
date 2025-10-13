@@ -7,10 +7,10 @@ import { Plus, ChevronRight, Zap, Sun, Edit, GripVertical } from 'lucide-react';
 import { BreedingSeason } from '../../db/local';
 import { Modal } from '../ui/Modal';
 import { BreedingSeasonForm } from '../forms/BreedingSeasonForm';
-// --- CAMBIO CLAVE 1: Se importan las herramientas de 'framer-motion' ---
-import { Reorder, motion, useAnimation, PanInfo, useDragControls } from 'framer-motion';
+import { Reorder, motion, useAnimation, useDragControls } from 'framer-motion';
 
-// --- NUEVO SUB-COMPONENTE: Tarjeta de Temporada Interactiva (Swipe y Drag) ---
+// --- SUB-COMPONENTES ---
+
 const SeasonCardContent = ({ season, dragControls }: { season: BreedingSeason, dragControls: any }) => (
     <div className="w-full p-4 flex items-center">
         <div className="pl-2 pr-4 cursor-grab touch-none self-stretch flex items-center" onPointerDown={(e) => dragControls.start(e)}>
@@ -41,19 +41,7 @@ const SeasonCardContent = ({ season, dragControls }: { season: BreedingSeason, d
 const SwipeableSeasonCard = ({ season, onEdit, onClick, dragControls }: { season: BreedingSeason, onEdit: () => void, onClick: () => void, dragControls: any }) => {
     const swipeControls = useAnimation();
     const dragStarted = useRef(false);
-    const buttonsWidth = 80; // Ancho del botón de Editar
-
-    const onDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-        const offset = info.offset.x;
-        const velocity = info.velocity.x;
-        if (Math.abs(offset) < 2) { onClick(); return; } // Si es un clic normal, navega
-        if (offset < -buttonsWidth / 2 || velocity < -500) {
-            swipeControls.start({ x: -buttonsWidth }); // Desliza para mostrar el botón
-        } else {
-            swipeControls.start({ x: 0 }); // Vuelve a la posición original
-        }
-        setTimeout(() => { dragStarted.current = false; }, 100);
-    };
+    const buttonsWidth = 80;
 
     return (
         <div className="relative w-full overflow-hidden rounded-2xl bg-brand-glass border border-brand-border">
@@ -66,8 +54,8 @@ const SwipeableSeasonCard = ({ season, onEdit, onClick, dragControls }: { season
                 drag="x"
                 dragConstraints={{ left: -buttonsWidth, right: 0 }}
                 dragElastic={0.1}
-                onDragStart={() => { dragStarted.current = true; }}
-                onDragEnd={onDragEnd}
+                onPanStart={() => { dragStarted.current = true; }}
+                onPanEnd={() => { setTimeout(() => { dragStarted.current = false; }, 50); }}
                 onTap={() => { if (!dragStarted.current) { onClick(); } }}
                 animate={swipeControls}
                 transition={{ type: "spring", stiffness: 400, damping: 40 }}
@@ -125,36 +113,37 @@ export default function BreedingLotsView({ navigateTo }: { navigateTo: (page: Pa
         setEditingSeason(undefined);
     };
 
+    if (orderedSeasons.length === 0) {
+        return (
+             <div className="text-center py-10 bg-brand-glass rounded-2xl flex flex-col items-center gap-2">
+                <Zap size={32} className="text-zinc-600" />
+                <p className="text-zinc-500 font-semibold">No hay temporadas de monta creadas.</p>
+                <p className="text-xs text-zinc-600">Usa el botón de abajo para empezar a planificar.</p>
+            </div>
+        )
+    }
+
     return (
         <>
-            <div className="space-y-4">
+            <Reorder.Group as="div" axis="y" values={orderedSeasons} onReorder={setOrderedSeasons} className="space-y-3">
+                {orderedSeasons.map(season => (
+                    <ReorderableSeasonItem
+                        key={season.id}
+                        season={season}
+                        navigateTo={navigateTo}
+                        onEdit={handleOpenModal}
+                    />
+                ))}
+            </Reorder.Group>
+            
+            <div className="px-4 mt-4">
                 <button 
                     onClick={() => handleOpenModal()}
-                    className="w-full flex items-center justify-center gap-2 bg-brand-orange hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-xl transition-colors text-lg">
-                    <Plus size={20} /> Crear Nueva Temporada de Monta
+                    className="w-full flex items-center justify-center gap-2 bg-brand-orange hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-xl transition-colors text-base">
+                    <Plus size={20} /> Crear Nueva Temporada
                 </button>
-
-                {/* --- CAMBIO CLAVE 2: La lista ahora es reordenable --- */}
-                <div className="space-y-3 pt-2">
-                    {orderedSeasons.length > 0 ? (
-                        <Reorder.Group as="div" axis="y" values={orderedSeasons} onReorder={setOrderedSeasons} className="space-y-3">
-                            {orderedSeasons.map(season => (
-                                <ReorderableSeasonItem
-                                    key={season.id}
-                                    season={season}
-                                    navigateTo={navigateTo}
-                                    onEdit={handleOpenModal}
-                                />
-                            ))}
-                        </Reorder.Group>
-                    ) : (
-                        <div className="text-center py-6 bg-brand-glass rounded-2xl">
-                            <Zap size={32} className="mx-auto text-zinc-600 mb-2" />
-                            <p className="text-zinc-500">No hay temporadas de monta creadas.</p>
-                        </div>
-                    )}
-                </div>
             </div>
+
 
             <Modal isOpen={isModalOpen} onClose={() => { setModalOpen(false); setEditingSeason(undefined); }} title={editingSeason ? "Editar Temporada de Monta" : "Crear Temporada de Monta"}>
                 <BreedingSeasonForm 
