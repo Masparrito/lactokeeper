@@ -1,4 +1,4 @@
-// --- ESTE ES EL NUEVO ARCHIVO CENTRAL DE TIPOS ---
+// src/types/navigation.ts
 
 // El tipo para los módulos de la aplicación, ahora en un solo lugar.
 export type AppModule = 'rebano' | 'lactokeeper' | 'kilos' | 'salud' | 'cents';
@@ -12,7 +12,10 @@ export type PageState =
   | { name: 'herd', locationFilter?: string }
   | { name: 'manage-lots' }
   | { name: 'management' } 
-  | { name: 'rebano-profile', animalId: string }
+  // --- ACTUALIZACIÓN v4.0 ---
+  // Se añade la propiedad opcional 'openAction' para permitir abrir el perfil
+  // directamente en una acción específica desde el menú swipe.
+  | { name: 'rebano-profile', animalId: string, openAction?: 'move' | 'decommission' }
   | { name: 'lactation-profile', animalId: string }
   | { name: 'growth-profile', animalId: string }
   | { name: 'add-animal' }

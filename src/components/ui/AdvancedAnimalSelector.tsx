@@ -1,8 +1,7 @@
 // src/components/ui/AdvancedAnimalSelector.tsx
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Modal } from './Modal';
-// --- CAMBIO CLAVE 1: Se importa BreedingSeason y SireLot ---
 import { Animal, Parturition, ServiceRecord, BreedingSeason, SireLot } from '../../db/local';
 import { CheckSquare, Square, AlertTriangle, Search, ChevronDown, History, FilterX } from 'lucide-react';
 import { useInbreedingCheck } from '../../hooks/useInbreedingCheck';
@@ -10,7 +9,6 @@ import { formatAge, getAnimalZootecnicCategory } from '../../utils/calculations'
 import { STATUS_DEFINITIONS, AnimalStatusKey } from '../../hooks/useAnimalStatus';
 
 
-// --- CAMBIO CLAVE 2: La función ahora usa la nueva estructura de datos ---
 const getAnimalStatuses = (animal: Animal, allParturitions: Parturition[], allServiceRecords: ServiceRecord[], allSireLots: SireLot[], allBreedingSeasons: BreedingSeason[]): AnimalStatusKey[] => {
     const s: AnimalStatusKey[] = []; if (!animal) return [];
     if (animal.sex === 'Hembra') { const lp = allParturitions.filter(p=>p.goatId===animal.id&&p.status!=='finalizada').sort((a,b)=>new Date(b.parturitionDate).getTime()-new Date(a.parturitionDate).getTime())[0]; if (lp) { if (lp.status==='activa') s.push('MILKING'); else if (lp.status==='en-secado') s.push('DRYING_OFF'); else if (lp.status==='seca') s.push('DRY'); } }
@@ -29,12 +27,15 @@ const getAnimalStatuses = (animal: Animal, allParturitions: Parturition[], allSe
 
 const CATEGORIES = ['Cabrita', 'Cabritona', 'Cabra', 'Cabrito', 'Macho de Levante', 'Macho Cabrío'];
 
-const FilterBar = ({ title, filters, activeFilter, onFilterChange }: { title: string, filters: AnimalStatusKey[], activeFilter: string, onFilterChange: (key: string) => void }) => (
+const FilterBar = ({ title, filters, activeFilter, onFilterChange }: { title: string, filters: any[], activeFilter: string, onFilterChange: (key: string) => void }) => (
     <div>
         <label className="block text-xs font-semibold text-zinc-400 mb-2">{title}</label>
         <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => onFilterChange('ALL')} className={`px-2 py-1 text-xs font-semibold rounded-full transition-colors ${activeFilter==='ALL'?'bg-zinc-600 text-white':'bg-zinc-800/80 text-zinc-300'}`}>Todos</button>
-            {filters.map(key => { const {Icon,label}=STATUS_DEFINITIONS[key]; return ( <button type="button" key={key} onClick={() => onFilterChange(key)} className={`flex items-center gap-1.5 px-2 py-1 text-xs font-semibold rounded-full transition-colors ${activeFilter===key?'bg-brand-blue text-white':'bg-zinc-800/80 text-zinc-300'}`}><Icon size={14}/>{label}</button> ); })}
+            {filters.map(f => {
+                const Icon = f.Icon || null;
+                return ( <button type="button" key={f.key} onClick={() => onFilterChange(f.key)} className={`flex items-center gap-1.5 px-2 py-1 text-xs font-semibold rounded-full transition-colors ${activeFilter===f.key?'bg-brand-blue text-white':'bg-zinc-800/80 text-zinc-300'}`}><Icon size={14}/>{f.label}</button> );
+            })}
         </div>
     </div>
 );
@@ -46,26 +47,44 @@ interface AdvancedAnimalSelectorProps {
     animals: Animal[];
     parturitions: Parturition[];
     serviceRecords: ServiceRecord[];
-    // --- CAMBIO CLAVE 3: Se aceptan las nuevas props ---
     breedingSeasons: BreedingSeason[];
     sireLots: SireLot[];
     title: string;
     sireIdForInbreedingCheck?: string;
+    // --- NUEVA PROPIEDAD v4.0 ---
+    // Define el contexto para aplicar filtros por defecto.
+    sessionType?: 'leche' | 'corporal';
 }
 
-export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({ isOpen, onClose, onSelect, animals, parturitions, serviceRecords, breedingSeasons, sireLots, title, sireIdForInbreedingCheck }) => {
+export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({ isOpen, onClose, onSelect, animals, parturitions, serviceRecords, breedingSeasons, sireLots, title, sireIdForInbreedingCheck, sessionType }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const { isRelated } = useInbreedingCheck();
-    const [filtersVisible, setFiltersVisible] = useState(false);
+    const [filtersVisible, setFiltersVisible] = useState(true); // Filtros visibles por defecto
     const [categoryFilter, setCategoryFilter] = useState<string>('Todos');
     const [isLatestFilterActive, setIsLatestFilterActive] = useState(false);
     const [productiveFilter, setProductiveFilter] = useState('ALL');
     const [reproductiveFilter, setReproductiveFilter] = useState('ALL');
+    const [sexFilter, setSexFilter] = useState<'all' | 'Hembra' | 'Macho'>('all'); // Filtro de sexo
+
+    // --- NUEVA LÓGICA v4.0: Aplicar filtros por defecto al abrir ---
+    useEffect(() => {
+        if (isOpen && sessionType) {
+            // Resetea cualquier filtro anterior
+            resetFilters(); 
+            if (sessionType === 'leche') {
+                // Filtra automáticamente por animales 'En Ordeño'
+                setProductiveFilter('MILKING');
+            } else if (sessionType === 'corporal') {
+                // Filtra por hembras y oculta machos por defecto
+                setSexFilter('Hembra');
+            }
+        }
+    }, [isOpen, sessionType]);
+
 
     const animalsWithAllData = useMemo(() => animals.map(animal => ({ 
         ...animal, 
-        // --- CAMBIO CLAVE 4: Se pasan las nuevas entidades a la función ---
         statuses: getAnimalStatuses(animal, parturitions, serviceRecords, sireLots, breedingSeasons),
         formattedAge: formatAge(animal.birthDate),
         zootecnicCategory: getAnimalZootecnicCategory(animal, parturitions),
@@ -73,18 +92,32 @@ export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({ 
 
     const filteredAnimals = useMemo(() => {
         let filtered = animalsWithAllData;
+
+        // --- ACTUALIZACIÓN v4.0: Se añade el filtro por sexo ---
+        if (sexFilter !== 'all') {
+            filtered = filtered.filter(animal => animal.sex === sexFilter);
+        }
+
         if (isLatestFilterActive) { return filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 25); }
         if (categoryFilter !== 'Todos') { filtered = filtered.filter(animal => animal.zootecnicCategory === categoryFilter); }
         if (productiveFilter !== 'ALL') { filtered = filtered.filter(animal => animal.statuses.includes(productiveFilter as AnimalStatusKey)); }
         if (reproductiveFilter !== 'ALL') { filtered = filtered.filter(animal => animal.statuses.includes(reproductiveFilter as AnimalStatusKey)); }
         if (searchTerm) { filtered = filtered.filter(animal => animal.id.toLowerCase().includes(searchTerm.toLowerCase())); }
         return filtered;
-    }, [animalsWithAllData, categoryFilter, isLatestFilterActive, productiveFilter, reproductiveFilter, searchTerm]);
+    }, [animalsWithAllData, categoryFilter, isLatestFilterActive, productiveFilter, reproductiveFilter, sexFilter, searchTerm]);
 
     const handleSelectAll = () => { if (filteredAnimals.every(a => selectedIds.has(a.id))) { setSelectedIds(new Set()); } else { setSelectedIds(new Set(filteredAnimals.map(a => a.id))); } };
     const handleConfirmSelection = () => { onSelect(Array.from(selectedIds)); onClose(); };
-    const resetFilters = () => { setCategoryFilter('Todos'); setIsLatestFilterActive(false); setProductiveFilter('ALL'); setReproductiveFilter('ALL'); setSearchTerm(''); };
+    const resetFilters = () => { setCategoryFilter('Todos'); setIsLatestFilterActive(false); setProductiveFilter('ALL'); setReproductiveFilter('ALL'); setSearchTerm(''); setSexFilter('all'); };
     
+    // --- ACTUALIZACIÓN v4.0: Pre-seleccionar todos los animales filtrados por defecto ---
+    useEffect(() => {
+        if(isOpen && sessionType) {
+            setSelectedIds(new Set(filteredAnimals.map(a => a.id)));
+        }
+    }, [filteredAnimals, isOpen, sessionType]);
+
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={title} size="fullscreen">
             <div className="flex flex-col h-full">
@@ -93,8 +126,19 @@ export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({ 
                     <button onClick={() => setFiltersVisible(!filtersVisible)} className="w-full flex justify-between items-center text-zinc-400 hover:text-white"><span className="text-sm font-semibold">Filtros Avanzados</span><ChevronDown className={`transition-transform ${filtersVisible ? 'rotate-180' : ''}`} /></button>
                     {filtersVisible && (
                         <div className="space-y-4 p-4 bg-black/20 rounded-2xl animate-fade-in">
-                            <FilterBar title="Filtros Productivos" filters={['MILKING', 'DRYING_OFF', 'DRY']} activeFilter={productiveFilter} onFilterChange={setProductiveFilter} />
-                            <FilterBar title="Filtros Reproductivos" filters={['PREGNANT', 'IN_SERVICE_CONFIRMED', 'IN_SERVICE', 'EMPTY', 'SIRE_IN_SERVICE']} activeFilter={reproductiveFilter} onFilterChange={setReproductiveFilter} />
+                            {/* --- ACTUALIZACIÓN v4.0: Se añade el filtro por sexo --- */}
+                             <div>
+                                <label className="block text-xs font-semibold text-zinc-400 mb-2">Filtrar por Sexo</label>
+                                <div className="flex bg-zinc-800 rounded-xl p-1 w-full">
+                                    <button onClick={() => setSexFilter('all')} className={`w-1/3 rounded-lg py-2 text-sm font-semibold transition-colors ${sexFilter === 'all' ? 'bg-zinc-600 text-white' : 'text-zinc-400'}`}>Todos</button>
+                                    <button onClick={() => setSexFilter('Hembra')} className={`w-1/3 rounded-lg py-2 text-sm font-semibold transition-colors ${sexFilter === 'Hembra' ? 'bg-zinc-600 text-white' : 'text-zinc-400'}`}>Hembras</button>
+                                    <button onClick={() => setSexFilter('Macho')} className={`w-1/3 rounded-lg py-2 text-sm font-semibold transition-colors ${sexFilter === 'Macho' ? 'bg-zinc-600 text-white' : 'text-zinc-400'}`}>Machos</button>
+                                </div>
+                            </div>
+
+                            <FilterBar title="Filtros Productivos" filters={['MILKING', 'DRYING_OFF', 'DRY'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey])} activeFilter={productiveFilter} onFilterChange={setProductiveFilter} />
+                            <FilterBar title="Filtros Reproductivos" filters={['PREGNANT', 'IN_SERVICE_CONFIRMED', 'IN_SERVICE', 'EMPTY', 'SIRE_IN_SERVICE'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey])} activeFilter={reproductiveFilter} onFilterChange={setReproductiveFilter} />
+                            
                             <div className="flex gap-2 pt-2 border-t border-brand-border">
                                 <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="w-full bg-zinc-800 p-2 rounded-xl text-white border border-zinc-700 text-sm">
                                     <option value="Todos">Categoría Zootécnica...</option>
@@ -125,7 +169,7 @@ export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({ 
                     ) : ( <div className="flex-grow flex items-center justify-center"><p className="text-zinc-500 text-center">No se encontraron animales.</p></div> )}
                 </div>
                 <div className="flex-shrink-0 grid grid-cols-3 items-center pt-4 border-t border-brand-border gap-2">
-                    <button type="button" onClick={handleSelectAll} disabled={filteredAnimals.length === 0} className="bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-2 rounded-lg disabled:opacity-50 text-sm">{filteredAnimals.every(a => selectedIds.has(a.id)) ? 'Deseleccionar' : 'Sel. Todos'}</button>
+                    <button type="button" onClick={handleSelectAll} disabled={filteredAnimals.length === 0} className="bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-2 rounded-lg disabled:opacity-50 text-sm">{filteredAnimals.every(a => selectedIds.has(a.id)) && filteredAnimals.length > 0 ? 'Deseleccionar' : 'Sel. Todos'}</button>
                     <button onClick={onClose} className="bg-zinc-600 hover:bg-zinc-500 text-white font-bold py-3 px-2 rounded-lg text-sm">Cancelar</button>
                     <button onClick={handleConfirmSelection} className="bg-brand-green hover:bg-green-600 text-white font-bold py-3 px-2 rounded-lg disabled:opacity-50 text-sm">Seleccionar ({selectedIds.size})</button>
                 </div>

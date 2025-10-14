@@ -4,15 +4,22 @@ import { useState, useMemo, useRef } from 'react';
 import { useData } from '../context/DataContext';
 import { useSearch } from '../hooks/useSearch';
 import { SearchHeader } from '../components/ui/SearchHeader';
-import { Plus, ChevronRight, Settings, History, FilterX, ChevronDown, Users, FileArchive } from 'lucide-react'; 
+import { Plus, ChevronRight, Settings, History, FilterX, ChevronDown, Users, FileArchive, Baby, Scale, Move, Archive, Droplets, HeartCrack } from 'lucide-react';
 import type { PageState } from '../types/navigation';
-import { Animal, Parturition, ServiceRecord, BreedingSeason, SireLot } from '../db/local'; // <-- Se importa BreedingSeason y SireLot
+import { Animal, Parturition, ServiceRecord, BreedingSeason, SireLot } from '../db/local';
 import { formatAge, getAnimalZootecnicCategory } from '../utils/calculations';
 import { StatusIcons } from '../components/icons/StatusIcons';
 import { STATUS_DEFINITIONS, AnimalStatusKey } from '../hooks/useAnimalStatus';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { motion, useAnimation, PanInfo } from 'framer-motion';
+import { ActionSheetModal, ActionSheetAction } from '../components/ui/ActionSheetModal';
+import { ParturitionModal } from '../components/modals/ParturitionModal';
+import { AddMilkWeighingModal } from '../components/modals/AddMilkWeighingModal';
+import { AddBodyWeighingModal } from '../components/modals/AddBodyWeighingModal';
+import { DecommissionAnimalModal, DecommissionDetails } from '../components/modals/DecommissionAnimalModal';
+import { DeclareAbortionModal } from '../components/modals/DeclareAbortionModal';
 
-// --- CAMBIO CLAVE 1: La función ahora usa la nueva estructura de datos ---
+// --- Lógica de cálculo de estado ---
 const getAnimalStatusObjects = (animal: Animal, allParturitions: Parturition[], allServiceRecords: ServiceRecord[], allSireLots: SireLot[], allBreedingSeasons: BreedingSeason[]): (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] => {
     const activeStatuses: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] = [];
     if (!animal) return [];
@@ -37,33 +44,68 @@ const getAnimalStatusObjects = (animal: Animal, allParturitions: Parturition[], 
     }
 
     if (animal.sex === 'Macho') {
-        const activeSireLotIds = new Set(allBreedingSeasons.filter(s => s.status === 'Activo').flatMap(s => allSireLots.filter(sl => sl.seasonId === s.id)).map(sl => sl.sireId));
-        if (activeSireLotIds.has(animal.id)) {
-            activeStatuses.push(STATUS_DEFINITIONS.SIRE_IN_SERVICE);
-        }
+        const activeSeasons = allBreedingSeasons.filter(bs => bs.status === 'Activo');
+        const activeSeasonIds = new Set(activeSeasons.map(s => s.id));
+        const isActiveSire = allSireLots.some(sl => sl.sireId === animal.id && activeSeasonIds.has(sl.seasonId));
+        if(isActiveSire) activeStatuses.push(STATUS_DEFINITIONS.SIRE_IN_SERVICE);
     }
-    return activeStatuses;
+    return Array.from(new Set(activeStatuses));
 };
 
 const ZOOTECNIC_CATEGORIES = ['Cabrita', 'Cabritona', 'Cabra', 'Cabrito', 'Macho de Levante', 'Macho Cabrío'];
 
-const AnimalRow = ({ animal, onSelect }: { animal: any, onSelect: (id: string) => void }) => {
+// --- Componente de Tarjeta Deslizable ---
+const SwipeableAnimalRow = ({ animal, onSelect, onOpenActions }: { animal: any, onSelect: (id: string) => void, onOpenActions: (animal: any) => void }) => {
+    const swipeControls = useAnimation();
+    const dragStarted = useRef(false);
+    const buttonsWidth = 80;
+
+    const onDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+        const offset = info.offset.x;
+        const velocity = info.velocity.x;
+        if (offset < -buttonsWidth / 2 || velocity < -500) {
+            onOpenActions(animal);
+        }
+        swipeControls.start({ x: 0 });
+        setTimeout(() => { dragStarted.current = false; }, 100);
+    };
+
     return (
-        <button onClick={() => onSelect(animal.id)} className="w-full text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border flex justify-between items-center hover:border-brand-orange transition-colors">
-            <div>
-                <p className="font-bold text-lg text-white">{animal.id}</p>
-                <p className="text-sm text-zinc-400 mt-1">
-                    {animal.sex} | {animal.formattedAge} | Lote: {animal.location || 'Sin Asignar'}
-                </p>
+        <div className="relative w-full overflow-hidden rounded-2xl bg-brand-glass border border-brand-border">
+            <div className="absolute inset-y-0 right-0 flex items-center z-0 h-full">
+                <div className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-blue text-white">
+                    <Plus size={22} /><span className="text-xs mt-1 font-semibold">Acciones</span>
+                </div>
             </div>
-            <div className="flex items-center gap-3">
-                <StatusIcons statuses={animal.statusObjects} />
-                <ChevronRight className="text-zinc-600" />
-            </div>
-        </button>
+            <motion.div
+                drag="x"
+                dragConstraints={{ left: -buttonsWidth, right: 0 }}
+                dragElastic={0.1}
+                onDragStart={() => { dragStarted.current = true; }}
+                onDragEnd={onDragEnd}
+                onTap={() => { if (!dragStarted.current) { onSelect(animal.id); } }}
+                animate={swipeControls}
+                transition={{ type: "spring", stiffness: 400, damping: 40 }}
+                className="relative w-full z-10 cursor-pointer bg-ios-modal-bg p-4"
+            >
+                 <div className="flex justify-between items-center">
+                    <div>
+                        <p className="font-bold text-lg text-white">{animal.id}</p>
+                        <p className="text-sm text-zinc-400 mt-1">
+                            {animal.sex} | {animal.formattedAge} | Lote: {animal.location || 'Sin Asignar'}
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <StatusIcons statuses={animal.statusObjects} />
+                        <ChevronRight className="text-zinc-600" />
+                    </div>
+                </div>
+            </motion.div>
+        </div>
     );
 };
 
+// --- Componente de Filtros ---
 const FilterBar = ({ title, filters, activeFilter, onFilterChange }: { title: string, filters: any[], activeFilter: string, onFilterChange: (key: string) => void }) => (
     <div>
         {title && <label className="block text-sm font-semibold text-zinc-400 mb-2">{title}</label>}
@@ -83,8 +125,12 @@ interface HerdPageProps {
 }
 
 export default function HerdPage({ navigateTo, locationFilter }: HerdPageProps) {
-    // --- CAMBIO CLAVE 2: Obtenemos los nuevos datos del contexto ---
-    const { animals, parturitions, serviceRecords, breedingSeasons, sireLots, isLoading } = useData();
+    const { animals, parturitions, serviceRecords, breedingSeasons, sireLots, isLoading, updateAnimal } = useData();
+    
+    const [actionSheetAnimal, setActionSheetAnimal] = useState<Animal | null>(null);
+    const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
+    const [activeModal, setActiveModal] = useState<'parturition' | 'milkWeighing' | 'bodyWeighing' | 'decommission' | 'abortion' | null>(null);
+
     const [viewMode, setViewMode] = useState<'Activos' | 'Referencia'>('Activos');
     const [decommissionFilter, setDecommissionFilter] = useState<'all' | 'Venta' | 'Muerte' | 'Descarte'>('all');
     const [categoryFilter, setCategoryFilter] = useState<string>('Todos');
@@ -95,7 +141,6 @@ export default function HerdPage({ navigateTo, locationFilter }: HerdPageProps) 
     const [reproductiveFiltersVisible, setReproductiveFiltersVisible] = useState(false);
 
     const animalsWithAllData = useMemo(() => {
-        // --- CAMBIO CLAVE 3: Pasamos los nuevos datos a la función de cálculo ---
         return animals.map(animal => ({ 
             ...animal, 
             statusObjects: getAnimalStatusObjects(animal, parturitions, serviceRecords, sireLots, breedingSeasons), 
@@ -128,91 +173,127 @@ export default function HerdPage({ navigateTo, locationFilter }: HerdPageProps) 
         setDecommissionFilter('all');
         setSearchTerm('');
     };
+    
+    const getActionsForAnimal = (animal: Animal | null): ActionSheetAction[] => {
+        if (!animal) return [];
+        const actions: ActionSheetAction[] = [];
+        if (animal.sex === 'Hembra') {
+            actions.push({ label: 'Declarar Parto', icon: Baby, onClick: () => { setIsActionSheetOpen(false); setActiveModal('parturition'); }});
+            actions.push({ label: 'Declarar Aborto', icon: HeartCrack, onClick: () => { setIsActionSheetOpen(false); setActiveModal('abortion'); }, color: 'text-yellow-400'});
+            actions.push({ label: 'Acciones de Leche', icon: Droplets, onClick: () => { setIsActionSheetOpen(false); setActiveModal('milkWeighing'); }});
+        }
+        actions.push({ label: 'Agregar Peso Corporal', icon: Scale, onClick: () => { setIsActionSheetOpen(false); setActiveModal('bodyWeighing'); }});
+        actions.push({ label: 'Mover a Lote', icon: Move, onClick: () => navigateTo({ name: 'rebano-profile', animalId: animal.id, openAction: 'move' }) });
+        actions.push({ label: 'Dar de Baja', icon: Archive, onClick: () => { setIsActionSheetOpen(false); setActiveModal('decommission'); }, color: 'text-brand-red' });
+        return actions;
+    };
+    
+    const handleOpenActions = (animal: Animal) => {
+        setActionSheetAnimal(animal);
+        setIsActionSheetOpen(true);
+    };
+
+    const closeModal = () => {
+        setActiveModal(null);
+        setActionSheetAnimal(null);
+    };
+    
+    const handleDecommissionConfirm = async (details: DecommissionDetails) => {
+        if (!actionSheetAnimal) return;
+        const dataToUpdate: Partial<Animal> = { status: details.reason, isReference: true, endDate: details.date };
+        if (details.reason === 'Venta') { Object.assign(dataToUpdate, { salePrice: details.salePrice, saleBuyer: details.saleBuyer, salePurpose: details.salePurpose }); }
+        if (details.reason === 'Muerte') { dataToUpdate.deathReason = details.deathReason; }
+        if (details.reason === 'Descarte') { Object.assign(dataToUpdate, { cullReason: details.cullReason, cullReasonDetails: details.cullReasonDetails }); }
+        await updateAnimal(actionSheetAnimal.id, dataToUpdate);
+        closeModal();
+    };
 
     const parentRef = useRef<HTMLDivElement>(null);
-
-    const rowVirtualizer = useVirtualizer({
-        count: filteredItems.length,
-        getScrollElement: () => parentRef.current,
-        estimateSize: () => 104,
-        overscan: 5,
-    });
+    const rowVirtualizer = useVirtualizer({ count: filteredItems.length, getScrollElement: () => document.body, estimateSize: () => 104, overscan: 5 });
 
     if (isLoading) { return <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Cargando rebaño...</h1></div>; }
-
+    
     return (
-        <div className="w-full max-w-2xl mx-auto space-y-4 pb-12">
-            <SearchHeader title={locationFilter || "Mi Rebaño"} subtitle={`${filteredItems.length} animales en la vista`} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
-            <div className="space-y-4 px-4">
-                 <div className="flex bg-zinc-800 rounded-xl p-1 w-full">
-                    <button onClick={() => setViewMode('Activos')} className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${viewMode === 'Activos' ? 'bg-zinc-600 text-white' : 'text-zinc-400'}`}><Users size={16} /> Activos</button>
-                    <button onClick={() => setViewMode('Referencia')} className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${viewMode === 'Referencia' ? 'bg-zinc-600 text-white' : 'text-zinc-400'}`}><FileArchive size={16} /> Referencia</button>
-                </div>
-                {viewMode === 'Activos' ? (
-                    <div className="space-y-4 animate-fade-in">
-                        <button onClick={() => navigateTo({ name: 'add-animal' })} className="w-full flex items-center justify-center gap-2 bg-brand-orange hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-xl transition-colors text-base"><Plus size={18} /> Ingresar Nuevo Animal</button>
-                        <div className="space-y-4 bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
-                            <div className="space-y-3">
-                                <button onClick={() => setProductiveFiltersVisible(!productiveFiltersVisible)} className="w-full flex justify-between items-center text-sm font-semibold text-zinc-400 hover:text-white transition-colors"><span>Filtros Productivos</span><ChevronDown className={`transition-transform ${productiveFiltersVisible ? 'rotate-180' : ''}`} size={18} /></button>
-                                {productiveFiltersVisible && ( <div className="animate-fade-in"><FilterBar title="" filters={['MILKING', 'DRYING_OFF', 'DRY'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey])} activeFilter={productiveFilter} onFilterChange={setProductiveFilter} /></div> )}
-                            </div>
-                            <div className="space-y-3">
-                                <button onClick={() => setReproductiveFiltersVisible(!reproductiveFiltersVisible)} className="w-full flex justify-between items-center text-sm font-semibold text-zinc-400 hover:text-white transition-colors"><span>Filtros Reproductivos</span><ChevronDown className={`transition-transform ${reproductiveFiltersVisible ? 'rotate-180' : ''}`} size={18} /></button>
-                                {reproductiveFiltersVisible && ( <div className="animate-fade-in"><FilterBar title="" filters={['PREGNANT', 'IN_SERVICE_CONFIRMED', 'IN_SERVICE', 'EMPTY', 'SIRE_IN_SERVICE'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey])} activeFilter={reproductiveFilter} onFilterChange={setReproductiveFilter} /></div> )}
+        <>
+            <div ref={parentRef} className="w-full max-w-2xl mx-auto space-y-4 pb-12">
+                <SearchHeader title={locationFilter || "Mi Rebaño"} subtitle={`${filteredItems.length} animales en la vista`} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+                <div className="space-y-4 px-4">
+                    <div className="flex bg-zinc-800 rounded-xl p-1 w-full">
+                        <button onClick={() => setViewMode('Activos')} className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${viewMode === 'Activos' ? 'bg-zinc-600 text-white' : 'text-zinc-400'}`}><Users size={16} /> Activos</button>
+                        <button onClick={() => setViewMode('Referencia')} className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${viewMode === 'Referencia' ? 'bg-zinc-600 text-white' : 'text-zinc-400'}`}><FileArchive size={16} /> Referencia</button>
+                    </div>
+                    {viewMode === 'Activos' ? (
+                        <div className="space-y-4 animate-fade-in">
+                            <button onClick={() => navigateTo({ name: 'add-animal' })} className="w-full flex items-center justify-center gap-2 bg-brand-orange hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-xl transition-colors text-base"><Plus size={18} /> Ingresar Nuevo Animal</button>
+                            <div className="space-y-4 bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
+                                <div className="space-y-3">
+                                    <button onClick={() => setProductiveFiltersVisible(!productiveFiltersVisible)} className="w-full flex justify-between items-center text-sm font-semibold text-zinc-400 hover:text-white transition-colors"><span>Filtros Productivos</span><ChevronDown className={`transition-transform ${productiveFiltersVisible ? 'rotate-180' : ''}`} size={18} /></button>
+                                    {productiveFiltersVisible && ( <div className="animate-fade-in"><FilterBar title="" filters={['MILKING', 'DRYING_OFF', 'DRY'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey])} activeFilter={productiveFilter} onFilterChange={setProductiveFilter} /></div> )}
+                                </div>
+                                <div className="space-y-3">
+                                    <button onClick={() => setReproductiveFiltersVisible(!reproductiveFiltersVisible)} className="w-full flex justify-between items-center text-sm font-semibold text-zinc-400 hover:text-white transition-colors"><span>Filtros Reproductivos</span><ChevronDown className={`transition-transform ${reproductiveFiltersVisible ? 'rotate-180' : ''}`} size={18} /></button>
+                                    {reproductiveFiltersVisible && ( <div className="animate-fade-in"><FilterBar title="" filters={['PREGNANT', 'IN_SERVICE_CONFIRMED', 'IN_SERVICE', 'EMPTY', 'SIRE_IN_SERVICE'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey])} activeFilter={reproductiveFilter} onFilterChange={setReproductiveFilter} /></div> )}
+                                </div>
                             </div>
                         </div>
+                    ) : (
+                        <div className="space-y-4 bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border animate-fade-in">
+                            <FilterBar title="Filtrar por Causa de Baja" filters={[{key: 'Venta', label: 'Venta'}, {key: 'Muerte', label: 'Muerte'}, {key: 'Descarte', label: 'Descarte'}]} activeFilter={decommissionFilter} onFilterChange={setDecommissionFilter as any} />
+                        </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                        <button onClick={() => setIsLatestFilterActive(true)} title="Última Carga" className={`flex items-center gap-2 py-1 px-3 text-sm font-semibold rounded-lg transition-colors ${isLatestFilterActive ? 'text-brand-orange' : 'text-zinc-400 hover:text-brand-orange'}`}><History size={16} /> Última Carga</button>
+                        <div className='flex items-center gap-4'>
+                            <button onClick={() => navigateTo({ name: 'manage-lots' })} className="flex items-center gap-2 text-zinc-400 hover:text-brand-orange text-sm font-semibold py-1 px-3"><Settings size={14} /> Gestionar Lotes</button>
+                            <button onClick={resetAllFilters} className="flex items-center gap-2 text-zinc-400 hover:text-brand-orange text-sm font-semibold py-1 px-3"><FilterX size={14} /> Limpiar</button>
+                        </div>
                     </div>
-                ) : (
-                    <div className="space-y-4 bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border animate-fade-in">
-                        <FilterBar title="Filtrar por Causa de Baja" filters={[{key: 'Venta', label: 'Venta'}, {key: 'Muerte', label: 'Muerte'}, {key: 'Descarte', label: 'Descarte'}]} activeFilter={decommissionFilter} onFilterChange={setDecommissionFilter as any} />
-                    </div>
-                )}
-                <div className="flex items-center justify-between">
-                    <button onClick={() => setIsLatestFilterActive(true)} title="Última Carga" className={`flex items-center gap-2 py-1 px-3 text-sm font-semibold rounded-lg transition-colors ${isLatestFilterActive ? 'text-brand-orange' : 'text-zinc-400 hover:text-brand-orange'}`}><History size={16} /> Última Carga</button>
-                    <div className='flex items-center gap-4'>
-                        <button onClick={() => navigateTo({ name: 'manage-lots' })} className="flex items-center gap-2 text-zinc-400 hover:text-brand-orange text-sm font-semibold py-1 px-3"><Settings size={14} /> Gestionar Lotes</button>
-                        <button onClick={resetAllFilters} className="flex items-center gap-2 text-zinc-400 hover:text-brand-orange text-sm font-semibold py-1 px-3"><FilterX size={14} /> Limpiar</button>
-                    </div>
+                    <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="w-full bg-brand-glass p-3 rounded-xl text-white border border-brand-border focus:border-brand-orange focus:ring-0">
+                        <option value="Todos">Todas las Categorías Zootécnicas</option>
+                        {ZOOTECNIC_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
                 </div>
-                <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="w-full bg-brand-glass p-3 rounded-xl text-white border border-brand-border focus:border-brand-orange focus:ring-0">
-                    <option value="Todos">Todas las Categorías Zootécnicas</option>
-                    {ZOOTECNIC_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                
+                <div className="pt-4">
+                    {filteredItems.length > 0 ? (
+                        <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
+                            {rowVirtualizer.getVirtualItems().map((virtualItem) => {
+                                const animal = filteredItems[virtualItem.index];
+                                return (
+                                    <div key={virtualItem.key} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: `${virtualItem.size}px`, transform: `translateY(${virtualItem.start}px)`, padding: '0 1rem 0.5rem 1rem' }}>
+                                        <SwipeableAnimalRow 
+                                            animal={animal} 
+                                            onSelect={() => navigateTo({ name: 'rebano-profile', animalId: animal.id })}
+                                            onOpenActions={handleOpenActions}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="text-center py-10 bg-brand-glass rounded-2xl mx-4">
+                            <p className="text-zinc-400">{searchTerm ? `No se encontraron resultados para "${searchTerm}"` : "No hay animales que coincidan con los filtros."}</p>
+                        </div>
+                    )}
+                </div>
             </div>
-            <div ref={parentRef} className="pt-4" style={{ height: '600px', overflowY: 'auto' }}>
-                {filteredItems.length > 0 ? (
-                    <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
-                        {rowVirtualizer.getVirtualItems().map((virtualItem) => {
-                            const animal = filteredItems[virtualItem.index];
-                            return (
-                                <div
-                                    key={virtualItem.key}
-                                    style={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        width: '100%',
-                                        height: `${virtualItem.size}px`,
-                                        transform: `translateY(${virtualItem.start}px)`,
-                                        padding: '0 1rem 0.5rem 1rem'
-                                    }}
-                                >
-                                    <AnimalRow 
-                                        animal={animal} 
-                                        onSelect={() => navigateTo({ name: 'rebano-profile', animalId: animal.id })}
-                                    />
-                                </div>
-                            );
-                        })}
-                    </div>
-                ) : (
-                    <div className="text-center py-10 bg-brand-glass rounded-2xl mx-4">
-                        <p className="text-zinc-400">
-                            {searchTerm ? `No se encontraron resultados para "${searchTerm}"` : "No hay animales que coincidan con los filtros."}
-                        </p>
-                    </div>
-                )}
-            </div>
-        </div>
+
+            <ActionSheetModal 
+                isOpen={isActionSheetOpen}
+                onClose={() => setIsActionSheetOpen(false)}
+                title={`Acciones para ${actionSheetAnimal?.id || ''}`}
+                actions={getActionsForAnimal(actionSheetAnimal)}
+            />
+            
+            {actionSheetAnimal && (
+                <>
+                    {activeModal === 'parturition' && <ParturitionModal isOpen={true} onClose={closeModal} motherId={actionSheetAnimal.id} />}
+                    {activeModal === 'milkWeighing' && <AddMilkWeighingModal animal={actionSheetAnimal} onCancel={closeModal} onSaveSuccess={closeModal} />}
+                    {activeModal === 'bodyWeighing' && <AddBodyWeighingModal animal={actionSheetAnimal} onCancel={closeModal} onSaveSuccess={closeModal} />}
+                    {activeModal === 'decommission' && <DecommissionAnimalModal animal={actionSheetAnimal} onCancel={closeModal} onConfirm={handleDecommissionConfirm} />}
+                    {activeModal === 'abortion' && <DeclareAbortionModal animal={actionSheetAnimal} onCancel={closeModal} onSaveSuccess={closeModal} />}
+                </>
+            )}
+        </>
     );
 }

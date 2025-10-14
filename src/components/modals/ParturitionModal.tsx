@@ -2,9 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../../context/DataContext';
-// --- LÍNEA CORREGIDA: Se elimina la importación 'Animal' que no se usa ---
 import { Father } from '../../db/local';
-// --- LÍNEA CORREGIDA: Se elimina el ícono 'ChevronDown' que no se usa ---
 import { ArrowLeft, CheckCircle, Plus, X, Calendar, AlertTriangle } from 'lucide-react';
 import { AddFatherModal } from '../ui/AddFatherModal';
 import { Modal } from '../ui/Modal';
@@ -14,12 +12,15 @@ import { es } from 'date-fns/locale';
 
 // --- Tipos y Constantes ---
 type Step = 1 | 2 | 3 | 4;
+
 interface OffspringData {
     id: string;
     sex: 'Hembra' | 'Macho';
+    status: 'Viva' | 'Mortinato';
     correlative: string;
     birthWeight: string;
 }
+
 const parturitionTypes = [
     { count: 1, name: 'Simple' }, { count: 2, name: 'Doble' }, { count: 3, name: 'Triple' },
     { count: 4, name: 'Cuádruple' }, { count: 5, name: 'Quíntuple' }
@@ -78,6 +79,7 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
         setOffspring(Array.from({ length: count }, (_, i) => ({
             id: `kid_${i}_${Date.now()}`,
             sex: 'Hembra',
+            status: 'Viva', 
             correlative: '',
             birthWeight: ''
         })));
@@ -109,7 +111,7 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
         });
 
         if (isTooClose) {
-            setError(`Ya existe un parto registrado para ${motherId} en una fecha demasiado cercana. Verifique los registros.`);
+            setError(`Ya existe un parto registrado para ${motherId} en una fecha demasiado cercana.`);
             setIsLoading(false);
             return;
         }
@@ -118,18 +120,23 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
             const selectedFather = fathers.find(f => f.id === sireId);
             if (!selectedFather) throw new Error("Padre no encontrado");
 
-            const finalOffspring = offspring.map(kid => ({
+            const liveOffspring = offspring.filter(kid => kid.status === 'Viva');
+            const hasStillbirths = offspring.some(kid => kid.status === 'Mortinato');
+
+            const finalLiveOffspringForDB = liveOffspring.map(kid => ({
                 sex: kid.sex,
                 birthWeight: kid.birthWeight,
                 id: `${kid.sex === 'Macho' ? 'X' : selectedFather.name.charAt(0).toUpperCase()}${kid.correlative}`
             }));
-
+            
             await addParturition({
                 motherId: motherId.toUpperCase(),
                 parturitionDate,
                 sireId,
                 parturitionType: parturitionTypes.find(p => p.count === offspringCount)?.name || 'Simple',
-                offspring: finalOffspring,
+                offspringCount: offspring.length,
+                liveOffspring: finalLiveOffspringForDB,
+                parturitionOutcome: hasStillbirths ? 'Con Mortinatos' : 'Normal',
             });
 
             handleNextStep();
@@ -142,6 +149,7 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
     };
     
     const selectedFather = useMemo(() => fathers.find(f => f.id === sireId), [sireId, fathers]);
+    
     const handleSaveFather = async (newFather: Father) => {
         await addFather(newFather);
         setSireId(newFather.id);
@@ -203,24 +211,28 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
                         )}
                         {step === 3 && (
                             <div className="space-y-4">
-                                {offspring.map((kid, index) => (
-                                    <div key={kid.id} className="bg-black/20 rounded-2xl p-4 border border-zinc-700 space-y-3">
-                                        <div className="flex justify-between items-center">
-                                            <p className="font-semibold text-brand-orange">Cría {index + 1}</p>
-                                            <div className="w-40"><div className="flex bg-zinc-800 rounded-lg p-1"><button type="button" onClick={() => handleOffspringChange(index, 'sex', 'Hembra')} className={`w-1/2 text-xs rounded-md py-1 transition-all ${kid.sex==='Hembra'?'bg-pink-500 text-white':'text-zinc-400'}`}>Hembra</button><button type="button" onClick={() => handleOffspringChange(index, 'sex', 'Macho')} className={`w-1/2 text-xs rounded-md py-1 transition-all ${kid.sex==='Macho'?'bg-blue-500 text-white':'text-zinc-400'}`}>Macho</button></div></div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3 items-center">
-                                            <div className="flex items-center bg-zinc-800 p-3 rounded-xl gap-2">
-                                                <span className="font-mono text-zinc-400 text-lg">
-                                                    {kid.sex === 'Macho' ? 'X' : (selectedFather?.name.charAt(0).toUpperCase() || '?')}
-                                                </span>
-                                                <input autoFocus={index === 0} value={kid.correlative} onChange={e => handleOffspringChange(index, 'correlative', e.target.value.toUpperCase())} placeholder="ID" className="w-full bg-transparent text-lg text-white focus:outline-none"/>
+                                {offspring.map((kid, index) => {
+                                    const isStillborn = kid.status === 'Mortinato';
+                                    return (
+                                        <div key={kid.id} className={`bg-black/20 rounded-2xl p-4 border transition-colors ${isStillborn ? 'border-red-500/30' : 'border-zinc-700'} space-y-3`}>
+                                            <div className="flex justify-between items-center">
+                                                <p className="font-semibold text-brand-orange">Cría {index + 1}</p>
+                                                <div className="flex gap-2">
+                                                    <div className="w-32"><div className="flex bg-zinc-800 rounded-lg p-1"><button type="button" onClick={() => handleOffspringChange(index, 'status', 'Viva')} className={`w-1/2 text-xs rounded-md py-1 transition-all ${!isStillborn ? 'bg-green-600 text-white':'text-zinc-400'}`}>Viva</button><button type="button" onClick={() => handleOffspringChange(index, 'status', 'Mortinato')} className={`w-1/2 text-xs rounded-md py-1 transition-all ${isStillborn ? 'bg-red-600 text-white':'text-zinc-400'}`}>Mortinato</button></div></div>
+                                                    <div className="w-32"><div className="flex bg-zinc-800 rounded-lg p-1"><button type="button" onClick={() => handleOffspringChange(index, 'sex', 'Hembra')} className={`w-1/2 text-xs rounded-md py-1 transition-all ${kid.sex==='Hembra'?'bg-pink-500 text-white':'text-zinc-400'}`}>Hembra</button><button type="button" onClick={() => handleOffspringChange(index, 'sex', 'Macho')} className={`w-1/2 text-xs rounded-md py-1 transition-all ${kid.sex==='Macho'?'bg-blue-500 text-white':'text-zinc-400'}`}>Macho</button></div></div>
+                                                </div>
                                             </div>
-                                            <input value={kid.birthWeight} onChange={e => handleOffspringChange(index, 'birthWeight', e.target.value)} placeholder="Peso (Kg)" type="number" step="0.1" className="w-full bg-zinc-800 p-3 rounded-xl text-lg"/>
+                                            <div className={`grid grid-cols-2 gap-3 items-center transition-opacity ${isStillborn ? 'opacity-40' : 'opacity-100'}`}>
+                                                <div className="flex items-center bg-zinc-800 p-3 rounded-xl gap-2">
+                                                    <span className="font-mono text-zinc-400 text-lg">{kid.sex === 'Macho' ? 'X' : (selectedFather?.name.charAt(0).toUpperCase() || '?')}</span>
+                                                    <input autoFocus={index === 0} value={kid.correlative} onChange={e => handleOffspringChange(index, 'correlative', e.target.value.toUpperCase())} placeholder="ID" className="w-full bg-transparent text-lg text-white focus:outline-none" disabled={isStillborn}/>
+                                                </div>
+                                                <input value={kid.birthWeight} onChange={e => handleOffspringChange(index, 'birthWeight', e.target.value)} placeholder="Peso (Kg)" type="number" step="0.1" className="w-full bg-zinc-800 p-3 rounded-xl text-lg" disabled={isStillborn}/>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
-                                <button onClick={handleSubmit} disabled={isLoading || offspring.some(k => !k.correlative || !k.birthWeight)} className="w-full bg-brand-green text-white font-bold py-4 rounded-xl text-lg disabled:opacity-50">{isLoading ? 'Guardando...' : `Guardar Parto y ${offspringCount} Cría(s)`}</button>
+                                    )
+                                })}
+                                <button onClick={handleSubmit} disabled={isLoading || offspring.some(k => k.status === 'Viva' && (!k.correlative || !k.birthWeight))} className="w-full bg-brand-green text-white font-bold py-4 rounded-xl text-lg disabled:opacity-50">{isLoading ? 'Guardando...' : `Guardar Parto y ${offspringCount} Cría(s)`}</button>
                                 {error && <div className="flex items-center gap-2 p-3 rounded-lg text-sm bg-red-500/20 text-brand-red"><AlertTriangle size={18}/><span>{error}</span></div>}
                             </div>
                         )}

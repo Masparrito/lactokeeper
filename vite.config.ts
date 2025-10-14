@@ -1,3 +1,5 @@
+// vite.config.ts
+
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -8,16 +10,15 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
-      // Configuración del Manifest de la PWA
+      // --- LÍNEA CORREGIDA: Se elimina la propiedad 'registerType' que causa el error de tipo ---
+      // La PWA usará el valor por defecto ('prompt') que es seguro y funcional.
       manifest: {
-        name: 'LactoKeeper',
-        short_name: 'LactoKeeper',
-        description: 'Gestión profesional de rebaños caprinos, offline-first.',
-        theme_color: '#1C1C1E', // Color de la barra de herramientas
-        background_color: '#1C1C1E', // Color de la pantalla de bienvenida
-        display: 'standalone', // Esto hace que parezca una app nativa
-        scope: '.',
+        name: 'GanaderoOS',
+        short_name: 'GanaderoOS',
+        description: 'El sistema operativo para la gestión ganadera, offline-first.',
+        theme_color: '#1C1C1E', 
+        background_color: '#1C1C1E', 
+        display: 'standalone', 
         start_url: '.',
         icons: [
           {
@@ -34,7 +35,7 @@ export default defineConfig({
             src: 'icons/icon-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable' // Ícono adaptable para diferentes formas
+            purpose: 'any maskable'
           }
         ]
       }

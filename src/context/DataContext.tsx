@@ -140,9 +140,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             const syncCollection = (collectionName: string, table: any) => {
                 const unsubscribe = onSnapshot(q(collectionName), async (snapshot) => {
-                    // --- CAMBIO CLAVE: Se elimina la condición 'hasPendingWrites' para una experiencia Offline-First real ---
-                    // if (snapshot.metadata.hasPendingWrites) return;
-
                     if (snapshot.docChanges().length > 0) {
                         console.log(`[Sync] Recibidos ${snapshot.docChanges().length} cambios para '${collectionName}'. Actualizando DB local.`);
                         if (navigator.onLine) {
@@ -223,22 +220,52 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const addWeighing = async (weighing: Omit<Weighing, 'id'>) => { if (!currentUser) throw new Error("Usuario no autenticado"); await addDoc(collection(firestoreDb, "weighings"), { ...weighing, userId: currentUser.uid }); };
     const addBodyWeighing = async (weighing: Omit<BodyWeighing, 'id'>) => { if (!currentUser) throw new Error("Usuario no autenticado"); await addDoc(collection(firestoreDb, "bodyWeighings"), { ...weighing, userId: currentUser.uid }); };
     const addFather = async (father: Omit<Father, 'id'>) => { if (!currentUser) throw new Error("Usuario no autenticado"); await addDoc(collection(firestoreDb, "fathers"), { ...father, userId: currentUser.uid }); };
+    
+    // --- FUNCIÓN ACTUALIZADA v4.0 ---
     const addParturition = async (data: any) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const batch = writeBatch(firestoreDb);
         const upperCaseMotherId = data.motherId.toUpperCase();
-        const motherRef = doc(firestoreDb, "animals", upperCaseMotherId);
-        batch.set(motherRef, { id: upperCaseMotherId, sex: 'Hembra', status: 'Activo', birthDate: 'N/A', userId: currentUser.uid }, { merge: true });
+        
+        // Determina el estado de la lactancia. Para abortos, depende de si se induce o no.
+        const lactationStatus = (data.parturitionOutcome === 'Aborto' && !data.inducedLactation) 
+            ? 'finalizada' 
+            : 'activa';
+
         const parturitionRef = doc(collection(firestoreDb, "parturitions"));
-        batch.set(parturitionRef, { goatId: upperCaseMotherId, parturitionDate: data.parturitionDate, sireId: data.sireId, offspringCount: data.offspring.length, parturitionType: data.parturitionType, status: 'activa', userId: currentUser.uid });
-        data.offspring.forEach((kid: any) => {
-            const upperCaseKidId = kid.id.toUpperCase();
-            const animalRef = doc(firestoreDb, "animals", upperCaseKidId);
-            const newAnimalData = { id: upperCaseKidId, sex: kid.sex, status: kid.sex === 'Macho' ? 'Descartado' : 'Activo', birthDate: data.parturitionDate, motherId: upperCaseMotherId, fatherId: data.sireId, birthWeight: parseFloat(kid.birthWeight), userId: currentUser.uid, createdAt: Date.now() };
-            batch.set(animalRef, newAnimalData, { merge: true });
+        batch.set(parturitionRef, {
+            goatId: upperCaseMotherId,
+            parturitionDate: data.parturitionDate,
+            sireId: data.sireId,
+            offspringCount: data.offspringCount,
+            parturitionType: data.parturitionType,
+            parturitionOutcome: data.parturitionOutcome,
+            status: lactationStatus,
+            userId: currentUser.uid,
         });
+
+        if (data.liveOffspring && data.liveOffspring.length > 0) {
+            data.liveOffspring.forEach((kid: any) => {
+                const upperCaseKidId = kid.id.toUpperCase();
+                const animalRef = doc(firestoreDb, "animals", upperCaseKidId);
+                const newAnimalData = {
+                    id: upperCaseKidId,
+                    sex: kid.sex,
+                    status: 'Activo',
+                    birthDate: data.parturitionDate,
+                    motherId: upperCaseMotherId,
+                    fatherId: data.sireId,
+                    birthWeight: parseFloat(kid.birthWeight),
+                    userId: currentUser.uid,
+                    createdAt: Date.now(),
+                };
+                batch.set(animalRef, newAnimalData);
+            });
+        }
+        
         await batch.commit();
     };
+
     const addServiceRecord = async (recordData: Omit<ServiceRecord, 'id'>) => { if (!currentUser) throw new Error("Usuario no autenticado"); await addDoc(collection(firestoreDb, "serviceRecords"), { ...recordData, userId: currentUser.uid }); };
     const addBatchEvent = async (data: { lotName: string; date: string; type: EventType; details: string; }) => {
         if (!currentUser) throw new Error("Usuario no autenticado");

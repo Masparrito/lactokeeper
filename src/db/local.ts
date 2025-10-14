@@ -5,10 +5,7 @@ import Dexie, { Table } from 'dexie';
 // --- TIPOS DE DATOS ---
 export type ReproductiveStatus = 'Vacía' | 'En Servicio' | 'Preñada' | 'Post-Parto' | 'No Aplica';
 export type FemaleLifecycleStage = 'Cabrita' | 'Cabritona' | 'Cabra Primípara' | 'Cabra Multípara';
-
-// --- LÍNEA CORREGIDA: Se actualiza el tipo con el término correcto ---
 export type MaleLifecycleStage = 'Cabrito' | 'Macho de Levante' | 'Macho Cabrío';
-
 export type EventType = 'Nacimiento' | 'Movimiento' | 'Cambio de Estado' | 'Pesaje Lechero' | 'Pesaje Corporal' | 'Servicio' | 'Tratamiento' | 'Diagnóstico';
 
 export interface Animal {
@@ -44,7 +41,19 @@ export interface Animal {
 }
 
 export interface Father { id: string; name: string; }
-export interface Parturition { id: string; goatId: string; parturitionDate: string; sireId: string; offspringCount: number; parturitionType: 'Simple' | 'Doble' | 'Triple' | 'Cuádruple' | 'Quíntuple'; status: 'activa' | 'en-secado' | 'seca' | 'finalizada'; parturitionOutcome?: 'Normal' | 'Aborto' | 'Mortinato'; dryingStartDate?: string; }
+
+export interface Parturition { 
+    id: string; 
+    goatId: string; 
+    parturitionDate: string; 
+    sireId: string; 
+    offspringCount: number; 
+    parturitionType: 'Simple' | 'Doble' | 'Triple' | 'Cuádruple' | 'Quíntuple'; 
+    status: 'activa' | 'en-secado' | 'seca' | 'finalizada'; 
+    parturitionOutcome?: 'Normal' | 'Aborto' | 'Con Mortinatos';
+    dryingStartDate?: string; 
+}
+
 export interface Weighing { id?: string; goatId: string; date: string; kg: number; }
 export interface Lot { id: string; name: string; }
 export interface Origin { id: string; name: string; }
@@ -105,11 +114,8 @@ export interface HealthPlanTask {
 
 export interface HealthEvent { id?: string; animalId: string; lotName?: string; date: string; taskId?: string; type: HealthPlanTask['type'] | 'Tratamiento Específico'; productUsed: string; doseApplied: number; unit: Product['unit']; calculatedCost: number; notes?: string; executedBy?: string; }
 
-
-// --- CONSTANTES DE LA BASE DE DATOS ---
 const DB_NAME = "GanaderoOS_DB";
-const DB_VERSION = 6;
-
+const DB_VERSION = 7;
 
 export class GanaderoOSDB extends Dexie {
     animals!: Table<Animal>;
@@ -170,14 +176,17 @@ export class GanaderoOSDB extends Dexie {
             healthPlanTasks: '++id, healthPlanId, productId',
         });
 
-        this.version(DB_VERSION).stores({
+        this.version(6).stores({
             healthPlans: '++id, &name',
             healthPlanTasks: '++id, healthPlanId, productId',
+        });
+
+        this.version(DB_VERSION).stores({
+            parturitions: '++id, &goatId, sireId, status, parturitionOutcome',
         });
     }
 }
 
-// --- SINGLETON Y FUNCIÓN DE INICIALIZACIÓN ROBUSTA ---
 let dbInstance: GanaderoOSDB | null = null;
 
 export const initDB = async (): Promise<GanaderoOSDB> => {
