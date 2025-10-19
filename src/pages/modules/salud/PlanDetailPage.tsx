@@ -1,18 +1,17 @@
-// src/pages/modules/salud/PlanDetailPage.tsx
-
 import { useState, useMemo, useRef } from 'react';
 import { useData } from '../../../context/DataContext';
-import { ArrowLeft, Plus, Edit, Trash2, Clock } from 'lucide-react';
-import { HealthPlanTask } from '../../../db/local';
+import { ArrowLeft, Plus, Edit, Trash2, Calendar, Syringe, ClipboardCheck } from 'lucide-react';
+import { PlanActivity } from '../../../db/local';
 import { Modal } from '../../../components/ui/Modal';
-import { HealthPlanTaskForm } from '../../../components/forms/HealthPlanTaskForm';
+import { PlanActivityForm } from '../../../components/forms/PlanActivityForm';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { motion, useAnimation, PanInfo } from 'framer-motion';
 
-// --- MEJORA: Convertimos TaskCard en un componente interactivo con Swipe ---
-const SwipeableTaskCard = ({ task, onEdit, onDelete }: { task: HealthPlanTask, onEdit: () => void, onDelete: () => void }) => {
+// Componente de Tarjeta Deslizable para una Actividad del Plan
+const SwipeableActivityCard = ({ activity, onEdit, onDelete }: { activity: PlanActivity, onEdit: () => void, onDelete: () => void }) => {
     const { products } = useData();
-    const product = products.find(p => p.id === task.productId);
+    const product = products.find(p => p.id === activity.productId);
+    const complementaryProduct = products.find(p => p.id === activity.complementaryProductId);
     const swipeControls = useAnimation();
     const dragStarted = useRef(false);
     const buttonsWidth = 160;
@@ -27,42 +26,44 @@ const SwipeableTaskCard = ({ task, onEdit, onDelete }: { task: HealthPlanTask, o
         }
         setTimeout(() => { dragStarted.current = false; }, 100);
     };
+    
+    const renderTriggerDescription = () => {
+        const { trigger } = activity;
+        switch(trigger.type) {
+            case 'age':
+                // Ahora muestra el arreglo de días
+                return `Días: ${trigger.days?.join(', ') || 'N/A'}`;
+            case 'fixed_date_period':
+                const monthName = new Date(2024, trigger.month! - 1, 1).toLocaleString('es-VE', { month: 'long' });
+                return `${trigger.week}a semana de ${monthName}`;
+            case 'birthing_season_event':
+                const prefix = trigger.offsetDays! >= 0 ? 'días después' : 'días antes';
+                return `${Math.abs(trigger.offsetDays!)} ${prefix} del inicio de la temporada de partos`;
+            default:
+                return 'Tiempo no especificado';
+        }
+    };
 
     return (
         <div className="relative w-full overflow-hidden rounded-2xl bg-black/20 border border-zinc-700">
-            {/* Botones de acción ocultos */}
             <div className="absolute inset-y-0 right-0 flex items-center z-0 h-full">
-                <button onClick={onEdit} onPointerDown={e => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-blue text-white">
-                    <Edit size={20} /><span className="text-xs mt-1 font-semibold">Editar</span>
-                </button>
-                <button onClick={onDelete} onPointerDown={e => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-red text-white">
-                    <Trash2 size={20} /><span className="text-xs mt-1 font-semibold">Eliminar</span>
-                </button>
+                <button onClick={onEdit} onPointerDown={e => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-blue text-white"><Edit size={20} /><span className="text-xs mt-1 font-semibold">Editar</span></button>
+                <button onClick={onDelete} onPointerDown={e => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-red text-white"><Trash2 size={20} /><span className="text-xs mt-1 font-semibold">Eliminar</span></button>
             </div>
 
-            {/* Contenido principal arrastrable */}
-            <motion.div
-                drag="x"
-                dragConstraints={{ left: -buttonsWidth, right: 0 }}
-                dragElastic={0.1}
-                onDragStart={() => { dragStarted.current = true; }}
-                onDragEnd={onDragEnd}
-                animate={swipeControls}
-                transition={{ type: "spring", stiffness: 400, damping: 40 }}
-                className="relative w-full z-10 cursor-grab bg-ios-modal-bg/50"
-            >
-                <div className="p-4">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="font-bold text-lg text-white">{task.name}</p>
-                            <p className="text-sm text-teal-300">{task.type}</p>
-                            <p className="text-xs text-zinc-400 mt-1">Producto: {product?.name || 'No especificado'}</p>
-                        </div>
+            <motion.div drag="x" dragConstraints={{ left: -buttonsWidth, right: 0 }} dragElastic={0.1} onDragStart={() => { dragStarted.current = true; }} onDragEnd={onDragEnd} animate={swipeControls} transition={{ type: "spring", stiffness: 400, damping: 40 }} className="relative w-full z-10 cursor-grab bg-ios-modal-bg/50 p-4">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <p className="font-bold text-lg text-white">{activity.name}</p>
+                        <p className={`text-sm font-semibold ${activity.category === 'Tratamiento' ? 'text-blue-400' : 'text-purple-400'}`}>{activity.category}</p>
+                        {product && <p className="text-xs text-zinc-400 mt-1">Ppal: {product.name}</p>}
+                        {complementaryProduct && <p className="text-xs text-zinc-400">Comp: {complementaryProduct.name}</p>}
                     </div>
-                    <div className="mt-3 pt-3 border-t border-zinc-700 flex items-center text-zinc-300">
-                        <Clock size={16} className="mr-2" />
-                        <span className="text-sm">Se activa a los <span className="font-bold text-white">{task.trigger.days}</span> días de edad</span>
-                    </div>
+                    {activity.category === 'Tratamiento' ? <Syringe className="text-blue-400" /> : <ClipboardCheck className="text-purple-400" />}
+                </div>
+                <div className="mt-3 pt-3 border-t border-zinc-700 flex items-center text-zinc-300">
+                    <Calendar size={16} className="mr-2" />
+                    <span className="text-sm font-semibold">{renderTriggerDescription()}</span>
                 </div>
             </motion.div>
         </div>
@@ -75,40 +76,42 @@ interface PlanDetailPageProps {
 }
 
 export default function PlanDetailPage({ planId, onBack }: PlanDetailPageProps) {
-    const { healthPlans, healthPlanTasks, addHealthPlanTask, updateHealthPlanTask, deleteHealthPlanTask } = useData();
-    const [isTaskModalOpen, setTaskModalOpen] = useState(false);
-    const [editingTask, setEditingTask] = useState<HealthPlanTask | undefined>(undefined);
-    const [deleteConfirmation, setDeleteConfirmation] = useState<HealthPlanTask | null>(null);
+    const { healthPlans, planActivities, addPlanActivity, updatePlanActivity, deletePlanActivity } = useData();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingActivity, setEditingActivity] = useState<PlanActivity | undefined>(undefined);
+    const [deleteConfirmation, setDeleteConfirmation] = useState<PlanActivity | null>(null);
 
     const plan = useMemo(() => healthPlans.find(p => p.id === planId), [healthPlans, planId]);
-    const tasks = useMemo(() => {
-        return healthPlanTasks
+    const activities = useMemo(() => {
+        if (!plan) return [];
+        return planActivities
             .filter(t => t.healthPlanId === planId)
-            .sort((a, b) => (a.trigger.days || 0) - (b.trigger.days || 0));
-    }, [healthPlanTasks, planId]);
+            // --- CORRECCIÓN DE LÓGICA DE ORDENAMIENTO ---
+            .sort((a, b) => (a.trigger.days?.[0] || 0) - (b.trigger.days?.[0] || 0));
+    }, [planActivities, planId, plan]);
 
-    const handleOpenModal = (task?: HealthPlanTask) => {
-        setEditingTask(task);
-        setTaskModalOpen(true);
+    const handleOpenModal = (activity?: PlanActivity) => {
+        setEditingActivity(activity);
+        setIsModalOpen(true);
     };
 
     const handleCloseModal = () => {
-        setTaskModalOpen(false);
-        setEditingTask(undefined);
+        setIsModalOpen(false);
+        setEditingActivity(undefined);
     };
 
-    const handleSaveTask = async (taskData: Omit<HealthPlanTask, 'id'>) => {
-        if (editingTask?.id) {
-            await updateHealthPlanTask(editingTask.id, taskData);
+    const handleSaveActivity = async (activityData: Omit<PlanActivity, 'id' | 'healthPlanId'> & { id?: string }) => {
+        if (editingActivity?.id) {
+            await updatePlanActivity(editingActivity.id, activityData);
         } else {
-            await addHealthPlanTask(taskData);
+            await addPlanActivity({ ...activityData, healthPlanId: planId });
         }
         handleCloseModal();
     };
 
     const handleDelete = async () => {
         if (deleteConfirmation?.id) {
-            await deleteHealthPlanTask(deleteConfirmation.id);
+            await deletePlanActivity(deleteConfirmation.id);
         }
         setDeleteConfirmation(null);
     };
@@ -124,73 +127,36 @@ export default function PlanDetailPage({ planId, onBack }: PlanDetailPageProps) 
 
     return (
         <>
-            <div className="w-full max-w-2xl mx-auto space-y-6 pb-12 animate-fade-in">
-                <header className="flex items-center pt-8 pb-4 px-4">
-                    <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors">
-                        <ArrowLeft size={24} />
-                    </button>
+            <div className="w-full max-w-2xl mx-auto space-y-6 pb-12 animate-fade-in px-4">
+                <header className="flex items-center pt-8 pb-4">
+                    <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
                     <div className="text-center flex-grow">
                         <h1 className="text-3xl font-bold tracking-tight text-white">{plan.name}</h1>
-                        <p className="text-lg text-zinc-400">Detalles del Plan Sanitario</p>
+                        <p className="text-lg text-zinc-400">{plan.targetGroup}</p>
                     </div>
                     <div className="w-8"></div>
                 </header>
 
-                <div className="px-4">
-                    <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border space-y-2">
-                        <h3 className="text-sm font-semibold text-zinc-400">Descripción</h3>
-                        <p className="text-white">{plan.description || 'Sin descripción.'}</p>
-                        <h3 className="text-sm font-semibold text-zinc-400 pt-2">Criterios de Aplicación</h3>
-                        <div className="flex flex-wrap gap-2">
-                            {plan.targetCriteria.minAgeDays && <span className="bg-zinc-700 text-xs font-semibold px-2 py-1 rounded-full">Desde {plan.targetCriteria.minAgeDays} días</span>}
-                            {plan.targetCriteria.maxAgeDays && <span className="bg-zinc-700 text-xs font-semibold px-2 py-1 rounded-full">Hasta {plan.targetCriteria.maxAgeDays} días</span>}
-                            {plan.targetCriteria.categories?.map(cat => <span key={cat} className="bg-zinc-700 text-xs font-semibold px-2 py-1 rounded-full">{cat}</span>)}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="space-y-4 px-4">
+                <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-semibold text-zinc-300">Tareas del Plan</h2>
-                        <button onClick={() => handleOpenModal()} className="flex items-center gap-2 bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-3 rounded-lg transition-colors text-sm">
-                            <Plus size={16} /> Añadir Tarea
-                        </button>
+                        <h2 className="text-xl font-semibold text-zinc-300">Actividades del Plan</h2>
+                        <button onClick={() => handleOpenModal()} className="flex items-center gap-2 bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-3 rounded-lg transition-colors text-sm"><Plus size={16} /> Añadir Actividad</button>
                     </div>
-                    {tasks.length > 0 ? (
+                    {activities.length > 0 ? (
                         <div className="space-y-3">
-                            {tasks.map(task => 
-                                <SwipeableTaskCard 
-                                    key={task.id} 
-                                    task={task}
-                                    onEdit={() => handleOpenModal(task)}
-                                    onDelete={() => setDeleteConfirmation(task)}
-                                />
-                            )}
+                            {activities.map(activity => <SwipeableActivityCard key={activity.id} activity={activity} onEdit={() => handleOpenModal(activity)} onDelete={() => setDeleteConfirmation(activity)} />)}
                         </div>
                     ) : (
-                        <div className="text-center py-10 bg-brand-glass rounded-2xl">
-                            <p className="text-zinc-500">Este plan aún no tiene tareas.</p>
-                        </div>
+                        <div className="text-center py-10 bg-brand-glass rounded-2xl"><p className="text-zinc-500 font-semibold">Este plan aún no tiene actividades.</p><p className="text-zinc-500 text-sm">Añade tratamientos o controles para empezar.</p></div>
                     )}
                 </div>
             </div>
 
-            <Modal isOpen={isTaskModalOpen} onClose={handleCloseModal} title={editingTask ? "Editar Tarea" : "Añadir Tarea al Plan"}>
-                <HealthPlanTaskForm
-                    planId={plan.id!}
-                    onSave={handleSaveTask}
-                    onCancel={handleCloseModal}
-                    existingTask={editingTask}
-                />
+            <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingActivity ? "Editar Actividad" : "Añadir Actividad al Plan"}>
+                <PlanActivityForm healthPlanId={plan.id!} targetGroup={plan.targetGroup} onSave={handleSaveActivity} onCancel={handleCloseModal} existingActivity={editingActivity} />
             </Modal>
 
-            <ConfirmationModal
-                isOpen={!!deleteConfirmation}
-                onClose={() => setDeleteConfirmation(null)}
-                onConfirm={handleDelete}
-                title={`Eliminar Tarea "${deleteConfirmation?.name}"`}
-                message="¿Estás seguro de que quieres eliminar esta tarea del plan? Esta acción no se puede deshacer."
-            />
+            <ConfirmationModal isOpen={!!deleteConfirmation} onClose={() => setDeleteConfirmation(null)} onConfirm={handleDelete} title={`Eliminar Actividad "${deleteConfirmation?.name}"`} message="¿Estás seguro de que quieres eliminar esta actividad del plan? Esta acción no se puede deshacer." />
         </>
     );
 }

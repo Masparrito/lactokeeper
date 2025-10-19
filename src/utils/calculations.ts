@@ -1,6 +1,6 @@
 // src/utils/calculations.ts
 
-import { Animal, Parturition, BodyWeighing } from '../db/local';
+import { BodyWeighing } from '../db/local';
 
 /**
  * Calcula la edad de un animal en días completados.
@@ -188,4 +188,58 @@ export const calculateWeaningIndex = (animal: Animal): number | null => {
 export const calculatePrecocityIndex = (animal: Animal, allWeighings: BodyWeighing[]): number | null => {
     const animalWeighings = allWeighings.filter(w => w.animalId === animal.id);
     return getInterpolatedWeight(animalWeighings, animal.birthDate, 210); // 7 meses = 210 días
+};
+// --- NUEVA FUNCIÓN AÑADIDA ---
+import { Animal, Parturition, ServiceRecord, SireLot, BreedingSeason } from '../db/local';
+import { STATUS_DEFINITIONS, AnimalStatusKey } from '../hooks/useAnimalStatus'; // Importa las definiciones
+
+/**
+ * Obtiene los objetos de estado activos para un animal específico.
+ */
+export const getAnimalStatusObjects = (
+    animal: Animal | undefined | null,
+    allParturitions: Parturition[],
+    allServiceRecords: ServiceRecord[],
+    allSireLots: SireLot[],
+    allBreedingSeasons: BreedingSeason[]
+): (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] => {
+    const activeStatuses: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] = [];
+    if (!animal) return [];
+
+    // Lógica productiva (Hembras)
+    if (animal.sex === 'Hembra') {
+        const lastParturition = allParturitions
+            .filter(p => p.goatId === animal.id && p.status !== 'finalizada')
+            .sort((a, b) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime())[0];
+
+        if (lastParturition) {
+            if (lastParturition.status === 'activa') activeStatuses.push(STATUS_DEFINITIONS.MILKING);
+            else if (lastParturition.status === 'en-secado') activeStatuses.push(STATUS_DEFINITIONS.DRYING_OFF);
+            else if (lastParturition.status === 'seca') activeStatuses.push(STATUS_DEFINITIONS.DRY);
+        }
+    }
+
+    // Lógica Reproductiva (Hembras)
+    if (animal.reproductiveStatus === 'Preñada') activeStatuses.push(STATUS_DEFINITIONS.PREGNANT);
+    else if (animal.reproductiveStatus === 'En Servicio') {
+        const hasServiceRecord = allServiceRecords.some(sr => sr.femaleId === animal.id && sr.sireLotId === animal.sireLotId);
+        if (hasServiceRecord) activeStatuses.push(STATUS_DEFINITIONS.IN_SERVICE_CONFIRMED);
+        else activeStatuses.push(STATUS_DEFINITIONS.IN_SERVICE);
+    }
+    else if (animal.reproductiveStatus === 'Vacía' || animal.reproductiveStatus === 'Post-Parto') {
+         activeStatuses.push(STATUS_DEFINITIONS.EMPTY);
+    }
+
+    // Lógica Reproductiva (Machos)
+    if (animal.sex === 'Macho') {
+        const activeSeasons = allBreedingSeasons.filter(bs => bs.status === 'Activo');
+        const activeSeasonIds = new Set(activeSeasons.map(s => s.id));
+        const isActiveSire = allSireLots.some(sl => sl.sireId === animal.id && activeSeasonIds.has(sl.seasonId));
+        if(isActiveSire) activeStatuses.push(STATUS_DEFINITIONS.SIRE_IN_SERVICE);
+    }
+
+    // Usamos Set para eliminar duplicados si alguna lógica solapa estados (aunque no debería pasar con esta lógica)
+    // y luego mapeamos de vuelta a los objetos completos
+    const uniqueKeys = Array.from(new Set(activeStatuses.map(s => s.key)));
+    return uniqueKeys.map(key => STATUS_DEFINITIONS[key as AnimalStatusKey]);
 };

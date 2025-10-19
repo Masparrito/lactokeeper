@@ -1,5 +1,3 @@
-// src/pages/modules/salud/CostAnalysisPage.tsx
-
 import React from 'react';
 import { useCostAnalysis } from '../../../hooks/useCostAnalysis';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, PieChart, Pie, Cell, Legend } from 'recharts';
@@ -17,14 +15,14 @@ const KpiCard = ({ title, value, unit, icon: Icon }: { title: string, value: str
 );
 
 // Colores para el gráfico de torta
-const COLORS = ['#34C759', '#FF9500', '#007AFF', '#AF52DE', '#FF3B30', '#5E5CE6'];
+const COLORS = ['#34C759', '#FF9500', '#007AFF', '#AF52DE', '#FF3B30', '#5E5CE6', '#5AC8FA', '#FFCC00'];
 
 export default function CostAnalysisPage() {
     const { totalCostLast30Days, avgCostPerAnimal, monthlyCosts, costsByCategory, topCostAnimals } = useCostAnalysis();
 
     const formatMonth = (tickItem: string) => {
-        const date = new Date(tickItem + '-02'); // '-02' para evitar problemas de zona horaria
-        return date.toLocaleString('es-VE', { month: 'short' });
+        const date = new Date(tickItem + '-02T00:00:00Z'); // '-02' para evitar problemas de zona horaria
+        return date.toLocaleString('es-VE', { month: 'short', year: '2-digit' });
     };
     
     return (
@@ -41,20 +39,20 @@ export default function CostAnalysisPage() {
                     icon={DollarSign}
                 />
                 <KpiCard 
-                    title="Costo Prom./Animal"
+                    title="Costo Prom./Animal (30d)"
                     value={`$${avgCostPerAnimal.toFixed(2)}`}
                     icon={TrendingUp}
                 />
             </div>
 
             <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
-                <h3 className="flex items-center gap-2 text-lg font-semibold text-white mb-4"><BarChart2 size={20}/> Costo Mensual</h3>
+                <h3 className="flex items-center gap-2 text-lg font-semibold text-white mb-4"><BarChart2 size={20}/> Costo Mensual (Últimos 6m)</h3>
                 <div className="w-full h-56">
                     <ResponsiveContainer>
                         <BarChart data={monthlyCosts} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                             <XAxis dataKey="name" tickFormatter={formatMonth} tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
-                            <YAxis tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
-                            <Tooltip cursor={{fill: 'rgba(255, 255, 255, 0.1)'}} contentStyle={{ backgroundColor: 'rgba(44, 44, 46, 0.8)', border: '1px solid #444', borderRadius: '12px' }} />
+                            <YAxis tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} unit="$" />
+                            <Tooltip cursor={{fill: 'rgba(255, 255, 255, 0.1)'}} contentStyle={{ backgroundColor: 'rgba(44, 44, 46, 0.8)', border: '1px solid #444', borderRadius: '12px' }} formatter={(value: number) => `$${value.toFixed(2)}`} />
                             <Bar dataKey="total" name="Costo Total" fill="#2dd4bf" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
@@ -72,14 +70,14 @@ export default function CostAnalysisPage() {
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
-                                <Tooltip contentStyle={{ backgroundColor: 'rgba(44, 44, 46, 0.8)', border: '1px solid #444', borderRadius: '12px' }}/>
-                                <Legend iconSize={10} wrapperStyle={{fontSize: '12px'}}/>
+                                <Tooltip contentStyle={{ backgroundColor: 'rgba(44, 44, 46, 0.8)', border: '1px solid #444', borderRadius: '12px' }} formatter={(value: number) => `$${value.toFixed(2)}`}/>
+                                <Legend iconSize={10} wrapperStyle={{fontSize: '12px', color: '#a1a1aa'}}/>
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
                  <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
-                    <h3 className="text-lg font-semibold text-white mb-4">Top 5 Animales (Costo)</h3>
+                    <h3 className="text-lg font-semibold text-white mb-4">Top 5 Animales (Costo Total)</h3>
                     <div className="space-y-2">
                         {topCostAnimals.length > 0 ? topCostAnimals.map((animal, index) => (
                             <div key={animal.animalId} className="flex justify-between items-center text-sm bg-black/20 p-2 rounded-md">

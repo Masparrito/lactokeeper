@@ -1,5 +1,3 @@
-// src/hooks/useEconomicAnalysis.ts
-
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
 
@@ -27,7 +25,8 @@ export const useEconomicAnalysis = () => {
             // 1. Calcular Costos Totales por Animal
             const totalCosts = healthEvents
                 .filter(e => e.animalId === animal.id)
-                .reduce((sum, event) => sum + event.calculatedCost, 0);
+                // --- CORRECCIÓN AQUÍ ---
+                .reduce((sum, event) => sum + (event.calculatedCost || 0), 0);
 
             // 2. Calcular Ingresos Totales por Leche y Datos de Lactancia
             const animalWeighings = weighings.filter(w => w.goatId === animal.id);
@@ -40,7 +39,6 @@ export const useEconomicAnalysis = () => {
             const animalParturitions = parturitions.filter(p => p.goatId === animal.id);
 
             if (totalKgProduced > 0 && animalParturitions.length > 0) {
-                // Sumar los días de todas las lactancias registradas
                 lactationDays = animalParturitions.reduce((totalDays, p) => {
                     const lactWeighings = animalWeighings.filter(w => new Date(w.date) >= new Date(p.parturitionDate));
                     if (lactWeighings.length === 0) return totalDays;
@@ -51,8 +49,6 @@ export const useEconomicAnalysis = () => {
                     return totalDays + days;
                 }, 0);
 
-                // Asumimos que los costos son por la vida del animal hasta la fecha.
-                // Podríamos refinar esto para costos durante la lactancia.
                 const totalCostDuringLactation = totalCosts; // Simplificación para V1
                 costPerLiter = totalCostDuringLactation / totalKgProduced;
             }
@@ -71,10 +67,8 @@ export const useEconomicAnalysis = () => {
             };
         });
 
-        // Ordenar por la más rentable
         const sortedByProfit = [...profitabilityData].sort((a, b) => b.netProfit - a.netProfit);
 
-        // Calcular Totales y Promedios de la Finca
         const totalFarmRevenue = sortedByProfit.reduce((sum, a) => sum + a.totalRevenue, 0);
         const totalFarmCosts = sortedByProfit.reduce((sum, a) => sum + a.totalCosts, 0);
         const totalFarmNetProfit = totalFarmRevenue - totalFarmCosts;

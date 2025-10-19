@@ -1,17 +1,14 @@
-// src/hooks/useHealthAgenda.ts
-
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
-import { getAnimalZootecnicCategory, calculateAgeInDays } from '../utils/calculations';
-import { Animal, HealthPlan, HealthPlanTask } from '../db/local';
-// --- MEJORA: Se importa el hook de proyección de partos ---
+import { calculateAgeInDays, getAnimalZootecnicCategory } from '../utils/calculations';
+import { Animal, HealthPlan, PlanActivity, Parturition } from '../db/local';
 import { useBirthingForecast } from './useBirthingForecast';
 
 export interface AgendaTask {
-    key: string; // ID único para la tarea, ej: "animalId-taskId-year"
+    key: string;
     animal: Animal;
     plan: HealthPlan;
-    task: HealthPlanTask;
+    activity: PlanActivity;
     dueDate: Date;
     status: 'Atrasada' | 'Para Hoy' | 'Próxima';
 }
@@ -22,128 +19,111 @@ const getDateForFixedTask = (year: number, month: number, week: number): Date =>
     return date;
 };
 
-
 export const useHealthAgenda = () => {
-    const { animals, healthPlans, healthPlanTasks, healthEvents, parturitions } = useData();
-    // --- MEJORA: Se utiliza el hook para obtener las proyecciones ---
+    const { animals, healthPlans, planActivities, healthEvents, parturitions } = useData();
     const { forecastBySeason } = useBirthingForecast();
 
     const pendingTasks = useMemo(() => {
         const today = new Date();
         today.setUTCHours(0, 0, 0, 0);
         const currentYear = today.getUTCFullYear();
+        const ninetyDaysFromNow = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000);
 
         const generatedTasks: AgendaTask[] = [];
 
         const activeAnimals = animals.filter(a => a.status === 'Activo' && !a.isReference);
-        
-        for (const animal of activeAnimals) {
-            const ageInDays = calculateAgeInDays(animal.birthDate);
-            if (ageInDays < 0) continue;
 
-            const applicablePlans = healthPlans.filter(plan => {
-                const { minAgeDays, maxAgeDays, categories, targetStatus } = plan.targetCriteria;
-                const category = getAnimalZootecnicCategory(animal, parturitions);
-                
-                const ageMatch = (!minAgeDays || ageInDays >= minAgeDays) && (!maxAgeDays || ageInDays <= maxAgeDays);
-                const categoryMatch = !categories || categories.length === 0 || categories.includes(category as any);
-                // --- MEJORA: Se añade la comprobación del estado reproductivo ---
-                const statusMatch = !targetStatus || targetStatus.length === 0 || targetStatus.includes(animal.reproductiveStatus as any);
+        for (const plan of healthPlans) {
 
-                return ageMatch && categoryMatch && statusMatch;
+            const applicableAnimals = activeAnimals.filter(animal => {
+                const ageInDays = calculateAgeInDays(animal.birthDate);
+                if (ageInDays < 0) return false;
+
+                if (plan.targetGroup === 'Maternidad') {
+                    return ageInDays <= 120;
+                }
+
+                if (plan.targetGroup === 'Adultos') {
+                    if (ageInDays <= 120) return false;
+                    const hasSubgroups = plan.adultsSubgroup && plan.adultsSubgroup.length > 0;
+                    const hasLots = plan.targetLots && plan.targetLots.length > 0;
+                    if (!hasSubgroups && !hasLots) return true;
+                    const animalCategory = getAnimalZootecnicCategory(animal, parturitions as Parturition[]);
+                    const inSubgroup = hasSubgroups && plan.adultsSubgroup?.includes(animalCategory as any);
+                    const inLot = hasLots && plan.targetLots?.includes(animal.location);
+                    if (hasSubgroups && hasLots) return inSubgroup || inLot;
+                    if (hasSubgroups) return inSubgroup;
+                    if (hasLots) return inLot;
+                }
+                return false;
             });
 
-            for (const plan of applicablePlans) {
-                const tasksForPlan = healthPlanTasks.filter(t => t.healthPlanId === plan.id);
+            const activitiesForPlan = planActivities.filter(t => t.healthPlanId === plan.id);
 
-                for (const task of tasksForPlan) {
-                    let dueDate: Date | null = null;
-                    let taskKey: string | null = null;
-
-                    if (task.trigger.type === 'age' && task.trigger.days) {
-                        const birthDate = new Date(animal.birthDate + 'T00:00:00Z');
-                        birthDate.setUTCDate(birthDate.getUTCDate() + task.trigger.days);
-                        dueDate = birthDate;
-                        taskKey = `${animal.id}-${task.id}`;
-                    } else if (task.trigger.type === 'fixed_date_period' && task.trigger.month && task.trigger.week) {
-                        const thisYearDate = getDateForFixedTask(currentYear, task.trigger.month, task.trigger.week);
-                        dueDate = thisYearDate;
-                        taskKey = `${animal.id}-${task.id}-${currentYear}`;
-                        
-                        if ((thisYearDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24) > 90) {
-                            const lastYearDate = getDateForFixedTask(currentYear - 1, task.trigger.month, task.trigger.week);
-                            const lastYearKey = `${animal.id}-${task.id}-${currentYear - 1}`;
-                            const lastYearDone = healthEvents.some(event => 
-                                event.animalId === animal.id && 
-                                event.taskId === task.id &&
-                                new Date(event.date).getUTCFullYear() === currentYear - 1
-                            );
-                            if (!lastYearDone) {
-                                dueDate = lastYearDate;
-                                taskKey = lastYearKey;
-                            }
-                        }
-                    // --- MEJORA: Lógica para el nuevo disparador cíclico ---
-                    } else if (task.trigger.type === 'birthing_season_event' && task.trigger.offsetDays !== undefined) {
-                        // 1. Encontrar la temporada de partos a la que pertenece este animal
-                        const animalSeason = forecastBySeason.find(season => 
-                            season.events.some(event => event.animal.id === animal.id)
-                        );
-
-                        if (animalSeason && animalSeason.projectedStartDate) {
-                            // 2. Calcular la fecha de la tarea
-                            const seasonStartDate = new Date(animalSeason.projectedStartDate);
-                            seasonStartDate.setUTCDate(seasonStartDate.getUTCDate() + task.trigger.offsetDays);
-                            dueDate = seasonStartDate;
-                            taskKey = `${animal.id}-${task.id}-${animalSeason.seasonId}`;
-                        }
-                    }
-
-                    if (!dueDate || !taskKey) continue;
+            for (const animal of applicableAnimals) {
+                for (const activity of activitiesForPlan) {
                     
-                    dueDate.setUTCHours(0, 0, 0, 0);
-
-                    const hasBeenDone = healthEvents.some(event => {
-                        if (event.animalId !== animal.id || event.taskId !== task.id) return false;
+                    const processAndAddTask = (dueDate: Date | null, taskKey: string | null) => {
+                        if (!dueDate || !taskKey) return;
                         
-                        if (task.trigger.type === 'age') {
-                            return true; 
-                        } else if (task.trigger.type === 'fixed_date_period' || task.trigger.type === 'birthing_season_event') {
-                            // Para tareas anuales o por temporada, verificamos si se hizo en el año correcto
-                            return new Date(event.date).getUTCFullYear() === dueDate.getUTCFullYear();
-                        }
-                        return false;
-                    });
-
-                    const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-                    if (!hasBeenDone && daysUntilDue < 90) { // Mostramos tareas hasta 90 días en el futuro
-                        let status: AgendaTask['status'] = 'Próxima';
-                        if (daysUntilDue < 0) status = 'Atrasada';
-                        else if (daysUntilDue === 0) status = 'Para Hoy';
-
-                        generatedTasks.push({
-                            key: taskKey,
-                            animal,
-                            plan,
-                            task,
-                            dueDate,
-                            status,
+                        dueDate.setUTCHours(0, 0, 0, 0);
+                        
+                        const hasBeenDone = healthEvents.some(event => {
+                             if (event.animalId !== animal.id || event.activityId !== activity.id) return false;
+                             if (activity.trigger.type === 'age') {
+                                 // Para 'age', la fecha del evento debe coincidir exactamente con la dueDate calculada
+                                 return new Date(event.date + 'T00:00:00Z').getTime() === dueDate.getTime();
+                             } else {
+                                 // Para eventos anuales, basta con que se haya hecho en el mismo año
+                                 const eventYear = new Date(event.date + 'T00:00:00Z').getUTCFullYear();
+                                 return eventYear === dueDate.getUTCFullYear();
+                             }
                         });
+
+                        if (!hasBeenDone && dueDate <= ninetyDaysFromNow) {
+                            let status: AgendaTask['status'] = 'Próxima';
+                            const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                            if (daysUntilDue < 0) status = 'Atrasada';
+                            else if (daysUntilDue === 0) status = 'Para Hoy';
+                            generatedTasks.push({ key: taskKey, animal, plan, activity, dueDate, status });
+                        }
+                    };
+                    
+                    if (activity.trigger.type === 'age' && activity.trigger.days) {
+                        for (const day of activity.trigger.days) {
+                            const birthDate = new Date(animal.birthDate + 'T00:00:00Z');
+                            birthDate.setUTCDate(birthDate.getUTCDate() + day);
+                            processAndAddTask(birthDate, `${animal.id}-${activity.id}-${day}`);
+                        }
+                    } 
+                    else if (activity.trigger.type === 'fixed_date_period' && activity.trigger.month && activity.trigger.week) {
+                        const dueDate = getDateForFixedTask(currentYear, activity.trigger.month, activity.trigger.week);
+                        const taskKey = `${animal.id}-${activity.id}-${currentYear}`;
+                        processAndAddTask(dueDate, taskKey);
+                    } 
+                    else if (activity.trigger.type === 'birthing_season_event' && activity.trigger.offsetDays !== undefined) {
+                        const animalSeason = forecastBySeason.find(season => season.events.some(event => event.animal.id === animal.id));
+                        if (animalSeason && animalSeason.projectedStartDate) {
+                            const seasonStartDate = new Date(animalSeason.projectedStartDate);
+                            seasonStartDate.setUTCDate(seasonStartDate.getUTCDate() + activity.trigger.offsetDays);
+                            const dueDate = seasonStartDate;
+                            const taskKey = `${animal.id}-${activity.id}-${animalSeason.seasonId}`;
+                            processAndAddTask(dueDate, taskKey);
+                        }
                     }
                 }
             }
         }
-        
+
         return generatedTasks.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
 
-    }, [animals, healthPlans, healthPlanTasks, healthEvents, parturitions, forecastBySeason]);
-    
+    }, [animals, healthPlans, planActivities, healthEvents, parturitions, forecastBySeason]);
+
     const groupedTasks = useMemo(() => {
         return {
-            overdue: pendingTasks.filter(t => t.status === 'Atrasada'),
-            today: pendingTasks.filter(t => t.status === 'Para Hoy'),
-            upcoming: pendingTasks.filter(t => t.status === 'Próxima'),
+            overdue: pendingTasks.filter((t: AgendaTask) => t.status === 'Atrasada'),
+            today: pendingTasks.filter((t: AgendaTask) => t.status === 'Para Hoy'),
+            upcoming: pendingTasks.filter((t: AgendaTask) => t.status === 'Próxima'),
         };
     }, [pendingTasks]);
 

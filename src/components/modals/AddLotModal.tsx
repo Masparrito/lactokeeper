@@ -1,7 +1,8 @@
-// src/components/ui/AddLotModal.tsx
+// src/components/modals/AddLotModal.tsx
 
 import React, { useState } from 'react';
-import { Modal } from './Modal'; // Asumiendo que está en /ui/Modal.tsx
+// --- RUTA CORREGIDA ---
+import { Modal } from '../ui/Modal';
 import { useData } from '../../context/DataContext';
 
 interface AddLotModalProps {
@@ -22,8 +23,7 @@ export const AddLotModal: React.FC<AddLotModalProps> = ({ isOpen, onClose, editi
             return;
         }
         try {
-            // --- CORRECCIÓN DE ERROR TS2345 ---
-            // Ahora pasamos un objeto, como espera DataContext
+            // --- LLAMADA CORREGIDA (enviando un objeto) ---
             await addLot({ name: lotName, parentLotId: parentLotId || undefined });
             handleClose();
         } catch (err: any) {
@@ -53,6 +53,7 @@ export const AddLotModal: React.FC<AddLotModalProps> = ({ isOpen, onClose, editi
                         id="lotName"
                         type="text"
                         value={lotName}
+                        // --- TYPO 'S' ELIMINADO ---
                         onChange={(e) => setLotName(e.target.value)}
                         placeholder="Ej: Galpón 1"
                         className="w-full bg-zinc-800 text-white p-3 rounded-xl focus:border-brand-orange focus:ring-0"

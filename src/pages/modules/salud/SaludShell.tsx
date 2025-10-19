@@ -1,18 +1,16 @@
 import { useState } from 'react';
-// --- CAMBIO CLAVE: Corregidas las rutas de importación ---
 import type { AppModule } from '../../../types/navigation';
 import { ArrowLeft, CalendarCheck, ClipboardList, Syringe, DollarSign, HeartPulse } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { SyncStatusIcon } from '../../../components/ui/SyncStatusIcon';
 import ProductManagerPage from './ProductManagerPage';
 import HealthPlannerPage from './HealthPlannerPage';
-import AgendaPage from './AgendaPage';
+import HealthCalendarPage from './HealthCalendarPage';
 import PlanDetailPage from './PlanDetailPage';
 import CostAnalysisPage from './CostAnalysisPage';
-import { ModuleSwitcher } from '../../../components/ui/ModuleSwitcher';
 
-type SaludPage = 
-    | { name: 'agenda' }
+type SaludPage =
+    | { name: 'calendario' }
     | { name: 'planes' }
     | { name: 'inventario' }
     | { name: 'costos' }
@@ -24,11 +22,11 @@ interface SaludShellProps {
 
 export default function SaludShell({ onSwitchModule }: SaludShellProps) {
     const { syncStatus } = useData();
-    const [page, setPage] = useState<SaludPage>({ name: 'agenda' });
+    const [page, setPage] = useState<SaludPage>({ name: 'calendario' });
     const [history, setHistory] = useState<SaludPage[]>([]);
 
     const navItems = [
-        { id: 'agenda', label: 'Agenda', icon: CalendarCheck },
+        { id: 'calendario', label: 'Calendario', icon: CalendarCheck },
         { id: 'planes', label: 'Planes', icon: ClipboardList },
         { id: 'inventario', label: 'Inventario', icon: Syringe },
         { id: 'costos', label: 'Costos', icon: DollarSign },
@@ -42,7 +40,7 @@ export default function SaludShell({ onSwitchModule }: SaludShellProps) {
     const navigateBack = () => {
         const lastPage = history.pop();
         if (lastPage) {
-            setHistory([...history]);
+            setHistory([...history]); // Actualizar el estado del historial
             setPage(lastPage);
         } else {
             onSwitchModule('rebano');
@@ -56,25 +54,26 @@ export default function SaludShell({ onSwitchModule }: SaludShellProps) {
 
     const renderContent = () => {
         switch (page.name) {
-            case 'inventario':
-                return <ProductManagerPage />;
-            case 'agenda':
-                return <AgendaPage />;
+            case 'calendario':
+                return <HealthCalendarPage />;
             case 'planes':
                 return <HealthPlannerPage navigateTo={navigateTo} />;
-            case 'plan-detail':
-                return <PlanDetailPage planId={page.planId} onBack={navigateBack} />;
+            case 'inventario':
+                return <ProductManagerPage />;
             case 'costos':
                 return <CostAnalysisPage />;
+            case 'plan-detail':
+                return <PlanDetailPage planId={page.planId} onBack={navigateBack} />;
             default:
-                return <AgendaPage />;
+                return <HealthCalendarPage />;
         }
     };
 
     return (
-        <div className="min-h-screen animate-fade-in text-white flex flex-col">
+        // --- CORRECCIÓN AQUÍ: Se añade 'bg-brand-dark' ---
+        <div className="min-h-screen animate-fade-in text-white flex flex-col bg-brand-dark">
             
-            <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border">
+            <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-brand-dark/80 backdrop-blur-lg border-b border-brand-border">
                 <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-16">
                     <button onClick={navigateBack} className="p-2 -ml-2 text-zinc-400 hover:text-white" aria-label="Atrás">
                         <ArrowLeft size={24} />
@@ -96,9 +95,7 @@ export default function SaludShell({ onSwitchModule }: SaludShellProps) {
                 {renderContent()}
             </main>
 
-            <ModuleSwitcher onSwitchModule={onSwitchModule} />
-
-            <nav className="flex-shrink-0 fixed bottom-0 left-0 right-0 bg-black/30 backdrop-blur-xl border-t border-white/20 flex justify-around">
+            <nav className="flex-shrink-0 fixed bottom-0 left-0 right-0 bg-black/30 backdrop-blur-xl border-t border-white/20 flex justify-around z-20">
                 {navItems.map((item) => (
                     <button
                         key={item.id}
@@ -113,4 +110,3 @@ export default function SaludShell({ onSwitchModule }: SaludShellProps) {
         </div>
     );
 }
-
