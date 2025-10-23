@@ -1,6 +1,6 @@
 // src/pages/LotsDashboardPage.tsx
 
-import { useState } from 'react';
+import React, { useState } from 'react'; // Added React import
 import type { PageState } from '../types/navigation';
 import { Users, Zap, Plus, ChevronRight, Baby, HeartPulse, TrendingUp, Dna, FlaskConical, Archive, GitCompareArrows, CircleDot } from 'lucide-react';
 import { FaWeightHanging } from "react-icons/fa";
@@ -10,6 +10,7 @@ import BreedingLotsView from '../components/lots/BreedingLotsView';
 import { Modal } from '../components/ui/Modal';
 import { PieChart, Pie, ResponsiveContainer, Cell, Legend, Tooltip, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { useHerdAnalytics } from '../hooks/useHerdAnalytics';
+import { formatAnimalDisplay } from '../utils/formatting'; // <--- IMPORTACIÓN AÑADIDA
 
 // --- SUB-COMPONENTES ESTILIZADOS PARA EL DASHBOARD Y MODALES ---
 
@@ -69,18 +70,21 @@ const CustomRechartsTooltip = ({ active, payload, label }: any) => {
 export default function LotsDashboardPage({ navigateTo }: { navigateTo: (page: PageState) => void; }) {
     const [activeTab, setActiveTab] = useState<'physical' | 'breeding'>('physical');
     const [isAddLotModalOpen, setAddLotModalOpen] = useState(false);
-    
+
+    // Estados para los modales de análisis
     const [isCabrasModalOpen, setCabrasModalOpen] = useState(false);
     const [isCabritonasModalOpen, setCabritonasModalOpen] = useState(false);
     const [isCriasModalOpen, setCriasModalOpen] = useState(false);
     const [isReproductoresModalOpen, setReproductoresModalOpen] = useState(false);
 
+    // Hook para obtener los datos analíticos del rebaño
     const herdAnalytics = useHerdAnalytics();
 
     return (
         <>
-            {/* --- CAMBIO CLAVE: Se elimina el padding 'px-4' del contenedor principal --- */}
-            <div className="w-full max-w-lg mx-auto space-y-6 pb-24 pt-4"> 
+            {/* Contenedor principal */}
+            <div className="w-full max-w-lg mx-auto space-y-6 pb-24 pt-4">
+                {/* Resumen Poblacional */}
                 <div className="text-center mb-6 px-4">
                     <p className="text-base text-zinc-300 font-light">
                         Población Total del Rebaño: <span className="font-bold text-white">{herdAnalytics.totalPoblacion}</span>
@@ -89,35 +93,41 @@ export default function LotsDashboardPage({ navigateTo }: { navigateTo: (page: P
                         Total de Vientres: <span className="font-bold text-zinc-200">{herdAnalytics.totalVientres}</span>
                     </p>
                 </div>
-                
-                {/* --- CAMBIO CLAVE: El padding se añade al contenedor de la grilla --- */}
+
+                {/* Grilla de KPIs principales */}
                 <div className="grid grid-cols-2 gap-4 px-4">
                     <DashboardKpiCard title="Cabras" value={herdAnalytics.cabras.total} icon={HeartPulse} onClick={() => setCabrasModalOpen(true)} />
                     <DashboardKpiCard title="Cabritonas" value={herdAnalytics.cabritonas.total} icon={TrendingUp} onClick={() => setCabritonasModalOpen(true)} />
                     <DashboardKpiCard title="Crías" value={herdAnalytics.crias.total} icon={Baby} onClick={() => setCriasModalOpen(true)} />
                     <DashboardKpiCard title="Reproductores" value={herdAnalytics.reproductores.total} icon={Dna} onClick={() => setReproductoresModalOpen(true)} />
                 </div>
-                
-                {/* --- CAMBIO CLAVE: El padding se añade a esta sección --- */}
+
+                {/* Selector de Pestañas (Lotes Físicos / Lotes de Monta) */}
                 <div className="pt-4 px-4">
                     <div className="relative bg-brand-glass rounded-xl p-1 border border-brand-border flex items-center">
+                        {/* Botón Lotes Físicos */}
                         <button onClick={() => setActiveTab('physical')} className={`w-1/2 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 ${activeTab === 'physical' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>
                             <Users size={16}/> <span className="text-sm font-semibold">Lotes Físicos</span>
+                            {/* Botón Añadir Lote Físico */}
                             <span onClick={(e) => { e.stopPropagation(); setAddLotModalOpen(true); }} className="ml-2 p-1 rounded-full hover:bg-brand-orange/50"><Plus size={18} /></span>
                         </button>
+                        {/* Botón Lotes de Monta */}
                         <button onClick={() => setActiveTab('breeding')} className={`w-1/2 py-2 text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 ${activeTab === 'breeding' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>
                             <Zap size={16}/> Lotes de Monta
                         </button>
                     </div>
                 </div>
-                
-                {/* Las vistas de lotes no llevan padding, ya que sus tarjetas internas lo gestionan */}
-                <div className="pt-0">
+
+                {/* Contenido de la pestaña activa */}
+                <div className="pt-0"> {/* Sin padding extra aquí */}
                     {activeTab === 'physical' && <PhysicalLotsView navigateTo={navigateTo} />}
                     {activeTab === 'breeding' && <BreedingLotsView navigateTo={navigateTo} />}
                 </div>
             </div>
-            
+
+            {/* --- Modales de Análisis --- */}
+
+            {/* Modal Análisis de Cabras */}
             <Modal isOpen={isCabrasModalOpen} onClose={() => setCabrasModalOpen(false)} title="Análisis de Hembras Adultas">
                 <div className="space-y-5">
                     <ModalSection title="Estado Productivo y Reproductivo">
@@ -127,7 +137,6 @@ export default function LotsDashboardPage({ navigateTo }: { navigateTo: (page: P
                          <div className="border-b border-brand-border/50 mx-2"></div>
                          <StatItem icon={GitCompareArrows} label="En Monta Activa" unit="cabras" value={herdAnalytics.cabras.enMonta} />
                     </ModalSection>
-                    
                     <ModalSection title="Estado Reproductivo (Vientres)">
                         <div className="w-full h-48">
                             <ResponsiveContainer width="100%" height="100%">
@@ -141,7 +150,6 @@ export default function LotsDashboardPage({ navigateTo }: { navigateTo: (page: P
                             </ResponsiveContainer>
                         </div>
                     </ModalSection>
-                    
                     <ModalSection title="Rendimiento Anual en Ordeño">
                         <div className="w-full h-48">
                             <ResponsiveContainer width="100%" height="100%">
@@ -157,6 +165,7 @@ export default function LotsDashboardPage({ navigateTo }: { navigateTo: (page: P
                 </div>
             </Modal>
 
+            {/* Modal Análisis de Cabritonas */}
             <Modal isOpen={isCabritonasModalOpen} onClose={() => setCabritonasModalOpen(false)} title="Análisis de Cabritonas">
                  <div className="space-y-4">
                     <ModalSection title="Disponibilidad para Monta">
@@ -170,6 +179,7 @@ export default function LotsDashboardPage({ navigateTo }: { navigateTo: (page: P
                 </div>
             </Modal>
 
+            {/* Modal Análisis de Crías */}
              <Modal isOpen={isCriasModalOpen} onClose={() => setCriasModalOpen(false)} title="Análisis de Crías en Maternidad">
                 <div className="space-y-5">
                     <ModalSection title="Distribución por Sexo">
@@ -185,25 +195,31 @@ export default function LotsDashboardPage({ navigateTo }: { navigateTo: (page: P
                             </ResponsiveContainer>
                         </div>
                     </ModalSection>
-
                     <ModalSection title="Estado de Destete">
                         <StatItem icon={Baby} label="Listas para Destete" unit="crías" value={herdAnalytics.crias.listasParaDestete} subLabel="≥ 52 días y ≥ 9.5 Kg"/>
                         <div className="border-b border-brand-border/50 mx-2"></div>
                         <StatItem icon={CircleDot} label="En Fase de Destete" unit="crías" value={herdAnalytics.crias.enFaseDestete} subLabel="45-52 días"/>
-                        <div className="border-b border-brand-border/50 mx-2"></div>
                     </ModalSection>
                 </div>
             </Modal>
 
+            {/* Modal Estado de Reproductores */}
              <Modal isOpen={isReproductoresModalOpen} onClose={() => setReproductoresModalOpen(false)} title="Estado de Reproductores">
                 <div className="space-y-4">
                     <ModalSection title="Activos en Temporada de Monta">
                         {herdAnalytics.reproductores.activos.length > 0 ? (
+                            // Mapear reproductores activos
                             herdAnalytics.reproductores.activos.map((sire, index) => (
                                 <div key={sire.id}>
-                                    <button onClick={() => { setReproductoresModalOpen(false); navigateTo({ name: 'sire-lot-detail', lotId: sire.lotId }) }} className="w-full text-left p-2 rounded-lg flex justify-between items-center hover:bg-brand-glass transition-colors group">
+                                    <button
+                                        // Navegar al detalle del lote de monta al hacer clic
+                                        onClick={() => { setReproductoresModalOpen(false); navigateTo({ name: 'sire-lot-detail', lotId: sire.lotId }) }}
+                                        className="w-full text-left p-2 rounded-lg flex justify-between items-center hover:bg-brand-glass transition-colors group"
+                                    >
                                         <div>
-                                            <p className="font-bold text-white">{sire.name || `ID: ${sire.id}`}</p>
+                                            {/* --- USO DE formatAnimalDisplay --- */}
+                                            {/* Asumimos que 'sire' tiene 'id' y 'name' */}
+                                            <p className="font-bold text-white">{formatAnimalDisplay(sire)}</p>
                                             <p className="text-xs text-brand-medium-gray">Ver lote de monta asignado</p>
                                         </div>
                                         <div className="flex items-center gap-3">
@@ -211,18 +227,22 @@ export default function LotsDashboardPage({ navigateTo }: { navigateTo: (page: P
                                             <ChevronRight className="text-zinc-500 group-hover:text-white transition-colors" />
                                         </div>
                                     </button>
+                                    {/* Separador entre reproductores */}
                                     {index < herdAnalytics.reproductores.activos.length - 1 && <div className="border-b border-brand-border/50 mx-2"></div>}
                                 </div>
                             ))
-                        ) : ( 
+                        ) : (
+                            // Mensaje si no hay reproductores activos
                             <p className="text-sm text-brand-medium-gray text-center py-4">
                                 No hay reproductores activos en una temporada de monta actualmente.
-                            </p> 
+                            </p>
                         )}
                     </ModalSection>
+                    {/* Podrías añadir otra ModalSection para reproductores 'disponibles' si lo necesitas */}
                 </div>
             </Modal>
 
+            {/* Modal para añadir Lote Físico */}
             <AddLotModal isOpen={isAddLotModalOpen} onClose={() => setAddLotModalOpen(false)} />
         </>
     );

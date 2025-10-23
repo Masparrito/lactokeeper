@@ -83,6 +83,7 @@ const ReorderableSeasonItem = ({ season, navigateTo, onEdit }: { season: Breedin
 
 
 export default function BreedingLotsView({ navigateTo }: { navigateTo: (page: PageState) => void; }) {
+    // --- CORRECCIÓN: Se eliminan sireLots, animals, fathers, serviceRecords que no se usan en ESTE archivo ---
     const { breedingSeasons, addBreedingSeason, updateBreedingSeason } = useData();
     const [isModalOpen, setModalOpen] = useState(false);
     const [editingSeason, setEditingSeason] = useState<BreedingSeason | undefined>(undefined);

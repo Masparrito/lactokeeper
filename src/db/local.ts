@@ -4,18 +4,27 @@ import Dexie, { Table } from 'dexie';
 
 // --- TIPOS DE DATOS ---
 export type ReproductiveStatus = 'Vacía' | 'En Servicio' | 'Preñada' | 'Post-Parto' | 'No Aplica';
-export type FemaleLifecycleStage = 'Cabrita' | 'Cabritona' | 'Cabra Primípara' | 'Cabra Multípara';
+// --- CORRECCIÓN: Añadido 'Cabra Adulta' para consistencia con 'calculateLifecycleStage' ---
+export type FemaleLifecycleStage = 'Cabrita' | 'Cabritona' | 'Cabra Primípara' | 'Cabra Multípara' | 'Cabra Adulta';
 export type MaleLifecycleStage = 'Cabrito' | 'Macho de Levante' | 'Macho Cabrío';
-// --- TIPO DE EVENTO ACTUALIZADO ---
-export type EventType = 'Nacimiento' | 'Movimiento' | 'Cambio de Estado' | 'Pesaje Lechero' | 'Pesaje Corporal' | 'Servicio' | 'Tratamiento' | 'Diagnóstico' | 'Parto' | 'Aborto';
+// --- TIPO DE EVENTO ACTUALIZADO: Añadido 'Registro' ---
+export type EventType = 'Nacimiento' | 'Registro' | 'Movimiento' | 'Cambio de Estado' | 'Pesaje Lechero' | 'Pesaje Corporal' | 'Servicio' | 'Tratamiento' | 'Diagnóstico' | 'Parto' | 'Aborto';
 
-export interface Animal {
-    id: string;
+// Helper type para añadir _synced
+type SyncedRecord = {
+    _synced?: boolean;
+}
+
+// Interfaces actualizadas con SyncedRecord
+export interface Animal extends SyncedRecord {
+     id: string;
+    name?: string;
     createdAt?: number;
     userId?: string;
     sex: 'Hembra' | 'Macho';
-    status: 'Activo' | 'Venta' | 'Muerte' | 'Descarte';
-    birthDate: string;
+    // --- CORRECCIÓN: Permitir 'string' para 'Referencia' u otros estados custom ---
+    status: 'Activo' | 'Venta' | 'Muerte' | 'Descarte' | string;
+    birthDate: string; // Puede ser 'N/A'
     motherId?: string;
     fatherId?: string;
     birthWeight?: number;
@@ -27,7 +36,7 @@ export interface Animal {
     isReference?: boolean;
     origin?: string;
     parturitionType?: string;
-    race?: string;
+    breed?: string;
     racialComposition?: string;
     observations?: string;
     reproductiveStatus: ReproductiveStatus;
@@ -37,31 +46,35 @@ export interface Animal {
     saleBuyer?: string;
     salePurpose?: 'Cría' | 'Carne';
     deathReason?: string;
-    cullReason?: 'Baja producción' | 'Bajo índice de crecimiento' | 'Inflamación articular' | 'Linfadenitis caseosa' | 'Sospecha de otras enfermedades';
+    // --- CORRECCIÓN: Permitir 'string' para cullReason ---
+    cullReason?: 'Baja producción' | 'Bajo índice de crecimiento' | 'Inflamación articular' | 'Linfadenitis caseosa' | 'Sospecha de otras enfermedades' | string;
     cullReasonDetails?: string;
     breedingFailures?: number;
+    lastWeighing?: { date: string, kg: number } | null;
 }
 
-export interface Father {
+export interface Father extends SyncedRecord {
     id: string;
     userId?: string;
     name: string;
 }
 
-export interface Parturition {
+export interface Parturition extends SyncedRecord {
     id: string;
     userId?: string;
     goatId: string;
     parturitionDate: string;
     sireId: string;
     offspringCount: number;
-    parturitionType: 'Simple' | 'Doble' | 'Triple' | 'Cuádruple' | 'Quíntuple';
+    parturitionType: 'Simple' | 'Doble' | 'Triple' | 'Cuádruple' | 'Quíntuple' | string; // Permitir string
     status: 'activa' | 'en-secado' | 'seca' | 'finalizada';
     parturitionOutcome?: 'Normal' | 'Aborto' | 'Con Mortinatos';
     dryingStartDate?: string;
+    // --- Añadido para consistencia con addParturition ---
+    liveOffspring?: { id: string, sex: 'Hembra' | 'Macho', birthWeight?: string | number }[];
 }
 
-export interface Weighing {
+export interface Weighing extends SyncedRecord {
     id: string;
     userId?: string;
     goatId: string;
@@ -69,20 +82,20 @@ export interface Weighing {
     kg: number;
 }
 
-export interface Lot {
+export interface Lot extends SyncedRecord {
     id: string;
     userId?: string;
     name: string;
-    parentLotId?: string; // <-- CAMPO AÑADIDO PARA SUB-LOTES
+    parentLotId?: string;
 }
 
-export interface Origin {
+export interface Origin extends SyncedRecord {
     id: string;
     userId?: string;
     name: string;
 }
 
-export interface BreedingSeason {
+export interface BreedingSeason extends SyncedRecord {
     id: string;
     userId?: string;
     name: string;
@@ -92,14 +105,14 @@ export interface BreedingSeason {
     requiresLightTreatment: boolean;
 }
 
-export interface SireLot {
+export interface SireLot extends SyncedRecord {
     id: string;
     userId?: string;
     seasonId: string;
     sireId: string;
 }
 
-export interface ServiceRecord {
+export interface ServiceRecord extends SyncedRecord {
     id: string;
     userId?: string;
     sireLotId: string;
@@ -107,18 +120,18 @@ export interface ServiceRecord {
     serviceDate: string;
 }
 
-export interface Event {
+export interface Event extends SyncedRecord {
     id: string;
     userId?: string;
     animalId: string;
-    date: string;
+    date: string; // Puede ser 'N/A' si viene de addAnimal sin fecha
     type: EventType;
     details: string;
     notes?: string;
     lotName?: string;
 }
 
-export interface FeedingPlan {
+export interface FeedingPlan extends SyncedRecord {
     id: string;
     userId?: string;
     lotName: string;
@@ -127,7 +140,7 @@ export interface FeedingPlan {
     endDate?: string;
 }
 
-export interface BodyWeighing {
+export interface BodyWeighing extends SyncedRecord {
     id: string;
     userId?: string;
     animalId: string;
@@ -137,7 +150,7 @@ export interface BodyWeighing {
 
 export type ProductCategory = 'Vitaminas' | 'Modificadores Orgánicos' | 'Desparasitantes' | 'Antibióticos' | 'Vacunas' | 'Pomadas Tópicas' | 'Analgésicos' | 'Hormonas' | 'Antiinflamatorios' | 'Otro';
 
-export interface Product {
+export interface Product extends SyncedRecord {
     id: string;
     userId?: string;
     name: string;
@@ -156,7 +169,7 @@ export interface Product {
 
 export type AdultSubgroup = 'Cabritonas' | 'Cabras' | 'Reproductores' | 'Machos de Levante';
 
-export interface HealthPlan {
+export interface HealthPlan extends SyncedRecord {
     id: string;
     userId?: string;
     name: string;
@@ -167,7 +180,7 @@ export interface HealthPlan {
     targetLots?: string[];
 }
 
-export interface PlanActivity {
+export interface PlanActivity extends SyncedRecord {
     id: string;
     userId?: string;
     healthPlanId: string;
@@ -184,7 +197,7 @@ export interface PlanActivity {
     };
 }
 
-export interface HealthEvent {
+export interface HealthEvent extends SyncedRecord {
     id: string;
     userId?: string;
     animalId: string;
@@ -201,15 +214,36 @@ export interface HealthEvent {
     famachaGrade?: 1 | 2 | 3 | 4 | 5;
 }
 
-const DB_NAME = "GanaderoOS_DB";
-const DB_VERSION = 19;
+// --- Definición de Tablas con Tipos ---
+export interface GanaderoOSTables {
+    animals: Table<Animal>;
+    fathers: Table<Father>;
+    parturitions: Table<Parturition>;
+    weighings: Table<Weighing>;
+    lots: Table<Lot>;
+    origins: Table<Origin>;
+    breedingSeasons: Table<BreedingSeason>;
+    sireLots: Table<SireLot>;
+    serviceRecords: Table<ServiceRecord>;
+    events: Table<Event>;
+    feedingPlans: Table<FeedingPlan>;
+    bodyWeighings: Table<BodyWeighing>;
+    products: Table<Product>;
+    healthPlans: Table<HealthPlan>;
+    planActivities: Table<PlanActivity>;
+    healthEvents: Table<HealthEvent>;
+}
 
-export class GanaderoOSDB extends Dexie {
+const DB_NAME = "GanaderoOS_DB";
+// --- CORRECCIÓN: Incrementar versión por añadir _synced y 'Registro' ---
+const DB_VERSION = 20;
+
+export class GanaderoOSDB extends Dexie implements GanaderoOSTables {
     animals!: Table<Animal>;
     fathers!: Table<Father>;
     parturitions!: Table<Parturition>;
     weighings!: Table<Weighing>;
-    lots!: Table<Lot>; // Esta tabla ahora soporta sub-lotes
+    lots!: Table<Lot>;
     origins!: Table<Origin>;
     breedingSeasons!: Table<BreedingSeason>;
     sireLots!: Table<SireLot>;
@@ -226,22 +260,23 @@ export class GanaderoOSDB extends Dexie {
         super(DB_NAME);
 
         this.version(DB_VERSION).stores({
-            animals: '&id, userId, status, location, motherId, fatherId, sireLotId',
-            fathers: '&id, userId',
-            parturitions: '&id, userId, goatId, status',
-            weighings: '&id, userId, goatId, date',
-            lots: '&id, userId, &name, parentLotId', // <-- ÍNDICE AÑADIDO
-            origins: '&id, userId, &name',
-            breedingSeasons: '&id, userId, &name, status',
-            sireLots: '&id, userId, seasonId, sireId',
-            serviceRecords: '&id, userId, sireLotId, femaleId',
-            events: '&id, userId, animalId, date, type, lotName',
-            feedingPlans: '&id, userId, lotName',
-            bodyWeighings: '&id, userId, animalId, date',
-            products: '&id, userId, &name, category',
-            healthPlans: '&id, userId, &name, targetGroup',
-            planActivities: '&id, userId, healthPlanId, category',
-            healthEvents: '&id, userId, animalId, date, activityId',
+            // --- CORRECCIÓN: Añadir _synced a los índices ---
+            animals: '&id, userId, status, location, motherId, fatherId, sireLotId, _synced',
+            fathers: '&id, userId, _synced',
+            parturitions: '&id, userId, goatId, status, _synced',
+            weighings: '&id, userId, goatId, date, _synced',
+            lots: '&id, userId, &name, parentLotId, _synced',
+            origins: '&id, userId, &name, _synced',
+            breedingSeasons: '&id, userId, &name, status, _synced',
+            sireLots: '&id, userId, seasonId, sireId, _synced',
+            serviceRecords: '&id, userId, sireLotId, femaleId, _synced',
+            events: '&id, userId, animalId, date, type, lotName, _synced',
+            feedingPlans: '&id, userId, lotName, _synced',
+            bodyWeighings: '&id, userId, animalId, date, _synced',
+            products: '&id, userId, &name, category, _synced',
+            healthPlans: '&id, userId, &name, targetGroup, _synced',
+            planActivities: '&id, userId, healthPlanId, category, _synced',
+            healthEvents: '&id, userId, animalId, date, activityId, _synced',
         });
     }
 }
@@ -252,18 +287,20 @@ export const initDB = async (): Promise<GanaderoOSDB> => {
     const db = new GanaderoOSDB();
     try {
         await db.open();
-        console.log("Base de datos local abierta con éxito.");
+        console.log("Base de datos local abierta con éxito (v" + DB_VERSION + ").");
         dbInstance = db;
         return db;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error al abrir la base de datos local.", error);
-        if (confirm("GanaderoOS necesita actualizar la base de datos local. Tus datos en la nube están a salvo. ¿Deseas continuar? La aplicación se recargará.")) {
+        if (error.name === 'VersionError') {
+             console.log("Dexie intentará actualizar la estructura de la base de datos.");
+        } else if (confirm("Error al iniciar la base de datos local. ¿Deseas forzar el reinicio? (Tus datos en la nube están seguros). La aplicación se recargará.")) {
             await Dexie.delete(DB_NAME);
             window.location.reload();
         } else {
             alert("La aplicación no puede continuar sin una base de datos funcional.");
         }
-        return new Promise(() => {});
+        return new Promise(() => {}); // Prevenir que la app continúe
     }
 };
 

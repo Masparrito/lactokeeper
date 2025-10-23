@@ -12,6 +12,16 @@ import { useSearch } from '../hooks/useSearch';
 import { SearchHeader } from '../components/ui/SearchHeader';
 import { formatAge } from '../utils/calculations';
 import { useVirtualizer } from '@tanstack/react-virtual';
+// src/utils/formatting.ts (Example)
+import { Animal, Father } from '../db/local'; // Adjust import as needed
+
+export const formatAnimalDisplay = (animal: Animal | Father | { id: string, name?: string } | undefined | null): string => {
+    if (!animal) return 'N/A';
+    if (animal.name && animal.name.trim() !== '') {
+        return `${animal.id} (${animal.name})`;
+    }
+    return animal.id;
+};
 
 // --- SUB-COMPONENTES DE LA PÁGINA ---
 

@@ -1,5 +1,3 @@
-// src/pages/RebanoShell.tsx
-
 import { useState, useEffect } from 'react';
 import LotsDashboardPage from './LotsDashboardPage';
 import LotDetailPage from './LotDetailPage';
@@ -26,23 +24,35 @@ import { useData } from '../context/DataContext';
 import { SyncStatusIcon } from '../components/ui/SyncStatusIcon';
 import type { PageState, AppModule } from '../types/navigation';
 
+// --- CORRECCIÓN: Se define el tipo para la nueva prop 'initialState' ---
+interface InitialRebanoState {
+    page: PageState | null;
+    sourceModule?: AppModule;
+}
 
 interface RebanoShellProps {
-    initialPage: PageState | null;
+    // --- CORRECCIÓN: Se cambia 'initialPage' (del App.tsx original) por 'initialState' ---
+    initialState: InitialRebanoState;
     onSwitchModule: (module: AppModule) => void;
 }
 
-export default function RebanoShell({ initialPage, onSwitchModule }: RebanoShellProps) {
+export default function RebanoShell({ initialState, onSwitchModule }: RebanoShellProps) {
     const { syncStatus } = useData();
     const [page, setPage] = useState<PageState>({ name: 'lots-dashboard' });
     const [history, setHistory] = useState<PageState[]>([]);
 
     useEffect(() => {
-        if (initialPage) {
-            setPage(initialPage);
+        // --- CORRECCIÓN: Se usa initialState.page para establecer la vista ---
+        if (initialState && initialState.page) {
+            setPage(initialState.page);
+            // Se limpia el historial para que el botón "Atrás" salga del módulo
+            setHistory([]); 
+        } else {
+            // Si no hay estado inicial, se va al dashboard por defecto
+            setPage({ name: 'lots-dashboard' });
             setHistory([]);
         }
-    }, [initialPage]);
+    }, [initialState]); // La dependencia ahora es el objeto 'initialState'
 
     const navItems = [
         { page: { name: 'lots-dashboard' }, label: 'Lotes', icon: GiBarn, mapsTo: ['lots-dashboard', 'lot-detail', 'breeding-season-detail', 'sire-lot-detail', 'feeding-plan', 'batch-treatment'] },
@@ -56,12 +66,18 @@ export default function RebanoShell({ initialPage, onSwitchModule }: RebanoShell
         setPage(newPage);
     };
 
+    // --- CORRECCIÓN: Lógica de 'navigateBack' actualizada ---
     const navigateBack = () => {
         const lastPage = history.pop();
         if (lastPage) {
+            // Si hay historial interno en Rebaño, retrocede
             setHistory([...history]);
             setPage(lastPage);
+        } else if (initialState && initialState.sourceModule) {
+            // Si no hay historial Y veníamos de otro módulo, regresamos a él
+            onSwitchModule(initialState.sourceModule);
         } else {
+            // Si no hay nada más, vamos al dashboard por defecto de este módulo
             setPage({ name: 'lots-dashboard' });
         }
     };
@@ -109,10 +125,9 @@ export default function RebanoShell({ initialPage, onSwitchModule }: RebanoShell
                     </div>
                 </div>
             </header>
-            <main className="pt-16 pb-24">{renderPage()}</main>
+            <main className="pt-16 pb-16">{renderPage()}</main> {/* pt-16 (h-16 header), pb-16 (h-16 nav) */}
             <ModuleSwitcher onSwitchModule={onSwitchModule} />
-            {/* --- CAMBIO CLAVE: Se añade z-20 para asegurar que la barra esté por encima del contenido --- */}
-            <nav className="fixed bottom-0 left-0 right-0 z-20 bg-black/30 backdrop-blur-xl border-t border-white/20 flex justify-around">
+            <nav className="fixed bottom-0 left-0 right-0 z-20 bg-black/30 backdrop-blur-xl border-t border-white/20 flex justify-around h-16">
                 {navItems.map((item) => {
                     const isActive = (item.mapsTo as readonly string[]).includes(page.name);
                     return (<button key={item.label} onClick={() => handleNavClick(item.page)} className={`relative flex flex-col items-center justify-center pt-3 pb-2 w-full transition-colors ${isActive ? 'text-amber-400' : 'text-gray-500 hover:text-white'}`}><item.icon className="w-6 h-6" /><span className="text-xs font-semibold mt-1">{item.label}</span></button>);
@@ -121,4 +136,4 @@ export default function RebanoShell({ initialPage, onSwitchModule }: RebanoShell
             </nav>
         </div>
     );
-};
+}

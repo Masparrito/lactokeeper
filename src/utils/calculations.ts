@@ -1,6 +1,7 @@
 // src/utils/calculations.ts
 
-import { BodyWeighing } from '../db/local';
+import { BodyWeighing, Animal, Parturition, ServiceRecord, SireLot, BreedingSeason } from '../db/local';
+import { STATUS_DEFINITIONS, AnimalStatusKey } from '../hooks/useAnimalStatus'; // Importa las definiciones
 
 /**
  * Calcula la edad de un animal en días completados.
@@ -100,6 +101,17 @@ export const calculateGDP = (birthWeight: number | undefined, weighings: BodyWei
     
     let overall: number | null = null;
     if (birthWeight && birthWeight > 0) {
+        // Corrección: La edad al último pesaje debe calcularse desde la fecha de nacimiento del animal (no desde 'latestWeighing.date')
+        // Asumiendo que 'latestWeighing.date' es la fecha del pesaje, la edad en días es:
+        // (fecha_pesaje - fecha_nacimiento)
+        // No está claro qué animal se está pesando, por lo que esta función es difícil de implementar correctamente sin la fecha de nacimiento.
+        // Asumiendo que 'calculateAgeInDays' toma una fecha de nacimiento, y 'latestWeighing.date' es una fecha de pesaje...
+        // La lógica original parece incorrecta. 
+        // Si 'weighings' son de un animal específico, necesitamos la 'birthDate' de ESE animal.
+        // Dado que no la tenemos, esta función probablemente esté en un contexto donde 'birthDate' está disponible.
+        // Voy a asumir que 'calculateAgeInDays' toma la fecha de nacimiento y la fecha de "hoy".
+        // La lógica original es confusa. La mantendré como estaba para no romper nada,
+        // aunque 'calculateAgeInDays(latestWeighing.date)' no parece tener sentido.
         const ageAtLastWeighing = calculateAgeInDays(latestWeighing.date) - calculateAgeInDays(new Date().toISOString().split('T')[0]) + calculateAgeInDays(new Date(latestWeighing.date).toISOString().split('T')[0]);
         if (ageAtLastWeighing > 0) {
             overall = (latestWeighing.kg - birthWeight) / ageAtLastWeighing;
@@ -189,10 +201,8 @@ export const calculatePrecocityIndex = (animal: Animal, allWeighings: BodyWeighi
     const animalWeighings = allWeighings.filter(w => w.animalId === animal.id);
     return getInterpolatedWeight(animalWeighings, animal.birthDate, 210); // 7 meses = 210 días
 };
-// --- NUEVA FUNCIÓN AÑADIDA ---
-import { Animal, Parturition, ServiceRecord, SireLot, BreedingSeason } from '../db/local';
-import { STATUS_DEFINITIONS, AnimalStatusKey } from '../hooks/useAnimalStatus'; // Importa las definiciones
 
+// --- FUNCIÓN EXISTENTE ---
 /**
  * Obtiene los objetos de estado activos para un animal específico.
  */
@@ -243,3 +253,113 @@ export const getAnimalStatusObjects = (
     const uniqueKeys = Array.from(new Set(activeStatuses.map(s => s.key)));
     return uniqueKeys.map(key => STATUS_DEFINITIONS[key as AnimalStatusKey]);
 };
+
+
+// --- INICIO: Lógica para Puntos 5 y 6 ---
+
+// Lista de razas base y sus códigos
+const RAZAS_BASE = {
+    'A': 'Alpina',
+    'S': 'Saanen',
+    'N': 'Anglo Nubian',
+    'AGC': 'Canaria', // Acepta AGC
+    'C': 'Canaria',   // Acepta C
+    'T': 'Toggenburger',
+    'CR': 'Criolla', // Asumiendo 'CR' para Criolla
+};
+
+type BreedCode = keyof typeof RAZAS_BASE;
+
+/**
+ * Parsea un string de composición (ej: "75%A 25%AGC") a un Map.
+ */
+const parseComposition = (composition: string | undefined): Map<string, number> => {
+    const map = new Map<string, number>();
+    if (!composition) return map;
+
+    // Regex para encontrar patrones como "75%A", "25%AGC", "100A"
+    const regex = /(\d+(\.\d+)?)%?([A-Z]+)/g;
+    let match;
+    
+    while ((match = regex.exec(composition.toUpperCase())) !== null) {
+        const percentage = parseFloat(match[1]);
+        const code = match[3];
+        // Validar que el código de raza exista en nuestra base
+        const isValidCode = Object.keys(RAZAS_BASE).includes(code);
+
+        if (!isNaN(percentage) && isValidCode) {
+            map.set(code, (map.get(code) || 0) + percentage);
+        }
+    }
+    return map;
+};
+
+/**
+ * Formatea un Map de composición a un string.
+ */
+const formatComposition = (compositionMap: Map<string, number>): string => {
+    if (compositionMap.size === 0) return '';
+    
+    // Ordenar por porcentaje descendente
+    const sorted = Array.from(compositionMap.entries())
+        .filter(([, perc]) => perc > 0)
+        .sort((a, b) => b[1] - a[1]);
+
+    // Redondear porcentajes para evitar decimales extraños
+    return sorted.map(([code, perc]) => `${parseFloat(perc.toFixed(2))}%${code}`).join(' ');
+};
+
+/**
+ * (Punto 5) Calcula la composición de la cría basándose en los padres.
+ */
+export const calculateChildComposition = (motherComp: string | undefined, fatherComp: string | undefined): string => {
+    const motherMap = parseComposition(motherComp);
+    const fatherMap = parseComposition(fatherComp);
+
+    const childMap = new Map<string, number>();
+    const allCodes = new Set([...motherMap.keys(), ...fatherMap.keys()]);
+
+    allCodes.forEach(code => {
+        const motherPerc = motherMap.get(code) || 0;
+        const fatherPerc = fatherMap.get(code) || 0;
+        childMap.set(code, (motherPerc / 2) + (fatherPerc / 2));
+    });
+
+    return formatComposition(childMap);
+};
+
+/**
+ * (Punto 5 y 6) Determina la raza (Pura o Mestiza) basada en la composición.
+ */
+export const calculateBreedFromComposition = (composition: string | undefined): string => {
+    const map = parseComposition(composition);
+    if (map.size === 0) return '';
+
+    const sorted = Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+    
+    // Si no hay entradas válidas después de parsear, retornar string vacío
+    if(sorted.length === 0) return '';
+    
+    const [primaryCode, primaryPerc] = sorted[0];
+
+    // Umbral de pureza (Punto 5)
+    const PURE_THRESHOLD = 96.9; 
+
+    const razaBase = RAZAS_BASE[primaryCode as BreedCode];
+
+    // Si cualquier raza (no solo la primaria) supera el umbral, es pura.
+    for (const [code, perc] of sorted) {
+        if (perc >= PURE_THRESHOLD) {
+            return `${RAZAS_BASE[code as BreedCode]} Pura`;
+        }
+    }
+    
+    // Si no es pura pero tiene composición, es Mestiza
+    if (primaryPerc > 0) {
+        return `Mestiza ${razaBase}`;
+    }
+
+    return 'Mestiza'; // Fallback
+};
+
+// --- FIN: Lógica para Puntos 5 y 6 ---
