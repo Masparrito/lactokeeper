@@ -1,19 +1,15 @@
 // src/context/DataContext.tsx
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-// --- CORRECCIÓN: Importar Table explícitamente desde Dexie ---
 import { Table } from 'dexie';
-// --- CORRECCIÓN: Asegurarse que GanaderoOSTables se importa ---
 import { Animal, Weighing, Parturition, Father, Lot, Origin, BreedingSeason, SireLot, ServiceRecord, Event, EventType, BodyWeighing, Product, HealthPlan, PlanActivity, HealthEvent, initDB, getDB, FeedingPlan, GanaderoOSTables } from '../db/local';
 import { db as firestoreDb } from '../firebaseConfig';
 import { useAuth } from './AuthContext';
 import { collection, query, where, onSnapshot, deleteDoc, doc, setDoc, writeBatch, Timestamp, serverTimestamp } from "firebase/firestore";
 import { v4 as uuidv4 } from 'uuid';
 
-// --- Tipo SyncStatus ---
 export type SyncStatus = 'idle' | 'syncing' | 'offline';
 
-// --- Interfaz IDataContext (Completa) ---
 interface IDataContext {
   // --- Datos ---
   animals: Animal[];
@@ -35,7 +31,6 @@ interface IDataContext {
   // --- Estado y Funciones ---
   isLoading: boolean;
   syncStatus: SyncStatus;
-  // --- Tipos de Omit actualizados para excluir nuevas props ---
   addAnimal: (animalData: Omit<Animal, 'id' | '_synced' | 'userId' | 'createdAt'> & { id?: string }) => Promise<void>;
   updateAnimal: (animalId: string, dataToUpdate: Partial<Animal>) => Promise<void>;
   deleteAnimalPermanently: (animalId: string) => Promise<void>;
@@ -72,15 +67,14 @@ interface IDataContext {
   addHealthEvent: (eventData: Omit<HealthEvent, 'id' | 'userId' | '_synced'>) => Promise<void>;
 }
 
-// --- Contexto ---
+
 const DataContext = createContext<IDataContext>({} as IDataContext);
 
 export const useData = () => useContext(DataContext);
 
-// --- Helper de Sincronización CORREGIDO ---
+// Helper de Sincronización
 const syncToFirestore = async (collectionName: string, id: string, data: any) => {
     try {
-        // Limpiar datos: excluir undefined y _synced
         const cleanData = Object.entries(data).reduce((acc, [key, value]) => {
             if (value !== undefined && key !== '_synced') {
                 (acc as any)[key] = value;
@@ -88,10 +82,8 @@ const syncToFirestore = async (collectionName: string, id: string, data: any) =>
             return acc;
         }, {});
 
-        // --- CORRECCIÓN DE TIPO: Aserción explícita ---
         const table = getDB()[collectionName as keyof GanaderoOSTables] as Table<any, any>;
-        const existingDoc = await table.get(id); // Check local first
-
+        const existingDoc = await table.get(id);
         const needsTimestamp = !existingDoc || !(existingDoc as any).createdAt || data.createdAt === serverTimestamp();
 
         const dataToSync: Record<string, any> = { ...cleanData };
@@ -115,10 +107,8 @@ const syncToFirestore = async (collectionName: string, id: string, data: any) =>
     }
 };
 
-// --- DataProvider Component ---
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { currentUser } = useAuth();
-    // --- Declaraciones de Estado (completas) ---
     const [animals, setAnimals] = useState<Animal[]>([]);
     const [fathers, setFathers] = useState<Father[]>([]);
     const [weighings, setWeighings] = useState<Weighing[]>([]);
@@ -167,29 +157,34 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isSyncingRef.current) { processSyncQueue(); }
     };
 
-    // --- fetchDataFromLocalDb ---
+
+    // --- CORRECCIÓN DEL BUCLE INFINITO ---
     const fetchDataFromLocalDb = useCallback(async () => {
         try {
             const localDb = getDB();
             const [animalsData, fathersData, weighingsData, partData, lotsData, originsData, breedingSeasonsData, sireLotsData, serviceRecordsData, eventsData, feedingPlansData, bodyWeighingsData, productsData, healthPlansData, planActivitiesData, healthEventsData] = await Promise.all([
-                localDb.animals.toArray(), localDb.fathers.toArray(), localDb.weighings.toArray(),
-                localDb.parturitions.toArray(), localDb.lots.toArray(), localDb.origins.toArray(),
-                localDb.breedingSeasons.toArray(), localDb.sireLots.toArray(), localDb.serviceRecords.toArray(),
-                localDb.events.toArray(), localDb.feedingPlans.toArray(), localDb.bodyWeighings.toArray(),
-                localDb.products.toArray(), localDb.healthPlans.toArray(), localDb.planActivities.toArray(),
-                localDb.healthEvents.toArray(),
-            ]);
-            setAnimals(animalsData); setFathers(fathersData); setWeighings(weighingsData); setParturitions(partData);
-            setLots(lotsData); setOrigins(originsData); setBreedingSeasons(breedingSeasonsData); setSireLots(sireLotsData);
-            setServiceRecords(serviceRecordsData); setEvents(eventsData); setFeedingPlans(feedingPlansData);
-            setBodyWeighings(bodyWeighingsData);
-            setProducts(productsData); setHealthPlans(healthPlansData);
-            setPlanActivities(planActivitiesData); setHealthEvents(healthEventsData);
+                localDb.animals.toArray(), localDb.fathers.toArray(), localDb.weighings.toArray(),
+                localDb.parturitions.toArray(), localDb.lots.toArray(), localDb.origins.toArray(),
+                localDb.breedingSeasons.toArray(), localDb.sireLots.toArray(), localDb.serviceRecords.toArray(),
+                localDb.events.toArray(), localDb.feedingPlans.toArray(), localDb.bodyWeighings.toArray(),
+                localDb.products.toArray(), localDb.healthPlans.toArray(), localDb.planActivities.toArray(),
+                localDb.healthEvents.toArray(),
+            ]);
+            setAnimals(animalsData); setFathers(fathersData); setWeighings(weighingsData); setParturitions(partData);
+            setLots(lotsData); setOrigins(originsData); setBreedingSeasons(breedingSeasonsData); setSireLots(sireLotsData);
+            setServiceRecords(serviceRecordsData); setEvents(eventsData); setFeedingPlans(feedingPlansData);
+            setBodyWeighings(bodyWeighingsData);
+            setProducts(productsData); setHealthPlans(healthPlansData);
+            setPlanActivities(planActivitiesData); setHealthEvents(healthEventsData);
         } catch (error) { console.error("Error al cargar datos locales:", error); }
-        finally { if (isLoading) setIsLoading(false); }
-    }, [isLoading]);
+        finally {
+            // --- CORRECCIÓN 1: Simplemente setear a false ---
+            // La lógica de "isLoading" (ponerlo en true) se maneja en setupSync
+            setIsLoading(false);
+        }
+    // --- CORRECCIÓN 2: Eliminar 'isLoading' del array de dependencias ---
+    }, []);
 
-    // --- useEffect Principal (Sincronización Firestore -> Dexie) ---
     useEffect(() => {
         let unsubscribers: (() => void)[] = [];
         const handleOnline = () => { setSyncStatus('idle'); processSyncQueue(); };
@@ -205,12 +200,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setBodyWeighings([]); setProducts([]); setHealthPlans([]); setPlanActivities([]); setHealthEvents([]);
                 return;
             }
-            setIsLoading(true);
+            setIsLoading(true); // Poner en carga
             try {
                 const localDb = await initDB();
-                await fetchDataFromLocalDb();
-                const q = (collectionName: string) => query(collection(firestoreDb, collectionName), where("userId", "==", currentUser.uid));
+                await fetchDataFromLocalDb(); // Cargar datos locales (esto pondrá isLoading(false))
                 
+                // Configurar listeners de Firestore
+                const q = (collectionName: string) => query(collection(firestoreDb, collectionName), where("userId", "==", currentUser.uid));
                 const syncCollection = (collectionName: keyof GanaderoOSTables, table: Table<any, any>) => {
                     const unsubscribe = onSnapshot(q(collectionName), async (snapshot) => {
                         if (snapshot.metadata.hasPendingWrites) return;
@@ -230,7 +226,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                                         else if (change.type === "removed") await table.delete(change.data.id);
                                     }
                                 });
-                                await fetchDataFromLocalDb();
+                                await fetchDataFromLocalDb(); // Recargar datos después de la transacción
                             } catch (transactionError) { console.error(`Dexie transaction error during sync for ${collectionName}:`, transactionError); }
                         }
                     }, (error) => { if (error.code === 'permission-denied') console.warn(`Permission denied for ${collectionName}.`); else console.error(`Firestore snapshot error for ${collectionName}:`, error); });
@@ -259,11 +255,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setupSync();
         return () => { unsubscribers.forEach(unsub => unsub()); window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current); };
-    }, [currentUser, fetchDataFromLocalDb]);
+    // --- CORRECCIÓN 3: 'fetchDataFromLocalDb' es estable y puede estar en la dependencia ---
+    }, [currentUser, fetchDataFromLocalDb]); // <-- El array de dependencias está bien así
 
     // --- FUNCIONES DE ESCRITURA (Local-First con Enqueue) ---
 
-    // internalAddEvent (Para registrar eventos de forma asíncrona)
+    // internalAddEvent
     const internalAddEvent = (eventData: Omit<Event, 'id' | 'userId' | '_synced'>) => {
         if (!currentUser) return;
         (async () => {
@@ -272,7 +269,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const newEvent: Event = { id: uuidv4(), ...eventData, userId: currentUser.uid, _synced: false };
                 await localDb.events.put(newEvent);
                 enqueueSync(() => syncToFirestore("events", newEvent.id, newEvent));
-                setTimeout(fetchDataFromLocalDb, 50); // Refrescar UI con delay
+                setTimeout(fetchDataFromLocalDb, 50);
             } catch (err) { console.error("Error en registro de evento local:", err); }
         })();
     };
@@ -294,7 +291,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // --- LÓGICA DE EVENTO INICIAL CORREGIDA ---
         if (newAnimal.birthDate && newAnimal.birthDate !== 'N/A') {
-             // SÍ hay fecha de nacimiento: crear evento de Nacimiento
              internalAddEvent({
                 animalId: newAnimal.id,
                 date: newAnimal.birthDate,
@@ -303,12 +299,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 lotName: newAnimal.location
             });
         } else {
-             // NO hay fecha de nacimiento: crear SÓLO evento de Registro
              internalAddEvent({
                  animalId: newAnimal.id,
-                 date: new Date(newAnimal.createdAt!).toISOString().split('T')[0], // Fecha de registro
-                 type: 'Registro', // Tipo 'Registro'
-                 details: `Animal ${newAnimal.isReference ? 'de Referencia ' : ''}registrado en el sistema. Datos de nacimiento no especificados.`,
+                 date: new Date(newAnimal.createdAt!).toISOString().split('T')[0],
+                 type: 'Registro',
+                 details: `Animal ${newAnimal.isReference ? 'de Referencia ' : ''}registrado. Datos de nacimiento no especificados.`,
                  lotName: newAnimal.location
             });
         }
@@ -354,7 +349,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const localDb = getDB();
         const upperId = animalId.toUpperCase();
         await localDb.animals.delete(upperId);
-        // TODO: Eliminar eventos asociados
         fetchDataFromLocalDb();
         enqueueSync(() => deleteDoc(doc(firestoreDb, "animals", upperId)).catch(error => console.error("Firestore delete sync failed:", error)));
     };
@@ -690,6 +684,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const dataWithSyncFlag = { ...dataToUpdate, _synced: false };
+
         await localDb.planActivities.update(activityId, dataWithSyncFlag);
         fetchDataFromLocalDb();
         const updatedActivity = await localDb.planActivities.get(activityId);
@@ -699,6 +694,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // deletePlanActivity
     const deletePlanActivity = async (activityId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
+
         const localDb = getDB();
         await localDb.planActivities.delete(activityId);
         fetchDataFromLocalDb();
@@ -713,6 +709,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await localDb.healthEvents.put(newEvent);
         // Crear evento general asociado
         internalAddEvent({ animalId: newEvent.animalId, date: newEvent.date, type: 'Tratamiento', details: `${newEvent.type}${newEvent.productUsed ? ` con ${products.find(p => p.id === newEvent.productUsed)?.name || 'producto'}` : ''}`, notes: newEvent.notes, lotName: newEvent.lotName });
+JSON.stringify
         fetchDataFromLocalDb();
         enqueueSync(() => syncToFirestore("healthEvents", newEvent.id, newEvent));
     };
@@ -737,7 +734,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-// --- calculateLifecycleStage Helper (sin cambios) ---
+// --- calculateLifecycleStage Helper ---
 const calculateLifecycleStage = (birthDate: string, sex: 'Hembra' | 'Macho'): string => {
     if (!birthDate || birthDate === 'N/A' || !sex) return 'Indefinido';
     const today = new Date();
