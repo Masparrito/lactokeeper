@@ -2,11 +2,12 @@
 
 import React, { useMemo } from 'react';
 import { useData } from '../../context/DataContext';
-import { Animal } from '../../db/local'; // Import Animal type
+import { Animal } from '../../db/local'; // Import Parturition type
 import { Calendar, ChevronRight, History, PlusCircle, Target } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { getAnimalZootecnicCategory } from '../../utils/calculations'; // Utility for category
-import { formatAnimalDisplay } from '../../utils/formatting'; // <--- IMPORTACIÓN AÑADIDA
+// --- CAMBIO: formatAnimalDisplay ya no es necesario ---
+// import { formatAnimalDisplay } from '../../utils/formatting';
 
 // Props definition for the component
 interface BodyWeighingActionModalProps {
@@ -43,15 +44,27 @@ export const BodyWeighingActionModal: React.FC<BodyWeighingActionModalProps> = (
   // Check if the "Ready for Mating" action should be available
   const isReadyForMatingAction = zootecnicCategory === 'Cabritona' && animal.reproductiveStatus === 'Vacía';
 
+  // --- CAMBIO: Preparar nombre formateado ---
+  const formattedName = animal.name ? String(animal.name).toUpperCase().trim() : '';
+
   // --- RENDERIZADO DEL MODAL ---
   return (
     <Modal
         isOpen={isOpen} // Pass visibility state
         onClose={onClose} // Pass close handler
-        // --- USO DE formatAnimalDisplay en título ---
-        title={`Pesaje Corporal: ${formatAnimalDisplay(animal)}`} // Use formatted display name
+        // --- CAMBIO: Título genérico ---
+        title="Pesaje Corporal"
     >
       <div className="space-y-6">
+        {/* --- INICIO: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
+        <div className="text-center mb-2"> {/* Added mb-2 for spacing */}
+            <p className="font-mono font-semibold text-xl text-white truncate">{animal.id.toUpperCase()}</p>
+            {formattedName && (
+                <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+            )}
+        </div>
+        {/* --- FIN: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
+      
         {/* Section to add to recent sessions */}
         <div>
           <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-400 mb-2"><History size={16} />Añadir a Sesión Reciente</h3>
@@ -69,7 +82,7 @@ export const BodyWeighingActionModal: React.FC<BodyWeighingActionModalProps> = (
                     <Calendar size={18} className="text-zinc-500" />
                     {/* Display formatted date */}
                     <span className="text-base font-semibold text-white">
-                      {new Date(date + 'T00:00:00').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      {new Date(date + 'T00:00:00Z').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })}
                     </span>
                   </div>
                   <ChevronRight size={20} className="text-zinc-600" />

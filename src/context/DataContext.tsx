@@ -1,6 +1,6 @@
 // src/context/DataContext.tsx
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Table } from 'dexie';
 import { Animal, Weighing, Parturition, Father, Lot, Origin, BreedingSeason, SireLot, ServiceRecord, Event, EventType, BodyWeighing, Product, HealthPlan, PlanActivity, HealthEvent, initDB, getDB, FeedingPlan, GanaderoOSTables } from '../db/local';
 import { db as firestoreDb } from '../firebaseConfig';
@@ -8,73 +8,83 @@ import { useAuth } from './AuthContext';
 import { collection, query, where, onSnapshot, deleteDoc, doc, setDoc, writeBatch, Timestamp, serverTimestamp } from "firebase/firestore";
 import { v4 as uuidv4 } from 'uuid';
 
+// --- CAMBIO: Importar Configuración ---
+import { AppConfig, DEFAULT_CONFIG } from '../types/config';
+
 export type SyncStatus = 'idle' | 'syncing' | 'offline';
 
 interface IDataContext {
-  // --- Datos ---
-  animals: Animal[];
-  fathers: Father[];
-  weighings: Weighing[];
-  parturitions: Parturition[];
-  lots: Lot[];
-  origins: Origin[];
-  breedingSeasons: BreedingSeason[];
-  sireLots: SireLot[];
-  serviceRecords: ServiceRecord[];
-  events: Event[];
-  feedingPlans: FeedingPlan[];
-  bodyWeighings: BodyWeighing[];
-  products: Product[];
-  healthPlans: HealthPlan[];
-  planActivities: PlanActivity[];
-  healthEvents: HealthEvent[];
-  // --- Estado y Funciones ---
-  isLoading: boolean;
-  syncStatus: SyncStatus;
-  addAnimal: (animalData: Omit<Animal, 'id' | '_synced' | 'userId' | 'createdAt'> & { id?: string }) => Promise<void>;
-  updateAnimal: (animalId: string, dataToUpdate: Partial<Animal>) => Promise<void>;
-  deleteAnimalPermanently: (animalId: string) => Promise<void>;
-  startDryingProcess: (parturitionId: string) => Promise<void>;
-  setLactationAsDry: (parturitionId: string) => Promise<void>;
-  addLot: (lotData: { name: string, parentLotId?: string }) => Promise<void>;
-  deleteLot: (lotId: string) => Promise<void>;
-  addOrigin: (originName: string) => Promise<void>;
-  deleteOrigin: (originId: string) => Promise<void>;
-  addBreedingSeason: (seasonData: Omit<BreedingSeason, 'id' | 'userId' | '_synced'>) => Promise<string>;
-  updateBreedingSeason: (seasonId: string, dataToUpdate: Partial<BreedingSeason>) => Promise<void>;
-  deleteBreedingSeason: (seasonId: string) => Promise<void>;
-  addSireLot: (lotData: Omit<SireLot, 'id' | 'userId' | '_synced'>) => Promise<string>;
-  updateSireLot: (lotId: string, dataToUpdate: Partial<SireLot>) => Promise<void>;
-  deleteSireLot: (lotId: string) => Promise<void>;
-  addServiceRecord: (recordData: Omit<ServiceRecord, 'id' | 'userId' | '_synced'>) => Promise<void>;
-  addFeedingPlan: (planData: Omit<FeedingPlan, 'id' | 'userId' | '_synced'>) => Promise<void>;
-  addBatchEvent: (data: { lotName: string; date: string; type: EventType; details: string; }) => Promise<void>;
-  addWeighing: (weighing: Omit<Weighing, 'id' | 'userId' | '_synced'>) => Promise<void>;
-  addBodyWeighing: (weighing: Omit<BodyWeighing, 'id' | 'userId' | '_synced'>) => Promise<void>;
-  deleteWeighingSession: (date: string) => Promise<void>;
-  addParturition: (data: any) => Promise<void>;
-  fetchData: () => Promise<void>;
-  addFather: (father: { id: string, name: string }) => Promise<void>;
-  addProduct: (productData: Omit<Product, 'id' | 'userId' | '_synced'>) => Promise<void>;
-  updateProduct: (productId: string, dataToUpdate: Partial<Product>) => Promise<void>;
-  deleteProduct: (productId: string) => Promise<void>;
-  addHealthPlanWithActivities: (planData: Omit<HealthPlan, 'id' | 'userId' | '_synced'>, activities: Omit<PlanActivity, 'id' | 'healthPlanId' | 'userId' | '_synced'>[]) => Promise<void>;
-  updateHealthPlan: (planId: string, dataToUpdate: Partial<HealthPlan>) => Promise<void>;
-  deleteHealthPlan: (planId: string) => Promise<void>;
-  addPlanActivity: (activityData: Omit<PlanActivity, 'id' | 'userId' | '_synced'>) => Promise<void>;
-  updatePlanActivity: (activityId: string, dataToUpdate: Partial<PlanActivity>) => Promise<void>;
-  deletePlanActivity: (activityId: string) => Promise<void>;
-  addHealthEvent: (eventData: Omit<HealthEvent, 'id' | 'userId' | '_synced'>) => Promise<void>;
-}
+  // --- Datos ---
+  animals: Animal[];
+  fathers: Father[];
+  weighings: Weighing[];
+  parturitions: Parturition[];
+  lots: Lot[];
+  origins: Origin[];
+  breedingSeasons: BreedingSeason[];
+  sireLots: SireLot[];
+  serviceRecords: ServiceRecord[];
+  events: Event[];
+  feedingPlans: FeedingPlan[];
+  bodyWeighings: BodyWeighing[];
+  products: Product[];
+  healthPlans: HealthPlan[];
+  planActivities: PlanActivity[];
+  healthEvents: HealthEvent[];
+  
+  // --- CAMBIO: Añadir Configuración al Contexto ---
+  appConfig: AppConfig;
+  isLoadingConfig: boolean;
 
+  // --- Estado y Funciones ---
+  isLoading: boolean;
+  syncStatus: SyncStatus;
+  addAnimal: (animalData: Omit<Animal, 'id' | '_synced' | 'userId' | 'createdAt'> & { id?: string }) => Promise<void>;
+  updateAnimal: (animalId: string, dataToUpdate: Partial<Animal>) => Promise<void>;
+  deleteAnimalPermanently: (animalId: string) => Promise<void>;
+  startDryingProcess: (parturitionId: string) => Promise<void>;
+  setLactationAsDry: (parturitionId: string) => Promise<void>;
+  addLot: (lotData: { name: string, parentLotId?: string }) => Promise<void>;
+  deleteLot: (lotId: string) => Promise<void>;
+  addOrigin: (originName: string) => Promise<void>;
+  deleteOrigin: (originId: string) => Promise<void>;
+  addBreedingSeason: (seasonData: Omit<BreedingSeason, 'id' | 'userId' | '_synced'>) => Promise<string>;
+  updateBreedingSeason: (seasonId: string, dataToUpdate: Partial<BreedingSeason>) => Promise<void>;
+  deleteBreedingSeason: (seasonId: string) => Promise<void>;
+  addSireLot: (lotData: Omit<SireLot, 'id' | 'userId' | '_synced'>) => Promise<string>;
+  updateSireLot: (lotId: string, dataToUpdate: Partial<SireLot>) => Promise<void>;
+  deleteSireLot: (lotId: string) => Promise<void>;
+  addServiceRecord: (recordData: Omit<ServiceRecord, 'id' | 'userId' | '_synced'>) => Promise<void>;
+  addFeedingPlan: (planData: Omit<FeedingPlan, 'id' | 'userId' | '_synced'>) => Promise<void>;
+  addBatchEvent: (data: { lotName: string; date: string; type: EventType; details: string; }) => Promise<void>;
+  addWeighing: (weighing: Omit<Weighing, 'id' | 'userId' | '_synced'>) => Promise<void>;
+  addBodyWeighing: (weighing: Omit<BodyWeighing, 'id' | 'userId' | '_synced'>) => Promise<void>;
+  deleteWeighingSession: (date: string) => Promise<void>;
+  addParturition: (data: any) => Promise<void>;
+  fetchData: () => Promise<void>;
+  addFather: (father: { id: string, name: string }) => Promise<void>;
+  addProduct: (productData: Omit<Product, 'id' | 'userId' | '_synced'>) => Promise<void>;
+  updateProduct: (productId: string, dataToUpdate: Partial<Product>) => Promise<void>;
+  deleteProduct: (productId: string) => Promise<void>;
+  addHealthPlanWithActivities: (planData: Omit<HealthPlan, 'id' | 'userId' | '_synced'>, activities: Omit<PlanActivity, 'id' | 'healthPlanId' | 'userId' | '_synced'>[]) => Promise<void>;
+  updateHealthPlan: (planId: string, dataToUpdate: Partial<HealthPlan>) => Promise<void>;
+  deleteHealthPlan: (planId: string) => Promise<void>;
+  addPlanActivity: (activityData: Omit<PlanActivity, 'id' | 'userId' | '_synced'>) => Promise<void>;
+  updatePlanActivity: (activityId: string, dataToUpdate: Partial<PlanActivity>) => Promise<void>;
+  deletePlanActivity: (activityId: string) => Promise<void>;
+  addHealthEvent: (eventData: Omit<HealthEvent, 'id' | 'userId' | '_synced'>) => Promise<void>;
+  
+  // --- CAMBIO: Añadir función de actualización de config ---
+  updateAppConfig: (config: AppConfig) => Promise<void>;
+}
 
 const DataContext = createContext<IDataContext>({} as IDataContext);
 
 export const useData = () => useContext(DataContext);
 
-// Helper de Sincronización
+// Helper de Sincronización (sin cambios)
 const syncToFirestore = async (collectionName: string, id: string, data: any) => {
-    try {
+    try {
         const cleanData = Object.entries(data).reduce((acc, [key, value]) => {
             if (value !== undefined && key !== '_synced') {
                 (acc as any)[key] = value;
@@ -93,46 +103,54 @@ const syncToFirestore = async (collectionName: string, id: string, data: any) =>
              delete dataToSync.createdAt;
         }
 
-        await setDoc(doc(firestoreDb, collectionName, id), dataToSync, { merge: true });
+        await setDoc(doc(firestoreDb, collectionName, id), dataToSync, { merge: true });
         await table.update(id, { _synced: true });
 
-    } catch (error) {
-        console.error(`Firestore sync for ${collectionName} (${id}) failed:`, error);
+    } catch (error) {
+        console.error(`Firestore sync for ${collectionName} (${id}) failed:`, error);
         const table = getDB()[collectionName as keyof GanaderoOSTables] as Table<any, any>;
         try {
             await table.update(id, { _synced: false });
         } catch (localUpdateError) {
              console.error(`Failed to update sync status locally for ${collectionName} (${id}):`, localUpdateError);
         }
-    }
+    }
 };
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { currentUser } = useAuth();
-    const [animals, setAnimals] = useState<Animal[]>([]);
-    const [fathers, setFathers] = useState<Father[]>([]);
-    const [weighings, setWeighings] = useState<Weighing[]>([]);
-    const [parturitions, setParturitions] = useState<Parturition[]>([]);
-    const [lots, setLots] = useState<Lot[]>([]);
-    const [origins, setOrigins] = useState<Origin[]>([]);
-    const [breedingSeasons, setBreedingSeasons] = useState<BreedingSeason[]>([]);
-    const [sireLots, setSireLots] = useState<SireLot[]>([]);
-    const [serviceRecords, setServiceRecords] = useState<ServiceRecord[]>([]);
-    const [events, setEvents] = useState<Event[]>([]);
-    const [feedingPlans, setFeedingPlans] = useState<FeedingPlan[]>([]);
-    const [bodyWeighings, setBodyWeighings] = useState<BodyWeighing[]>([]);
-    const [products, setProducts] = useState<Product[]>([]);
-    const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
-    const [planActivities, setPlanActivities] = useState<PlanActivity[]>([]);
-    const [healthEvents, setHealthEvents] = useState<HealthEvent[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [syncStatus, setSyncStatus] = useState<SyncStatus>(navigator.onLine ? 'idle' : 'offline');
-    const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const { currentUser } = useAuth();
+    // Estados de Datos
+    const [animals, setAnimals] = useState<Animal[]>([]);
+    const [fathers, setFathers] = useState<Father[]>([]);
+    const [weighings, setWeighings] = useState<Weighing[]>([]);
+    const [parturitions, setParturitions] = useState<Parturition[]>([]);
+    const [lots, setLots] = useState<Lot[]>([]);
+    const [origins, setOrigins] = useState<Origin[]>([]);
+    const [breedingSeasons, setBreedingSeasons] = useState<BreedingSeason[]>([]);
+    const [sireLots, setSireLots] = useState<SireLot[]>([]);
+    const [serviceRecords, setServiceRecords] = useState<ServiceRecord[]>([]);
+    const [events, setEvents] = useState<Event[]>([]);
+    const [feedingPlans, setFeedingPlans] = useState<FeedingPlan[]>([]);
+    const [bodyWeighings, setBodyWeighings] = useState<BodyWeighing[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
+    const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
+    const [planActivities, setPlanActivities] = useState<PlanActivity[]>([]);
+    const [healthEvents, setHealthEvents] = useState<HealthEvent[]>([]);
+    
+    // Estados de Control
+    const [isLoading, setIsLoading] = useState(true);
+    const [syncStatus, setSyncStatus] = useState<SyncStatus>(navigator.onLine ? 'idle' : 'offline');
+
+    // --- CAMBIO: Añadir estados de Configuración ---
+    const [appConfig, setAppConfig] = useState<AppConfig>(DEFAULT_CONFIG);
+    const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+
+    const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const syncQueueRef = useRef<(() => Promise<void>)[]>([]);
     const isSyncingRef = useRef(false);
 
-    // --- processSyncQueue y enqueueSync ---
-    const processSyncQueue = async () => {
+    // --- CAMBIO: processSyncQueue y enqueueSync envueltos en useCallback ---
+    const processSyncQueue = useCallback(async () => {
         if (isSyncingRef.current || syncQueueRef.current.length === 0 || !navigator.onLine) {
             if (syncQueueRef.current.length === 0 && !isSyncingRef.current) { setSyncStatus('idle'); }
             return;
@@ -151,62 +169,82 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
              if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
              syncTimeoutRef.current = setTimeout(() => { if (syncQueueRef.current.length === 0 && !isSyncingRef.current) setSyncStatus('idle'); }, 2000);
         }
-    };
-    const enqueueSync = (operation: () => Promise<void>) => {
+    }, []); // Dependencias vacías, ya que usa refs
+
+    const enqueueSync = useCallback((operation: () => Promise<void>) => {
         syncQueueRef.current.push(operation);
         if (!isSyncingRef.current) { processSyncQueue(); }
-    };
+    }, [processSyncQueue]);
 
+    // --- fetchDataFromLocalDb (envuelto en useCallback) ---
+    const fetchDataFromLocalDb = useCallback(async () => {
+        try {
+            const localDb = getDB();
+            const [animalsData, fathersData, weighingsData, partData, lotsData, originsData, breedingSeasonsData, sireLotsData, serviceRecordsData, eventsData, feedingPlansData, bodyWeighingsData, productsData, healthPlansData, planActivitiesData, healthEventsData] = await Promise.all([
+                localDb.animals.toArray(), localDb.fathers.toArray(), localDb.weighings.toArray(),
+                localDb.parturitions.toArray(), localDb.lots.toArray(), localDb.origins.toArray(),
+                localDb.breedingSeasons.toArray(), localDb.sireLots.toArray(), localDb.serviceRecords.toArray(),
+                localDb.events.toArray(), localDb.feedingPlans.toArray(), localDb.bodyWeighings.toArray(),
+                localDb.products.toArray(), localDb.healthPlans.toArray(), localDb.planActivities.toArray(),
+                localDb.healthEvents.toArray(),
+            ]);
+            setAnimals(animalsData); setFathers(fathersData); setWeighings(weighingsData); setParturitions(partData);
+            setLots(lotsData); setOrigins(originsData); setBreedingSeasons(breedingSeasonsData); setSireLots(sireLotsData);
+            setServiceRecords(serviceRecordsData); setEvents(eventsData); setFeedingPlans(feedingPlansData);
+            setBodyWeighings(bodyWeighingsData);
+            setProducts(productsData); setHealthPlans(healthPlansData);
+            setPlanActivities(planActivitiesData); setHealthEvents(healthEventsData);
+        } catch (error) { console.error("Error al cargar datos locales:", error); }
+        finally {
+            setIsLoading(false);
+        }
+    }, []);
 
-    // --- CORRECCIÓN DEL BUCLE INFINITO ---
-    const fetchDataFromLocalDb = useCallback(async () => {
-        try {
-            const localDb = getDB();
-            const [animalsData, fathersData, weighingsData, partData, lotsData, originsData, breedingSeasonsData, sireLotsData, serviceRecordsData, eventsData, feedingPlansData, bodyWeighingsData, productsData, healthPlansData, planActivitiesData, healthEventsData] = await Promise.all([
-                localDb.animals.toArray(), localDb.fathers.toArray(), localDb.weighings.toArray(),
-                localDb.parturitions.toArray(), localDb.lots.toArray(), localDb.origins.toArray(),
-                localDb.breedingSeasons.toArray(), localDb.sireLots.toArray(), localDb.serviceRecords.toArray(),
-                localDb.events.toArray(), localDb.feedingPlans.toArray(), localDb.bodyWeighings.toArray(),
-                localDb.products.toArray(), localDb.healthPlans.toArray(), localDb.planActivities.toArray(),
-                localDb.healthEvents.toArray(),
-            ]);
-            setAnimals(animalsData); setFathers(fathersData); setWeighings(weighingsData); setParturitions(partData);
-            setLots(lotsData); setOrigins(originsData); setBreedingSeasons(breedingSeasonsData); setSireLots(sireLotsData);
-            setServiceRecords(serviceRecordsData); setEvents(eventsData); setFeedingPlans(feedingPlansData);
-            setBodyWeighings(bodyWeighingsData);
-            setProducts(productsData); setHealthPlans(healthPlansData);
-            setPlanActivities(planActivitiesData); setHealthEvents(healthEventsData);
-        } catch (error) { console.error("Error al cargar datos locales:", error); }
-        finally {
-            // --- CORRECCIÓN 1: Simplemente setear a false ---
-            // La lógica de "isLoading" (ponerlo en true) se maneja en setupSync
-            setIsLoading(false);
-        }
-    // --- CORRECCIÓN 2: Eliminar 'isLoading' del array de dependencias ---
-    }, []);
-
-    useEffect(() => {
-        let unsubscribers: (() => void)[] = [];
+    // --- useEffect (Hook de Sincronización Principal) ---
+    useEffect(() => {
+        let unsubscribers: (() => void)[] = [];
         const handleOnline = () => { setSyncStatus('idle'); processSyncQueue(); };
         const handleOffline = () => setSyncStatus('offline');
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
-        const setupSync = async () => {
+        const setupSync = async () => {
             if (!currentUser) {
                 setIsLoading(false);
+                setIsLoadingConfig(false); // <-- CAMBIO
                 setAnimals([]); setFathers([]); setWeighings([]); setParturitions([]); setLots([]); setOrigins([]);
                 setBreedingSeasons([]); setSireLots([]); setServiceRecords([]); setEvents([]); setFeedingPlans([]);
                 setBodyWeighings([]); setProducts([]); setHealthPlans([]); setPlanActivities([]); setHealthEvents([]);
+                setAppConfig(DEFAULT_CONFIG); // <-- CAMBIO
                 return;
             }
-            setIsLoading(true); // Poner en carga
+            setIsLoading(true);
+            setIsLoadingConfig(true); // <-- CAMBIO
             try {
                 const localDb = await initDB();
-                await fetchDataFromLocalDb(); // Cargar datos locales (esto pondrá isLoading(false))
+                await fetchDataFromLocalDb(); // Carga inicial
+
+                // --- INICIO: LÓGICA DE CONFIGURACIÓN ---
+                const configRef = doc(firestoreDb, 'configuracion', currentUser.uid);
+                const unsubConfig = onSnapshot(configRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        // Combinar default con lo guardado para evitar errores si faltan campos
+                        setAppConfig(prev => ({ ...DEFAULT_CONFIG, ...prev, ...docSnap.data() }));
+                    } else {
+                        // No existe config, usamos y guardamos la de por defecto
+                        setAppConfig(DEFAULT_CONFIG);
+                        setDoc(configRef, DEFAULT_CONFIG).catch(err => console.error("Failed to set default config", err));
+                    }
+                    setIsLoadingConfig(false);
+                }, (error) => {
+                    console.error("Error fetching config:", error);
+                    setIsLoadingConfig(false);
+                });
+                unsubscribers.push(unsubConfig);
+                // --- FIN: LÓGICA DE CONFIGURACIÓN ---
                 
-                // Configurar listeners de Firestore
                 const q = (collectionName: string) => query(collection(firestoreDb, collectionName), where("userId", "==", currentUser.uid));
+                
                 const syncCollection = (collectionName: keyof GanaderoOSTables, table: Table<any, any>) => {
                     const unsubscribe = onSnapshot(q(collectionName), async (snapshot) => {
                         if (snapshot.metadata.hasPendingWrites) return;
@@ -217,7 +255,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         });
 
                         if (changes.length > 0) {
-                            if (navigator.onLine && syncStatus !== 'syncing') { setSyncStatus('syncing'); if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current); syncTimeoutRef.current = setTimeout(() => { if (syncQueueRef.current.length === 0 && !isSyncingRef.current) setSyncStatus('idle'); }, 2000); }
+                            if (navigator.onLine) { 
+                                setSyncStatus('syncing'); 
+                                if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current); 
+                                syncTimeoutRef.current = setTimeout(() => { if (syncQueueRef.current.length === 0 && !isSyncingRef.current) setSyncStatus('idle'); }, 2000); 
+                            }
                             try {
                                 await localDb.transaction('rw', table, async () => {
                                     for (const change of changes) {
@@ -226,7 +268,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                                         else if (change.type === "removed") await table.delete(change.data.id);
                                     }
                                 });
-                                await fetchDataFromLocalDb(); // Recargar datos después de la transacción
+                                await fetchDataFromLocalDb();
                             } catch (transactionError) { console.error(`Dexie transaction error during sync for ${collectionName}:`, transactionError); }
                         }
                     }, (error) => { if (error.code === 'permission-denied') console.warn(`Permission denied for ${collectionName}.`); else console.error(`Firestore snapshot error for ${collectionName}:`, error); });
@@ -251,17 +293,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 syncCollection('planActivities', localDb.planActivities);
                 syncCollection('healthEvents', localDb.healthEvents);
 
-            } catch (error) { console.error("Fallo crítico en la inicialización:", error); setIsLoading(false); }
-        };
-        setupSync();
-        return () => { unsubscribers.forEach(unsub => unsub()); window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current); };
-    // --- CORRECCIÓN 3: 'fetchDataFromLocalDb' es estable y puede estar en la dependencia ---
-    }, [currentUser, fetchDataFromLocalDb]); // <-- El array de dependencias está bien así
+            } catch (error) { 
+                console.error("Fallo crítico en la inicialización:", error); 
+                setIsLoading(false); 
+                setIsLoadingConfig(false);
+            }
+        };
+        setupSync();
+        return () => { unsubscribers.forEach(unsub => unsub()); window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current); };
+    }, [currentUser?.uid, fetchDataFromLocalDb, processSyncQueue]); // Dependencias estables
 
-    // --- FUNCIONES DE ESCRITURA (Local-First con Enqueue) ---
+    // --- FUNCIONES DE ESCRITURA (Local-First con Enqueue) ---
 
-    // internalAddEvent
-    const internalAddEvent = (eventData: Omit<Event, 'id' | 'userId' | '_synced'>) => {
+    // --- CAMBIO: Todas las funciones envueltas en useCallback ---
+
+    const internalAddEvent = useCallback((eventData: Omit<Event, 'id' | 'userId' | '_synced'>) => {
         if (!currentUser) return;
         (async () => {
             try {
@@ -269,55 +315,45 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const newEvent: Event = { id: uuidv4(), ...eventData, userId: currentUser.uid, _synced: false };
                 await localDb.events.put(newEvent);
                 enqueueSync(() => syncToFirestore("events", newEvent.id, newEvent));
-                setTimeout(fetchDataFromLocalDb, 50);
+                setTimeout(fetchDataFromLocalDb, 50); // Refrescar UI rápido
             } catch (err) { console.error("Error en registro de evento local:", err); }
         })();
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // addAnimal (CON LÓGICA DE EVENTO CORREGIDA)
-    const addAnimal = async (animalData: Omit<Animal, 'id' | '_synced' | 'userId' | 'createdAt'> & { id?: string }) => {
-        if (!currentUser) throw new Error("Usuario no autenticado");
-        const localDb = getDB();
+    const addAnimal = useCallback(async (animalData: Omit<Animal, 'id' | '_synced' | 'userId' | 'createdAt'> & { id?: string }) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
         const animalId = (animalData.id ? animalData.id : `REF-${Date.now()}`).toUpperCase();
-        const newAnimal: Animal = {
+        const newAnimal: Animal = {
             ...animalData,
             id: animalId,
             userId: currentUser.uid,
             createdAt: Date.now(),
             _synced: false
          };
-
-        await localDb.animals.put(newAnimal);
-
-        // --- LÓGICA DE EVENTO INICIAL CORREGIDA ---
+        await localDb.animals.put(newAnimal);
+        let birthDateDetail = '';
         if (newAnimal.birthDate && newAnimal.birthDate !== 'N/A') {
-             internalAddEvent({
-                animalId: newAnimal.id,
-                date: newAnimal.birthDate,
-                type: 'Nacimiento',
-                details: `Nacido con ${newAnimal.birthWeight || 'N/A'} Kg. Madre: ${newAnimal.motherId || 'N/A'}. Padre: ${newAnimal.fatherId || 'N/A'}.`,
-                lotName: newAnimal.location
-            });
-        } else {
-             internalAddEvent({
-                 animalId: newAnimal.id,
-                 date: new Date(newAnimal.createdAt!).toISOString().split('T')[0],
-                 type: 'Registro',
-                 details: `Animal ${newAnimal.isReference ? 'de Referencia ' : ''}registrado. Datos de nacimiento no especificados.`,
-                 lotName: newAnimal.location
-            });
-        }
-        // --- FIN DE LÓGICA CORREGIDA ---
-
-        fetchDataFromLocalDb();
+            try {
+                birthDateDetail = ` F.N.: ${new Date(newAnimal.birthDate + 'T00:00:00Z').toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}`;
+            } catch (e) { birthDateDetail = ` F.N.: ${newAnimal.birthDate}.`; }
+        } else { birthDateDetail = ' F.N. desconocida.'; }
+        const registrationType = newAnimal.isReference ? 'Animal de Referencia' : 'Animal (Activo)';
+        internalAddEvent({
+            animalId: newAnimal.id,
+            date: new Date(newAnimal.createdAt!).toISOString().split('T')[0],
+            type: 'Registro',
+            details: `${registrationType} registrado en el sistema.${birthDateDetail}`,
+            lotName: newAnimal.location
+        });
+        fetchDataFromLocalDb();
         enqueueSync(() => syncToFirestore("animals", newAnimal.id, newAnimal));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
 
-    // updateAnimal
-    const updateAnimal = async (animalId: string, dataToUpdate: Partial<Animal>) => {
-        if (!currentUser) throw new Error("Usuario no autenticado");
-        const localDb = getDB();
-        const upperId = animalId.toUpperCase();
+    const updateAnimal = useCallback(async (animalId: string, dataToUpdate: Partial<Animal>) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        const upperId = animalId.toUpperCase();
         const today = new Date().toISOString().split('T')[0];
         const currentAnimal = await localDb.animals.get(upperId);
         if (!currentAnimal) throw new Error("Animal no encontrado para actualizar");
@@ -332,29 +368,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const dataWithSyncFlag = { ...dataToUpdate, _synced: false };
         await localDb.animals.update(upperId, dataWithSyncFlag);
 
-        // Logging de eventos
         if (dataToUpdate.location !== undefined && dataToUpdate.location !== currentAnimal.location) internalAddEvent({ animalId: upperId, date: today, type: 'Movimiento', details: `Movido de '${currentAnimal.location || 'Sin Asignar'}' a '${dataToUpdate.location || 'Sin Asignar'}'`, lotName: dataToUpdate.location || '' });
         if (dataToUpdate.reproductiveStatus !== undefined && dataToUpdate.reproductiveStatus !== currentAnimal.reproductiveStatus) internalAddEvent({ animalId: upperId, date: today, type: 'Cambio de Estado', details: `Estado reproductivo: ${dataToUpdate.reproductiveStatus}` });
         if (dataToUpdate.status !== undefined && dataToUpdate.status !== currentAnimal.status) internalAddEvent({ animalId: upperId, date: dataToUpdate.endDate || today, type: 'Cambio de Estado', details: `Animal dado de baja: ${dataToUpdate.status} ${dataToUpdate.cullReason ? `(${dataToUpdate.cullReason})` : ''}` });
         if (dataToUpdate.weaningDate && !currentAnimal.weaningDate) internalAddEvent({ animalId: upperId, date: dataToUpdate.weaningDate, type: 'Cambio de Estado', details: `Destetado con ${dataToUpdate.weaningWeight || 'N/A'} Kg` });
 
-        fetchDataFromLocalDb();
+        fetchDataFromLocalDb();
         const updatedAnimal = await localDb.animals.get(upperId);
         if (updatedAnimal) enqueueSync(() => syncToFirestore("animals", upperId, updatedAnimal));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
 
-    // deleteAnimalPermanently
-    const deleteAnimalPermanently = async (animalId: string) => {
+    const deleteAnimalPermanently = useCallback(async (animalId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const upperId = animalId.toUpperCase();
         await localDb.animals.delete(upperId);
         fetchDataFromLocalDb();
         enqueueSync(() => deleteDoc(doc(firestoreDb, "animals", upperId)).catch(error => console.error("Firestore delete sync failed:", error)));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // startDryingProcess
-    const startDryingProcess = async (parturitionId: string) => {
+    const startDryingProcess = useCallback(async (parturitionId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const parturition = await localDb.parturitions.get(parturitionId);
@@ -365,10 +398,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchDataFromLocalDb();
         const updatedParturition = await localDb.parturitions.get(parturitionId);
         if (updatedParturition) enqueueSync(() => syncToFirestore("parturitions", parturitionId, updatedParturition));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
 
-    // setLactationAsDry
-    const setLactationAsDry = async (parturitionId: string) => {
+    const setLactationAsDry = useCallback(async (parturitionId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const parturition = await localDb.parturitions.get(parturitionId);
@@ -379,10 +411,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchDataFromLocalDb();
         const updatedParturition = await localDb.parturitions.get(parturitionId);
         if (updatedParturition) enqueueSync(() => syncToFirestore("parturitions", parturitionId, updatedParturition));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
 
-    // addLot
-    const addLot = async (lotData: { name: string, parentLotId?: string }) => {
+    const addLot = useCallback(async (lotData: { name: string, parentLotId?: string }) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const existingLot = await localDb.lots.where('name').equalsIgnoreCase(lotData.name).first();
@@ -391,10 +422,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await localDb.lots.put(newLot);
         fetchDataFromLocalDb();
         enqueueSync(() => syncToFirestore("lots", newLot.id, newLot));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // deleteLot
-    const deleteLot = async (lotId: string) => {
+    const deleteLot = useCallback(async (lotId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const lot = await localDb.lots.get(lotId);
@@ -407,10 +437,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await localDb.lots.delete(lotId);
         fetchDataFromLocalDb();
         enqueueSync(() => deleteDoc(doc(firestoreDb, "lots", lotId)).catch(error => console.error("Firestore delete sync failed:", error)));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // addOrigin
-    const addOrigin = async (originName: string) => {
+    const addOrigin = useCallback(async (originName: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const existingOrigin = await localDb.origins.where('name').equalsIgnoreCase(originName).first();
@@ -419,19 +448,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await localDb.origins.put(newOrigin);
         fetchDataFromLocalDb();
         enqueueSync(() => syncToFirestore("origins", newOrigin.id, newOrigin));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // deleteOrigin
-    const deleteOrigin = async (originId: string) => {
+    const deleteOrigin = useCallback(async (originId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         await localDb.origins.delete(originId);
         fetchDataFromLocalDb();
         enqueueSync(() => deleteDoc(doc(firestoreDb, "origins", originId)).catch(error => console.error("Firestore delete sync failed:", error)));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // addWeighing
-    const addWeighing = async (weighing: Omit<Weighing, 'id' | 'userId' | '_synced'>) => {
+    const addWeighing = useCallback(async (weighing: Omit<Weighing, 'id' | 'userId' | '_synced'>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const newWeighing: Weighing = { id: uuidv4(), ...weighing, userId: currentUser.uid, _synced: false };
@@ -439,10 +466,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         internalAddEvent({ animalId: weighing.goatId, date: weighing.date, type: 'Pesaje Lechero', details: `Registro de ${weighing.kg} Kg` });
         fetchDataFromLocalDb();
         enqueueSync(() => syncToFirestore("weighings", newWeighing.id, newWeighing));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
 
-    // addBodyWeighing
-    const addBodyWeighing = async (weighing: Omit<BodyWeighing, 'id' | 'userId' | '_synced'>) => {
+    const addBodyWeighing = useCallback(async (weighing: Omit<BodyWeighing, 'id' | 'userId' | '_synced'>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const newWeighing: BodyWeighing = { id: uuidv4(), ...weighing, userId: currentUser.uid, _synced: false };
@@ -450,10 +476,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         internalAddEvent({ animalId: weighing.animalId, date: weighing.date, type: 'Pesaje Corporal', details: `Registro de ${weighing.kg} Kg` });
         fetchDataFromLocalDb();
         enqueueSync(() => syncToFirestore("bodyWeighings", newWeighing.id, newWeighing));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
 
-    // deleteWeighingSession
-    const deleteWeighingSession = async (date: string) => {
+    const deleteWeighingSession = useCallback(async (date: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const weighingsToDelete = await localDb.weighings.where({ date }).toArray();
@@ -466,10 +491,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await fetchDataFromLocalDb();
         const syncDeletion = async () => { const batch = writeBatch(firestoreDb); idsToDelete.forEach(id => batch.delete(doc(firestoreDb, "weighings", id))); eventIdsToDelete.forEach(id => batch.delete(doc(firestoreDb, "events", id))); await batch.commit(); };
         enqueueSync(syncDeletion);
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // addFather
-    const addFather = async (father: { id: string, name: string }) => {
+    const addFather = useCallback(async (father: { id: string, name: string }) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const upperId = father.id.toUpperCase();
@@ -479,10 +503,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await localDb.fathers.put(newFather);
         fetchDataFromLocalDb();
         enqueueSync(() => syncToFirestore("fathers", newFather.id, newFather));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // addParturition
-    const addParturition = async (data: any) => {
+    const addParturition = useCallback(async (data: any) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const upperCaseMotherId = data.motherId.toUpperCase();
@@ -504,10 +527,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await fetchDataFromLocalDb();
         const sync = async () => { const batch = writeBatch(firestoreDb); batch.set(doc(firestoreDb, "parturitions", newParturitionId), parturitionData); newKidsData.forEach((kid: Animal) => batch.set(doc(firestoreDb, "animals", kid.id), kid)); await batch.commit(); };
         enqueueSync(sync);
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
 
-    // addServiceRecord
-    const addServiceRecord = async (recordData: Omit<ServiceRecord, 'id' | 'userId' | '_synced'>) => {
+    const addServiceRecord = useCallback(async (recordData: Omit<ServiceRecord, 'id' | 'userId' | '_synced'>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const newRecord: ServiceRecord = { id: uuidv4(), ...recordData, userId: currentUser.uid, _synced: false };
@@ -517,10 +539,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         internalAddEvent({ animalId: newRecord.femaleId, date: newRecord.serviceDate, type: 'Servicio', details: `Servicio registrado con Semental: ${sire?.name || sire?.id || lot?.sireId || 'Desconocido'}`, });
         fetchDataFromLocalDb();
         enqueueSync(() => syncToFirestore("serviceRecords", newRecord.id, newRecord));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
 
-    // addBatchEvent
-    const addBatchEvent = async (data: { lotName: string; date: string; type: EventType; details: string; }) => {
+    const addBatchEvent = useCallback(async (data: { lotName: string; date: string; type: EventType; details: string; }) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const animalsInLot = await localDb.animals.where({ location: data.lotName }).toArray();
@@ -530,20 +551,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchDataFromLocalDb();
         const sync = async () => { const batch = writeBatch(firestoreDb); newEvents.forEach(event => batch.set(doc(firestoreDb, "events", event.id), event)); await batch.commit(); };
         enqueueSync(sync);
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // addFeedingPlan
-    const addFeedingPlan = async (planData: Omit<FeedingPlan, 'id' | 'userId' | '_synced'>) => {
+    const addFeedingPlan = useCallback(async (planData: Omit<FeedingPlan, 'id' | 'userId' | '_synced'>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const newPlan: FeedingPlan = { id: uuidv4(), ...planData, userId: currentUser.uid, _synced: false };
         await localDb.feedingPlans.put(newPlan);
         fetchDataFromLocalDb();
         enqueueSync(() => syncToFirestore("feedingPlans", newPlan.id, newPlan));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // addBreedingSeason
-    const addBreedingSeason = async (seasonData: Omit<BreedingSeason, 'id' | 'userId' | '_synced'>): Promise<string> => {
+    const addBreedingSeason = useCallback(async (seasonData: Omit<BreedingSeason, 'id' | 'userId' | '_synced'>): Promise<string> => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const newSeason: BreedingSeason = { id: uuidv4(), ...seasonData, userId: currentUser.uid, _synced: false };
@@ -551,10 +570,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchDataFromLocalDb();
         enqueueSync(() => syncToFirestore("breedingSeasons", newSeason.id, newSeason));
         return newSeason.id;
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // updateBreedingSeason
-    const updateBreedingSeason = async (seasonId: string, dataToUpdate: Partial<BreedingSeason>) => {
+    const updateBreedingSeason = useCallback(async (seasonId: string, dataToUpdate: Partial<BreedingSeason>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const dataWithSyncFlag = { ...dataToUpdate, _synced: false };
@@ -562,19 +580,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchDataFromLocalDb();
         const updatedSeason = await localDb.breedingSeasons.get(seasonId);
         if (updatedSeason) enqueueSync(() => syncToFirestore("breedingSeasons", seasonId, updatedSeason));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // deleteBreedingSeason
-    const deleteBreedingSeason = async (seasonId: string) => {
+    const deleteBreedingSeason = useCallback(async (seasonId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         await localDb.breedingSeasons.delete(seasonId);
         fetchDataFromLocalDb();
         enqueueSync(() => deleteDoc(doc(firestoreDb, "breedingSeasons", seasonId)).catch(error => console.error("Firestore delete sync failed:", error)));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // addSireLot
-    const addSireLot = async (lotData: Omit<SireLot, 'id' | 'userId' | '_synced'>): Promise<string> => {
+    const addSireLot = useCallback(async (lotData: Omit<SireLot, 'id' | 'userId' | '_synced'>): Promise<string> => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const newLot: SireLot = { id: uuidv4(), ...lotData, userId: currentUser.uid, _synced: false };
@@ -582,10 +598,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchDataFromLocalDb();
         enqueueSync(() => syncToFirestore("sireLots", newLot.id, newLot));
         return newLot.id;
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // updateSireLot
-    const updateSireLot = async (lotId: string, dataToUpdate: Partial<SireLot>) => {
+    const updateSireLot = useCallback(async (lotId: string, dataToUpdate: Partial<SireLot>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const dataWithSyncFlag = { ...dataToUpdate, _synced: false };
@@ -593,29 +608,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchDataFromLocalDb();
          const updatedLot = await localDb.sireLots.get(lotId);
         if (updatedLot) enqueueSync(() => syncToFirestore("sireLots", lotId, updatedLot));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // deleteSireLot
-    const deleteSireLot = async (lotId: string) => {
+    const deleteSireLot = useCallback(async (lotId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         await localDb.sireLots.delete(lotId);
         fetchDataFromLocalDb();
         enqueueSync(() => deleteDoc(doc(firestoreDb, "sireLots", lotId)).catch(error => console.error("Firestore delete sync failed:", error)));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // addProduct
-    const addProduct = async (productData: Omit<Product, 'id' | 'userId' | '_synced'>) => {
+    const addProduct = useCallback(async (productData: Omit<Product, 'id' | 'userId' | '_synced'>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const newProduct: Product = { id: uuidv4(), ...productData, userId: currentUser.uid, _synced: false };
         await localDb.products.put(newProduct);
         fetchDataFromLocalDb();
         enqueueSync(() => syncToFirestore("products", newProduct.id, newProduct));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // updateProduct
-    const updateProduct = async (productId: string, dataToUpdate: Partial<Product>) => {
+    const updateProduct = useCallback(async (productId: string, dataToUpdate: Partial<Product>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const dataWithSyncFlag = { ...dataToUpdate, _synced: false };
@@ -623,118 +635,138 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchDataFromLocalDb();
         const updatedProduct = await localDb.products.get(productId);
         if(updatedProduct) enqueueSync(() => syncToFirestore("products", productId, updatedProduct));
-    };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // deleteProduct
-    const deleteProduct = async (productId: string) => {
-        if (!currentUser) throw new Error("Usuario no autenticado");
-        const localDb = getDB();
-        await localDb.products.delete(productId);
-        fetchDataFromLocalDb();
-        enqueueSync(() => deleteDoc(doc(firestoreDb, "products", productId)).catch(error => console.error("Firestore delete sync failed:", error)));
-    };
+    const deleteProduct = useCallback(async (productId: string) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        await localDb.products.delete(productId);
+        fetchDataFromLocalDb();
+        enqueueSync(() => deleteDoc(doc(firestoreDb, "products", productId)).catch(error => console.error("Firestore delete sync failed:", error)));
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // addHealthPlanWithActivities
-    const addHealthPlanWithActivities = async (planData: Omit<HealthPlan, 'id' | 'userId' | '_synced'>, activities: Omit<PlanActivity, 'id' | 'healthPlanId' | 'userId' | '_synced'>[]) => {
-        if (!currentUser) throw new Error("Usuario no autenticado");
-        const localDb = getDB();
-        const newPlan: HealthPlan = { id: uuidv4(), ...planData, userId: currentUser.uid, _synced: false };
-        const newActivities: PlanActivity[] = activities.map(act => ({ id: uuidv4(), ...act, healthPlanId: newPlan.id, userId: currentUser.uid, _synced: false }));
-        await localDb.transaction('rw', localDb.healthPlans, localDb.planActivities, async () => { await localDb.healthPlans.put(newPlan); await localDb.planActivities.bulkPut(newActivities); });
-        fetchDataFromLocalDb();
-        const sync = async () => { const batch = writeBatch(firestoreDb); batch.set(doc(firestoreDb, "healthPlans", newPlan.id), newPlan); newActivities.forEach(act => batch.set(doc(firestoreDb, "planActivities", act.id), act)); await batch.commit(); };
-        enqueueSync(sync);
-    };
+    const addHealthPlanWithActivities = useCallback(async (planData: Omit<HealthPlan, 'id' | 'userId' | '_synced'>, activities: Omit<PlanActivity, 'id' | 'healthPlanId' | 'userId' | '_synced'>[]) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        const newPlan: HealthPlan = { id: uuidv4(), ...planData, userId: currentUser.uid, _synced: false };
+        const newActivities: PlanActivity[] = activities.map(act => ({ id: uuidv4(), ...act, healthPlanId: newPlan.id, userId: currentUser.uid, _synced: false }));
+        await localDb.transaction('rw', localDb.healthPlans, localDb.planActivities, async () => { await localDb.healthPlans.put(newPlan); await localDb.planActivities.bulkPut(newActivities); });
+        fetchDataFromLocalDb();
+        const sync = async () => { const batch = writeBatch(firestoreDb); batch.set(doc(firestoreDb, "healthPlans", newPlan.id), newPlan); newActivities.forEach(act => batch.set(doc(firestoreDb, "planActivities", act.id), act)); await batch.commit(); };
+        enqueueSync(sync);
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // updateHealthPlan
-    const updateHealthPlan = async (planId: string, dataToUpdate: Partial<HealthPlan>) => {
-        if (!currentUser) throw new Error("Usuario no autenticado");
-        const localDb = getDB();
+    const updateHealthPlan = useCallback(async (planId: string, dataToUpdate: Partial<HealthPlan>) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
         const dataWithSyncFlag = { ...dataToUpdate, _synced: false };
-        await localDb.healthPlans.update(planId, dataWithSyncFlag);
-        fetchDataFromLocalDb();
+        await localDb.healthPlans.update(planId, dataWithSyncFlag);
+        fetchDataFromLocalDb();
         const updatedPlan = await localDb.healthPlans.get(planId);
-        if(updatedPlan) enqueueSync(() => syncToFirestore("healthPlans", planId, updatedPlan));
-    };
+        if(updatedPlan) enqueueSync(() => syncToFirestore("healthPlans", planId, updatedPlan));
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // deleteHealthPlan
-    const deleteHealthPlan = async (planId: string) => {
-        if (!currentUser) throw new Error("Usuario no autenticado");
-        const localDb = getDB();
-        const activitiesToDelete = await localDb.planActivities.where({ healthPlanId: planId }).toArray();
-        const activityIdsToDelete = activitiesToDelete.map(act => act.id);
-        await localDb.transaction('rw', localDb.healthPlans, localDb.planActivities, async () => { await localDb.planActivities.bulkDelete(activityIdsToDelete); await localDb.healthPlans.delete(planId); });
-        fetchDataFromLocalDb();
-        const sync = async () => { const batch = writeBatch(firestoreDb); activityIdsToDelete.forEach(id => batch.delete(doc(firestoreDb, "planActivities", id))); batch.delete(doc(firestoreDb, "healthPlans", planId)); await batch.commit(); };
-        enqueueSync(sync);
-    };
+    const deleteHealthPlan = useCallback(async (planId: string) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        const activitiesToDelete = await localDb.planActivities.where({ healthPlanId: planId }).toArray();
+        const activityIdsToDelete = activitiesToDelete.map(act => act.id);
+        await localDb.transaction('rw', localDb.healthPlans, localDb.planActivities, async () => { await localDb.planActivities.bulkDelete(activityIdsToDelete); await localDb.healthPlans.delete(planId); });
+        fetchDataFromLocalDb();
+        const sync = async () => { const batch = writeBatch(firestoreDb); activityIdsToDelete.forEach(id => batch.delete(doc(firestoreDb, "planActivities", id))); batch.delete(doc(firestoreDb, "healthPlans", planId)); await batch.commit(); };
+        enqueueSync(sync);
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // addPlanActivity
-    const addPlanActivity = async (activityData: Omit<PlanActivity, 'id' | 'userId' | '_synced'>) => {
-        if (!currentUser) throw new Error("Usuario no autenticado");
-        const localDb = getDB();
-        const newActivity: PlanActivity = { id: uuidv4(), ...activityData, userId: currentUser.uid, _synced: false };
-        await localDb.planActivities.put(newActivity);
-        fetchDataFromLocalDb();
-        enqueueSync(() => syncToFirestore("planActivities", newActivity.id, newActivity));
-    };
+    const addPlanActivity = useCallback(async (activityData: Omit<PlanActivity, 'id' | 'userId' | '_synced'>) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        const newActivity: PlanActivity = { id: uuidv4(), ...activityData, userId: currentUser.uid, _synced: false };
+        await localDb.planActivities.put(newActivity);
+        fetchDataFromLocalDb();
+        enqueueSync(() => syncToFirestore("planActivities", newActivity.id, newActivity));
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // updatePlanActivity
-    const updatePlanActivity = async (activityId: string, dataToUpdate: Partial<PlanActivity>) => {
-        if (!currentUser) throw new Error("Usuario no autenticado");
-        const localDb = getDB();
+    const updatePlanActivity = useCallback(async (activityId: string, dataToUpdate: Partial<PlanActivity>) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
         const dataWithSyncFlag = { ...dataToUpdate, _synced: false };
-
-        await localDb.planActivities.update(activityId, dataWithSyncFlag);
-        fetchDataFromLocalDb();
+        await localDb.planActivities.update(activityId, dataWithSyncFlag);
+        fetchDataFromLocalDb();
         const updatedActivity = await localDb.planActivities.get(activityId);
-        if(updatedActivity) enqueueSync(() => syncToFirestore("planActivities", activityId, updatedActivity));
-    };
+        if(updatedActivity) enqueueSync(() => syncToFirestore("planActivities", activityId, updatedActivity));
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // deletePlanActivity
-    const deletePlanActivity = async (activityId: string) => {
-        if (!currentUser) throw new Error("Usuario no autenticado");
+    const deletePlanActivity = useCallback(async (activityId: string) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        await localDb.planActivities.delete(activityId);
+        fetchDataFromLocalDb();
+        enqueueSync(() => deleteDoc(doc(firestoreDb, "planActivities", activityId)).catch(error => console.error("Firestore delete sync failed:", error)));
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-        const localDb = getDB();
-        await localDb.planActivities.delete(activityId);
-        fetchDataFromLocalDb();
-        enqueueSync(() => deleteDoc(doc(firestoreDb, "planActivities", activityId)).catch(error => console.error("Firestore delete sync failed:", error)));
-    };
-
-    // addHealthEvent
-    const addHealthEvent = async (eventData: Omit<HealthEvent, 'id' | 'userId' | '_synced'>) => {
-        if (!currentUser) throw new Error("Usuario no autenticado");
-        const localDb = getDB();
-        const newEvent: HealthEvent = { id: uuidv4(), ...eventData, userId: currentUser.uid, _synced: false };
-        await localDb.healthEvents.put(newEvent);
-        // Crear evento general asociado
+    const addHealthEvent = useCallback(async (eventData: Omit<HealthEvent, 'id' | 'userId' | '_synced'>) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        const newEvent: HealthEvent = { id: uuidv4(), ...eventData, userId: currentUser.uid, _synced: false };
+        await localDb.healthEvents.put(newEvent);
         internalAddEvent({ animalId: newEvent.animalId, date: newEvent.date, type: 'Tratamiento', details: `${newEvent.type}${newEvent.productUsed ? ` con ${products.find(p => p.id === newEvent.productUsed)?.name || 'producto'}` : ''}`, notes: newEvent.notes, lotName: newEvent.lotName });
-JSON.stringify
-        fetchDataFromLocalDb();
-        enqueueSync(() => syncToFirestore("healthEvents", newEvent.id, newEvent));
-    };
+        fetchDataFromLocalDb();
+        enqueueSync(() => syncToFirestore("healthEvents", newEvent.id, newEvent));
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent, products]);
 
-  // --- Context Value Provider ---
+    // --- INICIO: NUEVA FUNCIÓN ---
+    const updateAppConfig = useCallback(async (config: AppConfig) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        setSyncStatus('syncing');
+        try {
+            const configRef = doc(firestoreDb, 'configuracion', currentUser.uid);
+            // Usamos setDoc con merge:true para asegurar que se actualice o cree
+            await setDoc(configRef, config, { merge: true });
+            // onSnapshot se encargará de actualizar el estado setAppConfig
+        } catch (error) {
+            console.error("Error al guardar configuración:", error);
+            setSyncStatus('idle'); // Revertir estado si falla
+            throw error;
+        }
+        // El onSnapshot pondrá el estado en 'idle' cuando detecte el cambio local
+    }, [currentUser]);
+    // --- FIN: NUEVA FUNCIÓN ---
+
+    // --- CAMBIO: useMemo para el valor del contexto ---
+    const contextValue = useMemo(() => ({
+        animals, fathers, weighings, parturitions, lots, origins, breedingSeasons, sireLots, serviceRecords, events, feedingPlans, bodyWeighings,
+        products, healthPlans, planActivities, healthEvents,
+        appConfig,
+        isLoadingConfig,
+        isLoading, syncStatus,
+        fetchData: fetchDataFromLocalDb,
+        addAnimal, updateAnimal, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot, deleteLot, addOrigin, deleteOrigin,
+        addBreedingSeason, updateBreedingSeason, deleteBreedingSeason, addSireLot, updateSireLot, deleteSireLot, addServiceRecord,
+        addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighingSession, addParturition, addFather,
+        addProduct, updateProduct, deleteProduct, addHealthPlanWithActivities, updateHealthPlan, deleteHealthPlan,
+        addPlanActivity, updatePlanActivity, deletePlanActivity, addHealthEvent,
+        updateAppConfig
+    }), [
+        animals, fathers, weighings, parturitions, lots, origins, breedingSeasons, sireLots, serviceRecords, events, feedingPlans, bodyWeighings,
+        products, healthPlans, planActivities, healthEvents,
+        appConfig, isLoadingConfig, isLoading, syncStatus,
+        fetchDataFromLocalDb,
+        addAnimal, updateAnimal, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot, deleteLot, addOrigin, deleteOrigin,
+        addBreedingSeason, updateBreedingSeason, deleteBreedingSeason, addSireLot, updateSireLot, deleteSireLot, addServiceRecord,
+        addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighingSession, addParturition, addFather,
+        addProduct, updateProduct, deleteProduct, addHealthPlanWithActivities, updateHealthPlan, deleteHealthPlan,
+        addPlanActivity, updatePlanActivity, deletePlanActivity, addHealthEvent,
+        updateAppConfig
+    ]);
+
   return (
-    <DataContext.Provider value={{
-        // Datos
-        animals, fathers, weighings, parturitions, lots, origins, breedingSeasons, sireLots, serviceRecords, events, feedingPlans, bodyWeighings,
-        products, healthPlans, planActivities, healthEvents,
-        // Estado
-        isLoading, syncStatus,
-        // Funciones CRUD
-        addAnimal, updateAnimal, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot, deleteLot, addOrigin, deleteOrigin,
-        addBreedingSeason, updateBreedingSeason, deleteBreedingSeason, addSireLot, updateSireLot, deleteSireLot, addServiceRecord,
-        addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighingSession, addParturition, fetchData: fetchDataFromLocalDb, addFather,
-        addProduct, updateProduct, deleteProduct, addHealthPlanWithActivities, updateHealthPlan, deleteHealthPlan,
-        addPlanActivity, updatePlanActivity, deletePlanActivity, addHealthEvent
-    }}>
-      {children}
-    </DataContext.Provider>
-  );
+    <DataContext.Provider value={contextValue}>
+        {children}
+    </DataContext.Provider>
+  );
 };
 
-// --- calculateLifecycleStage Helper ---
+// --- calculateLifecycleStage Helper (sin cambios) ---
 const calculateLifecycleStage = (birthDate: string, sex: 'Hembra' | 'Macho'): string => {
     if (!birthDate || birthDate === 'N/A' || !sex) return 'Indefinido';
     const today = new Date();

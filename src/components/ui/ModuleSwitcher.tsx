@@ -1,7 +1,6 @@
-// src/components/ui/ModuleSwitcher.tsx
-
 import React, { useState } from 'react';
-import { Layers, Droplets, Scale, HeartPulse, X, DollarSign } from 'lucide-react';
+// --- CAMBIO: Añadido TrendingUp ---
+import { Layers, Droplets, Scale, HeartPulse, X, DollarSign, TrendingUp } from 'lucide-react';
 import { GiGoat } from 'react-icons/gi';
 import { AppModule } from '../../types/navigation';
 
@@ -10,7 +9,9 @@ const modules = [
     { id: 'lactokeeper', name: 'LactoKeeper', icon: Droplets, color: 'bg-brand-blue' },
     { id: 'kilos', name: 'Kilos', icon: Scale, color: 'bg-brand-green' },
     { id: 'salud', name: 'StockCare', icon: HeartPulse, color: 'bg-teal-500' },
-    { id: 'cents', name: 'Cents', icon: DollarSign, color: 'bg-yellow-500' }
+    { id: 'cents', name: 'Cents', icon: DollarSign, color: 'bg-yellow-500' },
+    // --- CAMBIO: Nuevo módulo añadido ---
+    { id: 'evolucion', name: 'Evolución', icon: TrendingUp, color: 'bg-indigo-500' }
 ];
 
 interface ModuleSwitcherProps {

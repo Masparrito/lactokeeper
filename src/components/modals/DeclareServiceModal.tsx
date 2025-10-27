@@ -4,20 +4,20 @@ import React from 'react';
 import { DayPicker } from 'react-day-picker'; // Component for calendar
 import 'react-day-picker/dist/style.css'; // Default styles for DayPicker
 import { es } from 'date-fns/locale'; // Spanish locale for dates
-import { Modal } from '../ui/Modal'; // Assuming Modal component exists
-import { Animal } from '../../db/local'; // Import Animal type
-import { formatAnimalDisplay } from '../../utils/formatting'; // <--- IMPORTACIÓN AÑADIDA
+import { Modal } from '../ui/Modal';
+import { Animal } from '../../db/local';
+// --- CAMBIO: formatAnimalDisplay ya no es necesario ---
+// import { formatAnimalDisplay } from '../../utils/formatting';
 
 // Props definition for the component
 interface DeclareServiceModalProps {
     isOpen: boolean; // Controls modal visibility
     onClose: () => void; // Function to close the modal
     onSave: (date: Date) => void; // Function to save the selected date
-    // --- CAMBIO: Se recibe el objeto Animal completo ---
     animal: Animal; // The animal being serviced
 }
 
-// Custom CSS for DayPicker styling to match the app's dark theme
+// Custom CSS for DayPicker styling
 const calendarCss = `
   .rdp {
     --rdp-cell-size: 40px; /* Size of day cells */
@@ -52,51 +52,52 @@ export const DeclareServiceModal: React.FC<DeclareServiceModalProps> = ({
     isOpen,
     onClose,
     onSave,
-    // --- CAMBIO: Se recibe 'animal' ---
     animal
 }) => {
     // Return null if the modal should not be open
     if (!isOpen) return null;
+
+    // --- CAMBIO: Preparar nombre formateado ---
+    const formattedName = animal.name ? String(animal.name).toUpperCase().trim() : '';
 
     // Handler for selecting a date in the DayPicker
     const handleSelect = (date: Date | undefined) => {
         if (date) {
             onSave(date); // Call the onSave prop with the selected date
         }
-        // Consider whether to close automatically or wait for confirmation
-        // onClose(); // Currently closes immediately on selection
     };
 
     // --- RENDERIZADO DEL MODAL ---
     return (
-        // Use the generic Modal component as a base
-        // --- USO DE formatAnimalDisplay en título ---
-        // --- CAMBIO: Usar animal en lugar de animalId ---
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={`Registrar Servicio para ${formatAnimalDisplay(animal)}`}
+            // --- CAMBIO: Título genérico ---
+            title="Registrar Servicio"
         >
-            {/* Inject custom styles for the calendar */}
             <style>{calendarCss}</style>
+            
+            {/* --- INICIO: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
+            <div className="text-center mb-4">
+                <p className="font-mono font-semibold text-xl text-white truncate">{animal.id.toUpperCase()}</p>
+                {formattedName && (
+                    <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+                )}
+            </div>
+            {/* --- FIN: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
+
             <div className="flex justify-center pb-4">
                 <DayPicker
-                    mode="single" // Allow selecting only one date
-                    onSelect={handleSelect} // Call handler on date selection
-                    defaultMonth={new Date()} // Start calendar view at current month
-                    locale={es} // Use Spanish locale
-                    disabled={{ after: new Date() }} // Disable selection of future dates
-                    // Optional: Add dropdowns for month/year navigation
+                    mode="single"
+                    onSelect={handleSelect}
+                    defaultMonth={new Date()}
+                    locale={es}
+                    disabled={{ after: new Date() }}
                     captionLayout="dropdown-buttons"
-                    fromYear={new Date().getFullYear() - 1} // Example: Allow selecting from last year
-                    toYear={new Date().getFullYear()}     // Up to current year
+                    fromYear={new Date().getFullYear() - 1}
+                    toYear={new Date().getFullYear()}
                 />
             </div>
-             {/* Optional: Add explicit Cancel/Confirm buttons if immediate close on select is not desired */}
-            {/* <div className="flex justify-end gap-3 pt-4 border-t border-brand-border">
-                <button type="button" onClick={onClose} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg text-white">Cancelar</button>
-                 Could add a button here to confirm the selected date if needed
-            </div> */}
         </Modal>
     );
 };

@@ -5,7 +5,7 @@ import { useData } from '../../context/DataContext';
 import { Animal } from '../../db/local';
 import { AlertTriangle, CheckCircle, Save } from 'lucide-react';
 import { Modal } from '../ui/Modal';
-import { formatAnimalDisplay } from '../../utils/formatting'; // <--- IMPORTACIÓN AÑADIDA
+// formatAnimalDisplay ya no se usa aquí
 
 interface AddBodyWeighingModalProps {
   animal: Animal; // Expect the full Animal object
@@ -25,6 +25,9 @@ export const AddBodyWeighingModal: React.FC<AddBodyWeighingModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // --- CAMBIO: Preparar nombre formateado ---
+  const formattedName = animal.name ? String(animal.name).toUpperCase().trim() : '';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
@@ -37,16 +40,16 @@ export const AddBodyWeighingModal: React.FC<AddBodyWeighingModalProps> = ({
       return;
     }
 
-    if (weightValue > 50) { // Realistic limit for growing goats
-      setMessage({ type: 'error', text: 'El peso corporal excede los 50 Kg. Por favor, verifique el dato.' });
+    if (weightValue > 150) { // Límite realista para cabras (ajustado)
+      setMessage({ type: 'error', text: 'El peso corporal excede los 150 Kg. Por favor, verifique el dato.' });
       setIsLoading(false);
       return;
     }
 
     try {
       await addBodyWeighing({ animalId: animal.id, date, kg: weightValue });
-      // --- USO DE formatAnimalDisplay en mensaje ---
-      setMessage({ type: 'success', text: `Pesaje de ${formatAnimalDisplay(animal)} guardado con éxito.` });
+      // --- CAMBIO: Mensaje de éxito actualizado ---
+      setMessage({ type: 'success', text: `Pesaje de ${animal.id.toUpperCase()} guardado.` });
       setTimeout(onSaveSuccess, 1500);
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'No se pudo guardar el pesaje.' });
@@ -58,10 +61,19 @@ export const AddBodyWeighingModal: React.FC<AddBodyWeighingModalProps> = ({
     <Modal
       isOpen={true} // Controlled externally
       onClose={onCancel}
-      // --- USO DE formatAnimalDisplay en título ---
-      title={`Pesaje Corporal: ${formatAnimalDisplay(animal)}`}
+      // --- CAMBIO: Título actualizado al estilo estándar ---
+      title="Pesaje Corporal" // Título genérico
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        
+        {/* --- CAMBIO: Mostrar ID y Nombre aquí --- */}
+        <div className="text-center">
+            <p className="font-mono font-semibold text-xl text-white truncate">{animal.id.toUpperCase()}</p>
+            {formattedName && (
+                <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+            )}
+        </div>
+        
         {/* Date and Weight Inputs */}
         <div className="grid grid-cols-2 gap-4">
           <div>

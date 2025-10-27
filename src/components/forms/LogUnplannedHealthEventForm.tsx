@@ -1,9 +1,17 @@
+// src/components/forms/LogUnplannedHealthEventForm.tsx
+
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../context/DataContext';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react'; // Import Loader2
+import { Animal } from '../../db/local'; // Import Animal
 
-// Este es un selector básico. Puedes reemplazarlo por uno más avanzado si lo tienes.
-const BasicAnimalSelector = ({ animals, selectedAnimalIds, onChange }: { animals: any[], selectedAnimalIds: string[], onChange: (ids: string[]) => void }) => {
+// --- BasicAnimalSelector ACTUALIZADO ---
+// Muestra el ID (font-mono) y el Nombre en las opciones
+const BasicAnimalSelector = ({ animals, selectedAnimalIds, onChange }: { 
+    animals: Animal[], // Espera el objeto Animal completo
+    selectedAnimalIds: string[], 
+    onChange: (ids: string[]) => void 
+}) => {
     const handleSelectionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
         onChange(selectedOptions);
@@ -14,14 +22,22 @@ const BasicAnimalSelector = ({ animals, selectedAnimalIds, onChange }: { animals
             multiple
             value={selectedAnimalIds}
             onChange={handleSelectionChange}
-            className="w-full h-32 bg-zinc-800 p-3 rounded-xl"
+            className="w-full h-40 bg-zinc-800 p-3 rounded-xl font-mono text-white" // h-40, font-mono
         >
-            {animals.map(animal => (
-                <option key={animal.id} value={animal.id}>{animal.id}</option>
-            ))}
+            {animals.map(animal => {
+                // --- CAMBIO: Preparar nombre formateado ---
+                const formattedName = animal.name ? String(animal.name).toUpperCase().trim() : '';
+                return (
+                    <option key={animal.id} value={animal.id} className="py-1">
+                        {animal.id.toUpperCase()} {formattedName && ` - ${formattedName}`}
+                    </option>
+                )
+            })}
         </select>
     );
 };
+// --- FIN BasicAnimalSelector ---
+
 
 interface LogUnplannedHealthEventFormProps {
     onSaveSuccess: () => void;
@@ -39,6 +55,13 @@ export const LogUnplannedHealthEventForm: React.FC<LogUnplannedHealthEventFormPr
     const [isLoading, setIsLoading] = useState(false);
 
     const product = useMemo(() => products.find(p => p.id === productId), [products, productId]);
+
+    // Filtramos solo animales activos para el selector
+    const activeAnimals = useMemo(() => 
+        animals.filter(a => a.status === 'Activo' && !a.isReference)
+               .sort((a,b) => a.id.localeCompare(b.id)), // Ordenar alfabéticamente
+        [animals]
+    );
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -89,13 +112,14 @@ export const LogUnplannedHealthEventForm: React.FC<LogUnplannedHealthEventFormPr
                     type: activityType,
                     productUsed: productId,
                     doseApplied,
-                    // --- CORRECCIÓN DE TIPO AQUÍ ---
                     unit: 'ml' as 'ml', 
                     calculatedCost,
                     notes,
+                    executedBy: 'self', // Asumimos que lo registra el usuario
                 };
             });
 
+            // Usamos un bucle for...of para asegurar el orden y la espera
             for (const eventData of eventsToSave) {
                 if (eventData) {
                     await addHealthEvent(eventData);
@@ -115,7 +139,7 @@ export const LogUnplannedHealthEventForm: React.FC<LogUnplannedHealthEventFormPr
             <div>
                 <label className="block text-sm font-medium text-zinc-400 mb-1">Animal(es) (mantén Ctrl/Cmd para seleccionar varios)</label>
                 <BasicAnimalSelector
-                    animals={animals.filter(a => a.status === 'Activo')}
+                    animals={activeAnimals} // Pasamos los animales activos
                     selectedAnimalIds={selectedAnimalIds}
                     onChange={setSelectedAnimalIds}
                 />
@@ -147,7 +171,10 @@ export const LogUnplannedHealthEventForm: React.FC<LogUnplannedHealthEventFormPr
 
             <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={onCancel} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg">Cancelar</button>
-                <button type="submit" disabled={isLoading} className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg disabled:opacity-50">{isLoading ? 'Guardando...' : 'Registrar Evento'}</button>
+                <button type="submit" disabled={isLoading} className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg disabled:opacity-50 flex items-center gap-2">
+                    {isLoading && <Loader2 size={18} className="animate-spin" />}
+                    {isLoading ? 'Guardando...' : 'Registrar Evento'}
+                </button>
             </div>
         </form>
     );

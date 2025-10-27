@@ -1,7 +1,6 @@
-// src/types/navigation.ts
-
 // El tipo para los módulos de la aplicación, ahora en un solo lugar.
-export type AppModule = 'rebano' | 'lactokeeper' | 'kilos' | 'salud' | 'cents';
+// --- CAMBIO: Añadido 'evolucion' ---
+export type AppModule = 'rebano' | 'lactokeeper' | 'kilos' | 'salud' | 'cents' | 'evolucion';
 
 // El tipo para la navegación interna del módulo Rebaño
 export type PageState = 
@@ -23,4 +22,6 @@ export type PageState =
   | { name: 'feeding-plan', lotName: string }
   | { name: 'batch-treatment', lotName: string }
   | { name: 'farm-calendar' }
-  | { name: 'birthing-season-detail', seasonId: string };
+  | { name: 'birthing-season-detail', seasonId: string }
+  // --- CAMBIO: Añadida la nueva página de Configuración ---
+  | { name: 'configuracion' };

@@ -1,11 +1,10 @@
-// src/hooks/useHerdAnalytics.ts
-
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { getAnimalZootecnicCategory, calculateAgeInDays } from '../utils/calculations';
 
 export const useHerdAnalytics = () => {
-    const { animals, parturitions, bodyWeighings, sireLots, breedingSeasons, weighings } = useData();
+    // --- CAMBIO: Se obtiene appConfig ---
+    const { animals, parturitions, bodyWeighings, sireLots, breedingSeasons, weighings, appConfig } = useData();
 
     const analytics = useMemo(() => {
         const activeAnimals = animals.filter(a => !a.isReference);
@@ -75,11 +74,19 @@ export const useHerdAnalytics = () => {
         }
 
         // Analítica para Cabritonas
+        // --- CAMBIO: Se usa appConfig ---
+        const serviceWeight = appConfig.pesoPrimerServicioKg;
+        const serviceWeightThreshold = serviceWeight * 0.95; // 95% del peso meta
+        
         const cabritonasEnMonta = categories.cabritonas.filter(c => c.reproductiveStatus === 'En Servicio').length;
         const proximasAServicio = categories.cabritonas.filter(c => {
             const lastWeight = bodyWeighings.filter(bw => bw.animalId === c.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
             if (!lastWeight) return false;
-            return (lastWeight.kg >= 28.5 && lastWeight.kg < 30) || (lastWeight.kg >= 30 && c.reproductiveStatus !== 'En Servicio' && c.reproductiveStatus !== 'Preñada');
+            // --- CAMBIO: Lógica actualizada ---
+            // Próxima = (tiene >= 95% del peso meta Y aún no está en servicio/preñada)
+            // O (ya tiene el peso meta pero no está en servicio/preñada)
+            return (lastWeight.kg >= serviceWeightThreshold && lastWeight.kg < serviceWeight) || 
+                   (lastWeight.kg >= serviceWeight && c.reproductiveStatus !== 'En Servicio' && c.reproductiveStatus !== 'Preñada');
         }).length;
         const cabritonasDisponibles = categories.cabritonas.length - cabritonasEnMonta - preñadas;
 
@@ -168,7 +175,7 @@ export const useHerdAnalytics = () => {
                 activos: activeSires,
             }
         };
-    }, [animals, parturitions, bodyWeighings, sireLots, breedingSeasons, weighings]);
+    }, [animals, parturitions, bodyWeighings, sireLots, breedingSeasons, weighings, appConfig.pesoPrimerServicioKg]); // --- CAMBIO: Dependencia añadida ---
 
     return analytics;
 };

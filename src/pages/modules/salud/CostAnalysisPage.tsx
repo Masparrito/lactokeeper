@@ -1,7 +1,10 @@
-import React from 'react';
+// src/pages/modules/health/CostAnalysisPage.tsx
+
+import React from 'react'; // React importado
 import { useCostAnalysis } from '../../../hooks/useCostAnalysis';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, PieChart, Pie, Cell, Legend } from 'recharts';
 import { DollarSign, BarChart2, PieChart as PieChartIcon, TrendingUp } from 'lucide-react';
+// --- CAMBIO: Importar formatAnimalDisplay (aunque no se use, para futura referencia si se añade nombre) ---
 
 // Tarjeta reutilizable para Indicadores Clave de Rendimiento (KPI)
 const KpiCard = ({ title, value, unit, icon: Icon }: { title: string, value: string, unit?: string, icon: React.ElementType }) => (
@@ -26,8 +29,8 @@ export default function CostAnalysisPage() {
     };
     
     return (
-        <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in px-4">
-            <header className="text-center">
+        <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in px-4 pb-12"> {/* Added pb-12 */}
+            <header className="text-center pt-4"> {/* Added pt-4 */}
                 <h1 className="text-3xl font-bold tracking-tight text-white">Análisis de Costos</h1>
                 <p className="text-lg text-zinc-400">Módulo StockCare</p>
             </header>
@@ -81,7 +84,10 @@ export default function CostAnalysisPage() {
                     <div className="space-y-2">
                         {topCostAnimals.length > 0 ? topCostAnimals.map((animal, index) => (
                             <div key={animal.animalId} className="flex justify-between items-center text-sm bg-black/20 p-2 rounded-md">
-                                <span className="font-semibold text-white">{index + 1}. {animal.animalId}</span>
+                                {/* --- CAMBIO: Aplicado font-mono y text-base al ID --- */}
+                                <span className="font-mono font-semibold text-base text-white">
+                                    {index + 1}. {animal.animalId}
+                                </span>
                                 <span className="font-bold text-teal-300">${animal.total.toFixed(2)}</span>
                             </div>
                         )) : <p className="text-sm text-zinc-500 text-center pt-8">No hay datos suficientes.</p>}

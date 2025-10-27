@@ -1,20 +1,19 @@
-// src/pages/modules/kilos/KilosDashboardPage.tsx
+// src/pages/modules/kilos/KilosDashboard.tsx
 
 import React, { useMemo, useState } from 'react';
 import { useData } from '../../../context/DataContext';
 // Utility functions for calculations and formatting
 import { calculateAgeInDays, calculateGDP, formatAge, getAnimalZootecnicCategory, calculateGrowthScore } from '../../../utils/calculations';
-import { formatAnimalDisplay } from '../../../utils/formatting';
 // Icons
-import { ChevronRight, TrendingUp, TrendingDown, Minus } from 'lucide-react'; // Sigma removed as requested
+import { ChevronRight, TrendingUp, Minus, Sigma } from 'lucide-react';
 // Recharts components
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 // UI Components
 import { CustomTooltip } from '../../../components/ui/CustomTooltip';
 // Custom Hooks type definition
-import { GdpAnalyzedAnimal } from '../../../hooks/useGdpAnalysis'; // Keep type definition
+import { GdpAnalyzedAnimal } from '../../../hooks/useGdpAnalysis';
 // Database types
-import { Animal, BodyWeighing } from '../../../db/local'; // Parturition IS needed for getAnimalZootecnicCategory
+import { Animal, BodyWeighing } from '../../../db/local'; // Parturition IS needed
 
 // --- SUB-COMPONENTES DE LA PÁGINA ---
 
@@ -23,48 +22,52 @@ type Classification = 'Sobresaliente' | 'Promedio' | 'Pobre';
 
 // Icon to show GDP trend relative to average
 const GDPTrendIcon = ({ gdp, averageGdp }: { gdp: number | null, averageGdp: number }) => {
-    // Input gdp is kg/day for comparison consistency
     if (gdp === null || !averageGdp || averageGdp === 0) return null;
     const diff = gdp / averageGdp;
     if (diff > 1.1) return <TrendingUp size={18} className="text-brand-green" />;
-    if (diff < 0.9) return <TrendingDown size={18} className="text-brand-red" />;
+    if (diff < 0.9) return <TrendingUp size={18} className="text-brand-red rotate-180" />; // Usar TrendingUp y rotarlo para Down
     return <Minus size={18} className="text-zinc-500" />;
 };
 
-// Component to display a row for each animal in the list
+// --- AnimalRow (Estilo estándar ya aplicado) ---
 const AnimalRow = ({ animal, onSelect, averageGdp }: {
-    animal: GdpAnalyzedAnimal & { formattedAge: string }, // Expecting the final type
+    animal: GdpAnalyzedAnimal & { formattedAge: string },
     onSelect: (id: string) => void,
-    averageGdp: number // Average GDP in kg/day
+    averageGdp: number
 }) => {
     const classificationColor: Record<Classification, string> = {
         'Sobresaliente': 'text-brand-green',
         'Promedio': 'text-zinc-400',
         'Pobre': 'text-brand-red',
     };
+    const formattedName = animal.name ? String(animal.name).toUpperCase().trim() : '';
 
     return (
-        <button onClick={() => onSelect(animal.id)} className="w-full text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border flex justify-between items-center hover:border-brand-green transition-colors">
-            <div>
-                <p className="font-bold text-lg text-white">{formatAnimalDisplay(animal)}</p>
-                <p className="text-sm text-zinc-400 mt-1">{animal.sex} | {animal.formattedAge} | Lote: {animal.location || 'N/A'}</p>
+        <button onClick={() => onSelect(animal.id)} className="w-full text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border flex justify-between items-center hover:border-brand-green transition-colors min-h-[80px]">
+            <div className="min-w-0 pr-3">
+                <p className="font-mono font-semibold text-base text-white truncate">{animal.id.toUpperCase()}</p>
+                {formattedName && (
+                  <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+                )}
+                <div className="text-xs text-zinc-500 mt-1 min-h-[1rem] truncate">
+                    <span>{animal.sex} | {animal.formattedAge} | Lote: {animal.location || 'N/A'}</span>
+                </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 flex-shrink-0">
                 <div className="text-right">
-                    <p className="font-semibold text-white">
-                        {/* animal.gdp is already in g/day */}
+                    <p className="font-semibold text-white text-base">
                         {animal.gdp ? `${animal.gdp.toFixed(0)}` : '--'}
                         <span className="text-sm text-zinc-400"> g/día</span>
                     </p>
-                    <p className={`font-bold text-sm ${classificationColor[animal.classification]}`}>{animal.classification}</p>
+                    <p className={`font-bold text-xs ${classificationColor[animal.classification]}`}>{animal.classification}</p>
                 </div>
-                {/* Pass gdp in kg/day for comparison */}
                 <GDPTrendIcon gdp={animal.gdp ? animal.gdp / 1000 : null} averageGdp={averageGdp} />
-                <ChevronRight className="text-zinc-600" />
+                <ChevronRight className="text-zinc-600 w-5 h-5" />
             </div>
         </button>
     );
 };
+// --- FIN AnimalRow ---
 
 // --- COMPONENTE PRINCIPAL DEL DASHBOARD DE KILOS ---
 export default function KilosDashboard({ onSelectAnimal }: { onSelectAnimal: (animalId: string) => void }) {
@@ -73,10 +76,22 @@ export default function KilosDashboard({ onSelectAnimal }: { onSelectAnimal: (an
 
     // Memoized analysis of growth data
     const analysis = useMemo(() => {
+        // --- INICIO DE LA CORRECCIÓN DE LÓGICA DE FILTRADO ---
         const animalsInGrowth = animals.filter((a: Animal) => {
-            const category = getAnimalZootecnicCategory(a, parturitions); // Parturition needed here
+            // Filtro 1: Debe estar Activo
+            if (a.status !== 'Activo') return false;
+            
+            // Filtro 2: NO debe ser de Referencia
+            if (a.isReference) return false;
+            
+            // Filtro 3: NO debe estar asignado a un lote de monta
+            if (a.sireLotId) return false;
+
+            // Filtro 4: Debe estar en las categorías zootécnicas correctas
+            const category = getAnimalZootecnicCategory(a, parturitions);
             return ['Cabrita', 'Cabritona', 'Cabrito', 'Macho de Levante'].includes(category);
         });
+        // --- FIN DE LA CORRECCIÓN DE LÓGICA DE FILTRADO ---
 
         if (animalsInGrowth.length === 0) {
             return { analyzedAnimals: [], distribution: [], averageGdp: 0, gaussChartData: [], meanGdp: 0, stdDev: 0 };
@@ -85,7 +100,6 @@ export default function KilosDashboard({ onSelectAnimal }: { onSelectAnimal: (an
         let totalGdpKgDay = 0;
         let animalsWithGdpCount = 0;
 
-        // Calculate intermediate data including score
         const intermediateAnalyzedData = animalsInGrowth.map((animal: Animal) => {
             const weighings = bodyWeighings.filter((w: BodyWeighing) => w.animalId === animal.id);
             const gdpDetails = calculateGDP(animal.birthWeight, weighings);
@@ -100,7 +114,7 @@ export default function KilosDashboard({ onSelectAnimal }: { onSelectAnimal: (an
             const score = overallGdpKgDay > 0 ? calculateGrowthScore(overallGdpKgDay, averageGdpKgDayForScore, ageInDays) : 0;
 
             return {
-                ...animal, // Spread original animal properties first
+                ...animal,
                 formattedAge: formatAge(animal.birthDate),
                 ageInDays: ageInDays,
                 gdpKgDay: overallGdpKgDay,
@@ -118,29 +132,22 @@ export default function KilosDashboard({ onSelectAnimal }: { onSelectAnimal: (an
         const POOR_THRESHOLD_SCORE = meanScore - (0.4 * stdDevScore);
         const EXCELLENT_THRESHOLD_SCORE = meanScore + (0.4 * stdDevScore);
 
-        // Sort based on score *before* mapping to the final structure
         const sortedIntermediate = intermediateAnalyzedData.sort((a, b) => b.score - a.score);
 
-        // --- CORRECTION HERE ---
-        // Map to the final structure, ensuring all required fields from GdpAnalyzedAnimal are present
         const finalAnalyzedAnimals: (GdpAnalyzedAnimal & { formattedAge: string })[] = sortedIntermediate.map(animal => {
             let classification: Classification = 'Promedio';
             if (animal.score > 0 && stdDevScore > 1) {
                 if (animal.score < POOR_THRESHOLD_SCORE) classification = 'Pobre';
                 else if (animal.score > EXCELLENT_THRESHOLD_SCORE) classification = 'Sobresaliente';
             }
-            // Spread the original animal properties first, then add/override calculated ones
             return {
-                 ...animal, // Includes all original Animal fields like status, lifecycleStage, etc.
-                 gdp: animal.gdpKgDay * 1000, // Convert gdp to g/day and assign to 'gdp' field
+                 ...animal,
+                 gdp: animal.gdpKgDay * 1000, // g/día
                  ageInDays: animal.ageInDays,
                  classification: classification,
-                 formattedAge: animal.formattedAge, // Already calculated
-                 // score: animal.score // Remove score if not part of GdpAnalyzedAnimal
-                 // gdpKgDay: animal.gdpKgDay // Remove if not part of GdpAnalyzedAnimal
-            } as GdpAnalyzedAnimal & { formattedAge: string }; // Assert the final type
+                 formattedAge: animal.formattedAge,
+            } as GdpAnalyzedAnimal & { formattedAge: string };
         });
-        // --- END CORRECTION ---
 
         const distribution = [
             { name: 'Pobre', count: finalAnalyzedAnimals.filter(a => a.classification === 'Pobre').length, fill: '#FF3B30' },
@@ -168,21 +175,19 @@ export default function KilosDashboard({ onSelectAnimal }: { onSelectAnimal: (an
         return {
             analyzedAnimals: finalAnalyzedAnimals,
             distribution,
-            averageGdp: averageGdpKgDay,
+            averageGdp: averageGdpKgDay, // kg/día
             gaussChartData,
-            meanGdp: meanGdpKgDay,
-            stdDev: stdDevGDay
+            meanGdp: meanGdpKgDay * 1000, // g/día
+            stdDev: stdDevGDay // g/día
         };
 
     }, [animals, bodyWeighings, parturitions]);
 
-     // Filter animals based on the selected classification filter
     const filteredAnimals = React.useMemo(() => {
         if (filter === 'all') return analysis.analyzedAnimals;
         return analysis.analyzedAnimals.filter(a => a.classification === filter);
     }, [analysis.analyzedAnimals, filter]);
 
-    // Handler for clicking on a bar in the distribution chart
     const handleBarClick = (data: any) => {
         if (data?.payload?.name) {
             const newFilter = data.payload.name as Classification;
@@ -191,15 +196,23 @@ export default function KilosDashboard({ onSelectAnimal }: { onSelectAnimal: (an
     };
 
     return (
-        // Main container
         <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in px-4 pb-12">
-            {/* KPI Card for Average GDP */}
-            <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border mt-4">
-                <div className="flex items-center space-x-2 text-zinc-400 font-semibold mb-2 text-xs uppercase tracking-wider"><TrendingUp /><span>GDP Promedio del Levante</span></div>
-                <p className="text-4xl font-bold tracking-tight text-white">{(analysis.averageGdp * 1000).toFixed(0)} <span className="text-2xl font-medium text-zinc-400">g/día</span></p>
+            <header className="text-center pt-4">
+                <h1 className="text-3xl font-bold tracking-tight text-white">Análisis de GDP</h1>
+                <p className="text-lg text-zinc-400">Ganancia Diaria de Peso</p>
+            </header>
+
+            <div className="grid grid-cols-2 gap-4">
+                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border">
+                    <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"><TrendingUp size={14} /><span>GDP Media</span></div>
+                    <p className="text-2xl font-bold text-white">{(analysis.meanGdp).toFixed(0)} <span className="text-lg text-zinc-400">g/día</span></p>
+                </div>
+                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border">
+                    <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"><Sigma size={14} /><span>Desv. Estándar</span></div>
+                    <p className="text-2xl font-bold text-white">{(analysis.stdDev).toFixed(0)} <span className="text-lg text-zinc-400">g/día</span></p>
+                </div>
             </div>
 
-            {/* Distribution Chart (Classification) */}
             <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
                 <h3 className="text-lg font-semibold text-white mb-4">Distribución del Crecimiento</h3>
                 <div className="w-full h-48">
@@ -216,7 +229,6 @@ export default function KilosDashboard({ onSelectAnimal }: { onSelectAnimal: (an
                 </div>
             </div>
 
-            {/* Gauss Chart (GDP Ranges) */}
             <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
                 <h3 className="text-lg font-semibold text-white mb-4">Campana de Gauss (g/día)</h3>
                 <div className="w-full h-48">
@@ -229,20 +241,18 @@ export default function KilosDashboard({ onSelectAnimal }: { onSelectAnimal: (an
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
-                 {/* Display Mean and Std Dev in g/day */}
                  <div className="text-center text-xs text-zinc-400 mt-2">
-                    <span>μ = {(analysis.meanGdp * 1000).toFixed(0)} g/día</span> | <span>σ = {analysis.stdDev.toFixed(0)} g/día</span>
+                    <span>μ = {(analysis.meanGdp).toFixed(0)} g/día</span> | <span>σ = {analysis.stdDev.toFixed(0)} g/día</span>
                 </div>
             </div>
 
-            {/* List of Animals in Growth */}
-            <div className="space-y-2 pt-4">
+            <div className="space-y-4 pt-4">
                 <h3 className="text-lg font-semibold text-zinc-300 ml-1">
-                    {filter === 'all' ? 'Todos los Animales' : `Animales (${filter})`} ({filteredAnimals.length})
+                    {filter === 'all' ? 'Animales en Crecimiento' : `Animales (${filter})`} ({filteredAnimals.length})
                 </h3>
                 {filteredAnimals.length > 0 ? (
                     filteredAnimals.map(animal => (
-                        <AnimalRow key={animal.id} animal={animal} onSelect={() => onSelectAnimal(animal.id)} averageGdp={analysis.averageGdp} /> // Pass average GDP in kg/day
+                        <AnimalRow key={animal.id} animal={animal} onSelect={onSelectAnimal} averageGdp={analysis.averageGdp} />
                     ))
                 ) : (
                     <div className="text-center py-10 bg-brand-glass rounded-2xl">
@@ -250,6 +260,6 @@ export default function KilosDashboard({ onSelectAnimal }: { onSelectAnimal: (an
                     </div>
                 )}
             </div>
-        </div> // End main container
+        </div>
     );
 }

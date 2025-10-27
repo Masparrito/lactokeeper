@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../context/DataContext';
 import { AgendaTask } from '../../hooks/useHealthAgenda';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 
 interface LogHealthEventFormProps {
     task: AgendaTask;
@@ -10,13 +10,16 @@ interface LogHealthEventFormProps {
 }
 
 export const LogHealthEventForm: React.FC<LogHealthEventFormProps> = ({ task, onSave, onCancel }) => {
-    const { addHealthEvent, products, bodyWeighings } = useData();
+    // --- CAMBIO: Se obtiene appConfig de useData ---
+    const { addHealthEvent, products, bodyWeighings, appConfig } = useData();
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [notes, setNotes] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     const { animal, activity } = task;
+
+    const formattedName = animal.name ? String(animal.name).toUpperCase().trim() : '';
 
     const product = useMemo(() => products.find(p => p.id === activity.productId), [products, activity.productId]);
     const latestWeight = useMemo(() => {
@@ -25,7 +28,6 @@ export const LogHealthEventForm: React.FC<LogHealthEventFormProps> = ({ task, on
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
     }, [bodyWeighings, animal.id]);
 
-    // --- CORRECCIÓN: Lógica de cálculo actualizada para dosis y costo ---
     const { doseApplied, calculatedCost } = useMemo(() => {
         if (!product || !latestWeight) {
             return { doseApplied: undefined, calculatedCost: undefined };
@@ -63,6 +65,10 @@ export const LogHealthEventForm: React.FC<LogHealthEventFormProps> = ({ task, on
         setIsLoading(true);
         setError(null);
 
+        // --- CAMBIO: Determinar los días de retiro ---
+        const diasRetiroLeche = product?.withdrawalDaysMilk ?? appConfig.diasRetiroLecheDefault;
+        const diasRetiroCarne = product?.withdrawalDaysMeat ?? appConfig.diasRetiroCarneDefault;
+
         try {
             await addHealthEvent({
                 animalId: animal.id,
@@ -72,10 +78,13 @@ export const LogHealthEventForm: React.FC<LogHealthEventFormProps> = ({ task, on
                 type: activity.name,
                 productUsed: product?.id,
                 doseApplied,
-                unit: 'ml', // La dosis calculada siempre estará en ml
+                unit: 'ml',
                 calculatedCost,
                 notes,
                 executedBy: 'self',
+                // --- CAMBIO: Se añaden los días de retiro al evento ---
+                diasRetiroLeche: diasRetiroLeche,
+                diasRetiroCarne: diasRetiroCarne,
             });
             onSave();
         } catch (err) {
@@ -89,9 +98,16 @@ export const LogHealthEventForm: React.FC<LogHealthEventFormProps> = ({ task, on
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                <p><span className="font-semibold text-zinc-400">Animal:</span> <span className="font-bold text-white">{animal.id}</span></p>
-                <p><span className="font-semibold text-zinc-400">Actividad:</span> <span className="font-bold text-white">{activity.name}</span></p>
-                {product && <p><span className="font-semibold text-zinc-400">Producto:</span> <span className="font-bold text-white">{product.name}</span></p>}
+                <p className="font-semibold text-zinc-400 text-sm">Animal:</p>
+                <p className="font-mono font-semibold text-lg text-white truncate">{animal.id.toUpperCase()}</p>
+                {formattedName && (
+                    <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+                )}
+            </div>
+            
+            <div>
+                <p><span className="font-semibold text-zinc-400 text-sm">Actividad:</span> <span className="font-bold text-base text-white">{activity.name}</span></p>
+                {product && <p><span className="font-semibold text-zinc-400 text-sm">Producto:</span> <span className="font-bold text-base text-white">{product.name}</span></p>}
             </div>
 
             <div className="p-4 bg-black/20 rounded-xl space-y-2">
@@ -121,7 +137,10 @@ export const LogHealthEventForm: React.FC<LogHealthEventFormProps> = ({ task, on
 
             <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={onCancel} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg">Cancelar</button>
-                <button type="submit" disabled={isLoading} className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg disabled:opacity-50">{isLoading ? 'Guardando...' : 'Confirmar Registro'}</button>
+                <button type="submit" disabled={isLoading} className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg disabled:opacity-50 flex items-center gap-2">
+                    {isLoading && <Loader2 size={18} className="animate-spin" />}
+                    {isLoading ? 'Guardando...' : 'Confirmar Registro'}
+                </button>
             </div>
         </form>
     );

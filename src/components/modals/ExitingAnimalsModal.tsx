@@ -1,10 +1,11 @@
 // src/components/modals/ExitingAnimalsModal.tsx
 
-import React, { useMemo } from 'react'; // <--- Keep this import despite the warning, useMemo is used!
+import React, { useMemo } from 'react';
 import { Modal } from '../ui/Modal';
 import { ChevronRight } from 'lucide-react';
 import { useData } from '../../context/DataContext';
-import { formatAnimalDisplay } from '../../utils/formatting';
+// --- CAMBIO: formatAnimalDisplay ya no es necesario ---
+// import { formatAnimalDisplay } from '../../utils/formatting';
 
 // Props definition
 interface ExitingAnimalsModalProps {
@@ -31,7 +32,8 @@ export const ExitingAnimalsModal: React.FC<ExitingAnimalsModalProps> = ({
             const animal = animalMap.get(id);
             if (animal) return animal;
             const father = fatherMap.get(id);
-            if (father) return father;
+            // --- CAMBIO: Asegurar que el objeto de 'father' tenga los campos mínimos ---
+            if (father) return { id: father.id, name: father.name, sex: 'Macho', isReference: true }; // Ajustado
             return { id: id, name: undefined }; // Fallback
         }).sort((a, b) => a.id.localeCompare(b.id));
     }, [animalIds, animals, fathers]);
@@ -42,19 +44,33 @@ export const ExitingAnimalsModal: React.FC<ExitingAnimalsModalProps> = ({
             {/* Contenedor de la lista con scroll */}
             <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
                 {exitingAnimalsData.length > 0 ? (
-                    exitingAnimalsData.map(animalData => (
-                        <button
-                            key={animalData.id}
-                            onClick={() => {
-                                onSelectAnimal(animalData.id);
-                                onClose();
-                            }}
-                            className="w-full text-left p-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors flex justify-between items-center group"
-                        >
-                            <span className="font-semibold text-white">{formatAnimalDisplay(animalData)}</span>
-                            <ChevronRight className="text-zinc-500 group-hover:text-white transition-colors" />
-                        </button>
-                    ))
+                    exitingAnimalsData.map(animalData => {
+                        // --- CAMBIO: Preparar nombre formateado ---
+                        const formattedName = animalData.name ? String(animalData.name).toUpperCase().trim() : '';
+                        return (
+                            <button
+                                key={animalData.id}
+                                onClick={() => {
+                                    onSelectAnimal(animalData.id);
+                                    onClose();
+                                }}
+                                className="w-full text-left p-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors flex justify-between items-center group"
+                            >
+                                {/* --- INICIO: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
+                                <div className="min-w-0 pr-3">
+                                    {/* ID (Protagonista) - Fuente y tamaño aplicados */}
+                                    <p className="font-mono font-semibold text-base text-white truncate">{animalData.id.toUpperCase()}</p>
+                                    
+                                    {/* Nombre (Secundario, si existe) */}
+                                    {formattedName && (
+                                      <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+                                    )}
+                                </div>
+                                {/* --- FIN: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
+                                <ChevronRight className="text-zinc-500 group-hover:text-white transition-colors flex-shrink-0" />
+                            </button>
+                        );
+                    })
                 ) : (
                     <p className="text-center text-zinc-500 py-4">No hay animales que hayan salido en este período.</p>
                 )}

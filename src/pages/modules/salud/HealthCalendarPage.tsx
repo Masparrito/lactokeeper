@@ -1,4 +1,6 @@
-import { useState, useMemo, useRef } from 'react';
+// src/pages/modules/health/HealthCalendarPage.tsx
+
+import { useState, useRef, useMemo } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -6,12 +8,37 @@ import esLocale from '@fullcalendar/core/locales/es';
 import { useHealthAgenda, AgendaTask } from '../../../hooks/useHealthAgenda';
 import { Modal } from '../../../components/ui/Modal';
 import { LogHealthEventForm } from '../../../components/forms/LogHealthEventForm';
-import { Plus } from 'lucide-react';
+// --- CAMBIO: Añadido ChevronRight ---
+import { Plus, ArrowLeft, ChevronRight } from 'lucide-react';
 import { LogUnplannedHealthEventForm } from '../../../components/forms/LogUnplannedHealthEventForm';
 import { motion } from 'framer-motion';
 
 // Importar los estilos personalizados
 import './CalendarStyles.css';
+
+// --- Función personalizada para renderizar el contenido del evento ---
+const renderEventContent = (eventInfo: any) => {
+    const { task } = eventInfo.event.extendedProps;
+    if (!task) return <div>Evento inválido</div>;
+
+    const { animal, activity } = task;
+    const formattedName = animal.name ? String(animal.name).toUpperCase().trim() : '';
+
+    return (
+        <div className="p-1 overflow-hidden w-full" style={{ whiteSpace: 'normal' }}>
+            {/* ID (Protagonista) - Fuente y tamaño aplicados */}
+            <p className="font-mono font-semibold text-xs text-white truncate">{animal.id.toUpperCase()}</p>
+            
+            {/* Nombre (Secundario, si existe) */}
+            {formattedName && (
+                <p className="text-[10px] font-normal text-zinc-300 truncate">{formattedName}</p>
+            )}
+            
+            {/* Detalles (Contexto) */}
+            <p className="text-[10px] text-zinc-400 truncate">{activity.name}</p>
+        </div>
+    );
+};
 
 export default function HealthCalendarPage() {
     const { allTasks } = useHealthAgenda();
@@ -45,7 +72,6 @@ export default function HealthCalendarPage() {
         setView(newView);
     };
     
-    // Función para actualizar el título del calendario
     const handleDatesSet = (dateInfo: any) => {
         setCalendarTitle(dateInfo.view.title);
     };
@@ -68,8 +94,10 @@ export default function HealthCalendarPage() {
 
                 <div className="flex flex-col sm:flex-row items-center justify-between mb-4 gap-4">
                      <div className="flex items-center gap-2">
-                        <button onClick={() => calendarRef.current?.getApi().prev()} className="p-2 bg-zinc-700 rounded-md hover:bg-zinc-600">‹</button>
-                        <button onClick={() => calendarRef.current?.getApi().next()} className="p-2 bg-zinc-700 rounded-md hover:bg-zinc-600">›</button>
+                        {/* --- CAMBIO: Corregido icono ‹ por ArrowLeft --- */}
+                        <button onClick={() => calendarRef.current?.getApi().prev()} className="p-2 bg-zinc-700 rounded-md hover:bg-zinc-600"><ArrowLeft size={16} /></button>
+                        {/* --- CAMBIO: Icono ChevronRight (ya importado) --- */}
+                        <button onClick={() => calendarRef.current?.getApi().next()} className="p-2 bg-zinc-700 rounded-md hover:bg-zinc-600"><ChevronRight size={16} /></button>
                         <h2 className="text-xl font-semibold text-white capitalize w-40 text-center">{calendarTitle}</h2>
                     </div>
                      <div className="flex items-center gap-2">
@@ -93,6 +121,7 @@ export default function HealthCalendarPage() {
                         height="100%"
                         headerToolbar={false}
                         datesSet={handleDatesSet}
+                        eventContent={renderEventContent}
                     />
                 </div>
             </div>

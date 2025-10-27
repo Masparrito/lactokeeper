@@ -6,15 +6,16 @@ import { ArrowLeft, ChevronRight, BarChart2, Calendar, TrendingUp, Droplet, Arro
 import { BarChart, Bar, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, LabelList } from 'recharts';
 import { useGaussAnalysis, AnalyzedAnimal } from '../../../hooks/useGaussAnalysis';
 import { useHistoricalAnalysis, PeriodStats } from '../../../hooks/useHistoricalAnalysis';
-import type { PageState as RebanoPageState } from '../../../types/navigation';
-import { Modal } from '../../../components/ui/Modal'; // Import Modal
+import type { PageState as RebanoPageState } from '../../../types/navigation'; // Keep RebanoPageState type
+import { Modal } from '../../../components/ui/Modal';
+import { CustomTooltip } from '../../../components/ui/CustomTooltip'; // Import CustomTooltip
+// --- CAMBIO: Importar formatAnimalDisplay ---
 
 // --- SUB-COMPONENTES ---
 
 const ChangeIndicator = ({ value }: { value?: number }) => {
-    // --- CORRECCIÓN: Añadido placeholder para alineación y whitespace-nowrap ---
     if (value === undefined || isNaN(value) || value === 0) {
-        return <div className="w-16 h-5"></div>; // Placeholder para alinear
+        return <div className="w-16 h-5"></div>; // Placeholder
     }
     const isPositive = value > 0;
     const color = isPositive ? 'text-brand-green' : 'text-brand-red';
@@ -28,14 +29,11 @@ const ChangeIndicator = ({ value }: { value?: number }) => {
 };
 
 const PeriodCard = ({ stats, onClick }: { stats: PeriodStats, onClick: () => void }) => (
-    // --- CORRECCIÓN DE LAYOUT ---
     <button onClick={onClick} className="w-full text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border flex justify-between items-center hover:border-brand-orange transition-colors">
-        {/* Contenedor de texto: flexible y puede truncarse */}
         <div className="min-w-0 mr-2">
             <p className="font-bold text-lg text-white truncate">{stats.periodLabel}</p>
             <p className="text-sm text-zinc-400 truncate">Prom: {stats.averageKg.toFixed(2)} Kg | {stats.animalCount} animales</p>
         </div>
-        {/* Contenedor de indicador: tamaño fijo */}
         <div className="flex-shrink-0 flex items-center space-x-2">
              <ChangeIndicator value={stats.avgKgChange} />
             <ChevronRight className="text-zinc-600 flex-shrink-0" />
@@ -43,22 +41,44 @@ const PeriodCard = ({ stats, onClick }: { stats: PeriodStats, onClick: () => voi
     </button>
 );
 
+// --- WeighingRow ACTUALIZADO con estilo estándar ---
+const WeighingRow = ({ weighing, onSelectAnimal }: { weighing: AnalyzedAnimal, onSelectAnimal: (id: string) => void }) => {
+    // --- CAMBIO: Preparar nombre formateado ---
+    const formattedName = weighing.name ? String(weighing.name).toUpperCase().trim() : '';
 
-const WeighingRow = ({ weighing, onSelectAnimal }: { weighing: AnalyzedAnimal, onSelectAnimal: (id: string) => void }) => (
-    <button onClick={() => onSelectAnimal(weighing.id)} className="w-full text-left bg-black/20 rounded-lg p-3 border border-zinc-700/50 flex justify-between items-center hover:border-orange-400/50">
-        <div className="flex items-center gap-4">
-            <div>
-                <p className="font-bold text-base text-white flex items-center gap-2">
-                    {weighing.id}
-                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full text-white ${weighing.classification === 'Pobre' ? 'bg-brand-red/80' : weighing.classification === 'Sobresaliente' ? 'bg-brand-green/80' : 'bg-gray-500/80'}`}>
-                        {weighing.classification}
-                    </span>
-                </p>
+    return(
+        <button onClick={() => onSelectAnimal(weighing.id)} className="w-full text-left bg-black/20 rounded-lg p-3 border border-zinc-700/50 flex justify-between items-center hover:border-orange-400/50">
+            {/* --- INICIO: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
+            <div className="min-w-0 pr-3 flex items-center gap-3"> {/* Added gap-3 */}
+                {/* ID (Protagonista) - Fuente y tamaño aplicados */}
+                <div> {/* Wrapper div for text alignment */}
+                    <p className="font-mono font-semibold text-base text-white truncate">{weighing.id.toUpperCase()}</p>
+
+                    {/* Nombre (Secundario, si existe) */}
+                    {formattedName && (
+                      <p className="text-xs font-normal text-zinc-400 truncate">{formattedName}</p> // Adjusted size/color
+                    )}
+                </div>
+                {/* --- CAMBIO: Clasificación movida aquí como "píldora" --- */}
+                <span className={`px-2 py-0.5 text-xs font-semibold rounded-full text-white whitespace-nowrap ${ // Added whitespace-nowrap
+                    weighing.classification === 'Pobre' ? 'bg-brand-red/80' :
+                    weighing.classification === 'Sobresaliente' ? 'bg-brand-green/80' :
+                    'bg-gray-500/80'
+                }`}>
+                    {weighing.classification}
+                </span>
             </div>
-        </div>
-        <p className="font-semibold text-lg text-white">{weighing.latestWeighing.toFixed(2)} <span className="text-base font-medium text-zinc-400">Kg</span></p>
-    </button>
-);
+            {/* --- FIN: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
+
+            {/* Producción a la derecha */}
+            <p className="font-semibold text-lg text-white flex-shrink-0"> {/* Added flex-shrink-0 */}
+                {weighing.latestWeighing.toFixed(2)}
+                <span className="text-base font-medium text-zinc-400 ml-1">Kg</span> {/* Added ml-1 */}
+            </p>
+        </button>
+    );
+};
+// --- FIN WeighingRow ---
 
 const CustomBarLabel = (props: any) => {
     const { x, y, width, value, total } = props;
@@ -67,32 +87,17 @@ const CustomBarLabel = (props: any) => {
     return ( <text x={x + width / 2} y={y + 20} fill="#fff" textAnchor="middle" fontSize="12px" fontWeight="bold">{`${percentage}%`}</text> );
 };
 
-// Tooltip con formato correcto
-const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-black/50 backdrop-blur-xl p-2 rounded-lg border border-brand-border text-white text-xs">
-          <p className="label font-semibold">{label}</p>
-          <p className="intro">{`Animales: ${payload[0].value}`}</p>
-        </div>
-      );
-    }
-    return null;
-  };
-
-// --- NUEVO: Modal para análisis de ingresos (placeholder) ---
-// (Definido aquí para usarlo en la página)
-const AnalysisModal = ({ isOpen, onClose, data, periodLabel, onSelectAnimal }: { 
-    isOpen: boolean, 
-    onClose: () => void, 
-    data: PeriodStats | null, 
-    periodLabel: string, 
-    onSelectAnimal: (id: string) => void 
+// Modal para análisis de ingresos (Usa WeighingRow actualizado)
+const AnalysisModal = ({ isOpen, onClose, data, periodLabel, onSelectAnimal }: {
+    isOpen: boolean,
+    onClose: () => void,
+    data: PeriodStats | null,
+    periodLabel: string,
+    onSelectAnimal: (id: string) => void
 }) => {
     const { animals, weighings, parturitions } = useData();
     const [classificationFilter, setClassificationFilter] = useState<'all' | 'Pobre' | 'Promedio' | 'Sobresaliente'>('all');
-    
-    // Vuelve a calcular el análisis de Gauss solo para los pesajes de los "nuevos animales"
+
     const analysis = useGaussAnalysis(data?.newAnimalsWeighings || [], animals, weighings, parturitions, false);
 
     const filteredAnimals = useMemo(() => {
@@ -100,8 +105,8 @@ const AnalysisModal = ({ isOpen, onClose, data, periodLabel, onSelectAnimal }: {
         return analysis.classifiedAnimals.filter(a => a.classification === classificationFilter);
     }, [analysis.classifiedAnimals, classificationFilter]);
 
-    const handleBarClick = (barData: any) => { if (barData?.name) { const newFilter = barData.name as any; setClassificationFilter(prev => prev === newFilter ? 'all' : newFilter); }};
-    
+    const handleBarClick = (barData: any) => { if (barData?.payload?.name) { const newFilter = barData.payload.name as any; setClassificationFilter(prev => prev === newFilter ? 'all' : newFilter); }};
+
     if (!isOpen || !data) return null;
 
     return (
@@ -125,6 +130,7 @@ const AnalysisModal = ({ isOpen, onClose, data, periodLabel, onSelectAnimal }: {
                 </div>
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                     {filteredAnimals.sort((a,b) => b.latestWeighing - a.latestWeighing).map((animal) => (
+                        // --- Usa WeighingRow actualizado ---
                         <WeighingRow key={animal.weighingId || animal.id} weighing={animal} onSelectAnimal={onSelectAnimal} />
                     ))}
                 </div>
@@ -135,19 +141,18 @@ const AnalysisModal = ({ isOpen, onClose, data, periodLabel, onSelectAnimal }: {
 
 
 interface LactoKeeperHistoryPageProps {
-    navigateToRebano: (page: RebanoPageState) => void;
+    navigateToRebano: (page: RebanoPageState) => void; // Mantener navigateToRebano
 }
 
-export default function LactoKeeperHistoryPage({ navigateToRebano }: LactoKeeperHistoryPageProps) {
+// --- COMPONENTE PRINCIPAL (Sin cambios lógicos mayores) ---
+export default function LactoKeeperHistoryPage({ navigateToRebano }: LactoKeeperHistoryPageProps) { // Usar navigateToRebano
     const { animals, weighings, parturitions, isLoading } = useData();
     const [selectedPeriod, setSelectedPeriod] = useState<PeriodStats | null>(null);
     const [classificationFilter, setClassificationFilter] = useState<'all' | 'Pobre' | 'Promedio' | 'Sobresaliente'>('all');
-    // --- ESTADOS DE MODAL AÑADIDOS (del archivo original) ---
     const [isVariationModalOpen, setIsVariationModalOpen] = useState(false);
     const [analysisModalData, setAnalysisModalData] = useState<PeriodStats | null>(null);
 
     const { monthlyData } = useHistoricalAnalysis(weighings);
-
     const periodAnalysis = useGaussAnalysis(selectedPeriod?.weighings || [], animals, weighings, parturitions, false);
 
     const filteredWeighings = useMemo(() => {
@@ -155,7 +160,7 @@ export default function LactoKeeperHistoryPage({ navigateToRebano }: LactoKeeper
         return periodAnalysis.classifiedAnimals.filter(animal => animal.classification === classificationFilter);
     }, [periodAnalysis.classifiedAnimals, classificationFilter]);
 
-    const handleBarClick = (data: any) => { if (data?.name) { const newFilter = data.name as any; setClassificationFilter(prev => prev === newFilter ? 'all' : newFilter); }};
+    const handleBarClick = (data: any) => { if (data?.payload?.name) { const newFilter = data.payload.name as any; setClassificationFilter(prev => prev === newFilter ? 'all' : newFilter); }};
 
     if (isLoading) { return <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Cargando historial...</h1></div>; }
 
@@ -177,7 +182,6 @@ export default function LactoKeeperHistoryPage({ navigateToRebano }: LactoKeeper
     }
 
     return (
-        // --- CORRECCIÓN: Añadido '<>' para envolver el JSX ---
         <>
             <div className="w-full max-w-2xl mx-auto space-y-4 pb-12 animate-fade-in px-4">
                 <header className="flex items-center pt-4 pb-4">
@@ -189,7 +193,6 @@ export default function LactoKeeperHistoryPage({ navigateToRebano }: LactoKeeper
                 <div className="grid grid-cols-2 gap-4">
                     <div className="bg-brand-glass p-3 rounded-2xl"><div className="text-xs uppercase text-zinc-400 mb-1 flex items-center gap-1"><Droplet size={14}/>Promedio / Animal</div><div className="flex items-baseline gap-2"><p className="text-2xl font-bold text-white">{selectedPeriod.averageKg.toFixed(2)}<span className="text-lg ml-1 text-zinc-400">Kg</span></p><ChangeIndicator value={selectedPeriod.avgKgChange} /></div></div>
                     <div className="bg-brand-glass p-3 rounded-2xl"><div className="text-xs uppercase text-zinc-400 mb-1 flex items-center gap-1"><Calendar size={14}/>Eventos de Pesaje</div><p className="text-2xl font-bold text-white">{selectedPeriod.weighingEvents}</p></div>
-                    {/* --- CORRECCIÓN: Se cambia el div por un button para abrir el modal --- */}
                     <button onClick={() => setIsVariationModalOpen(true)} className="bg-brand-glass p-3 rounded-2xl text-left hover:border-brand-orange transition-colors border border-brand-border"><div className="text-xs uppercase text-zinc-400 mb-1 flex items-center gap-1"><Users size={14}/>Animales Ordeñados</div><div className="flex items-baseline gap-2"><p className="text-2xl font-bold text-white">{selectedPeriod.animalCount}</p><ChangeIndicator value={selectedPeriod.animalCountChange}/></div></button>
                     <div className="bg-brand-glass p-3 rounded-2xl"><div className="text-xs uppercase text-zinc-400 mb-1 flex items-center gap-1"><TrendingUp size={14}/>Total Registrado</div><p className="text-2xl font-bold text-white">{selectedPeriod.totalKg.toFixed(0)}<span className="text-lg ml-1 text-zinc-400">Kg</span></p></div>
                 </div>
@@ -213,6 +216,7 @@ export default function LactoKeeperHistoryPage({ navigateToRebano }: LactoKeeper
                     <h3 className="text-lg font-semibold text-zinc-300 ml-1 mt-4">Pesajes del Período ({filteredWeighings.length})</h3>
                     {filteredWeighings.length > 0 ? (
                         filteredWeighings.sort((a,b) => b.latestWeighing - a.latestWeighing).map((animal) => (
+                            // --- Usa WeighingRow actualizado ---
                             <WeighingRow key={animal.weighingId || animal.id} weighing={animal} onSelectAnimal={(id) => navigateToRebano({ name: 'lactation-profile', animalId: id })} />
                         ))
                     ) : (
@@ -223,7 +227,6 @@ export default function LactoKeeperHistoryPage({ navigateToRebano }: LactoKeeper
                 </div>
             </div>
 
-            {/* --- Modales añadidos desde el código original --- */}
             <Modal isOpen={isVariationModalOpen} onClose={() => setIsVariationModalOpen(false)} title="Variación de Animales en Ordeño">
                 <div className="text-zinc-300 space-y-4">
                     <div>
@@ -231,7 +234,7 @@ export default function LactoKeeperHistoryPage({ navigateToRebano }: LactoKeeper
                         <p className="text-sm text-zinc-400">El mes anterior tenías <span className='font-bold text-white'>{selectedPeriod.previousAnimalCount}</span> animales en ordeño. Este mes tienes <span className='font-bold text-white'>{selectedPeriod.animalCount}</span>.</p>
                         <div className="flex items-center gap-2 mt-2">
                             <p>El cambio neto es de <span className='font-bold text-white'>{selectedPeriod.animalCount - (selectedPeriod.previousAnimalCount || 0)}</span> animales</p>
-                            <ChangeIndicator value={selectedPeriod.animalCountChange}/> 
+                            <ChangeIndicator value={selectedPeriod.animalCountChange}/>
                         </div>
                     </div>
                     <div className="pt-4 border-t border-zinc-700/80">
@@ -246,12 +249,12 @@ export default function LactoKeeperHistoryPage({ navigateToRebano }: LactoKeeper
                     </div>
                 </div>
             </Modal>
-            
-            <AnalysisModal 
-                isOpen={!!analysisModalData} 
-                onClose={() => setAnalysisModalData(null)} 
-                data={analysisModalData} 
-                periodLabel={selectedPeriod.periodLabel} 
+
+            <AnalysisModal
+                isOpen={!!analysisModalData}
+                onClose={() => setAnalysisModalData(null)}
+                data={analysisModalData}
+                periodLabel={selectedPeriod.periodLabel}
                 onSelectAnimal={(id) => navigateToRebano({ name: 'lactation-profile', animalId: id })}
             />
         </>

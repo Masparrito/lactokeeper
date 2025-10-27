@@ -1,17 +1,18 @@
-// src/pages/modules/kilos/GrowthProfilePage.tsx
-
 import React, { useMemo } from 'react';
 import { useData } from '../../../context/DataContext';
 // Utility functions for calculations and formatting
 import { calculateGDP, formatAge, getInterpolatedWeight, calculateWeaningIndex, calculatePrecocityIndex } from '../../../utils/calculations';
-import { formatAnimalDisplay } from '../../../utils/formatting'; // <--- IMPORTACIÓN AÑADIDA
+import { formatAnimalDisplay } from '../../../utils/formatting';
 // Icons
-import { ArrowLeft, Scale, TrendingUp, Calendar, Hash } from 'lucide-react';
+// --- CAMBIO: Icono 'Check' añadido ---
+import { ArrowLeft, Scale, TrendingUp, Calendar, Hash, Check } from 'lucide-react';
 import { GiPodium, GiFastForwardButton } from 'react-icons/gi'; // Specific icons for indices
 // Recharts components
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 // Database types
 import { Animal, BodyWeighing } from '../../../db/local'; // Import types
+// Import CustomTooltip
+import { CustomTooltip } from '../../../components/ui/CustomTooltip';
 
 // --- SUB-COMPONENTES DE UI (KpiCard, CustomTooltip) ---
 
@@ -24,22 +25,8 @@ const KpiCard = ({ icon: Icon, label, value, unit, colorClass }: { icon: React.E
 );
 
 // Custom Tooltip for the chart
-const CustomTooltip = ({ active, payload, label }: any) => {
-    // Type check for safety
-    if (active && payload && payload.length > 0 && typeof label === 'number') {
-        return (
-            <div className="bg-black/50 backdrop-blur-xl p-3 rounded-lg border border-brand-border text-white">
-                <p className="label text-brand-light-gray text-sm">Edad: {label.toFixed(0)} días</p> {/* Format age */}
-                {payload.map((p: any, index: number) => ( // Add index for key
-                    <p key={`${p.name}-${index}`} style={{ color: p.color }} className="font-bold text-base">
-                        {p.name}: {p.value.toFixed(2)} Kg
-                    </p>
-                ))}
-            </div>
-        );
-    }
-    return null;
-};
+// (CustomTooltip se importa desde ui, por lo que esta definición local se elimina si ya existe globalmente)
+// const CustomTooltip = ({ active, payload, label }: any) => { ... };
 
 
 // --- COMPONENTE PRINCIPAL ---
@@ -50,7 +37,8 @@ interface GrowthProfilePageProps {
 
 export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePageProps) {
     // Get data from context
-    const { animals, bodyWeighings } = useData();
+    // --- CAMBIO: appConfig añadido ---
+    const { animals, bodyWeighings, appConfig } = useData();
 
     // Memoize the calculation of animal data and derived metrics
     const animalData = useMemo(() => {
@@ -101,36 +89,54 @@ export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePag
     // Destructure calculated data for easier access in JSX
     const { animal, gdp, formattedAge, latestWeight, chartData, interpolatedWeights, weaningIndex, precocityIndex } = animalData;
 
+    // --- CAMBIO: Preparar nombre formateado ---
+    const formattedName = animal.name ? String(animal.name).toUpperCase().trim() : '';
+
     // --- RENDERIZADO DE LA PÁGINA ---
     return (
         <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in pb-12">
-            {/* Cabecera */}
-            <header className="flex items-center pt-8 pb-4 px-4 sticky top-0 bg-brand-dark/80 backdrop-blur-md z-10 border-b border-brand-border -mx-4 mb-4"> {/* Added sticky, bg, blur, border, margins */}
+            {/* --- CABECERA ACTUALIZADA --- */}
+            <header className="flex items-center pt-8 pb-4 px-4 sticky top-0 bg-brand-dark/80 backdrop-blur-md z-10 border-b border-brand-border -mx-4 mb-4">
                 <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
-                {/* --- USO DE formatAnimalDisplay --- */}
-                <div className="text-center flex-grow">
-                    <h1 className="text-3xl font-bold tracking-tight text-white">{formatAnimalDisplay(animal)}</h1>
-                    <p className="text-lg text-zinc-400">Perfil de Crecimiento</p>
+                {/* --- INICIO: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
+                <div className="text-center flex-grow min-w-0">
+                    {/* ID (Protagonista) - Fuente y tamaño aplicados */}
+                    <h1 className="text-3xl font-mono font-bold tracking-tight text-white truncate">{animal.id.toUpperCase()}</h1>
+                    {/* Nombre (Secundario, si existe) */}
+                    {formattedName && (
+                        <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+                    )}
+                    <p className="text-lg text-zinc-400 mt-1">Perfil de Crecimiento</p> {/* Added mt-1 */}
                 </div>
+                {/* --- FIN: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
                 <div className="w-8"></div> {/* Spacer */}
             </header>
+            {/* --- FIN CABECERA --- */}
+
 
             {/* KPIs Principales */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-4">
                 <KpiCard icon={Scale} label="Peso Actual" value={latestWeight.toFixed(2)} unit="Kg" />
                 <KpiCard icon={TrendingUp} label="GDP General" value={gdp.overall ? (gdp.overall * 1000).toFixed(0) : 'N/A'} unit="g/día" />
                 <KpiCard icon={Calendar} label="Edad Actual" value={formattedAge} />
-                <KpiCard icon={Hash} label="Nº Pesajes" value={chartData.length > 0 ? chartData.length - (animal.birthWeight ? 1 : 0) : 0} /> {/* Exclude birth weight from count */}
+                <KpiCard icon={Hash} label="Nº Pesajes" value={chartData.length > 0 ? chartData.length - (animal.birthWeight ? 1 : 0) : 0} />
             </div>
 
             {/* KPIs de Índices (solo si existen) */}
+            {/* --- CAMBIO: Rejilla actualizada para incluir la Meta --- */}
             {(weaningIndex || precocityIndex) && (
-                <div className="grid grid-cols-2 gap-4 px-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 px-4">
                     {weaningIndex && (
                         <KpiCard icon={GiPodium} label="Índice Destete (60d)" value={weaningIndex.toFixed(2)} unit="Kg" colorClass="border-amber-400/50"/>
                     )}
-                    {/* Placeholder div if only one index exists, to maintain grid structure */}
-                    {!weaningIndex && precocityIndex && <div />}
+                    {/* --- CAMBIO: Nueva Card para la Meta de Destete --- */}
+                    <KpiCard 
+                        icon={Check} 
+                        label="Meta Destete (Config)" 
+                        value={appConfig.pesoDesteteMetaKg.toFixed(2)} 
+                        unit="Kg" 
+                        colorClass="border-blue-400/50"
+                    />
                     {precocityIndex && (
                         <KpiCard icon={GiFastForwardButton} label="Índice Precocidad (7m)" value={precocityIndex.toFixed(2)} unit="Kg" colorClass="border-amber-400/50"/>
                     )}
@@ -141,16 +147,15 @@ export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePag
             <div className="px-4">
                 <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
                     <h3 className="text-lg font-semibold text-white mb-4">Curva de Crecimiento</h3>
-                    {chartData.length > 1 ? ( // Only render chart if there's more than just birth weight
+                    {chartData.length > 1 ? (
                         <div className="w-full h-64">
                             <ResponsiveContainer>
                                 <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                                     <XAxis dataKey="age" type="number" domain={['dataMin', 'dataMax']} tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} label={{ value: 'Edad (días)', position: 'insideBottom', offset: -5, fill: 'rgba(255,255,255,0.5)'}} />
-                                    <YAxis orientation="right" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} label={{ value: 'Peso (Kg)', angle: -90, position: 'insideRight', fill: 'rgba(255,255,255,0.5)' }} domain={['dataMin - 2', 'dataMax + 2']}/> {/* Added domain */}
+                                    <YAxis orientation="right" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} label={{ value: 'Peso (Kg)', angle: -90, position: 'insideRight', fill: 'rgba(255,255,255,0.5)' }} domain={['dataMin - 2', 'dataMax + 2']}/>
                                     <Tooltip content={<CustomTooltip />} />
                                     <Legend verticalAlign="top" height={36}/>
-                                    {/* Line uses animal.id as dataKey */}
                                     <Line type="monotone" dataKey={animal.id} name={formatAnimalDisplay(animal)} stroke="#34C759" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                                 </LineChart>
                             </ResponsiveContainer>
@@ -165,13 +170,12 @@ export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePag
             <div className="px-4">
                 <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
                     <h3 className="text-lg font-semibold text-white mb-4">Hitos de Crecimiento (Pesos Estimados)</h3>
-                    {/* Check if there are enough weighings for interpolation */}
                     {chartData.length > 1 ? (
                         <div className="grid grid-cols-2 gap-4">
                             {interpolatedWeights.map(({days, weight}) => (
                                 <div key={days} className="bg-black/20 p-3 rounded-lg text-center">
                                     <p className="text-sm text-zinc-400">Peso a los {days} días</p>
-                                    <p className="text-xl font-bold text-white">{weight ? `${weight.toFixed(2)} Kg` : '---'}</p> {/* Show --- if interpolation failed */}
+                                    <p className="text-xl font-bold text-white">{weight ? `${weight.toFixed(2)} Kg` : '---'}</p>
                                 </div>
                             ))}
                         </div>
@@ -180,6 +184,6 @@ export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePag
                     )}
                 </div>
             </div>
-        </div> // End main container
+        </div>
     );
 }

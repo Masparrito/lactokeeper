@@ -1,5 +1,3 @@
-// src/db/local.ts
-
 import Dexie, { Table } from 'dexie';
 
 // --- TIPOS DE DATOS ---
@@ -19,7 +17,7 @@ type SyncedRecord = {
 export interface Animal extends SyncedRecord {
      id: string;
     name?: string;
-    createdAt?: number;
+      createdAt?: number;
     userId?: string;
     sex: 'Hembra' | 'Macho';
     // --- CORRECCIÓN: Permitir 'string' para 'Referencia' u otros estados custom ---
@@ -165,6 +163,9 @@ export interface Product extends SyncedRecord {
     dosageFixed?: number;
     dosagePerKg_ml?: number;
     dosagePerKg_kg?: number;
+    // --- CAMBIO: Añadidos campos de retiro ---
+    withdrawalDaysMilk?: number;
+    withdrawalDaysMeat?: number;
 }
 
 export type AdultSubgroup = 'Cabritonas' | 'Cabras' | 'Reproductores' | 'Machos de Levante';
@@ -212,6 +213,9 @@ export interface HealthEvent extends SyncedRecord {
     notes?: string;
     executedBy?: string;
     famachaGrade?: 1 | 2 | 3 | 4 | 5;
+    // --- CAMBIO: Añadidos campos de retiro ---
+    diasRetiroLeche?: number;
+    diasRetiroCarne?: number;
 }
 
 // --- Definición de Tablas con Tipos ---
@@ -235,8 +239,8 @@ export interface GanaderoOSTables {
 }
 
 const DB_NAME = "GanaderoOS_DB";
-// --- CORRECCIÓN: Incrementar versión por añadir _synced y 'Registro' ---
-const DB_VERSION = 20;
+// --- CAMBIO: Incrementar versión por añadir campos de retiro ---
+const DB_VERSION = 21;
 
 export class GanaderoOSDB extends Dexie implements GanaderoOSTables {
     animals!: Table<Animal>;
@@ -260,7 +264,7 @@ export class GanaderoOSDB extends Dexie implements GanaderoOSTables {
         super(DB_NAME);
 
         this.version(DB_VERSION).stores({
-            // --- CORRECCIÓN: Añadir _synced a los índices ---
+            // --- CAMBIO: Añadir _synced a los índices ---
             animals: '&id, userId, status, location, motherId, fatherId, sireLotId, _synced',
             fathers: '&id, userId, _synced',
             parturitions: '&id, userId, goatId, status, _synced',
@@ -278,6 +282,10 @@ export class GanaderoOSDB extends Dexie implements GanaderoOSTables {
             planActivities: '&id, userId, healthPlanId, category, _synced',
             healthEvents: '&id, userId, animalId, date, activityId, _synced',
         });
+
+        // La versión 20 anterior tenía esta definición, la mantenemos por si acaso
+        // pero la versión 21 es la que se aplicará a nuevas instalaciones
+        // o la que migrará desde la 20. Dexie maneja esto.
     }
 }
 
@@ -287,6 +295,7 @@ export const initDB = async (): Promise<GanaderoOSDB> => {
     const db = new GanaderoOSDB();
     try {
         await db.open();
+        // --- CAMBIO: Actualizado mensaje de versión ---
         console.log("Base de datos local abierta con éxito (v" + DB_VERSION + ").");
         dbInstance = db;
         return db;

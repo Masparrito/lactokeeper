@@ -20,7 +20,8 @@ const getDateForFixedTask = (year: number, month: number, week: number): Date =>
 };
 
 export const useHealthAgenda = () => {
-    const { animals, healthPlans, planActivities, healthEvents, parturitions } = useData();
+    // --- CAMBIO: Se obtiene appConfig ---
+    const { animals, healthPlans, planActivities, healthEvents, parturitions, appConfig } = useData();
     const { forecastBySeason } = useBirthingForecast();
 
     const pendingTasks = useMemo(() => {
@@ -83,8 +84,15 @@ export const useHealthAgenda = () => {
                         if (!hasBeenDone && dueDate <= ninetyDaysFromNow) {
                             let status: AgendaTask['status'] = 'Próxima';
                             const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                            if (daysUntilDue < 0) status = 'Atrasada';
-                            else if (daysUntilDue === 0) status = 'Para Hoy';
+                            
+                            // --- CAMBIO: Lógica de status actualizada ---
+                            // La tarea se marca "Atrasada" solo si ha pasado la fecha de vencimiento MÁS los días de alerta (gracia)
+                            if (daysUntilDue < 0 && Math.abs(daysUntilDue) > appConfig.diasAlertaAtraso) {
+                                status = 'Atrasada';
+                            } else if (daysUntilDue === 0) {
+                                status = 'Para Hoy';
+                            }
+                            
                             generatedTasks.push({ key: taskKey, animal, plan, activity, dueDate, status });
                         }
                     };
@@ -117,7 +125,7 @@ export const useHealthAgenda = () => {
 
         return generatedTasks.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
 
-    }, [animals, healthPlans, planActivities, healthEvents, parturitions, forecastBySeason]);
+    }, [animals, healthPlans, planActivities, healthEvents, parturitions, forecastBySeason, appConfig.diasAlertaAtraso]); // --- CAMBIO: Dependencia añadida ---
 
     const groupedTasks = useMemo(() => {
         return {

@@ -1,31 +1,24 @@
 // src/components/forms/SireLotForm.tsx
 
-import React, { useState, useEffect } from 'react'; // Añadir useEffect para manejo inicial del estado
+import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { Father } from '../../db/local';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { AddFatherModal } from '../ui/AddFatherModal';
-
-// **********************************************
-// ********* CORRECCIÓN 1: PROPS ****************
-// **********************************************
+// --- CAMBIO: Importar formatAnimalDisplay ---
+import { formatAnimalDisplay } from '../../utils/formatting';
 
 interface SireLotFormProps {
   onSave: (sireId: string) => Promise<void>;
   onCancel: () => void;
-  // Añadidas las props que se pasan desde BreedingSeasonDetailPage
   editingLot?: any; 
-  seasonId: string; // Se mantiene por si se necesita en el futuro, aunque no se usa aquí directamente
+  seasonId: string;
 }
-
-// **********************************************
-// **********************************************
 
 export const SireLotForm: React.FC<SireLotFormProps> = ({ 
     onSave, 
     onCancel, 
-    editingLot, // Destructurar las nuevas props
-    
+    editingLot, 
 }) => {
   const { fathers, addFather } = useData();
   const [sireId, setSireId] = useState('');
@@ -33,23 +26,17 @@ export const SireLotForm: React.FC<SireLotFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // **********************************************
-  // ********* CORRECCIÓN 2: LÓGICA DE EDICIÓN ****
-  // **********************************************
-  // Usar useEffect para inicializar el estado del semental si estamos editando
   useEffect(() => {
     if (editingLot && editingLot.sireId) {
         setSireId(editingLot.sireId);
     } else {
-        setSireId(''); // Limpiar si no estamos editando
+        setSireId('');
     }
   }, [editingLot]);
-  // **********************************************
-  // **********************************************
 
   const handleSaveFather = async (newFather: Father) => {
     await addFather(newFather);
-    setSireId(newFather.id); // Selecciona automáticamente el nuevo padre
+    setSireId(newFather.id);
     setIsFatherModalOpen(false);
   };
 
@@ -69,8 +56,6 @@ export const SireLotForm: React.FC<SireLotFormProps> = ({
       console.error(err);
       setIsLoading(false);
     }
-    // NOTA: Si onSave tiene éxito, el modal se cerrará en el componente padre, 
-    // y el isLoading se reseteará implícitamente al desmontarse.
   };
 
   const submitButtonText = editingLot 
@@ -83,18 +68,23 @@ export const SireLotForm: React.FC<SireLotFormProps> = ({
         <div>
           <label htmlFor="sire" className="block text-sm font-medium text-zinc-400 mb-1">Seleccionar Semental</label>
           <div className="flex items-center gap-2">
-            {/* Se añade la lógica para deshabilitar la selección si estamos editando,
-                asumiendo que solo se cambia el semental en la edición */}
+            {/* --- CAMBIO: Añadido font-mono al select --- */}
             <select 
                 id="sire" 
                 value={sireId} 
                 onChange={e => setSireId(e.target.value)} 
-                className="w-full bg-zinc-800 p-3 rounded-xl" 
+                className="w-full bg-zinc-800 p-3 rounded-xl font-mono text-white" // font-mono aplicado
                 required
-                disabled={!!editingLot} // Deshabilitar la selección si se está editando
+                // Si estamos editando, asumimos que no se puede cambiar el semental del lote
+                disabled={!!editingLot} 
             >
               <option value="">Elegir reproductor...</option>
-              {fathers.map(f => <option key={f.id} value={f.id}>{f.name} ({f.id})</option>)}
+              {/* --- CAMBIO: Usamos formatAnimalDisplay para las opciones --- */}
+              {fathers.map(f => (
+                <option key={f.id} value={f.id}>
+                    {formatAnimalDisplay(f)}
+                </option>
+              ))}
             </select>
             <button type="button" onClick={() => setIsFatherModalOpen(true)} className="flex-shrink-0 p-3 bg-brand-orange hover:bg-orange-600 text-white rounded-xl">
               <Plus size={24} />

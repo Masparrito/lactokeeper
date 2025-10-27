@@ -1,6 +1,6 @@
 // src/context/AuthContext.tsx
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 
@@ -31,12 +31,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return unsubscribe;
     }, []);
 
-    const value = {
+    // --- CORRECCIÓN: Memoizar el objeto 'value' ---
+    // Esto asegura que el objeto 'value' solo se cree de nuevo si
+    // 'currentUser' o 'isLoading' cambian, rompiendo el bucle de
+    // re-renderizado en cadena con DataContext.
+    const value = useMemo(() => ({
         currentUser,
         isLoading,
-    };
+    }), [currentUser, isLoading]);
 
-    // --- CAMBIO CLAVE ---
     // Ya no mostramos ninguna pantalla de carga aquí.
     // Simplemente pasamos la información a los componentes hijos.
     // App.tsx se encargará de decidir si muestra la pantalla de carga.

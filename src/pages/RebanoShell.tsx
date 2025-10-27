@@ -1,3 +1,5 @@
+// src/pages/RebanoShell.tsx
+
 import { useState, useEffect } from 'react';
 import LotsDashboardPage from './LotsDashboardPage';
 import LotDetailPage from './LotDetailPage';
@@ -15,8 +17,11 @@ import GrowthProfilePage from './modules/kilos/GrowthProfilePage';
 import OcrPage from './OcrPage';
 import FarmCalendarPage from './FarmCalendarPage';
 import BirthingSeasonDetailPage from './BirthingSeasonDetailPage';
+// --- CAMBIO: Importar ConfiguracionPage ---
+import ConfiguracionPage from './ConfiguracionPage'; 
 import { ModuleSwitcher } from '../components/ui/ModuleSwitcher';
-import { PlusCircle, LogOut, CalendarDays } from 'lucide-react';
+// --- CAMBIO: Importar Settings ---
+import { PlusCircle, LogOut, CalendarDays, Settings } from 'lucide-react';
 import { GiGoat, GiBarn } from 'react-icons/gi';
 import { FaCow } from "react-icons/fa6";
 import { auth } from '../firebaseConfig';
@@ -56,7 +61,8 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
 
     const navItems = [
         { page: { name: 'lots-dashboard' }, label: 'Lotes', icon: GiBarn, mapsTo: ['lots-dashboard', 'lot-detail', 'breeding-season-detail', 'sire-lot-detail', 'feeding-plan', 'batch-treatment'] },
-        { page: { name: 'herd' }, label: 'Rebaño', icon: FaCow, mapsTo: ['herd', 'rebano-profile', 'manage-lots', 'lactation-profile', 'growth-profile'] },
+        // --- CAMBIO: Añadido 'configuracion' a mapsTo de Rebaño ---
+        { page: { name: 'herd' }, label: 'Rebaño', icon: FaCow, mapsTo: ['herd', 'rebano-profile', 'manage-lots', 'lactation-profile', 'growth-profile', 'configuracion'] },
         { page: { name: 'farm-calendar' }, label: 'Calendario', icon: CalendarDays, mapsTo: ['farm-calendar', 'birthing-season-detail'] },
         { page: { name: 'add-animal' }, label: 'Añadir', icon: PlusCircle, mapsTo: ['add-animal', 'ocr'] },
     ] as const;
@@ -105,6 +111,8 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
             case 'batch-treatment': return <BatchTreatmentPage lotName={page.lotName} onBack={navigateBack} />;
             case 'farm-calendar': return <FarmCalendarPage navigateTo={navigateTo} />;
             case 'birthing-season-detail': return <BirthingSeasonDetailPage seasonId={page.seasonId} onBack={navigateBack} navigateTo={navigateTo} />;
+            // --- CAMBIO: Añadido el case para la nueva página ---
+            case 'configuracion': return <ConfiguracionPage navigateTo={navigateTo} onBack={navigateBack} />;
             default: return <LotsDashboardPage navigateTo={navigateTo} />;
         }
     };
@@ -122,6 +130,14 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
                     </div>
                     <div className="flex items-center gap-4">
                         <SyncStatusIcon status={syncStatus} />
+                        {/* --- CAMBIO: Botón de Configuración añadido --- */}
+                        <button 
+                            onClick={() => navigateTo({ name: 'configuracion' })}
+                            className="p-2 text-zinc-400 hover:text-white transition-colors"
+                            title="Configuración"
+                        >
+                            <Settings size={20} />
+                        </button>
                     </div>
                 </div>
             </header>
