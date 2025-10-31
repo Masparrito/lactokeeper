@@ -1,479 +1,463 @@
-import React, { useState, useMemo } from 'react';
-// PDF Export
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-// Hooks y Tipos
-import { useHerdEvolution, MonthlyPopulationState, SimulationConfig } from '../../../hooks/useHerdEvolution';
-import { useMilkCashFlow, CashFlowDataPoint } from '../../../hooks/useMilkCashFlow';
-// Iconos
-import { TrendingUp, Users, DollarSign, Calendar, Download } from 'lucide-react';
-import { GiGoat } from 'react-icons/gi';
-// Gráficos
-import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    BarChart, Bar, Line, ComposedChart, Legend,
+import React, { useState } from 'react';
+// --- V6.2: Importaciones de Recharts para el gráfico ---
+import { 
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, 
+    ResponsiveContainer 
 } from 'recharts';
+// Íconos (Completos) - Todos se usan ahora
+import { 
+    TrendingUp, TrendingDown, ShoppingCart, Activity, Baby, Skull, UserMinus, 
+    Percent, BarChartHorizontal, ChevronDown, ChevronUp, PieChart 
+} from 'lucide-react';
+// Hook y Tipos V6.1
+import { useHerdEvolution, AnnualEvolutionStep, SemestralEvolutionStep, SimulationConfig, MonthlyEvolutionStep } from '../../../hooks/useHerdEvolution'; // ¡Verifica esta ruta!
+// --- FASE 3: Importar el nuevo Modal ---
+import { DetailedReportModal } from './DetailedReportModal'; // ¡Verifica esta ruta!
 
-// --- COMPONENTES UI EXTERNOS O DEFINIDOS EN OTRO LUGAR ---
-// (Asumiendo que existen KpiCard, SegmentedControl, CustomTooltip, CustomLegend)
+// -----------------------------------------------------------------------------
+// --- Componente KpiRow (V6.1 - CÓDIGO COMPLETO) ---
+// -----------------------------------------------------------------------------
+type KpiRowProps = {
+  data: AnnualEvolutionStep | SemestralEvolutionStep;
+};
 
-// --- Ejemplo KpiCard ---
-const KpiCard = ({ title, value, icon: Icon, unit, color = 'text-white' }: { title: string, value: string | number, icon: React.ElementType, unit?: string, color?: string }) => ( <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border"> <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"> <Icon size={14} /> <span>{title}</span> </div> <p className={`text-3xl font-bold ${color} mt-1`}> {value} <span className="text-xl text-zinc-400">{unit}</span> </p> </div> );
-// --- Ejemplo SegmentedControl ---
-type SegmentValue = string | number;
-const SegmentedControl = <T extends SegmentValue>({ options, value, onChange }: { options: { label: string, value: T }[], value: T, onChange: (value: T) => void }) => ( <div className="flex bg-brand-glass rounded-xl p-1 border border-brand-border"> {options.map(opt => ( <button key={String(opt.value)} onClick={() => onChange(opt.value)} className={`w-full py-2 text-sm font-semibold rounded-lg transition-colors ${ value === opt.value ? 'bg-zinc-700 text-white' : 'text-zinc-400' }`}> {opt.label} </button> ))} </div> );
-// --- Ejemplo CustomTooltip (Adaptado para recibir monedaSimbolo) ---
-const CustomTooltip = ({ active, payload, label, titleFormatter, monedaSimbolo }: { active?: boolean, payload?: any[], label?: string, titleFormatter?: (label: string) => string, monedaSimbolo?: string }) => {
-     if (active && payload && payload.length && label !== undefined) {
-        const finalTitle = titleFormatter ? titleFormatter(label) : `Mes ${label}`;
-        // Formatter interno simple
-        const formatValue = (value: any, dataKey: string) => {
-            if (typeof value !== 'number') return value ?? 'N/A';
-            // Aplicar formato de moneda si monedaSimbolo está presente y el dataKey lo sugiere
-            if (monedaSimbolo && (dataKey.toLowerCase().includes('ingreso') || dataKey.toLowerCase().includes('venta'))) {
-                return `${monedaSimbolo}${value.toFixed(0)}`;
-            }
-            // Formato numérico general
-            return value.toFixed(0);
-        };
-        return (
-            <div className="bg-black/70 backdrop-blur-md p-3 rounded-xl border border-zinc-700 shadow-lg">
-                <p className="text-base font-bold text-white mb-2">{finalTitle}</p>
-                <div className="space-y-1">
-                    {payload.map((p: any, index: number) => (
-                        <div key={`${p.dataKey}-${index}`} className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.stroke || p.fill }}></div>
-                                <span className="text-sm text-zinc-300">{p.name}:</span>
-                            </div>
-                            <span className="text-sm font-semibold text-white">
-                                {formatValue(p.value, p.dataKey)}
-                            </span>
-                        </div>
-                    ))}
-                </div>
+// (Función auxiliar interna)
+const formatNum = (num: number | undefined): number => Math.round(num || 0);
+
+const KpiRow: React.FC<KpiRowProps> = ({ data }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const formatPercent = (num: number | undefined): string => (num || 0).toFixed(1);
+
+  // --- V6.1: CÁLCULO DE VIENTRES (CORREGIDO REDONDEO) ---
+  const kpiStartProductivasCount = formatNum(data.startCabras) + formatNum(data.startLevanteTardio);
+  const kpiEndProductivasCount = formatNum(data.endCabras) + formatNum(data.endLevanteTardio);
+  
+  // --- V6.1: CÁLCULO DE CRECIMIENTO (CORREGIDO REDONDEO) ---
+  const kpiStartCrecimientoCount = formatNum(data.startLevanteTemprano) + formatNum(data.startLevanteMedio) + formatNum(data.startCriaH);
+  const kpiEndCrecimientoCount = formatNum(data.endLevanteTemprano) + formatNum(data.endLevanteMedio) + formatNum(data.endCriaH);
+
+  // --- V6.1: CÁLCULO DE HEMBRAS TOTALES (NUEVO) ---
+  const kpiStartHembrasTotales = kpiStartProductivasCount + kpiStartCrecimientoCount;
+  const kpiEndHembrasTotales = kpiEndProductivasCount + kpiEndCrecimientoCount;
+
+  // --- V4.2: Calcular Crecimiento de Vientres ---
+  const netChangeVientres = kpiEndProductivasCount - kpiStartProductivasCount;
+  const growthRateVientres = kpiStartProductivasCount > 0 ? (netChangeVientres / kpiStartProductivasCount) * 100 : 0;
+  const isPositiveVientres = netChangeVientres >= 0;
+  const TrendIconVientres = isPositiveVientres ? TrendingUp : TrendingDown;
+  const trendColorVientres = isPositiveVientres ? 'text-green-500' : 'text-red-500'; // Estilo Stocks
+
+  // --- V6.1: Calcular Crecimiento de Hembras Totales ---
+  const netChangeHembras = kpiEndHembrasTotales - kpiStartHembrasTotales;
+  const growthRateHembras = kpiStartHembrasTotales > 0 ? (netChangeHembras / kpiStartHembrasTotales) * 100 : 0;
+  const isPositiveHembras = netChangeHembras >= 0;
+  const TrendIconHembras = isPositiveHembras ? TrendingUp : TrendingDown;
+  const trendColorHembras = isPositiveHembras ? 'text-green-500' : 'text-red-500';
+
+
+  return (
+    <div className="w-full overflow-hidden rounded-xl border border-white/10 bg-gray-800/50 shadow-md backdrop-blur-lg">
+      {/* Botón Clickable */}
+      <button onClick={() => setIsExpanded(!isExpanded)} className="w-full p-5 text-left focus:outline-none focus:ring-2 focus:ring-sky-500 rounded-t-xl">
+        <div className="flex items-start justify-between">
+          {/* KPIs Principales */}
+          <div className="flex-1 space-y-1">
+            <p className="text-lg font-bold text-white">{data.periodLabel}</p>
+            <div className="flex items-baseline gap-3">
+               <p className="text-4xl font-bold leading-none text-white">{kpiEndProductivasCount}</p>
+               <p className="text-2xl font-medium text-gray-400">(Inicio: {kpiStartProductivasCount})</p>
             </div>
-        );
-    }
-    return null;
+            <p className="text-sm text-gray-400">Vientres Productivos (Final vs. Inicial)</p>
+            <p className="text-sm text-gray-400 pt-1">
+              Hembras Totales: <span className="font-semibold text-white">{kpiEndHembrasTotales}</span> (Inicio: {kpiStartHembrasTotales})
+            </p>
+          </div>
+          {/* Crecimiento */}
+          <div className="flex-1 text-right space-y-2">
+            <div className={`text-right ${trendColorVientres}`}>
+              <div className="flex items-center justify-end gap-1"> 
+                <TrendIconVientres size="1.2em" /> 
+                <p className="text-xl font-bold">{formatPercent(growthRateVientres)}%</p> 
+              </div>
+              <p className="text-lg font-medium">{isPositiveVientres ? '+' : ''}{netChangeVientres} Vientres</p>
+            </div>
+            <div className={`text-right text-xs ${trendColorHembras} opacity-70`}>
+              <div className="flex items-center justify-end gap-1"> 
+                <TrendIconHembras size="1em" /> 
+                <p className="font-semibold">{formatPercent(growthRateHembras)}%</p> 
+              </div>
+              <p className="font-medium">{isPositiveHembras ? '+' : ''}{netChangeHembras} Hembras Totales</p>
+            </div>
+          </div>
+          {/* Icono Expansión */}
+          <div className="ml-4 text-gray-500 pt-2"> {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />} </div>
+        </div>
+      </button>
+      
+      {/* --- INICIO CÓDIGO FALTANTE (AHORA INCLUIDO) --- */}
+      {/* --- Sección Expandible --- */}
+      {isExpanded && (
+        <div className="border-t border-white/10 px-5 pb-5 pt-4 animate-fade-in">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+
+            {/* Col 1: Desglose Final */}
+            <div className="space-y-0.5 md:pr-4 md:border-r md:border-white/10">
+              <p className="text-xs font-semibold uppercase text-gray-400 mb-2">Desglose Final (Periodo)</p>
+              <p className="text-sm text-gray-200"><span className="font-bold text-white">{formatNum(data.endCabras)}</span> Cabras ({'>'}18m)</p>
+              <p className="text-sm text-gray-200"><span className="font-bold text-white">{formatNum(data.endLevanteTardio)}</span> L. Tardío (12-18m)</p>
+              <p className="text-sm text-gray-200"><span className="font-bold text-white">{formatNum(data.endLevanteMedio)}</span> L. Medio (6-12m)</p>
+              <p className="text-sm text-gray-200"><span className="font-bold text-white">{formatNum(data.endLevanteTemprano)}</span> L. Temprano (3-6m)</p>
+              <p className="text-sm text-gray-200"><span className="font-bold text-white">{formatNum(data.endCriaH)}</span> Crías H (0-3m)</p>
+              <p className="text-sm text-gray-200"><span className="font-bold text-white">{formatNum(data.endCriaM)}</span> Crías M (0-3m)</p>
+              <p className="text-sm text-gray-200"><span className="font-bold text-white">{formatNum(data.endPadres)}</span> Padres ({'>'}12m)</p>
+              <hr className="my-1 border-white/10" />
+              <p className="text-sm text-gray-100"><span className="font-bold text-white">{formatNum(data.endTotal)}</span> Animales Totales (Final)</p>
+            </div>
+            
+            {/* Col 2: Movimientos */}
+            <div className="space-y-3 md:pr-4 md:border-r md:border-white/10">
+              <p className="text-xs font-semibold uppercase text-gray-400 mb-2">Movimientos del Periodo</p>
+              {/* Nacimientos */}
+              <div className="space-y-0.5">
+                 <div className="flex items-center gap-2 text-green-400 text-sm">
+                   <Baby size={14} className="flex-shrink-0" />
+                   <span className="font-semibold">{formatNum(data.nacimientosH + data.nacimientosM)} Nacimientos Totales</span>
+                 </div>
+                 <div className="ml-6 text-xs text-gray-300">
+                    <div>{formatNum(data.nacimientosH)} Hembras (0-3m)</div>
+                    <div>{formatNum(data.nacimientosM)} Machos (0-3m)</div>
+                 </div>
+              </div>
+              {/* Promociones */}
+              <div className="space-y-0.5">
+                 <div className="flex items-center gap-2 text-blue-400 text-sm">
+                   <Activity size={14} className="flex-shrink-0" />
+                   <span className="font-semibold">Promociones (Hembras)</span>
+                 </div>
+                 <div className="ml-6 text-xs text-gray-300">
+                    <div>{formatNum(data.promocionCriaH)} Cría H → L. Temprano</div>
+                    <div>{formatNum(data.promocionLevanteTemprano)} L. Temprano → L. Medio</div>
+                    <div>{formatNum(data.promocionLevanteMedio)} L. Medio → L. Tardío</div>
+                    <div>{formatNum(data.promocionLevanteTardio)} L. Tardío → Cabras</div>
+                 </div>
+              </div>
+              {/* Muertes */}
+              <div className="space-y-0.5">
+                 <div className="flex items-center gap-2 text-red-400 text-sm">
+                   <Skull size={14} className="flex-shrink-0" />
+                   <span className="font-semibold">{formatNum(data.muertesTotales)} Muertes</span>
+                 </div>
+                 <div className="ml-6 text-xs text-gray-300">
+                     {data.muertesCriaH > 0 && <div>{formatNum(data.muertesCriaH)} Crías H (0-3m)</div>}
+                     {data.muertesCriaM > 0 && <div>{formatNum(data.muertesCriaM)} Crías M (0-3m)</div>}
+                     {data.muertesLevanteTemprano > 0 && <div>{formatNum(data.muertesLevanteTemprano)} L. Temprano (3-6m)</div>}
+                     {data.muertesLevanteMedio > 0 && <div>{formatNum(data.muertesLevanteMedio)} L. Medio (6-12m)</div>}
+                     {data.muertesLevanteTardio > 0 && <div>{formatNum(data.muertesLevanteTardio)} L. Tardío (12-18m)</div>}
+                     {data.muertesCabras > 0 && <div>{formatNum(data.muertesCabras)} Cabras ({'>'}18m)</div>}
+                     {data.muertesPadres > 0 && <div>{formatNum(data.muertesPadres)} Padres</div>}
+                 </div>
+              </div>
+              {/* Eliminaciones y Descarte */}
+              <div className="space-y-0.5">
+                 <div className="flex items-center gap-2 text-red-400 text-sm">
+                   <UserMinus size={14} className="flex-shrink-0" />
+                   <span className="font-semibold">{formatNum(data.ventasTotales)} Ventas (Elim./Descarte)</span>
+                 </div>
+                 <div className="ml-6 text-xs text-gray-300">
+                    {data.ventasCabritos > 0 && <div>{formatNum(data.ventasCabritos)} Crías M (Eliminación)</div>}
+                    {data.ventasDescartes > 0 && <div>{formatNum(data.ventasDescartes)} Cabras (Descarte)</div>}
+                 </div>
+              </div>
+              {/* Compras (Opcional) */}
+              {data.comprasTotales > 0 && (
+                <div className="space-y-0.5">
+                   <div className="flex items-center gap-2 text-green-400 text-sm">
+                     <ShoppingCart size={14} className="flex-shrink-0" />
+                     <span className="font-semibold">{formatNum(data.comprasTotales)} Compras</span>
+                   </div>
+                   <div className="ml-6 text-xs text-gray-300">
+                      {data.comprasVientres > 0 && <div>{formatNum(data.comprasVientres)} Vientres (12-18m)</div>}
+                      {data.comprasPadres > 0 && <div>{formatNum(data.comprasPadres)} Padres</div>}
+                   </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Col 3: KPIs Productivos */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase text-gray-400 mb-2">Capacidad Productiva (Inicio → Fin)</p>
+              <div className="space-y-1 text-sm text-gray-300">
+                  {/* --- Vientres Productivos (Inicio -> Fin) --- */}
+                  <div className="flex items-center justify-between"> 
+                    <span className="flex items-center gap-1.5"><BarChartHorizontal size={12}/> Vientres Productivos ({'>'}12m)</span> 
+                    <span className="font-semibold text-white">
+                      {kpiStartProductivasCount} → {kpiEndProductivasCount}
+                    </span> 
+                  </div>
+                  {/* --- % Vientres (Final) --- */}
+                  <div className="flex items-center justify-between"> 
+                    <span className="flex items-center gap-1.5"><Percent size={12}/> % Vientres Productivos (Final)</span> 
+                    <span className="font-semibold text-white">{formatPercent(data.kpiProductivasPercent)}%</span> 
+                  </div>
+                  
+                  <hr className="my-2 border-white/10" />
+
+                  {/* --- Hembras Crecimiento (Inicio -> Fin) --- */}
+                  <div className="flex items-center justify-between"> 
+                    <span className="flex items-center gap-1.5"><TrendingUp size={12}/> Hembras en Crecimiento ({'<'}12m)</span> 
+                    <span className="font-semibold text-white">
+                      {kpiStartCrecimientoCount} → {kpiEndCrecimientoCount}
+                    </span> 
+                  </div>
+                  {/* --- % Crecimiento (Final) --- */}
+                  <div className="flex items-center justify-between"> 
+                    <span className="flex items-center gap-1.5"><Percent size={12}/> % Hembras en Crecimiento (Final)</span> 
+                    <span className="font-semibold text-white">{formatPercent(data.kpiCrecimientoPercent)}%</span> 
+                  </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+      {/* --- FIN CÓDIGO FALTANTE --- */}
+    </div>
+  );
 };
-// --- Ejemplo CustomLegend ---
-const CustomLegend = ({ items }: { items: { name: string, color: string }[] }) => ( <div className="absolute top-4 left-4 p-2 flex flex-wrap items-center gap-4 bg-black/30 backdrop-blur-sm rounded-lg z-10"> {items.map(item => ( <div key={item.name} className="flex items-center gap-1.5"> <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }}></div> <span className="text-xs text-zinc-200 font-medium">{item.name}</span> </div> ))} </div> );
 
+// -----------------------------------------------------------------------------
+// --- Componente SegmentedControl (SIN CAMBIOS) ---
+// -----------------------------------------------------------------------------
+interface SegmentedControlProps<T extends string | number> { options: { label: string; value: T }[]; value: T; onChange: (value: T) => void; }
+const SegmentedControl = <T extends string | number>({ options, value, onChange }: SegmentedControlProps<T>) => ( <div className="flex rounded-lg bg-gray-700 p-0.5"> {options.map((opt) => ( <button key={String(opt.value)} onClick={() => onChange(opt.value)} className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${ value === opt.value ? 'bg-sky-600 text-white shadow-sm' : 'text-gray-300 hover:text-white' }`} > {opt.label} </button> ))} </div> );
 
-// --- Tipos para las vistas temporales ---
-type TimeView = 'semestral' | 'anual';
-type CashFlowView = 'quincenal' | 'mensual' | 'semestral' | 'anual';
-type TableView = 'anual-detailed' | 'semestral-summary';
+// -----------------------------------------------------------------------------
+// --- V6.3: COMPONENTE Tooltip Interactivo (CORREGIDO) ---
+// -----------------------------------------------------------------------------
+const CustomTooltip: React.FC<any> = ({ active, payload }) => { // Corregido: label -> _label
+  if (active && payload && payload.length) {
+    const data: MonthlyEvolutionStep = payload[0].payload;
+    
+    // Corregido: Añadir tipos a sum y entry
+    const totalHembras = payload.reduce((sum: number, entry: any) => sum + entry.value, 0);
 
-// --- Interfaz para datos semestrales agregados ---
-interface AggregatedSemestralData {
-    semesterIndex: number; year: number; name: string;
-    startCabras: number; startCabritonas: number; startCabritas: number; startPadres: number;
-    nacimientosH: number; nacimientosM: number; muertesCrias: number; muertesLevante: number; muertesAdultas: number;
-    ventasCabritos: number; ventasDescartes: number; // Número de animales
-    descartesAdultas: number; // Mantenido por coherencia
-    comprasVientres: number;
-    promocionCriasLevante: number; promocionLevanteAdultas: number;
-    endCabras: number; endCabritonas: number; endCabritas: number; endPadres: number;
-    endTotal: number;
-    Litros: number; Hembras: number;
-    ingresosVentaLeche: number; ingresosVentaCabritos: number; ingresosVentaDescartes: number; ingresosTotales: number; // Plural
-    Cabras: number; Levante: number; Crías: number;
-}
-// Interfaz para datos anuales agregados
-interface AggregatedAnnualData {
-    year: number; name: string;
-    Cabras: number; Levante: number; Crías: number;
-    Litros: number; Hembras: number;
-    ingresosVentaLeche: number; ingresosVentaCabritos: number; ingresosVentaDescartes: number; ingresosTotales: number; // Plural
-}
-
-// --- Helper para agrupar datos MENSUALES en anuales ---
-const aggregateMonthlyToAnnual = (monthlyData: MonthlyPopulationState[]): AggregatedAnnualData[] => {
-    const annualData: AggregatedAnnualData[] = [];
-    if (!monthlyData || monthlyData.length === 0) return annualData;
-    const years = Array.from(new Set(monthlyData.map(m => m.year))).filter(y => y > 0);
-    years.forEach(year => {
-        const monthsInYear = monthlyData.filter(m => m.year === year);
-        const lastMonthOfYear = monthsInYear[monthsInYear.length - 1];
-        if (!lastMonthOfYear) return;
-        annualData.push({
-            year: year, name: `Año ${year}`,
-            Cabras: lastMonthOfYear.endCabras, Levante: lastMonthOfYear.endCabritonas, Crías: lastMonthOfYear.endCabritas,
-            Litros: monthsInYear.reduce((sum, m) => sum + m.litrosLecheProducidos, 0),
-            Hembras: Math.round(monthsInYear.reduce((sum, m) => sum + m.hembrasEnProduccion, 0) / monthsInYear.length),
-            ingresosVentaLeche: monthsInYear.reduce((sum, m) => sum + m.ingresosVentaLeche, 0),
-            ingresosVentaCabritos: monthsInYear.reduce((sum, m) => sum + m.ingresosVentaCabritos, 0),
-            ingresosVentaDescartes: monthsInYear.reduce((sum, m) => sum + m.ingresosVentaDescartes, 0),
-            ingresosTotales: monthsInYear.reduce((sum, m) => sum + m.ingresosTotales, 0), // Plural
-        });
-    });
-    return annualData;
-};
-
-// --- Helper para agrupar flujo de caja quincenal ---
-const aggregateCashFlow = (cashFlowData: CashFlowDataPoint[], groupBy: 'semestral' | 'anual'): { name: string, ingresoLeche: number }[] => {
-     const aggregated: { [key: string]: number } = {};
-    cashFlowData.forEach(cfItem => { // Renombrado cf a cfItem
-        const yearMatch = cfItem.name.match(/Y(\d+)/);
-        const monthMatch = cfItem.name.match(/M(\d+)/);
-        if (!yearMatch || !monthMatch) return;
-        const year = parseInt(yearMatch[1]);
-        const month = parseInt(monthMatch[1]);
-        const semester = Math.ceil(month / 6);
-        let key = '';
-        if (groupBy === 'semestral') key = `Año ${year}-S${semester}`;
-        else key = `Año ${year}`;
-        aggregated[key] = (aggregated[key] || 0) + cfItem.ingresoLeche;
-    });
-    return Object.entries(aggregated).map(([name, ingresoLeche]) => ({ name, ingresoLeche: parseFloat(ingresoLeche.toFixed(0)) }));
-};
-
-// --- Helper para agrupar datos MENSUALES en semestrales ---
-const aggregateMonthlyToSemestral = (monthlyData: MonthlyPopulationState[], projectionYears: number, simConfig: SimulationConfig | null): AggregatedSemestralData[] => {
-    const semestralData: AggregatedSemestralData[] = [];
-    if (!monthlyData || monthlyData.length === 0 || !simConfig) return semestralData;
-    const numSemesters = projectionYears * 2;
-    for(let s=1; s <= numSemesters; s++) {
-         const year = Math.ceil(s / 2);
-         const startMonth = (s - 1) * 6 + 1;
-         const endMonth = s * 6;
-         const monthsInSemester = monthlyData.filter(m => m.monthIndex >= startMonth && m.monthIndex <= endMonth);
-         if(monthsInSemester.length === 0) continue;
-         const firstMonthOfSemester = monthsInSemester[0];
-         const lastMonthOfSemester = monthsInSemester[monthsInSemester.length-1];
-         const ingresosCabritosSem = monthsInSemester.reduce((sum, m) => sum + m.ingresosVentaCabritos, 0);
-         const ventasCabritosNum = simConfig.precioVentaCabritoKg > 0 ? (ingresosCabritosSem / simConfig.precioVentaCabritoKg / 15) : 0;
-         const descartesAdultasNum = monthsInSemester.reduce((sum, m) => sum + m.descartesAdultas, 0);
-
-         semestralData.push({
-            semesterIndex: s, year: year, name: `S${s} (A${year})`,
-            startCabras: firstMonthOfSemester.startCabras, startCabritonas: firstMonthOfSemester.startCabritonas, startCabritas: firstMonthOfSemester.startCabritas, startPadres: firstMonthOfSemester.startPadres,
-            nacimientosH: monthsInSemester.reduce((sum, m) => sum + m.nacimientosHembras, 0),
-            nacimientosM: monthsInSemester.reduce((sum, m) => sum + m.nacimientosMachos, 0),
-            muertesCrias: monthsInSemester.reduce((sum, m) => sum + m.muertesCrías, 0),
-            muertesLevante: monthsInSemester.reduce((sum, m) => sum + m.muertesLevante, 0),
-            muertesAdultas: monthsInSemester.reduce((sum, m) => sum + m.muertesAdultas, 0),
-            ventasCabritos: ventasCabritosNum,
-            ventasDescartes: descartesAdultasNum,
-            descartesAdultas: descartesAdultasNum,
-            comprasVientres: monthsInSemester.reduce((sum, m) => sum + m.comprasVientres, 0),
-            promocionCriasLevante: monthsInSemester.reduce((sum, m) => sum + m.cabritasACabritonas, 0),
-            promocionLevanteAdultas: monthsInSemester.reduce((sum, m) => sum + m.cabritonasACabras, 0),
-            endCabras: lastMonthOfSemester.endCabras, endCabritonas: lastMonthOfSemester.endCabritonas, endCabritas: lastMonthOfSemester.endCabritas, endPadres: lastMonthOfSemester.endPadres,
-            endTotal: lastMonthOfSemester.endTotal,
-            Cabras: lastMonthOfSemester.endCabras, Levante: lastMonthOfSemester.endCabritonas, Crías: lastMonthOfSemester.endCabritas,
-            Litros: monthsInSemester.reduce((sum, m) => sum + m.litrosLecheProducidos, 0),
-            Hembras: monthsInSemester.length > 0 ? Math.round(monthsInSemester.reduce((sum, m) => sum + m.hembrasEnProduccion, 0) / monthsInSemester.length) : 0, // Evitar división por cero
-            ingresosVentaLeche: monthsInSemester.reduce((sum, m) => sum + m.ingresosVentaLeche, 0),
-            ingresosVentaCabritos: ingresosCabritosSem,
-            ingresosVentaDescartes: monthsInSemester.reduce((sum, m) => sum + m.ingresosVentaDescartes, 0),
-            ingresosTotales: monthsInSemester.reduce((sum, m) => sum + m.ingresosTotales, 0), // Plural
-         });
-    }
-    return semestralData;
-};
-
-// --- Helper para agrupar flujo de caja QUINCENAL en MENSUAL ---
-const aggregateCashFlowMonthly = (cashFlowData: CashFlowDataPoint[]): { name: string, ingresoLeche: number }[] => {
-    const aggregated: { [key: string]: { name: string, ingresoLeche: number, monthIndex: number } } = {};
-    cashFlowData.forEach(cfItem => { // Renombrado cf a cfItem
-        const yearMatch = cfItem.name.match(/Y(\d+)/);
-        const monthMatch = cfItem.name.match(/M(\d+)/);
-        if (!yearMatch || !monthMatch) return;
-        const year = parseInt(yearMatch[1]);
-        const month = parseInt(monthMatch[1]);
-        const monthIndex = (year - 1) * 12 + month;
-        const key = `Año ${year}-M${month}`;
-        if (!aggregated[key]) {
-            aggregated[key] = { name: key, ingresoLeche: 0, monthIndex: monthIndex };
-        }
-        aggregated[key].ingresoLeche += cfItem.ingresoLeche;
-    });
-    return Object.values(aggregated)
-                 .sort((a,b) => a.monthIndex - b.monthIndex)
-                 .map(item => ({ name: item.name, ingresoLeche: parseFloat(item.ingresoLeche.toFixed(0)) }));
-};
-
-// --- Componente Principal ---
-interface EvolucionRebanoPageProps {
-    simulationConfig: SimulationConfig;
-    mode: 'simulacion' | 'real';
-}
-
-export default function EvolucionRebanoPage({ simulationConfig, mode }: EvolucionRebanoPageProps) {
-    const [projectionYears, setProjectionYears] = useState(3);
-    const [timeView, setTimeView] = useState<TimeView>('anual');
-    const [cashFlowView, setCashFlowView] = useState<CashFlowView>('semestral');
-    const [tableView, setTableView] = useState<TableView>('anual-detailed');
-
-    // 1. Correr Simulación MENSUAL
-    const monthlyProjection = useHerdEvolution(simulationConfig, projectionYears);
-    const initialState = monthlyProjection.length > 0 ? monthlyProjection[0] : null;
-
-    // 2. Correr Simulación de Flujo de Caja QUINCENAL
-    const { cashFlow: quincenalCashFlow } = useMilkCashFlow(monthlyProjection.slice(1));
-
-    const { monedaSimbolo, nombreFinca } = simulationConfig;
-
-    // 3. Calcular KPIs Totales
-    const startPop = initialState ? initialState.startTotal : 0;
-    const lastMonthData = monthlyProjection.length > 1 ? monthlyProjection[monthlyProjection.length - 1] : initialState;
-    const endPop = lastMonthData ? lastMonthData.endTotal : startPop;
-    const endGoats = lastMonthData ? lastMonthData.endCabras : (initialState ? initialState.startCabras : 0);
-    const totalIncome = monthlyProjection.slice(1).reduce((sum, month) => sum + month.ingresosTotales, 0);
-
-    // 4. Preparar Datos Agregados
-    const annualProjection = useMemo(() => aggregateMonthlyToAnnual(monthlyProjection.slice(1)), [monthlyProjection]);
-    const semestralProjection = useMemo(() => aggregateMonthlyToSemestral(monthlyProjection.slice(1), projectionYears, simulationConfig), [monthlyProjection, projectionYears, simulationConfig]);
-    const monthlyCashFlow = useMemo(() => aggregateCashFlowMonthly(quincenalCashFlow), [quincenalCashFlow]);
-    const semestralCashFlow = useMemo(() => aggregateCashFlow(quincenalCashFlow, 'semestral'), [quincenalCashFlow]);
-    const annualCashFlow = useMemo(() => aggregateCashFlow(quincenalCashFlow, 'anual'), [quincenalCashFlow]);
-
-    // Seleccionar datos según la vista
-    const populationChartData = timeView === 'anual' ? annualProjection : semestralProjection;
-    const milkChartData = timeView === 'anual' ? annualProjection : semestralProjection;
-    const incomeChartData = timeView === 'anual' ? annualProjection : semestralProjection;
-    let cashFlowChartData: any[] = [];
-    if (cashFlowView === 'anual') cashFlowChartData = annualCashFlow;
-    else if (cashFlowView === 'semestral') cashFlowChartData = semestralCashFlow;
-    else if (cashFlowView === 'mensual') cashFlowChartData = monthlyCashFlow;
-    else cashFlowChartData = quincenalCashFlow;
-
-    // Formatters
-    const populationTooltipTitleFormatter = (label: string) => label.startsWith('Año') ? label : label.replace('S', 'Semestre ').replace(' (A', ' (Año ');
-    const cashFlowXAxisFormatter = (tick: string) => {
-        if(cashFlowView === 'quincenal') return tick.substring(tick.indexOf('M'));
-        if(cashFlowView === 'mensual') return tick.substring(tick.indexOf('M'));
-        if(cashFlowView === 'semestral') return tick.substring(tick.indexOf('-S')+1);
-        return tick;
-    };
-     const cashFlowTooltipTitleFormatter = (label: string) => {
-        if (cashFlowView === 'quincenal') { const parts = label.split('-'); if (parts.length < 2) return label; const yearMonth = parts[0]; const quincena = parts[1]; const year = yearMonth.substring(1, yearMonth.indexOf('M')); const month = yearMonth.substring(yearMonth.indexOf('M') + 1); return `Año ${year} Mes ${month} - ${quincena}`; }
-        if (cashFlowView === 'mensual') { const parts = label.split('-'); if (parts.length < 2) return label; const year = parts[0].replace('Año ', ''); const month = parts[1].replace('M',''); return `Año ${year} Mes ${month}`; }
-        return label;
-    };
-
-
-    // --- FUNCIÓN EXPORTAR PDF ---
-    const handleExportPDF = () => {
-        const doc = new jsPDF({ orientation: 'landscape' });
-        const tableBody: (string | number)[][] = [];
-        let tableHeaders: string[][] = [];
-
-        const title = `Proyección Evolución Rebaño - ${nombreFinca} (${projectionYears} Años)`;
-        const subtitle = mode === 'simulacion' ? 'Modo: Simulación' : 'Modo: Proyección Real';
-        doc.text(title, 14, 15);
-        doc.setFontSize(10);
-        doc.text(subtitle, 14, 20);
-
-        if (tableView === 'anual-detailed') {
-             tableHeaders = [
-                ["Año", "Sem", "I.Cabras", "I.Lev", "I.Crías", "I.Padr", "Nac.H", "Nac.M", "M.Cría", "M.Lev", "M.Adul", "V.Cabri", "V.Desc", "Comp.V", "C→L", "L→A", "F.Cabras", "F.Lev", "F.Crías", "F.Padr", "F.Total", "L.Leche", `Ing.Tot (${monedaSimbolo})`]
-             ];
-             if (initialState) { tableBody.push([ "Inicial", "", initialState.startCabras, initialState.startCabritonas, initialState.startCabritas, initialState.startPadres, "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", initialState.endCabras, initialState.endCabritonas, initialState.endCabritas, initialState.endPadres, initialState.endTotal, "-", "-" ]); }
-            semestralProjection.forEach(p => {
-                 tableBody.push([
-                    p.year, p.semesterIndex % 2 === 1 ? 1 : 2,
-                    p.startCabras, p.startCabritonas, p.startCabritas, p.startPadres,
-                    Math.round(p.nacimientosH), Math.round(p.nacimientosM),
-                    Math.round(p.muertesCrias), Math.round(p.muertesLevante), Math.round(p.muertesAdultas),
-                    Math.round(p.ventasCabritos), Math.round(p.ventasDescartes), Math.round(p.comprasVientres),
-                    Math.round(p.promocionCriasLevante), Math.round(p.promocionLevanteAdultas),
-                    p.endCabras, p.endCabritonas, p.endCabritas, p.endPadres, p.endTotal,
-                    Math.round(p.Litros), p.ingresosTotales.toFixed(0)
-                 ]);
-            });
-
-        } else { // semestral-summary
-             tableHeaders = [["Semestre", "Año", "Fin Cabras", "Fin Levante", "Fin Crías", "Fin Padres", "Fin Total", "L. Leche", `Ing. Total (${monedaSimbolo})`]];
-             if (initialState) { tableBody.push([ "Inicial", "", initialState.endCabras, initialState.endCabritonas, initialState.endCabritas, initialState.endPadres, initialState.endTotal, "-", "-" ]); }
-            semestralProjection.forEach(p => {
-                tableBody.push([ `S${p.semesterIndex}`, p.year, p.endCabras, p.endCabritonas, p.endCabritas, p.endPadres, p.endTotal, Math.round(p.Litros), p.ingresosTotales.toFixed(0) ]);
-            });
-        }
-
-        autoTable(doc, {
-            head: tableHeaders, body: tableBody, startY: 25, theme: 'grid',
-            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 6, halign: 'center', cellPadding: 1 },
-            styles: { fontSize: 6, cellPadding: 1, overflow: 'linebreak' },
-            columnStyles: { /* ...Alineación derecha... */ },
-        });
-
-        doc.save(`proyeccion_evolucion_${tableView === 'anual-detailed' ? 'anual_det' : 'sem_res'}.pdf`);
-    };
-
-
-    // --- RENDERIZADO DEL COMPONENTE ---
     return (
-        <div className="w-full max-w-4xl mx-auto space-y-6 animate-fade-in p-4">
-
-            <h2 className="text-center text-xl font-semibold text-indigo-400 -mb-4">
-                {mode === 'simulacion' ? 'Resultados de Simulación' : 'Proyección Basada en Datos Reales'}
-            </h2>
-
-             {/* Controles Superiores */}
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                <SegmentedControl value={projectionYears} onChange={setProjectionYears} options={[ { label: '1 Año', value: 1 }, { label: '3 Años', value: 3 }, { label: '5 Años', value: 5 }, { label: '10 Años', value: 10 } ]}/>
-                <div className='flex items-center gap-2'>
-                    <Calendar size={16} className='text-zinc-400'/>
-                    <p className='text-sm font-semibold text-zinc-400 whitespace-nowrap'>Vista Gráficos:</p>
-                    <SegmentedControl<TimeView> value={timeView} onChange={setTimeView} options={[ { label: 'Semestral', value: 'semestral' }, { label: 'Anual', value: 'anual' } ]}/>
-                </div>
+      <div className="bg-gray-900/80 p-3 rounded-lg border border-white/10 shadow-lg backdrop-blur-md animate-fade-in">
+        <p className="text-sm font-bold text-white">{data.periodLabel}</p>
+        <p className="text-lg font-mono text-white">Total Hembras: {formatNum(totalHembras)}</p>
+        <hr className="border-white/10 my-1.5" />
+        <div className="space-y-1">
+          {payload.slice().reverse().map((entry: any, index: number) => (
+            <div key={index} className="flex justify-between items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span style={{ backgroundColor: entry.color }} className="w-2.5 h-2.5 rounded-full" />
+                <span className="text-xs text-gray-300">{entry.name}</span>
+              </div>
+              <span className="text-xs font-mono text-white">{formatNum(entry.value)}</span>
             </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+// Formatter simple para el eje Y
+const formatYAxis = (tick: number) => {
+  if (tick >= 1000) return `${(tick / 1000).toFixed(0)}k`; // 1000 -> 1k
+  return tick.toString();
+};
 
-            {/* KPIs Principales */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                 <KpiCard title="Población Inicial" value={startPop} icon={Users} unit="Animales" />
-                <KpiCard title={`Población Final (${timeView === 'anual' ? `Año ${projectionYears}` : `Sem. ${projectionYears*2}`})`} value={endPop} icon={TrendingUp} unit="Animales" color={endPop >= startPop ? 'text-brand-green' : 'text-brand-red'}/>
-                <KpiCard title={`Vientres Finales`} value={endGoats} icon={GiGoat} unit="Cabras" />
-                <KpiCard title={`Ingresos Totales (${projectionYears} Años Est.)`} value={totalIncome.toFixed(0)} icon={DollarSign} unit={monedaSimbolo} color="text-brand-green"/>
-            </div>
+// -----------------------------------------------------------------------------
+// --- V6.3: COMPONENTE Gráfico de Población (ACTUALIZADO) ---
+// -----------------------------------------------------------------------------
+const PopulationChart: React.FC<{ data: MonthlyEvolutionStep[] }> = ({ data }) => {
+  
+  // IDs únicos para los gradientes
+  const gradientIds = {
+    cabras: "colorCabras",
+    lTardio: "colorLTardio",
+    lMedio: "colorLMedio",
+    lTemprano: "colorLTemprano",
+    criaH: "colorCriaH",
+  };
+  
+  // Colores (estilo iOS / Weather)
+  const colors = {
+    cabras: "#5856D6",    // Púrpura iOS
+    lTardio: "#007AFF",   // Azul iOS
+    lMedio: "#34C759",    // Verde iOS
+    lTemprano: "#FF9500", // Naranja iOS
+    criaH: "#FFCC00",     // Amarillo iOS
+  };
 
-             {/* Fila de Gráficos 1 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Gráfico de Población */}
-                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border h-80 relative">
-                     <h3 className="text-sm font-semibold text-zinc-300 absolute top-4 left-4 z-20">Composición Rebaño ({timeView === 'anual' ? 'Anual' : 'Semestral'})</h3>
-                     <CustomLegend items={[ { name: 'Cabras', color: '#34C759' }, { name: 'Levante', color: '#FF9500' }, { name: 'Crías', color: '#007AFF' } ]} />
-                     <ResponsiveContainer width="100%" height="100%">
-                         <AreaChart data={populationChartData} margin={{ top: 50, right: 10, left: -25, bottom: 0 }}>
-                            <defs> <linearGradient id="colorCabras" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#34C759" stopOpacity={0.7}/><stop offset="95%" stopColor="#34C759" stopOpacity={0.1}/></linearGradient> <linearGradient id="colorCabritonas" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#FF9500" stopOpacity={0.7}/><stop offset="95%" stopColor="#FF9500" stopOpacity={0.1}/></linearGradient> <linearGradient id="colorCabritas" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#007AFF" stopOpacity={0.7}/><stop offset="95%" stopColor="#007AFF" stopOpacity={0.1}/></linearGradient> </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
-                            <XAxis dataKey="name" interval="preserveStartEnd" minTickGap={20} tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 10, fontFamily: 'sans-serif' }} axisLine={false} tickLine={false}/>
-                            <YAxis tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12, fontFamily: 'sans-serif' }} axisLine={false} tickLine={false} />
-                            {/* --- CORRECCIÓN: No pasar formatter --- */}
-                            <Tooltip content={<CustomTooltip titleFormatter={populationTooltipTitleFormatter} />} />
-                            <Area type="monotone" dataKey="Cabras" name="Cabras" stackId="1" stroke="#34C759" fill="url(#colorCabras)" strokeWidth={2} />
-                            <Area type="monotone" dataKey="Levante" name="Levante" stackId="1" stroke="#FF9500" fill="url(#colorCabritonas)" strokeWidth={2} />
-                            <Area type="monotone" dataKey="Crías" name="Crías" stackId="1" stroke="#007AFF" fill="url(#colorCabritas)" strokeWidth={2} />
-                        </AreaChart>
-                     </ResponsiveContainer>
-                 </div>
-                 {/* Gráfico de Producción de Leche */}
-                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border h-80 relative">
-                     <h3 className="text-sm font-semibold text-zinc-300 absolute top-4 right-4 z-20">Producción Leche ({timeView === 'anual' ? 'Anual' : 'Semestral'})</h3>
-                     <CustomLegend items={[ { name: 'Litros', color: '#A0A0A0' }, { name: 'Hembras Prod.', color: '#FF2D55' } ]} />
-                     <ResponsiveContainer width="100%" height="100%">
-                         <ComposedChart data={milkChartData} margin={{ top: 50, right: 10, left: -25, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
-                            <XAxis dataKey="name" interval="preserveStartEnd" minTickGap={20} tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 10, fontFamily: 'sans-serif' }} axisLine={false} tickLine={false}/>
-                            <YAxis yAxisId="left" orientation="left" stroke="#A0A0A0" tick={{ fill: 'rgba(200,200,200,0.7)', fontSize: 12 }} axisLine={false} tickLine={false} />
-                            <YAxis yAxisId="right" orientation="right" stroke="#FF2D55" tick={{ fill: 'rgba(255, 100, 100, 0.7)', fontSize: 12 }} axisLine={false} tickLine={false} />
-                            <Tooltip content={<CustomTooltip titleFormatter={populationTooltipTitleFormatter} />} />
-                            <Area yAxisId="left" type="monotone" dataKey="Litros" name="Litros" stroke="#A0A0A0" fill="rgba(200,200,200,0.1)" strokeWidth={2} />
-                            <Line yAxisId="right" type="monotone" dataKey="Hembras" name="Hembras Prod." stroke="#FF2D55" strokeWidth={2} dot={false} activeDot={{r:4}}/>
-                        </ComposedChart>
-                     </ResponsiveContainer>
-                 </div>
-             </div>
-             {/* Fila de Gráficos 2 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Gráfico de Flujo de Caja */}
-                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border h-80">
-                    <div className='flex items-center justify-between mb-2'>
-                        <h3 className="text-sm font-semibold text-zinc-300">Flujo de Caja (Leche)</h3>
-                        <SegmentedControl<CashFlowView> value={cashFlowView} onChange={setCashFlowView} options={[ { label: 'Q', value: 'quincenal' }, { label: 'M', value: 'mensual' }, { label: 'S', value: 'semestral' }, { label: 'A', value: 'anual' } ]}/>
+  // Formatter para el eje X: Muestra etiquetas solo al inicio de cada año
+  const formatXAxis = (monthIndex: number) => {
+    const step = data[monthIndex];
+    if (step && (step.month === 1 || monthIndex === 0)) { // Si es Enero o el primer mes
+      return `Año ${step.year}`;
+    }
+    // Muestra cada 6 meses (Julio)
+    if (step && step.month === 7) {
+      return `S2`;
+    }
+    return ''; // Ocultar otras etiquetas
+  };
+
+  return (
+    <div className="h-60 w-full rounded-xl bg-gray-800/50 p-4 border border-white/10">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 5 }} stackOffset="none">
+          {/* 1. Definición de Gradientes (Estilo Weather) */}
+          <defs>
+            <linearGradient id={gradientIds.cabras} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={colors.cabras} stopOpacity={0.7}/>
+              <stop offset="95%" stopColor={colors.cabras} stopOpacity={0.1}/>
+            </linearGradient>
+            <linearGradient id={gradientIds.lTardio} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={colors.lTardio} stopOpacity={0.7}/>
+              <stop offset="95%" stopColor={colors.lTardio} stopOpacity={0.1}/>
+            </linearGradient>
+            <linearGradient id={gradientIds.lMedio} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={colors.lMedio} stopOpacity={0.7}/>
+              <stop offset="95%" stopColor={colors.lMedio} stopOpacity={0.1}/>
+            </linearGradient>
+            <linearGradient id={gradientIds.lTemprano} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={colors.lTemprano} stopOpacity={0.7}/>
+              <stop offset="95%" stopColor={colors.lTemprano} stopOpacity={0.1}/>
+            </linearGradient>
+             <linearGradient id={gradientIds.criaH} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={colors.criaH} stopOpacity={0.7}/>
+              <stop offset="95%" stopColor={colors.criaH} stopOpacity={0.1}/>
+            </linearGradient>
+          </defs>
+          
+          {/* 2. Rejilla y Ejes Minimalistas */}
+          <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
+          <XAxis dataKey="monthIndex" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} tickFormatter={formatXAxis} padding={{ left: 10, right: 10 }} />
+          <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} tickFormatter={formatYAxis} />
+
+          {/* 3. Tooltip Interactivo (Estilo Stocks) */}
+          <Tooltip content={<CustomTooltip />} />
+          
+          {/* 4. Las Áreas Apiladas (SOLO HEMBRAS) */}
+          <Area 
+            type="monotone" 
+            dataKey="endCabras" 
+            name="Cabras (>18m)"
+            stackId="1"
+            stroke={colors.cabras}
+            strokeWidth={2}
+            fill={`url(#${gradientIds.cabras})`}
+            activeDot={{ r: 6, stroke: 'white', strokeWidth: 2, fill: colors.cabras }}
+          />
+          <Area 
+            type="monotone" 
+            dataKey="endLevanteTardio" 
+            name="L. Tardío (12-18m)"
+            stackId="1"
+            stroke={colors.lTardio}
+            strokeWidth={2}
+            fill={`url(#${gradientIds.lTardio})`}
+            activeDot={{ r: 6, stroke: 'white', strokeWidth: 2, fill: colors.lTardio }}
+          />
+          <Area 
+            type="monotone" 
+            dataKey="endLevanteMedio" 
+            name="L. Medio (6-12m)"
+            stackId="1"
+            stroke={colors.lMedio}
+            strokeWidth={2}
+            fill={`url(#${gradientIds.lMedio})`}
+            activeDot={{ r: 6, stroke: 'white', strokeWidth: 2, fill: colors.lMedio }}
+          />
+          <Area 
+            type="monotone" 
+            dataKey="endLevanteTemprano" 
+            name="L. Temprano (3-6m)"
+            stackId="1"
+            stroke={colors.lTemprano}
+            strokeWidth={2}
+            fill={`url(#${gradientIds.lTemprano})`}
+            activeDot={{ r: 6, stroke: 'white', strokeWidth: 2, fill: colors.lTemprano }}
+          />
+          <Area 
+            type="monotone" 
+            dataKey="endCriaH" 
+            name="Crías H (0-3m)"
+            stackId="1"
+            stroke={colors.criaH}
+            strokeWidth={2}
+            fill={`url(#${gradientIds.criaH})`}
+            activeDot={{ r: 6, stroke: 'white', strokeWidth: 2, fill: colors.criaH }}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
+
+
+// -----------------------------------------------------------------------------
+// --- Página Principal (V6.3 - Gráfico Reemplazado) ---
+// -----------------------------------------------------------------------------
+interface EvolucionRebanoPageProps { simulationConfig: SimulationConfig; mode: 'simulacion' | 'real'; }
+
+export const EvolucionRebanoPage: React.FC<EvolucionRebanoPageProps> = ({ simulationConfig, mode }) => {
+    const [isReportOpen, setIsReportOpen] = useState(false);
+    const [horizon, setHorizon] = useState(3);
+    const [view, setView] = useState<'Anual' | 'Semestral'>('Anual');
+    const { annualData, semestralData, monthlyData } = useHerdEvolution(simulationConfig, horizon); 
+    const dataToShow: (AnnualEvolutionStep | SemestralEvolutionStep)[] = view === 'Anual' ? annualData : semestralData;
+    const horizonOptions = [ { label: '1 Año', value: 1 }, { label: '3 Años', value: 3 }, { label: '5 Años', value: 5 }, { label: '10 Años', value: 10 } ];
+    const viewOptions = [ { label: 'Anual', value: 'Anual' as 'Anual' }, { label: 'Semestral', value: 'Semestral' as 'Semestral' } ];
+
+    return (
+        <div className="mx-auto max-w-4xl px-4 py-8">
+            <div className="flex flex-col items-stretch gap-6">
+                <h1 className="text-2xl font-bold text-white"> Evolución del Rebaño <span className="ml-3 font-normal text-gray-400">({mode === 'simulacion' ? 'Simulación' : 'Proyección Real'})</span> </h1>
+                
+                {/* Controles (Sin cambios) */}
+                <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+                    <div className="flex items-center gap-2"> 
+                      <span className="text-sm text-gray-400">Horizonte:</span> 
+                      <SegmentedControl options={horizonOptions} value={horizon} onChange={(v) => setHorizon(v as number)} /> 
                     </div>
-                    <ResponsiveContainer width="100%" height="calc(100% - 30px)">
-                        <BarChart data={cashFlowChartData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
-                            <XAxis dataKey="name" tickFormatter={cashFlowXAxisFormatter} interval="preserveStartEnd" minTickGap={cashFlowView === 'quincenal' ? 0 : (cashFlowView === 'mensual' ? 5 : 10)} tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: cashFlowView === 'quincenal' ? 7 : (cashFlowView === 'mensual' ? 9 : 10), fontFamily: 'sans-serif' }} axisLine={false} tickLine={false}/>
-                            <YAxis tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12, fontFamily: 'sans-serif' }} axisLine={false} tickLine={false} />
-                            {/* --- CORRECCIÓN: Pasar monedaSimbolo a CustomTooltip --- */}
-                            <Tooltip content={<CustomTooltip titleFormatter={cashFlowTooltipTitleFormatter} monedaSimbolo={monedaSimbolo} />} cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}/>
-                            <Bar dataKey="ingresoLeche" name={`Ingreso (${monedaSimbolo})`} fill="#34C759" />
-                        </BarChart>
-                    </ResponsiveContainer>
+                    <div className="flex items-center gap-2"> 
+                      <span className="text-sm text-gray-400">Vista:</span> 
+                      <SegmentedControl options={viewOptions} value={view} onChange={(v) => setView(v as 'Anual' | 'Semestral')} /> 
+                    </div>
+                    <button
+                      onClick={() => setIsReportOpen(true)}
+                      disabled={!annualData || annualData.length === 0}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-gray-700 px-3 py-1.5 text-sm font-medium text-sky-300 transition-colors hover:bg-gray-600 disabled:opacity-50 md:w-auto"
+                    >
+                      <PieChart size={16} />
+                      Reporte Detallado
+                    </button>
                 </div>
-                 {/* Gráfico de Ingresos Totales */}
-                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border h-80 relative">
-                     <h3 className="text-sm font-semibold text-zinc-300 absolute top-4 left-4 z-20">Ingresos Totales ({timeView === 'anual' ? 'Anual' : 'Semestral'})</h3>
-                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={incomeChartData} margin={{ top: 20, right: 10, left: -25, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false}/>
-                            <XAxis dataKey="name" interval="preserveStartEnd" minTickGap={20} tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 10, fontFamily: 'sans-serif' }} axisLine={false} tickLine={false}/>
-                            <YAxis tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12, fontFamily: 'sans-serif' }} axisLine={false} tickLine={false}/>
-                             {/* --- CORRECCIÓN: Pasar monedaSimbolo a CustomTooltip --- */}
-                            <Tooltip content={<CustomTooltip titleFormatter={populationTooltipTitleFormatter} monedaSimbolo={monedaSimbolo} />}/>
-                            <Legend wrapperStyle={{fontSize: "10px", paddingTop: "10px"}}/>
-                            <Bar dataKey="ingresosVentaLeche" name="V. Leche" stackId="a" fill="#34C759" />
-                            <Bar dataKey="ingresosVentaCabritos" name="V. Cabritos" stackId="a" fill="#007AFF" />
-                            <Bar dataKey="ingresosVentaDescartes" name="V. Descartes" stackId="a" fill="#FF9500" />
-                        </BarChart>
-                    </ResponsiveContainer>
+
+                {/* --- V6.3: GRÁFICO REEMPLAZADO --- */}
+                <PopulationChart data={monthlyData} />
+                
+                {/* Lista de KPIs (Sin cambios) */}
+                <div className="flex flex-col items-stretch gap-4">
+                    {dataToShow.map((item) => {
+                        const key = view === 'Anual' ? `anno-${(item as AnnualEvolutionStep).year}` : `sem-${(item as SemestralEvolutionStep).semestreIndex}`;
+                        return ( <KpiRow key={key} data={item} /> );
+                    })}
                 </div>
             </div>
 
-            {/* Tabla de Datos */}
-            <div className="bg-brand-glass backdrop-blur-xl rounded-2xl border border-brand-border overflow-hidden">
-                <div className="flex justify-between items-center p-4">
-                     <h3 className="text-lg font-semibold text-white">Datos Detallados</h3>
-                     <div className="flex items-center gap-4">
-                        <SegmentedControl<TableView> value={tableView} onChange={setTableView} options={[ { label: 'Anual Det.', value: 'anual-detailed' }, { label: 'Semestral Res.', value: 'semestral-summary' } ]}/>
-                        <button onClick={handleExportPDF} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-3 py-1.5 rounded-lg" title="Exportar tabla a PDF">
-                            <Download size={16}/> PDF
-                        </button>
-                     </div>
-                </div>
-                <div className="overflow-x-auto max-h-96">
-                    {/* --- CORRECCIÓN: Eliminar whitespace dentro de <table> --- */}
-                    <table className="w-full min-w-max text-left">
-                        {tableView === 'anual-detailed' && (
-                            <thead className="border-b border-brand-border bg-black/20 sticky top-0 z-10">
-                                <tr className="text-[10px] text-zinc-400 uppercase font-sans">
-                                    <th className="p-2 sticky left-0 bg-black/20">Año</th><th className="p-2 sticky left-12 bg-black/20">Sem</th><th className="p-2 text-right">I.Cabras</th><th className="p-2 text-right">I.Lev</th><th className="p-2 text-right">I.Crías</th><th className="p-2 text-right">I.Padr</th><th className="p-2 text-right text-sky-400">Nac.H</th><th className="p-2 text-right text-sky-400">Nac.M</th><th className="p-2 text-right text-red-400">M.Cría</th><th className="p-2 text-right text-red-400">M.Lev</th><th className="p-2 text-right text-red-400">M.Adul</th><th className="p-2 text-right text-orange-400">V.Cabri</th><th className="p-2 text-right text-orange-400">V.Desc</th><th className="p-2 text-right text-purple-400">Comp.V</th><th className="p-2 text-right text-green-400">C→L</th><th className="p-2 text-right text-green-400">L→A</th><th className="p-2 text-right font-bold">F.Cabras</th><th className="p-2 text-right font-bold">F.Lev</th><th className="p-2 text-right font-bold">F.Crías</th><th className="p-2 text-right font-bold">F.Padr</th><th className="p-2 text-right font-bold">F.Total</th><th className="p-2 text-right text-teal-300">L.Leche</th><th className="p-2 text-right text-emerald-300">Ing.Tot ({monedaSimbolo})</th>
-                                </tr>
-                            </thead>
-                        )}
-                        {tableView === 'semestral-summary' && (
-                             <thead className="border-b border-brand-border bg-black/20 sticky top-0 z-10">
-                                <tr className="text-[10px] text-zinc-400 uppercase font-sans">
-                                    <th className="p-2 sticky left-0 bg-black/20">Semestre</th><th className="p-2 text-right font-bold">Fin Cabras</th><th className="p-2 text-right font-bold">Fin Levante</th><th className="p-2 text-right font-bold">Fin Crías</th><th className="p-2 text-right font-bold">Fin Padres</th><th className="p-2 text-right font-bold">Fin Total</th><th className="p-2 text-right text-teal-300">L. Leche</th><th className="p-2 text-right text-emerald-300">Ing. Total ({monedaSimbolo})</th>
-                                </tr>
-                            </thead>
-                        )}
-                        {/* --- CORRECCIÓN: Eliminar whitespace --- */}
-                        <tbody className="divide-y divide-brand-border text-xs">
-                            {initialState && (
-                                <tr className="bg-zinc-800/50 group">
-                                     {tableView === 'anual-detailed' ? ( <>
-                                        <td className="p-2 font-semibold text-white sticky left-0 bg-zinc-800/50" colSpan={2}>Inicial</td>
-                                        <td className="p-2 text-right font-mono text-white">{initialState.startCabras}</td><td className="p-2 text-right font-mono text-white">{initialState.startCabritonas}</td><td className="p-2 text-right font-mono text-white">{initialState.startCabritas}</td><td className="p-2 text-right font-mono text-white">{initialState.startPadres}</td>
-                                        <td colSpan={10} className="p-2 text-center font-mono text-zinc-500">-</td>
-                                        <td className="p-2 text-right font-mono font-bold text-white">{initialState.endCabras}</td><td className="p-2 text-right font-mono font-bold text-white">{initialState.endCabritonas}</td><td className="p-2 text-right font-mono font-bold text-white">{initialState.endCabritas}</td><td className="p-2 text-right font-mono font-bold text-white">{initialState.endPadres}</td><td className="p-2 text-right font-mono font-bold text-white">{initialState.endTotal}</td>
-                                        <td className="p-2 text-right font-mono text-zinc-500">-</td><td className="p-2 text-right font-mono text-zinc-500">-</td>
-                                     </>) : (<>
-                                        <td className="p-2 font-semibold text-white sticky left-0 bg-zinc-800/50">Inicial</td>
-                                        <td className="p-2 text-right font-mono font-bold text-white">{initialState.endCabras}</td><td className="p-2 text-right font-mono font-bold text-white">{initialState.endCabritonas}</td><td className="p-2 text-right font-mono font-bold text-white">{initialState.endCabritas}</td><td className="p-2 text-right font-mono font-bold text-white">{initialState.endPadres}</td><td className="p-2 text-right font-mono font-bold text-white">{initialState.endTotal}</td>
-                                        <td className="p-2 text-right font-mono text-zinc-500">-</td><td className="p-2 text-right font-mono text-zinc-500">-</td>
-                                     </>)}
-                                </tr>
-                            )}
-                            {semestralProjection.map((p: AggregatedSemestralData) => (
-                                <tr key={p.semesterIndex} className={`hover:bg-zinc-800/60 group ${tableView === 'anual-detailed' && p.semesterIndex % 2 === 0 ? 'border-b-2 border-b-zinc-600' : ''}`}>
-                                    {tableView === 'anual-detailed' ? (<>
-                                        <td className="p-2 font-semibold text-white sticky left-0 bg-brand-glass group-hover:bg-zinc-800/60">{p.year}</td>
-                                        <td className="p-2 font-semibold text-white sticky left-12 bg-brand-glass group-hover:bg-zinc-800/60">{p.semesterIndex % 2 === 1 ? 1 : 2}</td>
-                                        <td className="p-2 text-right font-mono text-zinc-400">{p.startCabras}</td><td className="p-2 text-right font-mono text-zinc-400">{p.startCabritonas}</td><td className="p-2 text-right font-mono text-zinc-400">{p.startCabritas}</td><td className="p-2 text-right font-mono text-zinc-400">{p.startPadres}</td>
-                                        <td className="p-2 text-right font-mono text-sky-400">{Math.round(p.nacimientosH)}</td><td className="p-2 text-right font-mono text-sky-400">{Math.round(p.nacimientosM)}</td>
-                                        <td className="p-2 text-right font-mono text-red-400">{Math.round(p.muertesCrias)}</td><td className="p-2 text-right font-mono text-red-400">{Math.round(p.muertesLevante)}</td><td className="p-2 text-right font-mono text-red-400">{Math.round(p.muertesAdultas)}</td>
-                                        <td className="p-2 text-right font-mono text-orange-400">{Math.round(p.ventasCabritos)}</td><td className="p-2 text-right font-mono text-orange-400">{Math.round(p.ventasDescartes)}</td><td className="p-2 text-right font-mono text-purple-400">{Math.round(p.comprasVientres)}</td>
-                                        <td className="p-2 text-right font-mono text-green-400">{Math.round(p.promocionCriasLevante)}</td><td className="p-2 text-right font-mono text-green-400">{Math.round(p.promocionLevanteAdultas)}</td>
-                                        <td className="p-2 text-right font-mono font-bold text-white">{p.endCabras}</td><td className="p-2 text-right font-mono font-bold text-white">{p.endCabritonas}</td><td className="p-2 text-right font-mono font-bold text-white">{p.endCabritas}</td><td className="p-2 text-right font-mono font-bold text-white">{p.endPadres}</td><td className="p-2 text-right font-mono font-bold text-white">{p.endTotal}</td>
-                                        <td className="p-2 text-right font-mono text-teal-300">{Math.round(p.Litros)}</td><td className="p-2 text-right font-mono text-emerald-300">{p.ingresosTotales.toFixed(0)}</td>
-                                    </>) : (<>
-                                        <td className="p-2 font-semibold text-white sticky left-0 bg-brand-glass group-hover:bg-zinc-800/60">{`S${p.semesterIndex} (A${p.year})`}</td>
-                                        <td className="p-2 text-right font-mono font-bold text-white">{p.endCabras}</td><td className="p-2 text-right font-mono font-bold text-white">{p.endCabritonas}</td><td className="p-2 text-right font-mono font-bold text-white">{p.endCabritas}</td><td className="p-2 text-right font-mono font-bold text-white">{p.endPadres}</td><td className="p-2 text-right font-mono font-bold text-white">{p.endTotal}</td>
-                                        <td className="p-2 text-right font-mono text-teal-300">{Math.round(p.Litros)}</td><td className="p-2 text-right font-mono text-emerald-300">{p.ingresosTotales.toFixed(0)}</td>
-                                    </>)}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            {/* Modal (Sin cambios) */}
+            <DetailedReportModal
+              isOpen={isReportOpen}
+              onClose={() => setIsReportOpen(false)}
+              monthlyData={monthlyData}
+              semestralData={semestralData}
+              annualData={annualData}
+            />
         </div>
     );
-}
+};
