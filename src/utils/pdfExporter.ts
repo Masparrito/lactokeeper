@@ -1,69 +1,164 @@
-// /workspaces/lactokeeper/src/utils/pdfExporter.ts
-
 import jsPDF from 'jspdf';
 import autoTable, { HAlignType, VAlignType, FontStyle } from 'jspdf-autotable';
 import { 
   AnnualEvolutionStep, 
   SemestralEvolutionStep 
-} from '../hooks/useHerdEvolution'; // Ajusta esta ruta si es necesario
+} from '../hooks/useHerdEvolution'; // Ajusta esta ruta
 import { 
   HerdEfficiencyKpis, 
-  HerdDynamicsKpis 
-} from '../hooks/useReportAnalytics'; // Ajusta esta ruta si es necesario
-import { formatNumber, formatCurrency } from './formatters'; // Importa los formatters
+  HerdDynamicsKpis,
+  YearlyMilkKpis // V8.0: Importar este tipo
+} from '../hooks/useReportAnalytics'; // Ajusta esta ruta
+import { formatNumber, formatCurrency } from './formatters';
 
-// --- Función de ayuda para formatear números ---
-// (sin cambios)
+// ---------------------------------------------------------------------------
+// --- V8.0: FUNCIONES DE AYUDA DE DISEÑO ---
+// ---------------------------------------------------------------------------
 
-// --- Función de ayuda para crear tablas de KPIs ---
+const PAGE_MARGIN = 14;
+const A4_WIDTH = 210;
+const A4_HEIGHT = 297;
+const CONTENT_WIDTH = A4_WIDTH - (PAGE_MARGIN * 2);
+
+// Estilos de Título
+const HEADING_COLOR = '#3b82f6'; // 'text-blue-500'
+const SECTION_COLOR = '#1f2937'; // 'bg-gray-800'
+const TEXT_COLOR_LIGHT = '#f3f4f6'; // 'text-gray-100'
+const TEXT_COLOR_DARK = '#374151'; // 'text-gray-700'
+
+/**
+ * Añade la cabecera principal y el título de la página
+ */
+const addHeaderAndTitle = (doc: jsPDF, title: string, pageNumber: number) => {
+  // --- Cabecera Principal ---
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.setTextColor(HEADING_COLOR);
+  doc.text('GanaderoOS - Reporte de Simulación', PAGE_MARGIN, 20);
+  
+  // --- Título de Página ---
+  doc.setFontSize(16);
+  doc.setTextColor(TEXT_COLOR_DARK);
+  doc.text(title, PAGE_MARGIN, 30);
+  
+  // --- Línea divisoria ---
+  doc.setDrawColor(HEADING_COLOR);
+  doc.setLineWidth(0.5);
+  doc.line(PAGE_MARGIN, 33, A4_WIDTH - PAGE_MARGIN, 33);
+  
+  // --- Pie de Página ---
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor('#9ca3af'); // 'text-gray-400'
+  const pageStr = `Página ${pageNumber}`;
+  doc.text(pageStr, A4_WIDTH - PAGE_MARGIN, A4_HEIGHT - 10, { align: 'right' });
+  doc.text(`Generado: ${new Date().toLocaleString('es-VE')}`, PAGE_MARGIN, A4_HEIGHT - 10);
+};
+
+/**
+ * Crea una tabla de KPIs simple
+ */
 const createKpiTable = (doc: jsPDF, title: string, kpis: [string, string][], startY: number): number => {
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold' as FontStyle);
-  doc.text(title, 14, startY);
+  doc.setTextColor(TEXT_COLOR_DARK);
+  doc.text(title, PAGE_MARGIN, startY);
   
   autoTable(doc, {
     startY: startY + 6,
     head: [['Indicador (KPI)', 'Valor (Real)']],
     body: kpis,
-    theme: 'striped',
-    headStyles: { fillColor: [41, 128, 185] }, // Azul
-    styles: { fontSize: 10 },
+    theme: 'grid', // 'striped' o 'grid'
+    headStyles: { 
+      fillColor: SECTION_COLOR,
+      textColor: TEXT_COLOR_LIGHT,
+      fontStyle: 'bold'
+    },
+    styles: { 
+      fontSize: 10,
+      cellPadding: 2.5,
+    },
+    alternateRowStyles: {
+      fillColor: '#f9fafb' // 'bg-gray-50'
+    }
   });
   
-  // Devuelve la posición Y final de la tabla
-  return (doc as any).lastAutoTable.finalY + 10;
+  return (doc as any).lastAutoTable.finalY + 12; // Espacio después de la tabla
 };
 
-// --- Función principal de Exportación ---
+/**
+ * V8.0: Crea la tabla de KPIs de Linealidad (múltiples años)
+ */
+const createLinearityKpiTable = (doc: jsPDF, kpis: YearlyMilkKpis[], startY: number): number => {
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold' as FontStyle);
+  doc.setTextColor(TEXT_COLOR_DARK);
+  doc.text('KPIs de Linealidad por Año', PAGE_MARGIN, startY);
+
+  const tableHead = [['Año', 'CV (%)', 'Prom. Mensual (L)', 'Mes Pico (L)', 'Mes Valle (L)']];
+  const tableBody = kpis.map(kpi => [
+    kpi.year,
+    formatNumber(kpi.cv, 1),
+    formatNumber(kpi.avgMonthly, 0),
+    `${formatNumber(kpi.peakMonthValue, 0)} (${kpi.peakMonthLabel})`,
+    `${formatNumber(kpi.valleyMonthValue, 0)} (${kpi.valleyMonthLabel})`,
+  ]);
+
+  autoTable(doc, {
+    startY: startY + 6,
+    head: tableHead,
+    body: tableBody,
+    theme: 'grid',
+    headStyles: { 
+      fillColor: SECTION_COLOR,
+      textColor: TEXT_COLOR_LIGHT,
+      fontStyle: 'bold',
+      halign: 'center'
+    },
+    styles: { 
+      fontSize: 10,
+      cellPadding: 2.5,
+      halign: 'center'
+    },
+    alternateRowStyles: {
+      fillColor: '#f9fafb'
+    },
+    columnStyles: {
+      3: { halign: 'left' },
+      4: { halign: 'left' }
+    }
+  });
+
+  return (doc as any).lastAutoTable.finalY + 12;
+};
+
+
+// ---------------------------------------------------------------------------
+// --- V8.0: FUNCIÓN PRINCIPAL (REESCRITA) ---
+// ---------------------------------------------------------------------------
 export const exportDetailedReport = (
   annualData: AnnualEvolutionStep[],
-  semestralData: SemestralEvolutionStep[], // <-- CORREGIDO: Ahora se usa
-  herdDynamics: HerdDynamicsKpis | null,
-  herdEfficiency: HerdEfficiencyKpis | null
+  semestralData: SemestralEvolutionStep[],
+  herdDynamics: HerdDynamicsKpis, // Ya no es 'null' (check en modal)
+  herdEfficiency: HerdEfficiencyKpis, // Ya no es 'null'
+  milkLinearityKpis: YearlyMilkKpis[], // NUEVO
+  chartImage: string // NUEVO: La imagen en base64
 ) => {
-  if (!herdDynamics || !herdEfficiency) {
-    alert("No hay datos de analítica para exportar.");
-    return;
-  }
-
+  
   const doc = new jsPDF({
-    orientation: 'portrait', // Página 1 en vertical
+    orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
   });
+  let currentPage = 1;
 
   // ---------------------------------------------------------------------------
   // --- PÁGINA 1: KPIs de Dinámica y Eficiencia ---
-  // (sin cambios)
   // ---------------------------------------------------------------------------
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold' as FontStyle);
-  doc.text('Reporte Detallado de Simulación', 105, 20, { align: 'center' });
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'normal' as FontStyle);
-  doc.text(`Generado: ${new Date().toLocaleString()}`, 105, 26, { align: 'center' });
+  addHeaderAndTitle(doc, 'Resumen de Desempeño del Rebaño', currentPage);
+  let currentY = 45; // Posición Y inicial después del título
 
-  // --- Tabla de KPIs de Dinámica (3.3) ---
+  // --- Tabla de KPIs de Dinámica ---
   const dynamicsKpis: [string, string][] = [
     ['Tasa Natalidad (Anual.)', `${formatNumber(herdDynamics.tasaNatalidadReal, 1)} %`],
     ['Tasa Prolificidad', `${formatNumber(herdDynamics.tasaProlificidadReal, 1)} %`],
@@ -74,9 +169,9 @@ export const exportDetailedReport = (
     ['% Mort. Cabras (Anual.)', `${formatNumber(herdDynamics.mortalidadCabrasReal, 1)} %`],
     ['% Elim. Crías M (0-3m)', `${formatNumber(herdDynamics.tasaEliminacionCriasMReal, 1)} %`],
   ];
-  let currentY = createKpiTable(doc, '📊 KPIs de Dinámica del Rebaño', dynamicsKpis, 40);
+  currentY = createKpiTable(doc, '📊 KPIs de Dinámica del Rebaño', dynamicsKpis, currentY);
 
-  // --- Tabla de KPIs de Eficiencia (3.2.3) ---
+  // --- Tabla de KPIs de Eficiencia ---
   const efficiencyKpis: [string, string][] = [
     ['Total Litros (Horizonte)', `${formatNumber(herdEfficiency.totalLitrosHorizonte)} L`],
     ['Litros / Vientre / Año', `${formatNumber(herdEfficiency.litrosPorVientrePorAnio)} L/Vientre`],
@@ -87,18 +182,57 @@ export const exportDetailedReport = (
 
 
   // ---------------------------------------------------------------------------
-  // --- PÁGINA 2: Tabla Detallada (3.1) ---
+  // --- PÁGINA 2: Gráfico y KPIs de Linealidad ---
   // ---------------------------------------------------------------------------
-  doc.addPage('a4', 'landscape'); // Horizontal para la tabla ancha
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold' as FontStyle);
-  doc.text('📋 Tabla Detallada de Flujos y Stock', 14, 20);
+  doc.addPage();
+  currentPage++;
+  addHeaderAndTitle(doc, 'Análisis de Producción y Linealidad', currentPage);
+  currentY = 45;
 
-  // --- Definir Encabezados de la Tabla (CORREGIDO CON TIPOS) ---
+  // --- Insertar la Imagen del Gráfico ---
+  try {
+    const imgProps = doc.getImageProperties(chartImage);
+    const imgWidth = CONTENT_WIDTH;
+    const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+    
+    doc.addImage(chartImage, 'PNG', PAGE_MARGIN, currentY, imgWidth, imgHeight);
+    currentY += imgHeight + 12; // Posición Y después del gráfico
+  } catch (error) {
+    console.error("Error al añadir imagen al PDF:", error);
+    doc.text("Error al renderizar el gráfico.", PAGE_MARGIN, currentY);
+    currentY += 10;
+  }
+  
+  // --- Insertar Tabla de KPIs de Linealidad ---
+  createLinearityKpiTable(doc, milkLinearityKpis, currentY);
+
+
+  // ---------------------------------------------------------------------------
+  // --- PÁGINA 3+: Tabla Detallada (Landscape) ---
+  // ---------------------------------------------------------------------------
+  doc.addPage('a4', 'landscape');
+  currentPage++;
+  
+  // --- Encabezado y Pie de página para MODO LANDSCAPE ---
+  const addLandscapeHeader = (pageNumber: number) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(HEADING_COLOR);
+    doc.text('📋 Tabla Detallada de Flujos y Stock', PAGE_MARGIN, 20);
+    // Pie de página
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor('#9ca3af');
+    doc.text(`Página ${pageNumber}`, A4_HEIGHT - PAGE_MARGIN, A4_WIDTH - 10, { align: 'right' });
+    doc.text(`Generado: ${new Date().toLocaleString('es-VE')}`, PAGE_MARGIN, A4_WIDTH - 10);
+  };
+  
+  addLandscapeHeader(currentPage);
+
+  // --- Definir Encabezados de la Tabla ---
   const tableHead: any = [ 
-    // Fila 1 (Grupos)
     [
-      { content: 'Periodo', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+      { content: 'Periodo', rowSpan: 2, styles: { halign: 'center', valign: 'middle', minCellWidth: 25 } },
       { content: 'Población', colSpan: 3, styles: { halign: 'center' } },
       { content: 'Producción', colSpan: 3, styles: { halign: 'center' } },
       { content: 'Flujos: Entradas', colSpan: 3, styles: { halign: 'center' } },
@@ -107,10 +241,9 @@ export const exportDetailedReport = (
       { content: 'Flujos: Internos (Promociones H)', colSpan: 4, styles: { halign: 'center' } },
       { content: 'Desglose Stock Final', colSpan: 7, styles: { halign: 'center' } },
     ],
-    // Fila 2 (Columnas)
     [
       'Inicio', 'Final', 'Cambio', // Población
-      'Litros', 'Prom. Hembras', 'Ingresos Leche', // Producción
+      'Litros', 'Vientres (Fin)', 'Ingresos Leche', // Producción
       'Nacim. H', 'Nacim. M', 'Compras', // Entradas
       'Muertes C.H', 'Muertes C.M', 'Muertes Lev.', 'Muertes Adu.', // Muertes
       'Ventas C.M', 'Ventas Desc.', // Ventas
@@ -119,14 +252,14 @@ export const exportDetailedReport = (
     ]
   ];
 
-  // --- Definir Cuerpo de la Tabla (CORREGIDO CON TIPOS y USO DE SEMESTRALDATA) ---
+  // --- Definir Cuerpo de la Tabla ---
   const tableBody: any[] = []; 
   for (const year of annualData) {
     const muertesLevanteA = year.muertesLevanteTemprano + year.muertesLevanteMedio + year.muertesLevanteTardio;
     const muertesAdultasA = year.muertesCabras + year.muertesPadres;
-    // Fila Anual
+    // Fila Anual (con estilo)
     tableBody.push([
-      { content: year.periodLabel, styles: { fontStyle: 'bold', fillColor: '#f0f0f0', textColor: '#000' } },
+      { content: year.periodLabel, styles: { fontStyle: 'bold', fillColor: '#e5e7eb', textColor: TEXT_COLOR_DARK } },
       formatNumber(year.startTotal), formatNumber(year.endTotal), formatNumber(year.netChange),
       formatNumber(year.litrosLeche, 0), formatNumber(year.kpiProductivasCount, 0), formatCurrency(year.ingresosTotales, '$', 0),
       formatNumber(year.nacimientosH), formatNumber(year.nacimientosM), formatNumber(year.comprasVientres),
@@ -136,8 +269,7 @@ export const exportDetailedReport = (
       formatNumber(year.endCriaH), formatNumber(year.endCriaM), formatNumber(year.endLevanteTemprano), formatNumber(year.endLevanteMedio), formatNumber(year.endLevanteTardio), formatNumber(year.endCabras), formatNumber(year.endPadres),
     ]);
     
-    // --- CORRECCIÓN TS6133 ---
-    // Filas Semestrales (Ahora se añaden al PDF)
+    // Filas Semestrales
     const relatedSemestres = semestralData.filter(s => s.year === year.year);
     for (const semestre of relatedSemestres) {
       const muertesLevanteS = semestre.muertesLevanteTemprano + semestre.muertesLevanteMedio + semestre.muertesLevanteTardio;
@@ -153,35 +285,39 @@ export const exportDetailedReport = (
         formatNumber(semestre.endCriaH), formatNumber(semestre.endCriaM), formatNumber(semestre.endLevanteTemprano), formatNumber(semestre.endLevanteMedio), formatNumber(semestre.endLevanteTardio), formatNumber(semestre.endCabras), formatNumber(semestre.endPadres),
       ]);
     }
-    // --- FIN CORRECCIÓN ---
   }
 
-  // --- Generar la Tabla Detallada (CORREGIDO CON TIPOS) ---
+  // --- Generar la Tabla Detallada ---
   autoTable(doc, {
     startY: 30,
     head: tableHead,
     body: tableBody,
     theme: 'grid',
     headStyles: { 
-      fillColor: [44, 62, 80], // Gris oscuro
-      textColor: [255, 255, 255], 
+      fillColor: SECTION_COLOR,
+      textColor: TEXT_COLOR_LIGHT, 
       fontSize: 8,
+      fontStyle: 'bold',
       halign: 'center' as HAlignType,
       valign: 'middle' as VAlignType,
     },
     styles: {
       fontSize: 8,
-      cellPadding: 1,
+      cellPadding: 1.5,
       overflow: 'linebreak',
       halign: 'right' as HAlignType,
     },
     columnStyles: {
-      0: { halign: 'left' as HAlignType, minCellWidth: 25 }, // Corregido: minCellWidth
+      0: { halign: 'left' as HAlignType }, // Periodo
+      5: { halign: 'left' as HAlignType }, // Ingresos Leche
     },
+    // V8.0: Hook para añadir cabeceras/pies en CADA página de la tabla
     didDrawPage: (data) => {
-      // Pie de página
-      doc.setFontSize(10);
-      doc.text(`Página ${data.pageNumber}`, data.settings.margin.left, doc.internal.pageSize.height - 10);
+      // Solo añadir si no es la primera página (que ya tiene)
+      if (data.pageNumber > 1) {
+        // 'doc' está en modo landscape aquí
+        addLandscapeHeader(currentPage + data.pageNumber - 1);
+      }
     }
   });
 

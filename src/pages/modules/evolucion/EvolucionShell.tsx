@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ModuleSwitcher } from '../../../components/ui/ModuleSwitcher';
 import type { AppModule } from '../../../types/navigation';
 import { EvolucionRebanoPage } from './EvolucionRebanoPage';
@@ -8,6 +8,8 @@ import { useData } from '../../../context/DataContext';
 import { SyncStatusIcon } from '../../../components/ui/SyncStatusIcon';
 import { SimulationConfig } from '../../../hooks/useHerdEvolution'; 
 import { LoadingOverlay } from '../../../components/ui/LoadingOverlay';
+// --- V7.0: Importar el nuevo hook ---
+import { useRealtimeKpiCalculator } from '../../../hooks/useRealtimeKpiCalculator'; // ¡Verifica esta ruta!
 
 type EvolucionView = 'setup' | 'sim-results' | 'real-results';
 
@@ -15,24 +17,21 @@ interface EvolucionShellProps {
   onSwitchModule: (module: AppModule) => void;
 }
 
-// --- VALORES POR DEFECTO PARA SIMULACIÓN ---
+// --- VALORES POR DEFECTO PARA SIMULACIÓN (Fallback) ---
 const defaultSimulationParams: Omit<SimulationConfig, 'initialCabras'|'initialLevanteTardio'|'initialLevanteMedio'|'initialLevanteTemprano'|'initialCriaH'|'initialCriaM'|'initialPadres'> = {
     comprasVientresAnual: 0,
-    // mesInicioMonta1: 1, // Default a Enero si no hay nada más
     duracionMontaDias: 45,
     diasGestacion: 150,
-    // distribucionPartosPorcentaje: 100, // Estos pueden venir de appConfig? Asumimos defaults
-    // distribucionPartosDias: 30,
-    litrosPromedioPorAnimal: 1.8, // V5.0
-    litrosPicoPorAnimal: 2.6, // V5.0
-    diasLactanciaObjetivo: 305, // V5.0
-    porcentajePrenez: 90, // V5.0
+    litrosPromedioPorAnimal: 1.8,
+    litrosPicoPorAnimal: 2.6,
+    diasLactanciaObjetivo: 305,
+    porcentajePrenez: 90,
     porcentajeProlificidad: 120,
-    mortalidadCrias: 5,       // 0-3m
-    mortalidadLevante: 3,     // 3-18m
-    mortalidadCabras: 3,      // >18m + Padres
+    mortalidadCrias: 5,
+    mortalidadLevante: 3,
+    mortalidadCabras: 3,
     tasaReemplazo: 20,
-    eliminacionCabritos: 100,   // 0-3m
+    eliminacionCabritos: 100,
     precioLecheLitro: 0.5,
     precioVentaCabritoKg: 3,
     precioVentaDescarteAdulto: 50,
@@ -41,76 +40,52 @@ const defaultSimulationParams: Omit<SimulationConfig, 'initialCabras'|'initialLe
 
 
 export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) {
-  const { syncStatus, appConfig, animals, isLoading: isDataLoading } = useData();
+  const { syncStatus, appConfig, isLoading: isDataLoading } = useData();
   const [activeView, setActiveView] = useState<EvolucionView>('setup');
   
-  // --- MODIFICACIÓN V6.0: PERSISTENCIA (CARGAR ESTADO) ---
-  // Al cargar el componente, intenta leer la simulación guardada de localStorage.
+  // --- V7.0: Usar el nuevo hook para calcular el realConfig ---
+  const { realConfig, isLoading: isRealConfigLoading } = useRealtimeKpiCalculator();
+  
+  // --- Simulación Manual (Guardada en localStorage) ---
   const [simConfig, setSimConfig] = useState<SimulationConfig | null>(() => {
     try {
       const savedConfig = localStorage.getItem('ganaderoOS_simConfig');
       if (savedConfig) {
-        // Si se encuentra, parsea el JSON y lo usa como estado inicial.
         return JSON.parse(savedConfig) as SimulationConfig;
       }
     } catch (error) {
       console.error("Error al cargar simulación guardada de localStorage:", error);
-      // Si hay un error (ej. JSON corrupto), limpiar el storage.
       localStorage.removeItem('ganaderoOS_simConfig');
     }
-    // Si no hay nada guardado, o hubo un error, empezar en null.
     return null;
   });
-  // --- FIN MODIFICACIÓN ---
 
-  const [realConfig, setRealConfig] = useState<SimulationConfig | null>(null);
+  // --- V7.0: Lógica de carga combinada ---
+  const isGlobalLoading = isDataLoading || isRealConfigLoading;
 
-  const prepareRealConfig = useCallback((): SimulationConfig | null => { 
-    if (isDataLoading || !animals || animals.length === 0) return null; 
+  // --- V7.0: Lógica de simulación simplificada ---
+  const handleRunSimulation = (config: SimulationConfig) => { 
+    // Comprobar si la config que se corre es la real (comparando población)
+    // Si NO es la real, entonces es una simulación manual y se debe guardar.
+    const isManualSim = config.initialCabras !== realConfig?.initialCabras ||
+                        config.initialCriaH !== realConfig?.initialCriaH;
 
-    let initialCabras = 0, initialLevanteTardio = 0, initialLevanteMedio = 0, initialLevanteTemprano = 0, initialCriaH = 0, initialCriaM = 0, initialPadres = 0;
-    const activeAnimals = animals.filter(a => a.status === 'Activo' && !a.isReference);
-    activeAnimals.forEach(animal => {
-        const stage = animal.lifecycleStage;
-         if (stage === 'Cabra Adulta' || stage === 'Cabra Multípara' || stage === 'Cabra Primípara') initialCabras++;
-         else if (stage === 'Cabritona') initialLevanteTemprano++; // Asunción: 3-6m
-         else if (stage === 'Cabrita') initialCriaH++;          // Asunción: 0-3m H
-         else if (stage === 'Macho Cabrío') initialPadres++;
-    });
-     initialPadres = Math.max(1, initialPadres);
-
-    const config: SimulationConfig = {
-      ...defaultSimulationParams, 
-      initialCabras,
-      initialLevanteTardio,
-      initialLevanteMedio,
-      initialLevanteTemprano,
-      initialCriaH,
-      initialCriaM,
-      initialPadres,
-      ...(appConfig || {}), 
-      comprasVientresAnual: 0, 
-    };
-    config.monedaSimbolo = appConfig?.monedaSimbolo ?? defaultSimulationParams.monedaSimbolo;
-
-    console.log("Real config prepared (V3.12 - Defaults + Real Pop):", config);
-    return config;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animals, isDataLoading, appConfig]); 
-
-  useEffect(() => {
-    if (activeView === 'real-results' && !realConfig) { 
-        const config = prepareRealConfig();
-        if (config) {
-            setRealConfig(config);
-        }
+    if (isManualSim) {
+        setSimConfig(config);
     }
-  }, [activeView, realConfig, prepareRealConfig]); 
-
-  const handleRunSimulation = (config: SimulationConfig) => { setSimConfig(config); setActiveView('sim-results'); };
-  const handleViewChange = (view: EvolucionView) => { setActiveView(view); }; 
+    
+    // Cambiar a la vista de resultados. 'EvolucionRebanoPage' recibirá la config
+    // que se acaba de correr (sea manual o real)
+    setActiveView('sim-results'); 
+  };
+  
+  const handleViewChange = (view: EvolucionView) => { 
+      setActiveView(view); 
+  }; 
+  
   const navItems = [ { view: 'setup', label: 'Setup', icon: Settings }, { view: 'sim-results', label: 'Simulación', icon: BarChartHorizontal }, { view: 'real-results', label: 'Real', icon: CheckCircle } ] as const;
 
+   // Configuración de fallback si no hay nada cargado
    const fallbackConfig: SimulationConfig = {
       ...defaultSimulationParams,
       initialCabras: 0,
@@ -124,22 +99,18 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
    };
    fallbackConfig.monedaSimbolo = appConfig?.monedaSimbolo ?? defaultSimulationParams.monedaSimbolo;
 
-  // --- MODIFICACIÓN V6.0: PERSISTENCIA (GUARDAR ESTADO) ---
-  // Este efecto se ejecuta cada vez que 'simConfig' cambia.
+  // --- Guardar simulación manual en localStorage ---
   useEffect(() => {
     try {
       if (simConfig) {
-        // Si hay una simulación, la guarda en localStorage.
         localStorage.setItem('ganaderoOS_simConfig', JSON.stringify(simConfig));
       } else {
-        // Si simConfig es null (ej. el usuario la resetea), la elimina del storage.
         localStorage.removeItem('ganaderoOS_simConfig');
       }
     } catch (error) {
       console.error("Error al guardar simulación en localStorage:", error);
     }
-  }, [simConfig]); // La dependencia clave
-  // --- FIN MODIFICACIÓN ---
+  }, [simConfig]);
 
 
   return (
@@ -170,22 +141,43 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
         <main className="pt-16 pb-16">
             {activeView === 'setup' && (
                 <SimulationSetupPage
-                    // Si hay un simConfig guardado, se usa. Si no, usa realConfig o fallback.
-                    initialConfig={simConfig || realConfig || fallbackConfig} 
+                    // Pasar la simulación manual guardada (o fallback)
+                    initialConfig={simConfig || fallbackConfig}
+                    // Pasar la simulación REAL calculada por el hook
+                    realConfig={realConfig} 
                     onSimulate={handleRunSimulation}
                 />
             )}
-            {activeView === 'sim-results' && simConfig && ( <EvolucionRebanoPage key="sim-results" simulationConfig={simConfig} mode="simulacion" /> )}
-            {activeView === 'sim-results' && !simConfig && ( <div className="text-center p-10 text-zinc-400">Primero configura y corre una simulación.</div> )}
-            {activeView === 'real-results' && realConfig && ( <EvolucionRebanoPage key="real-results" simulationConfig={realConfig} mode="real" /> )}
-            {activeView === 'real-results' && !realConfig && isDataLoading && <LoadingOverlay />}
-            {activeView === 'real-results' && !realConfig && !isDataLoading && ( <div className="text-center p-10 text-zinc-400">No hay suficientes datos reales.</div> )}
+            
+            {/* Si el usuario corrió una simulación MANUAL */}
+            {activeView === 'sim-results' && simConfig && ( 
+                <EvolucionRebanoPage 
+                  key="sim-results" 
+                  simulationConfig={simConfig} 
+                  mode="simulacion" 
+                /> 
+            )}
+            
+            {/* Si el usuario quiere ver la pestaña "Real" (Proyección) */}
+            {activeView === 'real-results' && realConfig && ( 
+                <EvolucionRebanoPage 
+                  key="real-results" 
+                  simulationConfig={realConfig} 
+                  mode="real" 
+                /> 
+            )}
+            
+            {/* Fallbacks */}
+            {activeView === 'sim-results' && !simConfig && ( <div className="text-center p-10 text-zinc-400">Primero configura y corre una simulación manual.</div> )}
+            {activeView === 'real-results' && !realConfig && isGlobalLoading && <LoadingOverlay />}
+            {activeView === 'real-results' && !realConfig && !isGlobalLoading && ( <div className="text-center p-10 text-zinc-400">No hay suficientes datos reales para una proyección.</div> )}
         </main>
 
-         {/* Nav */}
+         {/* Nav (V7.0: Lógica de 'disabled' actualizada) */}
          <nav className="fixed bottom-0 left-0 right-0 z-20 bg-black/50 backdrop-blur-xl border-t border-white/20 flex justify-around h-16">
             {navItems.map((item) => {
-                 // El botón "Simulación" ahora estará activo si simConfig se carga desde localStorage
+                 // El botón "Simulación" se activa si hay un simConfig guardado.
+                 // El botón "Real" se activa si se pudo calcular un realConfig.
                  const isDisabled = (item.view === 'sim-results' && !simConfig) || (item.view === 'real-results' && !realConfig);
                  const isActive = activeView === item.view;
                  return ( <button key={item.view} onClick={() => handleViewChange(item.view)} disabled={isDisabled} className={`relative flex flex-col items-center justify-center pt-3 pb-2 w-full transition-colors ${ isActive ? 'text-indigo-400 font-semibold' : 'text-gray-500 hover:text-white'} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`} aria-current={isActive ? 'page' : undefined}> <item.icon className="w-6 h-6" /> <span className="text-xs font-semibold mt-1">{item.label}</span> </button> );
