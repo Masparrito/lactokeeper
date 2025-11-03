@@ -1,6 +1,6 @@
 // --- ARCHIVO: src/hooks/simulationEngine.ts ---
+// (Actualizado para V8.2 - Lógica de "Límites Absolutos" y CORREGIDO)
 
-// V8.0: El tipo 'SimulationConfig' ahora se importa desde 'useHerdEvolution'
 import { SimulationConfig, MonthlyEvolutionStep } from './useHerdEvolution';
 
 // -----------------------------------------------------------------------------
@@ -20,12 +20,12 @@ interface LactationCohort {
 }
 
 // -----------------------------------------------------------------------------
-// FUNCIÓN DEL MOTOR DE SIMULACIÓN (V8.0: ACTUALIZADO)
+// FUNCIÓN DEL MOTOR DE SIMULACIÓN (V8.2: ACTUALIZADO)
 // -----------------------------------------------------------------------------
 
 /**
- * Ejecuta el motor de simulación de evolución del rebaño V6.2 (Modo V8.0).
- * Acepta un 'matingDistribution' opcional para optimizar la linealidad.
+ * Ejecuta el motor de simulación de evolución del rebaño V6.2 (Modo V8.2).
+ * Acepta un 'matingDistribution' (límites absolutos) para optimizar la linealidad.
  *
  * @param params La configuración de la simulación.
  * @param horizonInYears El número de años a simular.
@@ -36,7 +36,7 @@ export const runSimulationEngine = (
   horizonInYears: number
 ): MonthlyEvolutionStep[] => {
   
-  // --- 1. Inicializar Parámetros (safeParams V8.0) ---
+  // --- 1. Inicializar Parámetros (safeParams V8.2) ---
   const safeParams = {
       initialCabras: params.initialCabras ?? 0, initialLevanteTardio: params.initialLevanteTardio ?? 0, initialLevanteMedio: params.initialLevanteMedio ?? 0, initialLevanteTemprano: params.initialLevanteTemprano ?? 0, initialCriaH: params.initialCriaH ?? 0, initialCriaM: params.initialCriaM ?? 0, initialPadres: params.initialPadres ?? 1,
       comprasVientresAnual: params.comprasVientresAnual ?? 0, mesInicioMonta1: params.mesInicioMonta1, mesInicioMonta2: params.mesInicioMonta2, mesInicioMonta3: params.mesInicioMonta3, mesInicioMonta4: params.mesInicioMonta4, duracionMontaDias: params.duracionMontaDias ?? 45, diasGestacion: params.diasGestacion ?? 150, 
@@ -48,8 +48,10 @@ export const runSimulationEngine = (
                            (params.litrosPromedioPorAnimal ?? 1.8) * 1.5), 
       porcentajePrenez: params.porcentajePrenez ?? 85, porcentajeProlificidad: params.porcentajeProlificidad ?? 120, mortalidadCrias: params.mortalidadCrias ?? 5, mortalidadLevante: params.mortalidadLevante ?? 3, mortalidadCabras: params.mortalidadCabras ?? 3, tasaReemplazo: params.tasaReemplazo ?? 20, eliminacionCabritos: params.eliminacionCabritos ?? 100, precioLecheLitro: params.precioLecheLitro ?? 0.5, precioVentaCabritoKg: params.precioVentaCabritoKg ?? 3, precioVentaDescarteAdulto: params.precioVentaDescarteAdulto ?? 50, monedaSimbolo: params.monedaSimbolo ?? "$",
       
-      // --- V8.0: Nuevo parámetro para GanaGenius ---
+      // V8.2: 'matingDistribution' AHORA son NÚMEROS ABSOLUTOS (ej. [125, 125, 125, 125])
       matingDistribution: params.matingDistribution, 
+      // CORRECCIÓN: Eliminada la propiedad que no existe
+      // preciosLecheMensuales: params.preciosLecheMensuales, 
   };
   
   // --- 2. Preparar Tasas y Constantes ---
@@ -71,7 +73,6 @@ export const runSimulationEngine = (
   const reemplazoMes = safeParams.tasaReemplazo / 100 / 12;
   const comprasVientresMes = safeParams.comprasVientresAnual / 12;
   
-  // --- V8.0: Guardar los meses de monta en un array para indexar ---
   const matingStartMonths = new Set<number>();
   const activeSeasonMonths = [ 
       params.mesInicioMonta1, 
@@ -130,7 +131,7 @@ export const runSimulationEngine = (
       const nacimientosH = nacimientosTotales * 0.5;
       const nacimientosM = nacimientosTotales * 0.5;
 
-      // 4.3: MONTAS (V8.0: MODIFICADO PARA DISTRIBUCIÓN)
+      // 4.3: MONTAS (V8.2: CORREGIDO PARA LÍMITES ABSOLUTOS)
       let newlyPregnant_Cabras = 0;
       let newlyPregnant_Cabritonas = 0;
 
@@ -140,20 +141,22 @@ export const runSimulationEngine = (
           const cabrasAbiertas = Math.max(0, startCabras - totalGestantes - totalEnEspera);
           const cabritonasElegibles = Math.max(0, startLevanteTardio * (1 - mortLevanteMes));
           
-          // --- V8.0: Lógica de Distribución de Montas ---
+          // --- V8.2: Lógica de LÍMITE de Montas ---
           const seasonIndex = activeSeasonMonths.indexOf(currentMonth);
           
-          // Usar 100% (1.0) como default si no se provee 'matingDistribution'
-          // Esto mantiene la compatibilidad V6.2 (servir a todas las abiertas)
-          const distributionRatio = (seasonIndex !== -1 && safeParams.matingDistribution)
-              ? (safeParams.matingDistribution[seasonIndex] ?? 100) / 100
-              : 1.0;
-              
-          const cabrasParaMonta = cabrasAbiertas * distributionRatio;
-          const cabritonasParaMonta = cabritonasElegibles * distributionRatio;
-          // --- Fin V8.0 ---
+          // Si 'matingDistribution' (límites) existe, úsalo. Si no, usa "infinito" (servir a todas).
+          // 'Infinity' es el comportamiento original (V6.2)
+          const cabrasLimit = (seasonIndex !== -1 && safeParams.matingDistribution && safeParams.matingDistribution[seasonIndex] !== undefined)
+              ? (safeParams.matingDistribution[seasonIndex]!)
+              : Infinity;
+
+          // Servir al MÍNIMO entre las que están abiertas y el límite para esa temporada.
+          const cabrasParaMonta = Math.min(cabrasAbiertas, cabrasLimit);
           
-          // V8.0: Modificado para usar el sub-grupo "Para Monta"
+          // (Dejamos las cabritonas/levante tardío como estaban: todas las elegibles)
+          const cabritonasParaMonta = cabritonasElegibles; 
+          // --- Fin V8.2 ---
+          
           newlyPregnant_Cabras = cabrasParaMonta * (safeParams.porcentajePrenez / 100);
           newlyPregnant_Cabritonas = cabritonasParaMonta * (safeParams.porcentajePrenez / 100);
           
@@ -207,7 +210,7 @@ export const runSimulationEngine = (
       const endPadres = Math.max(0, startPadres - muertesPadres + comprasPadres);
       const endTotal = endCriaH + endCriaM + endLevanteTemprano + endLevanteMedio + endLevanteTardio + endCabras + endPadres;
 
-      // --- 4.8: ECONOMÍA (V6.2) ---
+      // --- 4.8: ECONOMÍA (V8.2: CORREGIDO/REVERTIDO) ---
       let totalLitrosMes = 0;
       let totalHembrasProduccion = 0;
       
@@ -226,7 +229,10 @@ export const runSimulationEngine = (
 
       const litrosLeche = totalLitrosMes;
       const hembrasProduccion = totalHembrasProduccion;
+      
+      // CORRECCIÓN: Revertido a la lógica V6.2 de precio fijo
       const ingresosLeche = litrosLeche * safeParams.precioLecheLitro; 
+      
       const ingresosVentaCabritos = ventasCabritos * 10 * safeParams.precioVentaCabritoKg;
       const ingresosVentaDescartes = ventasDescartes * safeParams.precioVentaDescarteAdulto; 
       const ingresosTotales = ingresosLeche + ingresosVentaCabritos + ingresosVentaDescartes;

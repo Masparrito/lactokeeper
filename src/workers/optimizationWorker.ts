@@ -1,69 +1,67 @@
 // --- ARCHIVO: src/workers/optimizationWorker.ts ---
-// (Actualizado para V8.0 - Corrección de Bundler)
-
-// Este archivo se ejecuta en un hilo separado (Web Worker)
+// (Actualizado para V8.5 - Devolver datos de gráficos comparativos)
 
 import { runSimulationEngine } from '../hooks/simulationEngine'; // Ajusta la ruta
 import { calculateCV } from '../utils/analyticsHelpers'; // Ajusta la ruta
-import { SimulationConfig } from '../hooks/useHerdEvolution';
+import { SimulationConfig, MonthlyEvolutionStep } from '../hooks/useHerdEvolution'; // Importar MonthlyEvolutionStep
 
 // -----------------------------------------------------------------------------
 // --- TIPOS DE MENSAJES DEL WORKER ---
 // -----------------------------------------------------------------------------
 
-// Mensaje que el hook envía AL worker
 export type OptimizerWorkerInput = {
   baseConfig: SimulationConfig;
   horizonInYears: number;
   totalSimulations: number;
 };
 
-// Mensaje que el worker envía DE VUELTA al hook
+export interface SensitivityImpact {
+  kpi: 'Preñez' | 'Prolificidad' | 'Mortalidad';
+  impact: number;
+  newValue: number;
+}
+
+export interface SensitivityReport {
+  baseIncome: number;
+  baseCV: number;
+  impacts: SensitivityImpact[];
+}
+
 export type OptimizerWorkerOutput = {
   type: 'progress' | 'result' | 'error';
-  progress?: number; // 0.0 a 1.0
+  progress?: number;
+  baseCV?: number;
   bestCV?: number;
   bestDistribution?: number[];
   error?: string;
+  
+  // --- V8.5: Añadido para el gráfico comparativo ---
+  baseMonthlyData?: MonthlyEvolutionStep[];
+  bestMonthlyData?: MonthlyEvolutionStep[];
 };
 
 // -----------------------------------------------------------------------------
 // --- FUNCIONES DEL OPTIMIZADOR ---
 // -----------------------------------------------------------------------------
 
-/**
- * Genera un array de 'n' números aleatorios que suman 100.
- * @param n El número de temporadas de monta (ej. 4)
- */
-const generateRandomDistribution = (n: number): number[] => {
+const generateRandomDistribution = (n: number, totalAnimals: number): number[] => {
   if (n <= 0) return [];
+  if (totalAnimals === 0) return Array(n).fill(0);
   
-  // 1. Generar n-1 puntos de corte aleatorios
-  const cuts = Array.from({ length: n - 1 }, () => Math.random() * 100);
-  cuts.sort((a, b) => a - b); // Ordenarlos
-  
-  // 2. Añadir 0 y 100
-  const points = [0, ...cuts, 100];
-  
-  // 3. Calcular las diferencias (los porcentajes)
+  const cuts = Array.from({ length: n - 1 }, () => Math.random() * totalAnimals);
+  cuts.sort((a, b) => a - b);
+  const points = [0, ...cuts, totalAnimals];
   const distribution: number[] = [];
   for (let i = 0; i < n; i++) {
     distribution.push(points[i + 1] - points[i]);
   }
-  
-  // 4. Redondear para que sean enteros (necesario para sumar 100)
   const rounded = distribution.map(d => Math.round(d));
-  
-  // 5. Ajustar la suma a 100 (por errores de redondeo)
   const sum = rounded.reduce((s, v) => s + v, 0);
-  const diff = 100 - sum;
-  
-  // Añadir la diferencia al elemento más grande
+  const diff = totalAnimals - sum;
   if (diff !== 0) {
     const maxIndex = rounded.indexOf(Math.max(...rounded));
     rounded[maxIndex] += diff;
   }
-  
   return rounded;
 };
 
@@ -73,12 +71,9 @@ const generateRandomDistribution = (n: number): number[] => {
 const findBestScenario = (
   baseConfig: SimulationConfig,
   horizonInYears: number,
-  totalSimulations: number
+  totalSimulations: number // ej. 200
 ) => {
-  let bestCV = Infinity;
-  let bestDistribution: number[] = [];
-
-  // Contar cuántas temporadas de monta activas hay (1, 2, 3 o 4)
+  
   const activeSeasons = [
     baseConfig.mesInicioMonta1,
     baseConfig.mesInicioMonta2,
@@ -86,71 +81,85 @@ const findBestScenario = (
     baseConfig.mesInicioMonta4,
   ].filter(m => typeof m === 'number' && m > 0).length;
 
-  // Si no hay temporadas de monta, no se puede optimizar
   if (activeSeasons === 0) {
     throw new Error('No se definieron temporadas de monta.');
   }
 
-  // Si solo hay 1 temporada, la única distribución es [100]
-  if (activeSeasons === 1) {
-    totalSimulations = 1;
-  }
+  const totalGoatsToDistribute = baseConfig.initialCabras ?? 0;
 
-  // Iniciar la búsqueda
-  for (let i = 0; i < totalSimulations; i++) {
+  // --- V8.1: PASO 1 ---
+  // Correr la simulación base (matingDistribution: undefined)
+  const baseMonthlyData = runSimulationEngine(baseConfig, horizonInYears);
+  const baseCV = calculateCV(baseMonthlyData, horizonInYears);
+
+  let bestCV = baseCV;
+  let bestDistribution: number[] | undefined = undefined;
+  // --- V8.5: Guardar los datos de la mejor simulación ---
+  let bestMonthlyData: MonthlyEvolutionStep[] = baseMonthlyData; 
+
+  // Reportar el progreso inicial (0%)
+  self.postMessage({
+    type: 'progress',
+    progress: 0,
+    baseCV: baseCV,
+    bestCV: bestCV,
+  });
+
+  if (activeSeasons === 1) {
+    totalSimulations = 1; // Solo se corrió el base case
+  }
+  
+  const simulationsToRun = totalSimulations - 1; // Ya corrimos el base case
+
+  // --- V8.2: PASO 2 ---
+  for (let i = 0; i < simulationsToRun; i++) {
     let currentDistribution: number[];
 
     if (i === 0) {
-      // 1. La primera simulación (i=0) es el "Caso Base" (distribución uniforme)
-      const equalPart = Math.round(100 / activeSeasons);
+      // "Caso Uniforme": Repartir el rebaño de cabras equitativamente
+      const equalPart = Math.round(totalGoatsToDistribute / activeSeasons);
       currentDistribution = Array(activeSeasons).fill(equalPart);
-      // Ajustar suma a 100
       const sum = currentDistribution.reduce((s, v) => s + v, 0);
-      currentDistribution[0] += (100 - sum);
-
-    } else if (activeSeasons === 1) {
-      currentDistribution = [100];
-    
+      currentDistribution[0] += (totalGoatsToDistribute - sum); // Ajustar suma
     } else {
-      // 2. Simulaciones aleatorias
-      currentDistribution = generateRandomDistribution(activeSeasons);
+      // "Casos Aleatorios": Repartir el rebaño aleatoriamente
+      currentDistribution = generateRandomDistribution(activeSeasons, totalGoatsToDistribute);
     }
 
-    // 3. Crear la config para esta simulación
     const simConfig: SimulationConfig = {
       ...baseConfig,
-      matingDistribution: currentDistribution,
+      matingDistribution: currentDistribution, // Ej. [125, 125, 125, 125]
     };
 
-    // 4. Correr el motor V8.0
     const monthlyData = runSimulationEngine(simConfig, horizonInYears);
-
-    // 5. Calcular la métrica (Linealidad)
     const cv = calculateCV(monthlyData, horizonInYears);
 
-    // 6. Comparar y guardar el mejor
     if (cv < bestCV) {
       bestCV = cv;
       bestDistribution = currentDistribution;
+      bestMonthlyData = monthlyData; // V8.5: Guardar los datos de la nueva mejor sim
     }
 
-    // 7. Reportar progreso (cada 10%)
-    if (i % Math.floor(totalSimulations / 10) === 0) {
-      // 'self' es el 'this' global de un Web Worker
+    if (i % Math.floor(simulationsToRun / 20) === 0) {
       self.postMessage({
         type: 'progress',
-        progress: (i / totalSimulations),
+        progress: (i / simulationsToRun),
+        baseCV: baseCV,
         bestCV: bestCV,
       });
     }
   }
 
-  // 8. Enviar el resultado final
+  // --- V8.5: PASO 3 ---
+  // Enviar el resultado final, incluyendo los datos del gráfico
   self.postMessage({
     type: 'result',
     progress: 1.0,
+    baseCV: baseCV,
     bestCV: bestCV,
     bestDistribution: bestDistribution,
+    baseMonthlyData: baseMonthlyData, // V8.5
+    bestMonthlyData: bestMonthlyData, // V8.5
   });
 };
 
@@ -158,23 +167,17 @@ const findBestScenario = (
 // --- PUNTO DE ENTRADA DEL WORKER ---
 // -----------------------------------------------------------------------------
 
-/**
- * Escucha los mensajes del hilo principal.
- */
 self.onmessage = (event: MessageEvent<OptimizerWorkerInput>) => {
   try {
     const { baseConfig, horizonInYears, totalSimulations } = event.data;
-    
-    // Iniciar el proceso
+    if (!baseConfig) {
+      throw new Error('No se proporcionó configuración base al worker.');
+    }
     findBestScenario(baseConfig, horizonInYears, totalSimulations);
-
   } catch (e: any) {
-    // Enviar un mensaje de error si algo falla
     self.postMessage({
       type: 'error',
-      error: e.message || 'Error desconocido en el worker',
+      error: e.message || 'Error desconocido en el worker de optimización',
     });
   }
 };
-
-// (El 'export default {}' fue eliminado)

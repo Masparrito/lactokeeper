@@ -1,76 +1,57 @@
+// --- ARCHIVO: src/pages/modules/evolucion/EvolucionRebanoPage.tsx ---
+// (Actualizado para V8.5 - Prop 'onSimulate' eliminada)
+
 import React, { useState } from 'react';
-// --- FASE 3: Importar Recharts ---
 import { 
     TrendingUp, TrendingDown, ShoppingCart, Activity, Baby, Skull, UserMinus, 
     Percent, BarChartHorizontal, ChevronDown, ChevronUp, PieChart, LineChart, Download
 } from 'lucide-react';
-// Hook y Tipos V7.1 (Corregido TS6133)
 import { 
   useHerdEvolution, 
   AnnualEvolutionStep, 
   SemestralEvolutionStep, 
   SimulationConfig,
-} from '../../../hooks/useHerdEvolution'; // ¡Verifica esta ruta!
-// --- FASE 3: Importar el Modal de Reporte Detallado ---
-import { DetailedReportModal } from './DetailedReportModal'; // ¡Verifica esta ruta!
-// --- V7.0: Importar el Modal del Gráfico de Población ---
-import { PopulationChartModal } from './PopulationChartModal'; // ¡Verifica esta ruta!
-// --- V7.0: Importar el NUEVO Modal de Gráfico por Período ---
-import { PeriodChartModal } from './PeriodChartModal'; // ¡Verifica esta ruta!
-// --- FASE 4: IMPORTACIÓN FINAL ---
-import { exportPeriodReport } from '../../../utils/pdfPeriodExporter'; // ¡Verifica esta ruta!
+} from '../../../hooks/useHerdEvolution';
+import { DetailedReportModal } from './DetailedReportModal';
+import { PopulationChartModal } from './PopulationChartModal';
+import { PeriodChartModal } from './PeriodChartModal';
+import { exportPeriodReport } from '../../../utils/pdfPeriodExporter';
 
 // -----------------------------------------------------------------------------
-// --- Componente KpiRow (V7.2 - CÓDIGO COMPLETO) ---
+// --- Componente KpiRow (Sin Cambios) ---
 // -----------------------------------------------------------------------------
 type KpiRowProps = {
   data: AnnualEvolutionStep | SemestralEvolutionStep;
-  // --- V7.2: CORREGIDO (TS2322) - Handlers con el nombre correcto ---
   onViewYearChart: (data: AnnualEvolutionStep | SemestralEvolutionStep) => void;
   onExportPeriodPdf: (data: AnnualEvolutionStep | SemestralEvolutionStep) => void;
 };
 
-// (Función auxiliar interna)
 const formatNum = (num: number | undefined): number => Math.round(num || 0);
 
 const KpiRow: React.FC<KpiRowProps> = ({ data, onViewYearChart, onExportPeriodPdf }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  
   const formatPercent = (num: number | undefined): string => (num || 0).toFixed(1);
-
-  // --- V6.1: CÁLCULO DE VIENTRES (CORREGIDO REDONDEO) ---
   const kpiStartProductivasCount = formatNum(data.startCabras) + formatNum(data.startLevanteTardio);
   const kpiEndProductivasCount = formatNum(data.endCabras) + formatNum(data.endLevanteTardio);
-  
-  // --- V6.1: CÁLCULO DE CRECIMIENTO (CORREGIDO REDONDEO) ---
   const kpiStartCrecimientoCount = formatNum(data.startLevanteTemprano) + formatNum(data.startLevanteMedio) + formatNum(data.startCriaH);
   const kpiEndCrecimientoCount = formatNum(data.endLevanteTemprano) + formatNum(data.endLevanteMedio) + formatNum(data.endCriaH);
-
-  // --- V6.1: CÁLCULO DE HEMBRAS TOTALES (NUEVO) ---
   const kpiStartHembrasTotales = kpiStartProductivasCount + kpiStartCrecimientoCount;
   const kpiEndHembrasTotales = kpiEndProductivasCount + kpiEndCrecimientoCount;
-
-  // --- V4.2: Calcular Crecimiento de Vientres ---
   const netChangeVientres = kpiEndProductivasCount - kpiStartProductivasCount;
   const growthRateVientres = kpiStartProductivasCount > 0 ? (netChangeVientres / kpiStartProductivasCount) * 100 : 0;
   const isPositiveVientres = netChangeVientres >= 0;
   const TrendIconVientres = isPositiveVientres ? TrendingUp : TrendingDown;
-  const trendColorVientres = isPositiveVientres ? 'text-green-500' : 'text-red-500'; // Estilo Stocks
-
-  // --- V6.1: Calcular Crecimiento de Hembras Totales ---
+  const trendColorVientres = isPositiveVientres ? 'text-green-500' : 'text-red-500';
   const netChangeHembras = kpiEndHembrasTotales - kpiStartHembrasTotales;
   const growthRateHembras = kpiStartHembrasTotales > 0 ? (netChangeHembras / kpiStartHembrasTotales) * 100 : 0;
   const isPositiveHembras = netChangeHembras >= 0;
   const TrendIconHembras = isPositiveHembras ? TrendingUp : TrendingDown;
   const trendColorHembras = isPositiveHembras ? 'text-green-500' : 'text-red-500';
 
-
   return (
     <div className="w-full overflow-hidden rounded-xl border border-white/10 bg-gray-800/50 shadow-md backdrop-blur-lg">
-      {/* Botón Clickable Principal */}
       <button onClick={() => setIsExpanded(!isExpanded)} className="w-full p-5 text-left focus:outline-none focus:ring-2 focus:ring-sky-500 rounded-t-xl">
         <div className="flex items-start justify-between">
-          {/* KPIs Principales */}
           <div className="flex-1 space-y-1">
             <p className="text-lg font-bold text-white">{data.periodLabel}</p>
             <div className="flex items-baseline gap-3">
@@ -82,7 +63,6 @@ const KpiRow: React.FC<KpiRowProps> = ({ data, onViewYearChart, onExportPeriodPd
               Hembras Totales: <span className="font-semibold text-white">{kpiEndHembrasTotales}</span> (Inicio: {kpiStartHembrasTotales})
             </p>
           </div>
-          {/* Crecimiento */}
           <div className="flex-1 text-right space-y-2">
             <div className={`text-right ${trendColorVientres}`}>
               <div className="flex items-center justify-end gap-1"> 
@@ -99,18 +79,13 @@ const KpiRow: React.FC<KpiRowProps> = ({ data, onViewYearChart, onExportPeriodPd
               <p className="font-medium">{isPositiveHembras ? '+' : ''}{netChangeHembras} Hembras Totales</p>
             </div>
           </div>
-          {/* Icono Expansión */}
           <div className="ml-4 text-gray-500 pt-2"> {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />} </div>
         </div>
       </button>
 
-      {/* --- V7.1: INICIO CÓDIGO FALTANTE (AHORA INCLUIDO) --- */}
-      {/* --- Sección Expandible --- */}
       {isExpanded && (
-        <div className="relative border-t border-white/10 px-5 pb-14 pt-4 animate-fade-in"> {/* pb-14 para espacio */}
+        <div className="relative border-t border-white/10 px-5 pb-14 pt-4 animate-fade-in">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-
-            {/* Col 1: Desglose Final */}
             <div className="space-y-0.5 md:pr-4 md:border-r md:border-white/10">
               <p className="text-xs font-semibold uppercase text-gray-400 mb-2">Desglose Final (Periodo)</p>
               <p className="text-sm text-gray-200"><span className="font-bold text-white">{formatNum(data.endCabras)}</span> Cabras ({'>'}18m)</p>
@@ -124,7 +99,6 @@ const KpiRow: React.FC<KpiRowProps> = ({ data, onViewYearChart, onExportPeriodPd
               <p className="text-sm text-gray-100"><span className="font-bold text-white">{formatNum(data.endTotal)}</span> Animales Totales (Final)</p>
             </div>
             
-            {/* Col 2: Movimientos (Aquí se usan los iconos) */}
             <div className="space-y-3 md:pr-4 md:border-r md:border-white/10">
               <p className="text-xs font-semibold uppercase text-gray-400 mb-2">Movimientos del Periodo</p>
               <div className="space-y-0.5">
@@ -170,7 +144,6 @@ const KpiRow: React.FC<KpiRowProps> = ({ data, onViewYearChart, onExportPeriodPd
               )}
             </div>
             
-            {/* Col 3: KPIs Productivos (Aquí se usan los iconos) */}
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase text-gray-400 mb-2">Capacidad Productiva (Inicio → Fin)</p>
               <div className="space-y-1 text-sm text-gray-300">
@@ -195,7 +168,6 @@ const KpiRow: React.FC<KpiRowProps> = ({ data, onViewYearChart, onExportPeriodPd
             </div>
             
           </div>
-          {/* --- V7.2: Botones flotantes (Restaurados) --- */}
           <div className="absolute bottom-3 right-3 flex gap-2">
             <button 
                 onClick={(e) => { e.stopPropagation(); onViewYearChart(data); }} 
@@ -212,7 +184,6 @@ const KpiRow: React.FC<KpiRowProps> = ({ data, onViewYearChart, onExportPeriodPd
                 <Download size={18} />
             </button>
           </div>
-          {/* --- FIN CÓDIGO FALTANTE --- */}
         </div>
       )}
     </div>
@@ -227,15 +198,23 @@ const SegmentedControl = <T extends string | number>({ options, value, onChange 
 
 
 // -----------------------------------------------------------------------------
-// --- Página Principal EvolucionRebanoPage (V8.0: ACTUALIZADA) ---
+// --- Página Principal EvolucionRebanoPage (V8.5: 'onSimulate' ELIMINADO) ---
 // -----------------------------------------------------------------------------
-interface EvolucionRebanoPageProps { simulationConfig: SimulationConfig; mode: 'simulacion' | 'real'; }
+interface EvolucionRebanoPageProps { 
+  simulationConfig: SimulationConfig; 
+  mode: 'simulacion' | 'real';
+  // V8.5: Prop 'onSimulate' eliminada
+  // onSimulate: (config: SimulationConfig) => void; 
+}
 
-export const EvolucionRebanoPage: React.FC<EvolucionRebanoPageProps> = ({ simulationConfig, mode }) => {
+export const EvolucionRebanoPage: React.FC<EvolucionRebanoPageProps> = ({ 
+  simulationConfig, 
+  mode,
+  // onSimulate // V8.5: Prop eliminada
+}) => {
     const [isReportOpen, setIsReportOpen] = useState(false);
     const [isPopulationChartModalOpen, setIsPopulationChartModalOpen] = useState(false);
 
-    // --- V7.1: Estados para el modal por año (RESTAURADOS) ---
     const [isPeriodChartOpen, setIsPeriodChartOpen] = useState(false);
     const [selectedPeriodData, setSelectedPeriodData] = useState<AnnualEvolutionStep | SemestralEvolutionStep | null>(null);
 
@@ -246,37 +225,30 @@ export const EvolucionRebanoPage: React.FC<EvolucionRebanoPageProps> = ({ simula
     const horizonOptions = [ { label: '1 Año', value: 1 }, { label: '3 Años', value: 3 }, { label: '5 Años', value: 5 }, { label: '10 Años', value: 10 } ];
     const viewOptions = [ { label: 'Anual', value: 'Anual' as 'Anual' }, { label: 'Semestral', value: 'Semestral' as 'Semestral' } ];
 
-    // --- V7.1: Handlers para los botones (RESTAURADOS) ---
     const handleViewPeriodChart = (data: AnnualEvolutionStep | SemestralEvolutionStep) => {
       setSelectedPeriodData(data);
       setIsPeriodChartOpen(true);
     };
 
-    // --- FASE 4: HANDLER ACTUALIZADO ---
     const handleExportPeriodPdf = (data: AnnualEvolutionStep | SemestralEvolutionStep) => {
       exportPeriodReport(data);
     };
 
     return (
-        // V7.0: Contenedor principal con padding vertical
         <div className="py-8">
             <div className="flex flex-col items-stretch gap-6">
                 <h1 className="text-2xl font-bold text-white max-w-4xl mx-auto px-4 text-center md:text-left"> Evolución del Rebaño <span className="ml-3 font-normal text-gray-400 hidden md:inline">({mode === 'simulacion' ? 'Simulación' : 'Proyección Real'})</span> </h1>
                 
-                {/* --- V7.0: Controles reorganizados --- */}
                 <div className="flex flex-col items-center gap-4 max-w-4xl mx-auto px-4">
-                  {/* Fila superior: Horizonte */}
                   <div className="flex items-center gap-2 w-full justify-center"> 
                     <span className="text-sm text-gray-400 hidden md:inline">Horizonte:</span> 
                     <SegmentedControl options={horizonOptions} value={horizon} onChange={(v) => setHorizon(v as number)} /> 
                   </div>
-                  {/* Fila inferior: Vista y Botones */}
                   <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
                     <div className="flex items-center gap-2"> 
                       <span className="text-sm text-gray-400 hidden md:inline">Vista:</span> 
                       <SegmentedControl options={viewOptions} value={view} onChange={(v) => setView(v as 'Anual' | 'Semestral')} /> 
                     </div>
-                    {/* Botones de Acción (ahora usan iconos + texto responsive) */}
                     <div className="flex gap-2 mt-4 md:mt-0">
                       <button
                         onClick={() => setIsPopulationChartModalOpen(true)}
@@ -299,10 +271,7 @@ export const EvolucionRebanoPage: React.FC<EvolucionRebanoPageProps> = ({ simula
                     </div>
                   </div>
                 </div>
-
-                {/* --- V7.0: GRÁFICO ELIMINADO DE AQUÍ --- */}
                 
-                {/* --- Lista de KPIs (V7.1: Handlers actualizados) --- */}
                 <div className="flex flex-col items-stretch gap-4 max-w-4xl mx-auto px-4">
                     {dataToShow.map((item) => {
                         const key = view === 'Anual' ? `anno-${(item as AnnualEvolutionStep).year}` : `sem-${(item as SemestralEvolutionStep).semestreIndex}`;
@@ -310,7 +279,6 @@ export const EvolucionRebanoPage: React.FC<EvolucionRebanoPageProps> = ({ simula
                           <KpiRow 
                             key={key} 
                             data={item} 
-                            // Handlers restaurados
                             onViewYearChart={handleViewPeriodChart}
                             onExportPeriodPdf={handleExportPeriodPdf}
                           /> 
@@ -319,17 +287,18 @@ export const EvolucionRebanoPage: React.FC<EvolucionRebanoPageProps> = ({ simula
                 </div>
             </div>
 
-            {/* --- V8.0: Modal de Reporte Detallado (ACTUALIZADO) --- */}
+            {/* --- V8.5: Modal de Reporte Detallado (SIMPLIFICADO) --- */}
             <DetailedReportModal
               isOpen={isReportOpen}
               onClose={() => setIsReportOpen(false)}
               monthlyData={monthlyData}
               semestralData={semestralData}
               annualData={annualData}
-              simulationConfig={simulationConfig} // <-- V8.0: Prop añadida
+              // V8.5: Props de GanaGenius eliminadas
+              // simulationConfig={simulationConfig}
+              // onSimulate={onSimulate} 
             />
 
-            {/* --- V7.0: Modal del Gráfico de Población Principal --- */}
             <PopulationChartModal
               isOpen={isPopulationChartModalOpen}
               onClose={() => setIsPopulationChartModalOpen(false)}
@@ -337,16 +306,15 @@ export const EvolucionRebanoPage: React.FC<EvolucionRebanoPageProps> = ({ simula
               title={`Evolución Total del Rebaño (${horizon} Años)`}
             />
             
-            {/* --- V7.1: Modal de gráfico por año (AHORA ACTIVO) --- */}
             {selectedPeriodData && (
               <PeriodChartModal
                 isOpen={isPeriodChartOpen}
                 onClose={() => {
                   setIsPeriodChartOpen(false);
-                  setSelectedPeriodData(null); // Limpiar el estado al cerrar
+                  setSelectedPeriodData(null);
                 }}
                 periodData={selectedPeriodData}
-                monthlyData={monthlyData} // Pasamos todos los datos mensuales
+                monthlyData={monthlyData}
               />
             )}
         </div>

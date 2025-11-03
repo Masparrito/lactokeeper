@@ -7,21 +7,21 @@ import {
     ResponsiveContainer, ReferenceLine 
 } from 'recharts';
     
-// --- Iconos (V8.0: Corregidos) ---
+// --- Iconos (V8.2: CORREGIDO - Añadidos Info y Lightbulb) ---
 import { 
   X, BarChart3, Activity, Table, Download, 
   TrendingUp, TrendingDown, ChevronsLeftRight, Zap, Droplet, Archive, CalendarClock, Scale,
   Users, Copy, Skull, ArrowRightLeft, UserMinus, PieChart,
-  FileSpreadsheet
-  // Cpu, Sparkles, Lightbulb (ELIMINADOS)
+  FileSpreadsheet, 
+  Info, Lightbulb // <-- CORRECCIÓN: Íconos añadidos
 } from 'lucide-react';
     
-// --- Tipos y Hooks (V8.0: Corregida importación) ---
+// --- Tipos y Hooks ---
 import { 
     MonthlyEvolutionStep, 
     SemestralEvolutionStep, 
     AnnualEvolutionStep,
-    SimulationConfig // V8.0: Importar tipo de Config
+    // SimulationConfig // V8.5: Ya no se usa aquí
 } from '../../../hooks/useHerdEvolution';
 import { 
   useReportAnalytics, 
@@ -29,10 +29,9 @@ import {
   HerdEfficiencyKpis, 
   HerdDynamicsKpis 
 } from '../../../hooks/useReportAnalytics';
-// V8.0: El hook 'useLinearityOptimizer' ya no se usa aquí, sino en GanaGeniusOptimizer
 
-// --- V8.0: Importar el nuevo componente de UI ---
-import { GanaGeniusOptimizer } from './GanaGeniusOptimizer'; // ¡Verifica esta ruta!
+// --- Componente GanaGenius (Ya no se importa aquí) ---
+// import { GanaGeniusOptimizer } from './GanaGeniusOptimizer'; 
 
 // --- Utilidades ---
 import { formatNumber, formatCurrency } from '../../../utils/formatters'; 
@@ -40,10 +39,10 @@ import { exportDetailedReport } from '../../../utils/pdfExporter';
 import { exportMonthlyDataToCSV } from '../../../utils/csvExporter';
 
 // -----------------------------------------------------------------------------
-// --- COMPONENTES INTERNOS DEL REPORTE (Restaurados) ---
+// --- COMPONENTES INTERNOS DEL REPORTE ---
 // -----------------------------------------------------------------------------
 
-// --- Componente KpiCard ---
+// --- Componente KpiCard (V8.2: Con tooltips táctiles) ---
 interface KpiCardProps {
   label: string;
   value: string | number;
@@ -51,20 +50,42 @@ interface KpiCardProps {
   icon: React.ElementType;
   color?: string;
   tooltip?: string;
+  onShowInfo?: (text: string) => void;
 }
-const KpiCard: React.FC<KpiCardProps> = ({ label, value, unit, icon: Icon, color = 'text-sky-500', tooltip }) => (
-  <div className="bg-gray-800/50 p-4 rounded-lg border border-white/10 flex items-start gap-4" title={tooltip}>
-    <div className={`p-2 rounded-lg bg-gray-700 ${color}`}>
-      <Icon size={20} />
+const KpiCard: React.FC<KpiCardProps> = ({ label, value, unit, icon: Icon, color = 'text-sky-500', tooltip, onShowInfo }) => {
+  
+  const handleInfoClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onShowInfo && tooltip) {
+      onShowInfo(tooltip);
+    }
+  };
+
+  return (
+    <div className="bg-gray-800/50 p-4 rounded-lg border border-white/10 flex items-start gap-4">
+      <div className={`p-2 rounded-lg bg-gray-700 ${color}`}>
+        <Icon size={20} />
+      </div>
+      <div className="flex-1">
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-gray-400 uppercase tracking-wider">{label}</p>
+          {tooltip && onShowInfo && (
+            <button 
+              onClick={handleInfoClick} 
+              className="text-gray-500 hover:text-white -mr-2 -mt-2 p-1 rounded-full"
+              title="Ver más información"
+            >
+              <Info size={14} />
+            </button>
+          )}
+        </div>
+        <p className="text-xl font-bold text-white">
+          {value} <span className="text-sm font-normal text-gray-300">{unit}</span>
+        </p>
+      </div>
     </div>
-    <div>
-      <p className="text-xs text-gray-400 uppercase tracking-wider" title={tooltip}>{label}</p>
-      <p className="text-xl font-bold text-white">
-        {value} <span className="text-sm font-normal text-gray-300">{unit}</span>
-      </p>
-    </div>
-  </div>
-);
+  );
+};
 
 // --- Componente ReportSegmentedControl ---
 interface ReportSegmentedControlProps<T extends string | number> { 
@@ -88,7 +109,7 @@ const ReportSegmentedControl = <T extends string | number>({ options, value, onC
   </div> 
 );
 
-// --- V6.2: NUEVO Tooltip para el Gráfico de Leche ---
+// --- Tooltip para el Gráfico de Leche ---
 const MilkChartTooltip: React.FC<any> = ({ active, payload }) => {
   if (active && payload && payload.length) {
     const data: MonthlyEvolutionStep = payload[0].payload;
@@ -120,7 +141,7 @@ const MilkChartTooltip: React.FC<any> = ({ active, payload }) => {
   return null;
 };
 
-// --- Componente Gráfico de Linealidad (V8.0: MODIFICADO con forwardRef) ---
+// --- Componente Gráfico de Linealidad ---
 const MilkLinearityChart = forwardRef<HTMLDivElement, { data: YearlyMilkKpis | undefined; monthlyData: MonthlyEvolutionStep[] }>(
   ({ data, monthlyData }, ref) => {
     
@@ -167,8 +188,8 @@ const MilkLinearityChart = forwardRef<HTMLDivElement, { data: YearlyMilkKpis | u
 MilkLinearityChart.displayName = 'MilkLinearityChart';
 
 
-// --- Componente KPIs de Linealidad ---
-const MilkLinearityKPIs: React.FC<{ data: YearlyMilkKpis | undefined }> = ({ data }) => {
+// --- Componente KPIs de Linealidad (V8.2: ACTUALIZADO) ---
+const MilkLinearityKPIs: React.FC<{ data: YearlyMilkKpis | undefined; onShowInfo: (text: string) => void; }> = ({ data, onShowInfo }) => {
   if (!data) return null;
   const cv = data.cv;
   let cvColor = 'text-green-500';
@@ -178,51 +199,112 @@ const MilkLinearityKPIs: React.FC<{ data: YearlyMilkKpis | undefined }> = ({ dat
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <KpiCard label="Coef. de Variación (CV)" value={cv.toFixed(1)} unit="%" icon={Zap} color={cvColor} tooltip={cvTooltip} />
-      <KpiCard label="Promedio Mensual" value={formatNumber(data.avgMonthly, 0)} unit="Litros" icon={Scale} />
-      <KpiCard label="Mes Pico" value={formatNumber(data.peakMonthValue, 0)} unit={`(${data.peakMonthLabel})`} icon={TrendingUp} color="text-green-500" />
-      <KpiCard label="Mes Valle" value={formatNumber(data.valleyMonthValue, 0)} unit={`(${data.valleyMonthLabel})`} icon={TrendingDown} color="text-red-500" />
+      <KpiCard 
+        label="Coef. de Variación (CV)" 
+        value={cv.toFixed(1)} 
+        unit="%" 
+        icon={Zap} 
+        color={cvColor} 
+        tooltip={cvTooltip} 
+        onShowInfo={onShowInfo}
+      />
+      <KpiCard 
+        label="Promedio Mensual" 
+        value={formatNumber(data.avgMonthly, 0)} 
+        unit="Litros" 
+        icon={Scale}
+        tooltip="El promedio simple de litros de leche producidos por mes durante este año."
+        onShowInfo={onShowInfo}
+      />
+      <KpiCard 
+        label="Mes Pico" 
+        value={formatNumber(data.peakMonthValue, 0)} 
+        unit={`(${data.peakMonthLabel})`} 
+        icon={TrendingUp} 
+        color="text-green-500"
+        tooltip="El mes con la mayor producción de leche del año."
+        onShowInfo={onShowInfo}
+      />
+      <KpiCard 
+        label="Mes Valle" 
+        value={formatNumber(data.valleyMonthValue, 0)} 
+        unit={`(${data.valleyMonthLabel})`} 
+        icon={TrendingDown} 
+        color="text-red-500"
+        tooltip="El mes con la menor producción de leche del año."
+        onShowInfo={onShowInfo}
+      />
     </div>
   );
 };
 
-// --- Componente KPIs de Eficiencia Lechera ---
-const HerdEfficiencyKPIs: React.FC<{ data: HerdEfficiencyKpis | null }> = ({ data }) => {
+// --- Componente KPIs de Eficiencia Lechera (V8.2: ACTUALIZADO) ---
+const HerdEfficiencyKPIs: React.FC<{ data: HerdEfficiencyKpis | null; onShowInfo: (text: string) => void; }> = ({ data, onShowInfo }) => {
   if (!data) return null;
   return (
     <>
       <h3 className="text-base font-semibold text-white mt-6 mb-3">Eficiencia Lechera (Horizonte Total)</h3>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Total Litros (Horizonte)" value={formatNumber(data.totalLitrosHorizonte, 0)} unit="Litros" icon={Droplet} color="text-sky-500" />
-        <KpiCard label="Litros / Vientre / Año" value={formatNumber(data.litrosPorVientrePorAnio, 0)} unit="L/Vientre" icon={Archive} color="text-sky-500" />
-        <KpiCard label="Total Días-Lactancia" value={formatNumber(data.totalDiasLactancia, 0)} unit="Días" icon={CalendarClock} />
-        <KpiCard label="Litros / Día-Lactancia" value={data.litrosPorDiaLactancia.toFixed(2)} unit="L/Día" icon={ChevronsLeftRight} />
+        <KpiCard 
+          label="Total Litros (Horizonte)" 
+          value={formatNumber(data.totalLitrosHorizonte, 0)} 
+          unit="Litros" 
+          icon={Droplet} 
+          color="text-sky-500"
+          tooltip="Suma total de todos los litros de leche producidos durante todo el horizonte de la simulación."
+          onShowInfo={onShowInfo}
+        />
+        <KpiCard 
+          label="Litros / Vientre / Año" 
+          value={formatNumber(data.litrosPorVientrePorAnio, 0)} 
+          unit="L/Vientre" 
+          icon={Archive} 
+          color="text-sky-500"
+          tooltip="Un KPI clave de eficiencia: (Total Litros / Años) / (Promedio de Vientres Productivos)."
+          onShowInfo={onShowInfo}
+        />
+        <KpiCard 
+          label="Total Días-Lactancia" 
+          value={formatNumber(data.totalDiasLactancia, 0)} 
+          unit="Días" 
+          icon={CalendarClock}
+          tooltip="El número total de 'días-animal' que las hembras pasaron en estado de lactancia activa."
+          onShowInfo={onShowInfo}
+        />
+        <KpiCard 
+          label="Litros / Día-Lactancia" 
+          value={data.litrosPorDiaLactancia.toFixed(2)} 
+          unit="L/Día" 
+          icon={ChevronsLeftRight}
+          tooltip="La producción promedio real por animal por día de lactancia (Total Litros / Total Días-Lactancia)."
+          onShowInfo={onShowInfo}
+        />
       </div>
     </>
   );
 };
 
-// --- Componente KPIs de Dinámica del Rebaño ---
-const HerdDynamicsKPIs: React.FC<{ data: HerdDynamicsKpis | null }> = ({ data }) => {
+// --- Componente KPIs de Dinámica del Rebaño (V8.2: ACTUALIZADO) ---
+const HerdDynamicsKPIs: React.FC<{ data: HerdDynamicsKpis | null; onShowInfo: (text: string) => void; }> = ({ data, onShowInfo }) => {
   if (!data) return null;
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-base font-semibold text-white mb-3">Tasas de Dinámica (Promedio Anualizado)</h3>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard label="Tasa Natalidad" value={data.tasaNatalidadReal.toFixed(1)} unit="%" icon={Users} color="text-green-500" tooltip="Nacimientos / (Vientres Prom. * Años) * 100" />
-          <KpiCard label="Tasa Prolificidad" value={data.tasaProlificidadReal.toFixed(1)} unit="%" icon={Copy} color="text-green-500" tooltip="Nacimientos Totales / Partos Totales * 100" />
-          <KpiCard label="Tasa Reemplazo" value={data.tasaReemplazoReal.toFixed(1)} unit="%" icon={ArrowRightLeft} color="text-green-500" tooltip="Promociones (LTD -> Cabras) / (Cabras Prom. * Años) * 100" />
-          <KpiCard label="Tasa Descarte" value={data.tasaDescarteReal.toFixed(1)} unit="%" icon={UserMinus} color="text-red-500" tooltip="Ventas Descarte / (Cabras Prom. * Años) * 100" />
+          <KpiCard label="Tasa Natalidad" value={data.tasaNatalidadReal.toFixed(1)} unit="%" icon={Users} color="text-green-500" tooltip="Nacimientos / (Vientres Prom. * Años) * 100" onShowInfo={onShowInfo} />
+          <KpiCard label="Tasa Prolificidad" value={data.tasaProlificidadReal.toFixed(1)} unit="%" icon={Copy} color="text-green-500" tooltip="Nacimientos Totales / Partos Totales * 100" onShowInfo={onShowInfo} />
+          <KpiCard label="Tasa Reemplazo" value={data.tasaReemplazoReal.toFixed(1)} unit="%" icon={ArrowRightLeft} color="text-green-500" tooltip="Promociones (LTD -> Cabras) / (Cabras Prom. * Años) * 100" onShowInfo={onShowInfo} />
+          <KpiCard label="Tasa Descarte" value={data.tasaDescarteReal.toFixed(1)} unit="%" icon={UserMinus} color="text-red-500" tooltip="Ventas Descarte / (Cabras Prom. * Años) * 100" onShowInfo={onShowInfo} />
         </div>
       </div>
       <div>
         <h3 className="text-base font-semibold text-white mb-3">Tasas de Bajas (Reales)</h3>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-           <KpiCard label="% Mort. Crías (0-3m)" value={data.mortalidadCriasReal.toFixed(1)} unit="%" icon={Skull} color="text-red-500" tooltip="Muertes Crías / (Nacidos + Stock Inicial) * 100" />
-           <KpiCard label="% Mort. Levante (Anual.)" value={data.mortalidadLevanteReal.toFixed(1)} unit="%" icon={Skull} color="text-red-500" tooltip="Muertes Levante / (Levante Prom. * Años) * 100" />
-           <KpiCard label="% Mort. Cabras (Anual.)" value={data.mortalidadCabrasReal.toFixed(1)} unit="%" icon={Skull} color="text-red-500" tooltip="Muertes Cabras / (Cabras Prom. * Años) * 100" />
-           <KpiCard label="% Elim. Crías M (0-3m)" value={data.tasaEliminacionCriasMReal.toFixed(1)} unit="%" icon={UserMinus} color="text-yellow-500" tooltip="Ventas Crías M / (Nacidos M - Muertes M) * 100" />
+           <KpiCard label="% Mort. Crías (0-3m)" value={data.mortalidadCriasReal.toFixed(1)} unit="%" icon={Skull} color="text-red-500" tooltip="Muertes Crías / (Nacidos + Stock Inicial) * 100" onShowInfo={onShowInfo} />
+           <KpiCard label="% Mort. Levante (Anual.)" value={data.mortalidadLevanteReal.toFixed(1)} unit="%" icon={Skull} color="text-red-500" tooltip="Muertes Levante / (Levante Prom. * Años) * 100" onShowInfo={onShowInfo} />
+           <KpiCard label="% Mort. Cabras (Anual.)" value={data.mortalidadCabrasReal.toFixed(1)} unit="%" icon={Skull} color="text-red-500" tooltip="Muertes Cabras / (Cabras Prom. * Años) * 100" onShowInfo={onShowInfo} />
+           <KpiCard label="% Elim. Crías M (0-3m)" value={data.tasaEliminacionCriasMReal.toFixed(1)} unit="%" icon={UserMinus} color="text-yellow-500" tooltip="Ventas Crías M / (Nacidos M - Muertes M) * 100" onShowInfo={onShowInfo} />
         </div>
       </div>
     </div>
@@ -236,7 +318,6 @@ const DetailedReportTable: React.FC<{
   semestralData: SemestralEvolutionStep[];
 }> = ({ annualData, semestralData }) => {
   
-  // (El código de la tabla no cambia)
   const columnGroups: { name: string; span: number }[] = [
     { name: 'Población', span: 3 }, { name: 'Producción', span: 3 }, { name: 'Flujos: Entradas', span: 3 },
     { name: 'Flujos: Salidas (Muertes)', span: 4 }, { name: 'Flujos: Salidas (Ventas)', span: 2 },
@@ -315,9 +396,53 @@ const DetailedReportTable: React.FC<{
   );
 };
 
+// --- V8.2: NUEVO Componente TooltipModal ---
+interface TooltipModalProps {
+  text: string | null;
+  onClose: () => void;
+}
+const TooltipModal: React.FC<TooltipModalProps> = ({ text, onClose }) => {
+  if (!text) return null;
+  
+  const formattedText = text.split('\n').map((line, index) => (
+    <React.Fragment key={index}>
+      {line}
+      <br />
+    </React.Fragment>
+  ));
+
+  return (
+    <div 
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in" 
+      onClick={onClose}
+    >
+      <div 
+        className="relative w-full max-w-sm p-6 m-4 bg-gray-800 border border-brand-border rounded-2xl shadow-2xl" 
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-lg bg-sky-600/20 text-sky-400 flex-shrink-0">
+            <Lightbulb size={20} /> 
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-white">Información del Indicador</h3>
+            <p className="text-sm text-gray-300 mt-2">{formattedText}</p>
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          className="mt-6 w-full rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-sky-500"
+        >
+          Entendido
+        </button>
+      </div>
+    </div>
+  );
+};
+
 
 // -----------------------------------------------------------------------------
-// --- COMPONENTE PRINCIPAL DEL MODAL (V8.0: ACTUALIZADO) ---
+// --- COMPONENTE PRINCIPAL DEL MODAL (V8.5: SIMPLIFICADO) ---
 // -----------------------------------------------------------------------------
 interface DetailedReportModalProps {
   isOpen: boolean;
@@ -325,7 +450,9 @@ interface DetailedReportModalProps {
   monthlyData: MonthlyEvolutionStep[];
   semestralData: SemestralEvolutionStep[];
   annualData: AnnualEvolutionStep[];
-  simulationConfig: SimulationConfig; // V8.0: Prop necesaria para GanaGenius
+  // V8.5: Props de GanaGenius eliminadas
+  // simulationConfig: SimulationConfig;
+  // onSimulate: (config: SimulationConfig) => void;
 }
 type ReportView = 'produccion' | 'dinamica' | 'tabla';
 
@@ -351,18 +478,20 @@ export const DetailedReportModal: React.FC<DetailedReportModalProps> = ({
   monthlyData,
   semestralData,
   annualData,
-  simulationConfig, // V8.0: Recibir la config
 }) => {
   const [activeView, setActiveView] = useState<ReportView>('produccion');
   const [isExporting, setIsExporting] = useState(false); 
   const milkChartRef = useRef<HTMLDivElement>(null);
+  
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const handleShowTooltip = (text: string) => setActiveTooltip(text);
   
   const { 
     isLoading, 
     milkLinearityKpis, 
     herdEfficiencyKpis, 
     herdDynamicsKpis,
-    horizonInYears // V8.0: Obtener el horizonte del hook
+    // horizonInYears // CORRECCIÓN: Eliminado (ya no se usa)
   } = useReportAnalytics(monthlyData, annualData);
 
   const [selectedYear, setSelectedYear] = useState<number>(() => annualData[0]?.year ?? new Date().getFullYear());
@@ -383,7 +512,6 @@ export const DetailedReportModal: React.FC<DetailedReportModalProps> = ({
     [milkLinearityKpis, selectedYear]
   );
   
-  // --- V8.0: Handler de Exportación PDF (Modificado) ---
   const handleExport = async () => {
     if (isLoading || !herdDynamicsKpis || !herdEfficiencyKpis || !selectedYearData) {
       alert("Los datos de analítica aún no están listos.");
@@ -426,12 +554,11 @@ export const DetailedReportModal: React.FC<DetailedReportModalProps> = ({
     }
   };
 
-  // --- V4.2 (FASE 4): Handler de Exportación CSV ---
   const handleExportCSV = () => {
     if (isLoading || !monthlyData || monthlyData.length === 0) {
-      alert("Los datos mensuales aún no están listos para exportar.");
-      return;
-    }
+  alert("Los datos mensuales aún no están listos para exportar.");
+  return;
+}
     exportMonthlyDataToCSV(monthlyData, `simulacion_detallada_mensual.csv`);
   };
 
@@ -439,7 +566,7 @@ export const DetailedReportModal: React.FC<DetailedReportModalProps> = ({
     return null;
   }
 
-  // --- Renderizado de Contenido de Pestaña (V8.0: ACTUALIZADO) ---
+  // --- Renderizado de Contenido de Pestaña (V8.2: ACTUALIZADO) ---
   const renderContent = () => {
     if (isLoading) {
       return <div className="p-10 text-center text-gray-400">Calculando analíticas...</div>
@@ -463,11 +590,9 @@ export const DetailedReportModal: React.FC<DetailedReportModalProps> = ({
               data={selectedYearData} 
               monthlyData={monthlyData} 
             />
-            <MilkLinearityKPIs data={selectedYearData} />
+            <MilkLinearityKPIs data={selectedYearData} onShowInfo={handleShowTooltip} />
             
-            {/* --- V8.0: TARJETA GanaGenius ELIMINADA DE AQUÍ --- */}
-
-            <HerdEfficiencyKPIs data={herdEfficiencyKpis} />
+            <HerdEfficiencyKPIs data={herdEfficiencyKpis} onShowInfo={handleShowTooltip} />
           </div>
         );
       
@@ -476,7 +601,7 @@ export const DetailedReportModal: React.FC<DetailedReportModalProps> = ({
         return (
           <div className="p-4 space-y-4">
             <h2 className="text-lg font-semibold text-white">📊 KPIs de Dinámica del Rebaño</h2>
-            <HerdDynamicsKPIs data={herdDynamicsKpis} />
+            <HerdDynamicsKPIs data={herdDynamicsKpis} onShowInfo={handleShowTooltip} />
           </div>
         );
         
@@ -501,6 +626,9 @@ export const DetailedReportModal: React.FC<DetailedReportModalProps> = ({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
     >
+      {/* V8.2: Renderizar el modal de tooltip (z-index 60, por encima del modal principal 50) */}
+      <TooltipModal text={activeTooltip} onClose={() => setActiveTooltip(null)} />
+      
       {/* Panel del Modal */}
       <div
         className="relative flex flex-col w-full h-full max-w-4xl max-h-[90vh] bg-gray-900 border border-brand-border rounded-2xl shadow-2xl overflow-hidden"
@@ -517,8 +645,8 @@ export const DetailedReportModal: React.FC<DetailedReportModalProps> = ({
           </div>
         )}
         
-        {/* Cabecera del Modal (V8.0: ACTUALIZADA) */}
-        <header className="relative flex items-center justify-between p-4 border-b border-brand-border flex-shrink-0 pr-48"> {/* Padding aumentado (pr-36 -> pr-48) */}
+        {/* V8.5: Cabecera SIMPLIFICADA (padding pr-36) */}
+        <header className="relative flex items-center justify-between p-4 border-b border-brand-border flex-shrink-0 pr-36">
           <div className="flex items-center gap-3">
             <span className="p-2 rounded-lg bg-sky-600/20 text-sky-400"> 
               <PieChart size={20} /> 
@@ -530,12 +658,7 @@ export const DetailedReportModal: React.FC<DetailedReportModalProps> = ({
           </div>
           
           <div className='absolute top-3 right-3 flex items-center gap-1'> 
-            {/* --- V8.0: NUEVO BOTÓN GanaGenius --- */}
-            <GanaGeniusOptimizer
-              baseConfig={simulationConfig}
-              baseCV={selectedYearData?.cv}
-              horizonInYears={horizonInYears}
-            />
+            {/* --- V8.5: GanaGenius ELIMINADO de aquí --- */}
 
             <button 
               onClick={handleExportCSV}
