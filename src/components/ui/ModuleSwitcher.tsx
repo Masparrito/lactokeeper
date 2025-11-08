@@ -1,66 +1,90 @@
-import React, { useState } from 'react';
-// --- CAMBIO: Añadido TrendingUp ---
-import { Layers, Droplets, Scale, HeartPulse, X, DollarSign, TrendingUp } from 'lucide-react';
+import React from 'react';
+// --- (CAMBIO) 'Layers' ya no se usa, 'X' se usa para cerrar ---
+import { Droplets, Scale, HeartPulse, X, DollarSign, TrendingUp } from 'lucide-react';
 import { GiGoat } from 'react-icons/gi';
 import { AppModule } from '../../types/navigation';
 
 const modules = [
-    { id: 'rebano', name: 'Rebaño', icon: GiGoat, color: 'bg-amber-600' },
-    { id: 'lactokeeper', name: 'LactoKeeper', icon: Droplets, color: 'bg-brand-blue' },
-    { id: 'kilos', name: 'Kilos', icon: Scale, color: 'bg-brand-green' },
-    { id: 'salud', name: 'StockCare', icon: HeartPulse, color: 'bg-teal-500' },
-    { id: 'cents', name: 'Cents', icon: DollarSign, color: 'bg-yellow-500' },
-    // --- CAMBIO: Nuevo módulo añadido ---
-    { id: 'evolucion', name: 'Evolución', icon: TrendingUp, color: 'bg-indigo-500' }
+    { id: 'rebano', name: 'Rebaño', icon: GiGoat, color: 'text-amber-600' },
+    { id: 'lactokeeper', name: 'LactoKeeper', icon: Droplets, color: 'text-brand-blue' },
+    { id: 'kilos', name: 'Kilos', icon: Scale, color: 'text-brand-green' },
+    { id: 'salud', name: 'StockCare', icon: HeartPulse, color: 'text-teal-500' },
+    { id: 'cents', name: 'Cents', icon: DollarSign, color: 'text-yellow-500' },
+    { id: 'evolucion', name: 'Evolución', icon: TrendingUp, color: 'text-indigo-500' }
 ];
 
+// --- (INICIO) CORRECCIÓN DE PROPS ---
+// 1. Se eliminó el estado interno 'isOpen'.
+// 2. Se añadieron 'isOpen' y 'onClose' a las props.
 interface ModuleSwitcherProps {
+    isOpen: boolean;
+    onClose: () => void;
     onSwitchModule: (module: AppModule) => void;
 }
 
-export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ onSwitchModule }) => {
-    const [isOpen, setIsOpen] = useState(false);
+export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ isOpen, onClose, onSwitchModule }) => {
 
     const handleModuleSelect = (moduleId: AppModule) => {
-        setIsOpen(false);
-        onSwitchModule(moduleId);
+        onClose(); // Cerrar el modal
+        // Damos un pequeño delay para que la animación de cierre se vea
+        setTimeout(() => {
+            onSwitchModule(moduleId);
+        }, 300); 
     };
 
+    // Si el modal no está abierto, no renderizar nada.
+    if (!isOpen) {
+        return null;
+    }
+
+    // --- (FIN) CORRECCIÓN DE PROPS ---
+
+    // --- (INICIO) CORRECCIÓN DE JSX ---
+    // 3. El componente ahora es un modal de tipo "Action Sheet"
     return (
-        <div className="fixed bottom-24 right-4 z-40 flex flex-col items-end gap-4">
-            {/* --- SOLUCIÓN DEFINITIVA: Colapsar el contenedor cuando está cerrado --- */}
+        // 1. Fondo (Backdrop)
+        <div 
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-fade-in"
+            onClick={onClose}
+        >
+            {/* 2. Contenedor del Panel (para que no se cierre al hacer clic en él) */}
             <div
-                className={`flex flex-col items-end gap-4 transition-all duration-300 ease-in-out overflow-hidden ${
-                    isOpen 
-                    ? 'max-h-[500px] opacity-100' 
-                    : 'max-h-0 opacity-0'
-                }`}
+                onClick={(e) => e.stopPropagation()}
+                className="fixed bottom-0 left-0 right-0 w-full bg-ios-modal-bg rounded-t-2xl p-4 shadow-lg animate-slide-up"
+                style={{ paddingBottom: 'env(safe-area-inset-bottom, 1rem)' }}
             >
-                {modules.map((module) => (
-                    <div key={module.id} className="flex items-center gap-3">
-                        <span className="bg-black/60 backdrop-blur-md text-white text-sm font-semibold px-3 py-1 rounded-md shadow-lg">
-                            {module.name}
-                        </span>
+                {/* Botón de cerrar (la X) */}
+                <button
+                    onClick={onClose}
+                    className="absolute top-3 right-3 p-2 text-zinc-500 hover:text-white rounded-full hover:bg-zinc-700/50"
+                    aria-label="Cerrar"
+                >
+                    <X size={20} />
+                </button>
+                
+                <h2 className="text-lg font-semibold text-white text-center mb-4">
+                    Seleccionar Módulo
+                </h2>
+
+                {/* 3. Rejilla de Módulos (en lugar de la lista flotante) */}
+                <div className="grid grid-cols-3 gap-4">
+                    {modules.map((module) => (
                         <button
+                            key={module.id}
                             onClick={() => handleModuleSelect(module.id as AppModule)}
-                            className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg ${module.color} transform transition-transform hover:scale-110`}
+                            className="flex flex-col items-center justify-center p-4 bg-brand-glass hover:bg-zinc-800 border border-brand-border rounded-2xl transition-colors"
                             aria-label={`Cambiar al módulo ${module.name}`}
                         >
-                            <module.icon size={28} />
+                            {/* Icono con fondo de color */}
+                            <div className={`flex items-center justify-center w-14 h-14 rounded-full ${module.color} bg-opacity-20 mb-2`}>
+                                <module.icon size={28} className={module.color} />
+                            </div>
+                            <span className="text-white font-semibold text-sm">{module.name}</span>
                         </button>
-                    </div>
-                ))}
-            </div>
-
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-16 h-16 rounded-full flex items-center justify-center text-black bg-brand-amber shadow-2xl shadow-black/50 transform transition-transform duration-200 hover:scale-110 pointer-events-auto"
-                aria-label="Seleccionar módulo"
-            >
-                <div className={`transform transition-transform duration-300 ${isOpen ? 'rotate-180 scale-75' : 'rotate-0'}`}>
-                    {isOpen ? <X size={32} /> : <Layers size={32} />}
+                    ))}
                 </div>
-            </button>
+            </div>
         </div>
     );
+    // --- (FIN) CORRECCIÓN DE JSX ---
 };

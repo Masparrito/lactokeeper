@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { PageState as RebanoPageState, AppModule } from '../../types/navigation';
-import { ArrowLeft, BarChart3, CalendarClock, List, PlusCircle, Wind } from 'lucide-react';
+// --- (NUEVO) Importar 'Grid' ---
+import { ArrowLeft, BarChart3, CalendarClock, List, PlusCircle, Wind, Grid } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { SyncStatusIcon } from '../../components/ui/SyncStatusIcon';
 import { GiMilkCarton } from 'react-icons/gi';
@@ -14,7 +15,6 @@ import LactoKeeperAddDataPage from './lactokeeper/LactoKeeperAddDataPage';
 import LactoKeeperDryOffPage from './lactokeeper/LactoKeeperDryOffPage';
 import LactationProfilePage from '../LactationProfilePage';
 
-// Se usa y exporta el tipo correcto
 export type LactoKeeperPage =
     | { name: 'dashboard' }
     | { name: 'analysis' }
@@ -32,19 +32,18 @@ interface LactoKeeperShellProps {
 
 export default function LactoKeeperShell({ initialPage, onPageStateChange, navigateToRebano, onSwitchModule }: LactoKeeperShellProps) {
     const { syncStatus } = useData();
-    // --- LÓGICA DE NAVEGACIÓN CORREGIDA ---
     const [page, setPage] = useState<LactoKeeperPage>(initialPage || { name: 'dashboard' });
     const [history, setHistory] = useState<LactoKeeperPage[]>([]);
+    
+    // --- (NUEVO) Estado para el modal de Módulos ---
+    const [isModuleSwitcherOpen, setIsModuleSwitcherOpen] = useState(false);
 
-    // Este useEffect notifica a App.tsx del estado actual, para recordarlo si sales del módulo
     useEffect(() => {
         onPageStateChange(page);
     }, [page, onPageStateChange]);
 
-    // Este useEffect SOLO se ejecuta si el 'initialPage' cambia desde App.tsx (ej. al volver al módulo)
     useEffect(() => {
         setPage(initialPage && typeof initialPage === 'object' && 'name' in initialPage ? initialPage : { name: 'dashboard' });
-        // NO reseteamos el historial aquí para permitir la navegación interna
     }, [initialPage]);
 
     const navItems = [
@@ -55,38 +54,29 @@ export default function LactoKeeperShell({ initialPage, onPageStateChange, navig
         { id: 'drying', label: 'Secado', icon: Wind },
     ];
 
-    // Navegación HACIA ADELANTE
     const navigateTo = (newPage: LactoKeeperPage) => {
         setHistory(currentHistory => [...currentHistory, page]);
         setPage(newPage);
     };
 
-    // Navegación HACIA ATRÁS
     const navigateBack = () => {
         const lastPage = history.pop();
         if (lastPage) {
-            // Si hay historial, vamos a la página anterior
             setPage(lastPage);
-            setHistory([...history]); // Actualiza el estado del array mutado
+            setHistory([...history]);
         } else if (page.name !== 'dashboard') {
-            // Si no hay historial y NO estamos en el dashboard, vamos al dashboard
             setPage({ name: 'dashboard' });
         } else {
-            // Si no hay historial y SÍ estamos en el dashboard, salimos del módulo
             onSwitchModule('rebano');
         }
     };
 
-    // Clic en la BARRA DE NAVEGACIÓN INFERIOR
     const handleNavClick = (pageName: LactoKeeperPage['name']) => {
-        // Ir a una pestaña principal siempre resetea el historial de esa pestaña
         setHistory([]);
         setPage({ name: pageName } as LactoKeeperPage);
     };
 
-    // Handler para NAVEGAR HACIA OTRO MÓDULO
     const handleNavigateToRebano = (pageState: RebanoPageState) => {
-        // Al navegar a Rebaño, le decimos que venimos de 'lactokeeper'
         navigateToRebano(pageState, 'lactokeeper');
     };
 
@@ -110,9 +100,13 @@ export default function LactoKeeperShell({ initialPage, onPageStateChange, navig
     };
 
     return (
-        <div className="min-h-screen animate-fade-in text-white flex flex-col bg-brand-dark">
-            <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-brand-dark/80 backdrop-blur-lg border-b border-brand-border">
-                <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-16">
+        // --- (INICIO) CORRECCIÓN DE SCROLL ---
+        // 1. Contenedor raíz con 'h-screen' y 'overflow-hidden'
+        <div className="h-screen overflow-hidden animate-fade-in text-white flex flex-col bg-brand-dark">
+            
+            {/* 2. Header fijo con 'h-16' */}
+            <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-brand-dark/80 backdrop-blur-lg border-b border-brand-border h-16">
+                <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-full">
                     <button onClick={navigateBack} className="p-2 -ml-2 text-zinc-400 hover:text-white" aria-label="Atrás">
                         <ArrowLeft size={24} />
                     </button>
@@ -123,19 +117,36 @@ export default function LactoKeeperShell({ initialPage, onPageStateChange, navig
                             <p className="text-xs text-zinc-400 leading-none">LactoKeeper</p>
                         </div>
                     </div>
-                    <div className="w-8 flex justify-end">
+                    {/* --- (NUEVO) Contenedor para iconos de header --- */}
+                    <div className="flex items-center gap-4">
                         <SyncStatusIcon status={syncStatus} />
+                        {/* --- (NUEVO) Botón de Módulos --- */}
+                        <button 
+                            onClick={() => setIsModuleSwitcherOpen(true)}
+                            className="p-2 text-zinc-400 hover:text-white transition-colors"
+                            title="Módulos"
+                        >
+                            <Grid size={20} />
+                        </button>
                     </div>
                 </div>
             </header>
 
-            <main className="flex-grow pt-16 pb-24">
+            {/* 3. <main> es el ÚNICO scroll, con 'flex-1', 'overflow-y-auto' y padding */}
+            <main className="flex-1 overflow-y-auto pt-16 pb-16">
                 {renderContent()}
             </main>
+            {/* --- (FIN) CORRECCIÓN DE SCROLL --- */}
 
-            <ModuleSwitcher onSwitchModule={onSwitchModule} />
+            {/* --- (NUEVO) ModuleSwitcher actualizado a modal --- */}
+            <ModuleSwitcher 
+                isOpen={isModuleSwitcherOpen}
+                onClose={() => setIsModuleSwitcherOpen(false)}
+                onSwitchModule={onSwitchModule} 
+            />
 
-            <nav className="fixed bottom-0 left-0 right-0 bg-black/30 backdrop-blur-xl border-t border-white/20 flex justify-around z-20 h-16">
+            {/* 4. Nav fijo con 'h-16' */}
+            <nav className="flex-shrink-0 fixed bottom-0 left-0 right-0 bg-black/30 backdrop-blur-xl border-t border-white/20 flex justify-around z-20 h-16">
                 {navItems.map((item) => (
                     <button
                         key={item.id}
@@ -152,4 +163,3 @@ export default function LactoKeeperShell({ initialPage, onPageStateChange, navig
         </div>
     );
 }
-

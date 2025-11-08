@@ -4,19 +4,39 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---------------------------------- */
+/* --- INICIO: CORRECCIÓN DE SCROLL --- */
+/* ---------------------------------- */
+
+/* Desactiva el scroll en el body y html, PERO SIN ROMPER EL LAYOUT. */
+html, body {
+  height: 100%;
+  overflow: hidden; /* ¡Clave! Desactiva el scroll del navegador */
+  overscroll-behavior-y: none; /* Evita el rebote/recarga elástico en móviles */
+  
+  /* --- ESTO FUE EL ERROR Y SE ELIMINA --- */
+  /* position: fixed; */ 
+  /* width: 100%; */
+  /* left: 0; */
+  /* top: 0; */
+}
+
+/* -------------------------------- */
+/* --- FIN: CORRECCIÓN DE SCROLL --- */
+/* -------------------------------- */
+
+
 /* --- Estilos Globales para la Nueva Estética --- */
 body {
   font-family: 'Inter', sans-serif;
-  /* El color de fondo correcto, como en LactoKeeper */
   background-color: #1C1C1E; 
   color: rgba(255, 255, 255, 0.85);
   
-  /* Mejora el renderizado de la fuente para un look más suave y nítido */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Animaciones base para los modales y otros elementos UI */
+/* Animaciones (sin cambios) */
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -35,7 +55,7 @@ body {
   animation: slide-up 0.3s ease-out forwards;
 }
 
-/* --- BLOQUE AÑADIDO --- */
+/* Layer utilities (sin cambios) */
 @layer utilities {
   .animate-spin-slow {
     animation: spin 3s linear infinite;

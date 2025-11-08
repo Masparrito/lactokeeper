@@ -16,7 +16,9 @@ export default function AppShell({ page, setPage, children }: AppShellProps) {
   ];
 
   return (
-    <div className="bg-gray-900 text-gray-200 font-sans min-h-screen flex selection:bg-indigo-500 selection:text-white">
+    // 1. Contenedor raíz con 'h-screen' y 'overflow-hidden'
+    <div className="bg-gray-900 text-gray-200 font-sans h-screen overflow-hidden flex selection:bg-indigo-500 selection:text-white">
+
       {/* --- Barra Lateral (Solo para Escritorio) --- */}
       <aside className="w-64 bg-gray-900/70 backdrop-blur-lg border-r border-gray-800 p-4 flex-col hidden md:flex">
         <div className="flex items-center space-x-2 mb-8">
@@ -50,13 +52,15 @@ export default function AppShell({ page, setPage, children }: AppShellProps) {
         </div>
       </aside>
 
-      {/* --- Área de Contenido Principal (con padding inferior para la barra móvil) --- */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto pb-24 md:pb-8">
+      {/* --- (INICIO) CORRECCIÓN DE SCROLL --- */}
+      {/* 2. <main> es el ÚNICO scroll y tiene el padding para el header y nav */}
+      <main className="flex-1 overflow-y-auto pt-16 pb-16 md:pt-8 md:pb-8 md:p-8">
+      {/* --- (FIN) CORRECCIÓN DE SCROLL --- */}
         {children}
       </main>
 
       {/* --- Barra de Navegación Inferior (Solo para Móvil) --- */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-900/80 backdrop-blur-lg border-t border-gray-700 flex justify-around">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-900/80 backdrop-blur-lg border-t border-gray-700 flex justify-around h-16">
         {navItems.map((item) => (
           <button
             key={item.id}
@@ -73,4 +77,3 @@ export default function AppShell({ page, setPage, children }: AppShellProps) {
     </div>
   );
 }
-

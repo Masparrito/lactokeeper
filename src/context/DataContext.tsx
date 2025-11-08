@@ -1,4 +1,4 @@
-// src/context/DataContext.tsx
+// src/context/DataContext.tsx (Corregido)
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Table } from 'dexie';
@@ -714,23 +714,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         enqueueSync(() => syncToFirestore("healthEvents", newEvent.id, newEvent));
     }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent, products]);
 
-    // --- INICIO: NUEVA FUNCIÓN ---
+    // --- (INICIO CORRECCIÓN) ---
+    // Corregido el bucle de la "nube naranja"
     const updateAppConfig = useCallback(async (config: AppConfig) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
-        setSyncStatus('syncing');
+        setSyncStatus('syncing'); // <-- 1. Pone la nube en naranja
         try {
             const configRef = doc(firestoreDb, 'configuracion', currentUser.uid);
-            // Usamos setDoc con merge:true para asegurar que se actualice o cree
             await setDoc(configRef, config, { merge: true });
-            // onSnapshot se encargará de actualizar el estado setAppConfig
+            // 2. ¡Éxito! El listener de onSnapshot (línea 228) actualizará el estado de appConfig.
+            // 3. (CORRECCIÓN) Volver a 'idle' manualmente.
+            setSyncStatus('idle'); 
         } catch (error) {
             console.error("Error al guardar configuración:", error);
             setSyncStatus('idle'); // Revertir estado si falla
             throw error;
         }
-        // El onSnapshot pondrá el estado en 'idle' cuando detecte el cambio local
     }, [currentUser]);
-    // --- FIN: NUEVA FUNCIÓN ---
+    // --- (FIN CORRECCIÓN) ---
 
     // --- CAMBIO: useMemo para el valor del contexto ---
     const contextValue = useMemo(() => ({

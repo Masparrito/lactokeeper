@@ -1,19 +1,15 @@
-// src/pages/LotDetailPage.tsx
-
-import { useState, useMemo, useRef } from 'react'; // React importado
+import { useState, useMemo, useRef } from 'react';
 import { useData } from '../context/DataContext';
 import type { PageState } from '../types/navigation';
-// --- CAMBIO: Iconos para ActionSheet de baja añadidos ---
 import { ArrowLeft, Plus, Edit, Trash2, MoveRight, CheckSquare, Square, Baby, Droplets, Scale, Archive, HeartCrack, Heart, DollarSign, Ban } from 'lucide-react';
 import { Animal } from '../db/local';
 import { AdvancedAnimalSelector } from '../components/ui/AdvancedAnimalSelector';
 import { TransferAnimalsModal } from '../components/ui/TransferAnimalsModal';
-import { formatAge, getAnimalStatusObjects } from '../utils/calculations'; // getAnimalZootecnicCategory no se usa
+import { formatAge, getAnimalStatusObjects } from '../utils/calculations';
 import { formatAnimalDisplay } from '../utils/formatting';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { SwipeableAnimalCard } from '../components/ui/SwipeableAnimalCard';
 import { ActionSheetModal, ActionSheetAction } from '../components/ui/ActionSheetModal';
-// Import necessary modals
 import { ParturitionModal } from '../components/modals/ParturitionModal';
 import { MilkWeighingActionModal } from '../components/modals/MilkWeighingActionModal';
 import { BodyWeighingActionModal } from '../components/modals/BodyWeighingActionModal';
@@ -27,9 +23,8 @@ import { DeclareServiceModal } from '../components/modals/DeclareServiceModal';
 import { STATUS_DEFINITIONS, AnimalStatusKey } from '../hooks/useAnimalStatus';
 
 
-// --- SUB-COMPONENTES ---
+// --- SUB-COMPONENTES (Sin cambios) ---
 
-// Componente para fila de animal seleccionable en modo edición (Estilo ya aplicado)
 const SelectableAnimalRow = ({ animal, isSelected, onSelect }: {
     animal: Animal & { formattedAge: string, statusObjects: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] },
     isSelected: boolean,
@@ -66,7 +61,7 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
     onBack: () => void;
     navigateTo: (page: PageState) => void;
 }) {
-    const { animals, parturitions, serviceRecords, breedingSeasons, sireLots, updateAnimal, addServiceRecord, startDryingProcess, setLactationAsDry, fathers} = useData(); // Added fathers
+    const { animals, parturitions, serviceRecords, breedingSeasons, sireLots, updateAnimal, addServiceRecord, startDryingProcess, setLactationAsDry, fathers} = useData();
     const [isSelectorOpen, setSelectorOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [selectedAnimals, setSelectedAnimals] = useState<Set<string>>(new Set());
@@ -74,10 +69,8 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
 
     const [actionSheetAnimal, setActionSheetAnimal] = useState<Animal | null>(null);
     const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
-    // --- CAMBIO: Actualizado ModalType ---
     type ModalType = | 'parturition' | 'abortion' | 'decommission' | 'milkWeighingAction' | 'bodyWeighingAction' | 'logSimpleMilk' | 'logSimpleBody' | 'newMilkSession' | 'newBodySession' | 'bulkWeighing' | 'service' | 'decommissionSheet';
     const [activeModal, setActiveModal] = useState<ModalType | null>(null);
-    // --- CAMBIO: Añadido estado para la razón de baja ---
     const [decommissionReason, setDecommissionReason] = useState<'Venta' | 'Muerte' | 'Descarte' | null>(null);
     const [sessionDate, setSessionDate] = useState<string | null>(null);
     const [bulkAnimals, setBulkAnimals] = useState<Animal[]>([]);
@@ -109,8 +102,11 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
             });
     }, [animals, lotName, parturitions, serviceRecords, sireLots, breedingSeasons, fathers]);
 
-    // Setup para virtualización de la lista
+    // --- (INICIO) CORRECCIÓN SCROLL ---
+    // 1. La ref del 'parent' es el div raíz de ESTA página
     const parentRef = useRef<HTMLDivElement>(null);
+    // --- (FIN) CORRECCIÓN SCROLL ---
+    
     const rowVirtualizer = useVirtualizer({
         count: animalsInLot.length,
         getScrollElement: () => parentRef.current,
@@ -118,7 +114,7 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
         overscan: 5
     });
 
-    // --- Handlers para acciones de edición ---
+    // --- Handlers (Sin cambios) ---
     const handleToggleAnimalSelection = (animalId: string) => {
         setSelectedAnimals(prev => {
             const newSet = new Set(prev);
@@ -138,8 +134,6 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
         setSelectorOpen(false);
     };
 
-    // --- Handlers para acciones individuales (ActionSheet y Modales) ---
-    // --- CAMBIO: Actualizado getActionsForAnimal ---
     const getActionsForAnimal = (animal: Animal | null): ActionSheetAction[] => {
         if (!animal) return [];
         const actions: ActionSheetAction[] = [];
@@ -150,12 +144,10 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
             if (animal.sireLotId) { actions.push({ label: 'Registrar Servicio', icon: Heart, onClick: () => { setIsActionSheetOpen(false); setActiveModal('service'); }, color: 'text-pink-400' }); }
         }
         actions.push({ label: 'Acciones de Peso', icon: Scale, onClick: () => { setIsActionSheetOpen(false); setActiveModal('bodyWeighingAction'); }});
-        // --- CAMBIO: Esta acción ahora abre el 'decommissionSheet' ---
         actions.push({ label: 'Dar de Baja', icon: Archive, onClick: () => { setIsActionSheetOpen(false); setActiveModal('decommissionSheet'); }, color: 'text-brand-red' });
         return actions;
     };
 
-    // --- CAMBIO: Definir las acciones del ActionSheet de baja ---
     const decommissionActions: ActionSheetAction[] = [
         { label: "Por Venta", icon: DollarSign, onClick: () => { setDecommissionReason('Venta'); setActiveModal('decommission'); } },
         { label: "Por Muerte", icon: HeartCrack, onClick: () => { setDecommissionReason('Muerte'); setActiveModal('decommission'); }, color: 'text-brand-red' },
@@ -163,7 +155,7 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
     ];
 
     const handleOpenActions = (animal: Animal) => { setActionSheetAnimal(animal); setIsActionSheetOpen(true); };
-    const closeModal = () => { setActiveModal(null); setActionSheetAnimal(null); setSessionDate(null); setBulkAnimals([]); setDecommissionReason(null); }; // Añadido setDecommissionReason
+    const closeModal = () => { setActiveModal(null); setActionSheetAnimal(null); setSessionDate(null); setBulkAnimals([]); setDecommissionReason(null); };
     const handleDecommissionConfirm = async (details: DecommissionDetails) => { if (!actionSheetAnimal) return; const dataToUpdate: Partial<Animal> = { status: details.reason, isReference: true, endDate: details.date }; if (details.reason === 'Venta') Object.assign(dataToUpdate, { salePrice: details.salePrice, saleBuyer: details.saleBuyer, salePurpose: details.salePurpose }); if (details.reason === 'Muerte') dataToUpdate.deathReason = details.deathReason; if (details.reason === 'Descarte') Object.assign(dataToUpdate, { cullReason: details.cullReason, cullReasonDetails: details.cullReasonDetails }); await updateAnimal(actionSheetAnimal.id, dataToUpdate); closeModal(); };
     const handleLogToSession = (date: string, type: 'leche' | 'corporal') => { setSessionDate(date); setActiveModal(type === 'leche' ? 'logSimpleMilk' : 'logSimpleBody'); };
     const handleStartNewSession = (type: 'leche' | 'corporal') => { setBulkWeightType(type); setActiveModal(type === 'leche' ? 'newMilkSession' : 'newBodySession'); };
@@ -175,12 +167,22 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
     // --- RENDERIZADO DE LA PÁGINA ---
     return (
         <>
+            {/* --- (INICIO) CORRECCIÓN DE SCROLL --- */}
+            {/* 1. El 'div' raíz AHORA es el contenedor de scroll de la página.
+                 'pt-16' y 'pb-16' se añaden aquí para compensar el header/nav del SHELL.
+                 'h-screen' (o '100vh') se asegura de que ocupe toda la altura disponible.
+            */}
             <div
                 ref={parentRef}
-                className="w-full max-w-2xl mx-auto space-y-4 pb-4 animate-fade-in"
-                style={{ height: `calc(100vh - 64px - 65px - ${isEditing && selectedAnimals.size > 0 ? '80px' : '0px'})`, overflowY: 'auto' }}
+                className="w-full max-w-2xl mx-auto animate-fade-in pt-16 pb-16"
+                style={{ 
+                    height: `calc(100vh - ${isEditing && selectedAnimals.size > 0 ? '80px' : '0px'})`, 
+                    overflowY: 'auto',
+                    boxSizing: 'border-box' // Asegura que el padding se incluya en la altura
+                }}
             >
-                <header className="flex items-center justify-between pt-8 pb-4 px-4 sticky top-0 bg-brand-dark/80 backdrop-blur-lg z-10 border-b border-brand-border">
+                {/* 2. El 'header' interno se pega a 'top-16' (64px) para clavarse DEBAJO del header principal */}
+                <header className="flex items-center justify-between p-4 sticky top-0 bg-brand-dark/80 backdrop-blur-lg z-10 border-b border-brand-border">
                     <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
                     <div className="text-center">
                         <h1 className="text-3xl font-bold tracking-tight text-white">{lotName}</h1>
@@ -189,6 +191,7 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
                     {isEditing ? (<button onClick={() => { setIsEditing(false); setSelectedAnimals(new Set()); }} className="text-brand-orange font-semibold px-2 py-1">Listo</button>)
                     : (<button onClick={() => setIsEditing(true)} className="p-2 -mr-2 text-zinc-400 hover:text-white"><Edit size={20} /></button>)}
                 </header>
+                {/* --- (FIN) CORRECCIÓN DE SCROLL --- */}
 
                 {!isEditing && (
                     <div className="px-4 pt-4">
@@ -211,7 +214,7 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
                                             width: '100%',
                                             height: `${virtualItem.size}px`,
                                             transform: `translateY(${virtualItem.start}px)`,
-                                            padding: '0 1rem 1rem 1rem', // 16px padding
+                                            padding: '0 1rem 1rem 1rem', 
                                             boxSizing: 'border-box'
                                         }}
                                     >
@@ -250,7 +253,6 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
             <TransferAnimalsModal isOpen={isTransferModalOpen} onClose={() => { setIsTransferModalOpen(false); setIsEditing(false); setSelectedAnimals(new Set()); }} animalsToTransfer={Array.from(selectedAnimals)} fromLot={lotName} />
             <ActionSheetModal isOpen={isActionSheetOpen} onClose={() => setIsActionSheetOpen(false)} title={`Acciones para ${formatAnimalDisplay(actionSheetAnimal)}`} actions={getActionsForAnimal(actionSheetAnimal)} />
             
-            {/* --- CAMBIO: ActionSheet para la causa de baja --- */}
             <ActionSheetModal
                 isOpen={activeModal === 'decommissionSheet'}
                 onClose={closeModal}
@@ -263,7 +265,6 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
                     {activeModal === 'parturition' && <ParturitionModal isOpen={true} onClose={closeModal} motherId={actionSheetAnimal.id} />}
                     {activeModal === 'abortion' && <DeclareAbortionModal animal={actionSheetAnimal} onCancel={closeModal} onSaveSuccess={closeModal} />}
                     
-                    {/* --- CAMBIO: Llamada a DecommissionAnimalModal actualizada --- */}
                     {activeModal === 'decommission' && decommissionReason && (
                         <DecommissionAnimalModal
                             isOpen={activeModal === 'decommission'}

@@ -1,4 +1,4 @@
-// vite.config.ts
+// vite.config.ts (Corregido)
 
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -18,7 +18,7 @@ export default defineConfig({
         description: 'El sistema operativo para la gestión ganadera, offline-first.',
         theme_color: '#1C1C1E', 
         background_color: '#1C1C1E', 
-        display: 'standalone', 
+        display: 'fullscreen', // <-- ¡CAMBIO REALIZADO!
         start_url: '.',
         icons: [
           {

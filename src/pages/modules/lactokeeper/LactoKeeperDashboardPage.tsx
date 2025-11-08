@@ -7,11 +7,11 @@ import { calculateDEL } from '../../../utils/calculations';
 import { Droplet, ActivitySquare, BarChart as BarChartIconLucide, Info } from 'lucide-react';
 import { CustomTooltip } from '../../../components/ui/CustomTooltip';
 import { Modal } from '../../../components/ui/Modal';
-// --- LÍNEA CORREGIDA: Ya no se necesita el tipo PageState aquí ---
+// --- (NUEVO) Importar el tipo Weighing ---
+import { Weighing } from '../../../db/local';
 
 interface LactoKeeperDashboardProps {
   onNavigateToAnalysis: () => void;
-  // --- LÍNEA CORREGIDA: Se elimina la prop navigateToRebano que no se usa ---
 }
 
 export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: LactoKeeperDashboardProps) {
@@ -39,7 +39,11 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
         const milkingAnimalIds = new Set(
             parturitions.filter(p => p.status === 'activa').map(p => p.goatId)
         );
-        weighingsForChart = weighings.filter(w => milkingAnimalIds.has(w.goatId));
+        // --- (INICIO) CORRECCIÓN DE ERRORES ---
+        // 1. Corregido el error de tipeo "weighighings" -> "weighings"
+        // 2. Añadido el tipo 'Weighing' al parámetro 'w'
+        weighingsForChart = weighings.filter((w: Weighing) => milkingAnimalIds.has(w.goatId));
+        // --- (FIN) CORRECCIÓN DE ERRORES ---
     }
     
     const herdCurveData: { [key: number]: { totalKg: number, count: number } } = {};

@@ -70,11 +70,13 @@ export default function SaludShell({ onSwitchModule }: SaludShellProps) {
     };
 
     return (
-        // --- CORRECCIÓN AQUÍ: Se añade 'bg-brand-dark' ---
-        <div className="min-h-screen animate-fade-in text-white flex flex-col bg-brand-dark">
+        // --- (INICIO) CORRECCIÓN DE SCROLL ---
+        // 1. Contenedor raíz con 'h-screen' y 'overflow-hidden'
+        <div className="h-screen overflow-hidden animate-fade-in text-white flex flex-col bg-brand-dark">
             
-            <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-brand-dark/80 backdrop-blur-lg border-b border-brand-border">
-                <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-16">
+            {/* 2. Header fijo con 'h-16' */}
+            <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-brand-dark/80 backdrop-blur-lg border-b border-brand-border h-16">
+                <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-full">
                     <button onClick={navigateBack} className="p-2 -ml-2 text-zinc-400 hover:text-white" aria-label="Atrás">
                         <ArrowLeft size={24} />
                     </button>
@@ -91,11 +93,14 @@ export default function SaludShell({ onSwitchModule }: SaludShellProps) {
                 </div>
             </header>
             
-            <main className="flex-grow pt-16 pb-24">
+            {/* 3. <main> es el ÚNICO scroll, con 'flex-1', 'overflow-y-auto' y padding */}
+            <main className="flex-1 overflow-y-auto pt-16 pb-16">
                 {renderContent()}
             </main>
+            {/* --- (FIN) CORRECCIÓN DE SCROLL --- */}
 
-            <nav className="flex-shrink-0 fixed bottom-0 left-0 right-0 bg-black/30 backdrop-blur-xl border-t border-white/20 flex justify-around z-20">
+            {/* 4. Nav fijo con 'h-16' */}
+            <nav className="flex-shrink-0 fixed bottom-0 left-0 right-0 bg-black/30 backdrop-blur-xl border-t border-white/20 flex justify-around z-20 h-16">
                 {navItems.map((item) => (
                     <button
                         key={item.id}

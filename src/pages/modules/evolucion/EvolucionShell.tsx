@@ -1,13 +1,11 @@
-// --- ARCHIVO: src/pages/modules/evolucion/EvolucionShell.tsx ---
-// (Actualizado para V8.5 - Errores TS2741 corregidos)
-
-import { useState, useEffect } from 'react'; // CORRECCIÓN: Imports no usados eliminados
+import { useState, useEffect } from 'react';
 import { ModuleSwitcher } from '../../../components/ui/ModuleSwitcher';
 import type { AppModule } from '../../../types/navigation';
 import { EvolucionRebanoPage } from './EvolucionRebanoPage';
 import { SimulationSetupPage } from './SimulationSetupPage'; 
 import { GanaGeniusPage } from './GanaGeniusPage'; 
-import { TrendingUp, Settings, BarChartHorizontal, CheckCircle, ArrowLeft, Sparkles } from 'lucide-react';
+// --- (NUEVO) Importar 'Grid' ---
+import { TrendingUp, Settings, BarChartHorizontal, CheckCircle, ArrowLeft, Sparkles, Grid } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { SyncStatusIcon } from '../../../components/ui/SyncStatusIcon';
 import { SimulationConfig } from '../../../hooks/useHerdEvolution'; 
@@ -45,6 +43,9 @@ const defaultSimulationParams: Omit<SimulationConfig, 'initialCabras'|'initialLe
 export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) {
   const { syncStatus, appConfig, isLoading: isDataLoading } = useData();
   const [activeView, setActiveView] = useState<EvolucionView>('setup');
+  
+  // --- (NUEVO) Estado para el modal de Módulos ---
+  const [isModuleSwitcherOpen, setIsModuleSwitcherOpen] = useState(false);
   
   const { realConfig, isLoading: isRealConfigLoading } = useRealtimeKpiCalculator();
   
@@ -108,9 +109,12 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
       initialCriaH: 0,
       initialCriaM: 0,
       initialPadres: 1,
-      ...(appConfig || {}), 
+      ...(appConfig || {}),
+      monedaSimbolo: defaultSimulationParams.monedaSimbolo,
+      precioLecheLitro: defaultSimulationParams.precioLecheLitro,
+      precioVentaCabritoKg: defaultSimulationParams.precioVentaCabritoKg,
+      precioVentaDescarteAdulto: defaultSimulationParams.precioVentaDescarteAdulto,
    };
-   fallbackConfig.monedaSimbolo = appConfig?.monedaSimbolo ?? defaultSimulationParams.monedaSimbolo;
 
   useEffect(() => {
     try {
@@ -126,10 +130,12 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
 
 
   return (
-    <div className="font-sans text-gray-200 min-h-screen animate-fade-in">
-        {/* Header */}
-        <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border">
-            <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-16">
+    // --- (INICIO) CORRECCIÓN DE SCROLL ---
+    // 1. Contenedor raíz con 'h-screen' y 'overflow-hidden'
+    <div className="font-sans text-gray-200 h-screen overflow-hidden animate-fade-in flex flex-col">
+        {/* 2. Header fijo con 'h-16' */}
+        <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border h-16">
+            <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-full">
                  <div className="flex items-center gap-2 min-w-0">
                     {activeView !== 'setup' && (
                          <button onClick={() => handleViewChange('setup')} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors flex-shrink-0" aria-label="Volver a Configuración">
@@ -151,11 +157,20 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
                  </div>
                 <div className="flex items-center gap-4 flex-shrink-0">
                     <SyncStatusIcon status={syncStatus} />
+                    {/* --- (NUEVO) Botón de Módulos --- */}
+                    <button 
+                        onClick={() => setIsModuleSwitcherOpen(true)}
+                        className="p-2 text-zinc-400 hover:text-white transition-colors"
+                        title="Módulos"
+                    >
+                        <Grid size={20} />
+                    </button>
                 </div>
             </div>
         </header>
 
-        <main className="pt-16 pb-16">
+        {/* 3. <main> es el ÚNICO scroll, con 'flex-1', 'overflow-y-auto' y padding */}
+        <main className="flex-1 overflow-y-auto pt-16 pb-16">
             {activeView === 'setup' && (
                 <SimulationSetupPage
                     initialConfig={simConfig || fallbackConfig}
@@ -169,7 +184,6 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
                   key="sim-results" 
                   simulationConfig={activeSimData}
                   mode="simulacion" 
-                  // CORRECCIÓN: 'onSimulate' eliminado
                 /> 
             )}
             
@@ -180,7 +194,6 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
                   key="real-results" 
                   simulationConfig={realConfig}
                   mode="real" 
-                  // CORRECCIÓN: 'onSimulate' eliminado
                 /> 
             )}
             
@@ -204,9 +217,10 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
             )}
 
         </main>
+        {/* --- (FIN) CORRECCIÓN DE SCROLL --- */}
 
-         {/* Nav (V8.5: Lógica de 'disabled' actualizada) */}
-         <nav className="fixed bottom-0 left-0 right-0 z-20 bg-black/50 backdrop-blur-xl border-t border-white/20 flex justify-around h-16">
+         {/* 4. Nav fijo con 'h-16' */}
+         <nav className="flex-shrink-0 fixed bottom-0 left-0 right-0 z-20 bg-black/50 backdrop-blur-xl border-t border-white/20 flex justify-around h-16">
             {navItems.map((item) => {
                  const isDisabled = (item.view === 'sim-results' && !simConfig) || 
                                     (item.view === 'real-results' && !realConfig) ||
@@ -216,10 +230,12 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
             })}
          </nav>
 
-        {/* ModuleSwitcher */}
-        <div style={{ position: 'fixed', bottom: 'calc(4rem + 1rem)', right: '1rem', zIndex: 40 }}>
-             <ModuleSwitcher onSwitchModule={onSwitchModule} />
-        </div>
+        {/* --- (NUEVO) ModuleSwitcher actualizado a modal --- */}
+        <ModuleSwitcher 
+            isOpen={isModuleSwitcherOpen}
+            onClose={() => setIsModuleSwitcherOpen(false)}
+            onSwitchModule={onSwitchModule} 
+        />
     </div>
   );
 }

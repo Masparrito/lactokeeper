@@ -4,7 +4,6 @@ import { useData } from '../../../context/DataContext';
 import { calculateGDP, formatAge, getInterpolatedWeight, calculateWeaningIndex, calculatePrecocityIndex } from '../../../utils/calculations';
 import { formatAnimalDisplay } from '../../../utils/formatting';
 // Icons
-// --- CAMBIO: Icono 'Check' añadido ---
 import { ArrowLeft, Scale, TrendingUp, Calendar, Hash, Check } from 'lucide-react';
 import { GiPodium, GiFastForwardButton } from 'react-icons/gi'; // Specific icons for indices
 // Recharts components
@@ -14,7 +13,7 @@ import { Animal, BodyWeighing } from '../../../db/local'; // Import types
 // Import CustomTooltip
 import { CustomTooltip } from '../../../components/ui/CustomTooltip';
 
-// --- SUB-COMPONENTES DE UI (KpiCard, CustomTooltip) ---
+// --- SUB-COMPONENTES DE UI (KpiCard) ---
 
 // KPI Card component
 const KpiCard = ({ icon: Icon, label, value, unit, colorClass }: { icon: React.ElementType, label: string, value: string | number, unit?: string, colorClass?: string }) => (
@@ -24,11 +23,6 @@ const KpiCard = ({ icon: Icon, label, value, unit, colorClass }: { icon: React.E
     </div>
 );
 
-// Custom Tooltip for the chart
-// (CustomTooltip se importa desde ui, por lo que esta definición local se elimina si ya existe globalmente)
-// const CustomTooltip = ({ active, payload, label }: any) => { ... };
-
-
 // --- COMPONENTE PRINCIPAL ---
 interface GrowthProfilePageProps {
   animalId: string; // ID of the animal to display
@@ -37,7 +31,6 @@ interface GrowthProfilePageProps {
 
 export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePageProps) {
     // Get data from context
-    // --- CAMBIO: appConfig añadido ---
     const { animals, bodyWeighings, appConfig } = useData();
 
     // Memoize the calculation of animal data and derived metrics
@@ -45,7 +38,6 @@ export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePag
         const animal = animals.find((a: Animal) => a.id === animalId); // Find the animal
         if (!animal) return null; // Return null if animal not found
 
-        // Get and sort weighings for this animal
         const weighings = bodyWeighings
             .filter((w: BodyWeighing) => w.animalId === animal.id)
             .sort((a: BodyWeighing, b: BodyWeighing) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -53,62 +45,48 @@ export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePag
         // Calculate metrics using utility functions
         const gdp = calculateGDP(animal.birthWeight, weighings); // Calculate GDP
         const formattedAge = formatAge(animal.birthDate); // Format current age
-        // Determine latest weight (from last weighing or birth weight)
         const latestWeight = weighings.length > 0 ? weighings[weighings.length - 1].kg : animal.birthWeight || 0;
         const weaningIndex = calculateWeaningIndex(animal); // Calculate Weaning Index (adjusted weight at 60d)
         const precocityIndex = calculatePrecocityIndex(animal, weighings); // Calculate Precocity Index (estimated weight at 7m/210d)
 
-        // Prepare data for the growth curve chart
         const chartData = weighings.map(w => ({
             age: (new Date(w.date).getTime() - new Date(animal.birthDate + 'T00:00:00Z').getTime()) / (1000 * 60 * 60 * 24), // Calculate age in days for each weighing
             [animal.id]: w.kg, // Use animal ID as the data key for the line
         }));
 
-        // Add birth weight as the starting point (age 0) if available
         if (animal.birthWeight) {
             chartData.unshift({ age: 0, [animal.id]: animal.birthWeight });
         }
 
-        // Define age milestones for estimated weights
         const milestones = [60, 90, 180, 270]; // Days
-        // Calculate interpolated weights at milestones
         const interpolatedWeights = milestones.map(days => ({
             days,
             weight: getInterpolatedWeight(weighings, animal.birthDate, days) // Use utility function
         }));
 
-        // Return all calculated data
         return { animal, gdp, formattedAge, latestWeight, chartData, interpolatedWeights, weaningIndex, precocityIndex };
     }, [animalId, animals, bodyWeighings]); // Recalculate if dependencies change
 
-    // Show message if animal data couldn't be found/calculated
     if (!animalData) {
         return <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Animal no encontrado.</h1></div>;
     }
 
-    // Destructure calculated data for easier access in JSX
     const { animal, gdp, formattedAge, latestWeight, chartData, interpolatedWeights, weaningIndex, precocityIndex } = animalData;
 
-    // --- CAMBIO: Preparar nombre formateado ---
     const formattedName = animal.name ? String(animal.name).toUpperCase().trim() : '';
 
-    // --- RENDERIZADO DE LA PÁGINA ---
     return (
         <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in pb-12">
             {/* --- CABECERA ACTUALIZADA --- */}
             <header className="flex items-center pt-8 pb-4 px-4 sticky top-0 bg-brand-dark/80 backdrop-blur-md z-10 border-b border-brand-border -mx-4 mb-4">
                 <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
-                {/* --- INICIO: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
                 <div className="text-center flex-grow min-w-0">
-                    {/* ID (Protagonista) - Fuente y tamaño aplicados */}
                     <h1 className="text-3xl font-mono font-bold tracking-tight text-white truncate">{animal.id.toUpperCase()}</h1>
-                    {/* Nombre (Secundario, si existe) */}
                     {formattedName && (
                         <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
                     )}
-                    <p className="text-lg text-zinc-400 mt-1">Perfil de Crecimiento</p> {/* Added mt-1 */}
+                    <p className="text-lg text-zinc-400 mt-1">Perfil de Crecimiento</p>
                 </div>
-                {/* --- FIN: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
                 <div className="w-8"></div> {/* Spacer */}
             </header>
             {/* --- FIN CABECERA --- */}
@@ -122,21 +100,24 @@ export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePag
                 <KpiCard icon={Hash} label="Nº Pesajes" value={chartData.length > 0 ? chartData.length - (animal.birthWeight ? 1 : 0) : 0} />
             </div>
 
-            {/* KPIs de Índices (solo si existen) */}
-            {/* --- CAMBIO: Rejilla actualizada para incluir la Meta --- */}
+            {/* KPIs de Índices */}
             {(weaningIndex || precocityIndex) && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 px-4">
                     {weaningIndex && (
                         <KpiCard icon={GiPodium} label="Índice Destete (60d)" value={weaningIndex.toFixed(2)} unit="Kg" colorClass="border-amber-400/50"/>
                     )}
-                    {/* --- CAMBIO: Nueva Card para la Meta de Destete --- */}
+                    
+                    {/* --- (INICIO) CORRECCIÓN DE ERROR --- */}
+                    {/* Se usa 'pesoMinimoDesteteFinal' en lugar de 'pesoMinimoDesteteKg' */}
                     <KpiCard 
                         icon={Check} 
                         label="Meta Destete (Config)" 
-                        value={appConfig.pesoDesteteMetaKg.toFixed(2)} 
+                        value={appConfig.pesoMinimoDesteteFinal.toFixed(2)} 
                         unit="Kg" 
                         colorClass="border-blue-400/50"
                     />
+                    {/* --- (FIN) CORRECCIÓN DE ERROR --- */}
+                    
                     {precocityIndex && (
                         <KpiCard icon={GiFastForwardButton} label="Índice Precocidad (7m)" value={precocityIndex.toFixed(2)} unit="Kg" colorClass="border-amber-400/50"/>
                     )}

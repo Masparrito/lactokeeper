@@ -3,12 +3,39 @@ import { useData } from '../context/DataContext';
 import { getAnimalZootecnicCategory, calculateAgeInDays } from '../utils/calculations';
 
 export const useHerdAnalytics = () => {
-    // --- CAMBIO: Se obtiene appConfig ---
     const { animals, parturitions, bodyWeighings, sireLots, breedingSeasons, weighings, appConfig } = useData();
 
     const analytics = useMemo(() => {
         const activeAnimals = animals.filter(a => !a.isReference);
 
+        const allFemales = activeAnimals.filter(a => a.sex === 'Hembra');
+        const totalHembras = allFemales.length;
+
+        // --- Lógica de Vientres (Corregida y estable) ---
+        
+        const edadVientreMeses = appConfig.edadPrimerServicioMeses > 0 ? appConfig.edadPrimerServicioMeses : 11;
+        const pesoVientreKg = appConfig.pesoPrimerServicioKg > 0 ? appConfig.pesoPrimerServicioKg : 30;
+        const edadVientreDias = edadVientreMeses * 30.44;
+
+        const totalVientres = allFemales.filter(hembra => {
+            const category = getAnimalZootecnicCategory(hembra, parturitions);
+            if (category === 'Cabra') return true;
+            if (category === 'Cabrita') return false;
+            if (category === 'Cabritona') {
+                const ageInDays = calculateAgeInDays(hembra.birthDate);
+                if (ageInDays < edadVientreDias) return false;
+                if (pesoVientreKg > 0) {
+                    const lastWeight = bodyWeighings
+                        .filter(bw => bw.animalId === hembra.id)
+                        .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+                    if (!lastWeight || lastWeight.kg < pesoVientreKg) return false;
+                }
+                return true;
+            }
+            return false;
+        }).length;
+        
+        // --- Categorías (Estable) ---
         const categories = {
             cabras: [] as any[],
             cabritonas: [] as any[],
@@ -26,15 +53,11 @@ export const useHerdAnalytics = () => {
                 case 'Cabrita': categories.cabritas.push(animal); break;
                 case 'Cabrito': categories.cabritos.push(animal); break;
                 case 'Macho de Levante': categories.machosLevante.push(animal); break;
-                case 'Macho Cabrío': categories.reproductores.push(animal); break;
+                case 'Reproductor': categories.reproductores.push(animal); break;
             }
         });
 
-        // --- LÍNEA CORREGIDA ---
-        // Se añade `categories.cabritas.length` para incluir a todas las hembras en el conteo de vientres.
-        const totalVientres = categories.cabras.length + categories.cabritonas.length + categories.cabritas.length;
-
-        // Analítica para Hembras Adultas
+        // --- Analítica de Hembras Adultas (Estable) ---
         const enProduccion = parturitions.filter(p => p.status === 'activa' && categories.cabras.some(c => c.id === p.goatId)).length;
         const secas = categories.cabras.length - enProduccion;
         const preñadas = categories.cabras.filter(a => a.reproductiveStatus === 'Preñada').length;
@@ -47,7 +70,6 @@ export const useHerdAnalytics = () => {
             { name: 'En Monta', value: enMonta, color: '#007AFF' },
         ].filter(item => item.value > 0);
         
-        // Cálculo del porcentaje de animales en ordeño durante el año (cortes semestrales)
         const currentYear = new Date().getFullYear();
         const milkingPercentageData: { name: string; 'En Ordeño (%)': number }[] = [];
 
@@ -73,24 +95,21 @@ export const useHerdAnalytics = () => {
             });
         }
 
-        // Analítica para Cabritonas
-        // --- CAMBIO: Se usa appConfig ---
-        const serviceWeight = appConfig.pesoPrimerServicioKg;
-        const serviceWeightThreshold = serviceWeight * 0.95; // 95% del peso meta
+        // --- Analítica de Cabritonas (Estable) ---
+        const serviceWeight = appConfig.pesoPrimerServicioKg || 30;
+        const serviceWeightThreshold = serviceWeight * 0.95; 
         
         const cabritonasEnMonta = categories.cabritonas.filter(c => c.reproductiveStatus === 'En Servicio').length;
         const proximasAServicio = categories.cabritonas.filter(c => {
             const lastWeight = bodyWeighings.filter(bw => bw.animalId === c.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
             if (!lastWeight) return false;
-            // --- CAMBIO: Lógica actualizada ---
-            // Próxima = (tiene >= 95% del peso meta Y aún no está en servicio/preñada)
-            // O (ya tiene el peso meta pero no está en servicio/preñada)
+            
             return (lastWeight.kg >= serviceWeightThreshold && lastWeight.kg < serviceWeight) || 
                    (lastWeight.kg >= serviceWeight && c.reproductiveStatus !== 'En Servicio' && c.reproductiveStatus !== 'Preñada');
         }).length;
         const cabritonasDisponibles = categories.cabritonas.length - cabritonasEnMonta - preñadas;
 
-        // Analítica para Crías
+        // --- Analítica para Crías (Estable) ---
         const criasHembras = categories.cabritas.length;
         const criasMachos = categories.cabritos.length;
         const totalCrias = criasHembras + criasMachos;
@@ -100,44 +119,55 @@ export const useHerdAnalytics = () => {
             { name: 'Machos', value: criasMachos, color: '#007AFF' },
         ].filter(item => item.value > 0);
 
+        // --- (INICIO) CORRECCIÓN LÓGICA DE DESTETE ---
+        // Se usan las nuevas variables de AppConfig
+        const { 
+            diasAlertaPesarDestete, 
+            pesoMinimoPesarDestete, 
+            diasMetaDesteteFinal, 
+            pesoMinimoDesteteFinal 
+        } = appConfig;
+
         const desteteConditions = [...categories.cabritas, ...categories.cabritos].map(cria => {
             const age = calculateAgeInDays(cria.birthDate);
             const lastWeight = bodyWeighings.filter(bw => bw.animalId === cria.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
             const weight = lastWeight?.kg || 0;
 
-            const isReadyByAge = age >= 52;
-            const isReadyByWeight = weight >= 9.5;
+            // Criterio 1: ¿Está LISTO? (Usa las variables FINALES)
+            const isReadyByAge = age >= diasMetaDesteteFinal;
+            const isReadyByWeight = weight >= pesoMinimoDesteteFinal;
 
-            const inDestetePhase = age >= 45 && age < 52;
-            const closeToDesteteCriteria = (age >= 40 && age < 45) || (weight >= 8.5 && weight < 9.5);
-
-            let status = 'Amamantando';
             if (isReadyByAge && isReadyByWeight) {
-                status = 'Listo para Destete';
-            } else if (inDestetePhase) {
-                status = 'En Fase Destete';
-            } else if (closeToDesteteCriteria) {
-                status = 'Próximo a Destete';
+                return { id: cria.id, status: 'Listo para Destete' };
             }
-            return { id: cria.id, status };
+
+            // Criterio 2: ¿Está PRÓXIMO? (Usa las variables de ALERTA)
+            const isNearByAge = age >= diasAlertaPesarDestete;
+            const isNearByWeight = weight >= pesoMinimoPesarDestete;
+
+            if (isNearByAge || isNearByWeight) {
+                 return { id: cria.id, status: 'Próximo a Destete' };
+            }
+
+            // Criterio 3: Sigue Amamantando
+            return { id: cria.id, status: 'Amamantando' };
         });
 
-        const enFaseDesteteCount = desteteConditions.filter(d => d.status === 'En Fase Destete').length;
-        const proximasADesteteCount = desteteConditions.filter(d => d.status === 'Próximo a Destete').length;
         const listasParaDesteteCount = desteteConditions.filter(d => d.status === 'Listo para Destete').length;
+        const proximasADesteteCount = desteteConditions.filter(d => d.status === 'Próximo a Destete').length;
         const amamantandoCount = desteteConditions.filter(d => d.status === 'Amamantando').length;
-
+        // --- (FIN) CORRECCIÓN LÓGICA DE DESTETE ---
 
         const desteteStatusData = [
             { name: 'Listo', value: listasParaDesteteCount, color: '#34C759' },
-            { name: 'En Fase', value: enFaseDesteteCount, color: '#FFD60A' },
             { name: 'Próximo', value: proximasADesteteCount, color: '#FF9F0A' },
             { name: 'Amamantando', value: amamantandoCount, color: '#007AFF' },
         ].filter(item => item.value > 0);
 
-        // Analítica para Reproductores
+        // --- Analítica para Reproductores (Estable) ---
         const activeSeasonIds = new Set(breedingSeasons.filter(s => s.status === 'Activo').map(s => s.id));
         const activeSireLots = sireLots.filter(sl => activeSeasonIds.has(sl.seasonId));
+        
         const activeSires = categories.reproductores.filter(r => activeSireLots.some(sl => sl.sireId === r.id))
             .map(sire => {
                 const lot = activeSireLots.find(sl => sl.sireId === sire.id)!;
@@ -145,8 +175,10 @@ export const useHerdAnalytics = () => {
                 return { ...sire, lotId: lot.id, assignedFemales };
             });
 
+        // --- Objeto de retorno final (Estable) ---
         return {
             totalPoblacion: activeAnimals.length,
+            totalHembras,
             totalVientres,
             cabras: {
                 total: categories.cabras.length,
@@ -165,7 +197,7 @@ export const useHerdAnalytics = () => {
                 hembras: criasHembras,
                 machos: criasMachos,
                 criasEnMaternidadData: criasEnMaternidadData,
-                enFaseDestete: enFaseDesteteCount,
+                enFaseDestete: 0, 
                 proximasADestete: proximasADesteteCount,
                 listasParaDestete: listasParaDesteteCount,
                 desteteStatusData: desteteStatusData,
@@ -175,7 +207,23 @@ export const useHerdAnalytics = () => {
                 activos: activeSires,
             }
         };
-    }, [animals, parturitions, bodyWeighings, sireLots, breedingSeasons, weighings, appConfig.pesoPrimerServicioKg]); // --- CAMBIO: Dependencia añadida ---
+    }, [
+        // --- (INICIO) CORRECCIÓN DEPENDENCIAS ---
+        animals, 
+        parturitions, 
+        bodyWeighings, 
+        sireLots, 
+        breedingSeasons, 
+        weighings, 
+        appConfig.pesoPrimerServicioKg, 
+        appConfig.edadPrimerServicioMeses,
+        // Reemplazar las variables antiguas por las 4 nuevas
+        appConfig.diasAlertaPesarDestete,
+        appConfig.pesoMinimoPesarDestete,
+        appConfig.diasMetaDesteteFinal,
+        appConfig.pesoMinimoDesteteFinal
+        // --- (FIN) CORRECCIÓN DEPENDENCIAS ---
+    ]);
 
     return analytics;
 };

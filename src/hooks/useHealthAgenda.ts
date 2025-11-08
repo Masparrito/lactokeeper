@@ -20,8 +20,9 @@ const getDateForFixedTask = (year: number, month: number, week: number): Date =>
 };
 
 export const useHealthAgenda = () => {
-    // --- CAMBIO: Se obtiene appConfig ---
-    const { animals, healthPlans, planActivities, healthEvents, parturitions, appConfig } = useData();
+    // --- (INICIO) CORRECCIÓN: 'appConfig' eliminado de la desestructuración ---
+    const { animals, healthPlans, planActivities, healthEvents, parturitions } = useData();
+    // --- (FIN) CORRECCIÓN ---
     const { forecastBySeason } = useBirthingForecast();
 
     const pendingTasks = useMemo(() => {
@@ -29,6 +30,10 @@ export const useHealthAgenda = () => {
         today.setUTCHours(0, 0, 0, 0);
         const currentYear = today.getUTCFullYear();
         const ninetyDaysFromNow = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000);
+
+        // --- (INICIO) CORRECCIÓN: Se define el valor por defecto localmente ---
+        const DIAS_ALERTA_ATRASO_DEFAULT = 7;
+        // --- (FIN) CORRECCIÓN ---
 
         const generatedTasks: AgendaTask[] = [];
 
@@ -72,10 +77,8 @@ export const useHealthAgenda = () => {
                         const hasBeenDone = healthEvents.some(event => {
                              if (event.animalId !== animal.id || event.activityId !== activity.id) return false;
                              if (activity.trigger.type === 'age') {
-                                 // Para 'age', la fecha del evento debe coincidir exactamente con la dueDate calculada
                                  return new Date(event.date + 'T00:00:00Z').getTime() === dueDate.getTime();
                              } else {
-                                 // Para eventos anuales, basta con que se haya hecho en el mismo año
                                  const eventYear = new Date(event.date + 'T00:00:00Z').getUTCFullYear();
                                  return eventYear === dueDate.getUTCFullYear();
                              }
@@ -85,13 +88,13 @@ export const useHealthAgenda = () => {
                             let status: AgendaTask['status'] = 'Próxima';
                             const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
                             
-                            // --- CAMBIO: Lógica de status actualizada ---
-                            // La tarea se marca "Atrasada" solo si ha pasado la fecha de vencimiento MÁS los días de alerta (gracia)
-                            if (daysUntilDue < 0 && Math.abs(daysUntilDue) > appConfig.diasAlertaAtraso) {
+                            // --- (INICIO) CORRECCIÓN: Se usa el valor por defecto local ---
+                            if (daysUntilDue < 0 && Math.abs(daysUntilDue) > DIAS_ALERTA_ATRASO_DEFAULT) {
                                 status = 'Atrasada';
                             } else if (daysUntilDue === 0) {
                                 status = 'Para Hoy';
                             }
+                            // --- (FIN) CORRECCIÓN ---
                             
                             generatedTasks.push({ key: taskKey, animal, plan, activity, dueDate, status });
                         }
@@ -125,7 +128,9 @@ export const useHealthAgenda = () => {
 
         return generatedTasks.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
 
-    }, [animals, healthPlans, planActivities, healthEvents, parturitions, forecastBySeason, appConfig.diasAlertaAtraso]); // --- CAMBIO: Dependencia añadida ---
+    // --- (INICIO) CORRECCIÓN: 'appConfig.diasAlertaAtraso' eliminado de las dependencias ---
+    }, [animals, healthPlans, planActivities, healthEvents, parturitions, forecastBySeason]); 
+    // --- (FIN) CORRECCIÓN ---
 
     const groupedTasks = useMemo(() => {
         return {

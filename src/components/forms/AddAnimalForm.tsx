@@ -1,11 +1,11 @@
-// src/components/forms/AddAnimalForm.tsx
+// src/components/forms/AddAnimalForm.tsx (Actualizado)
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { CheckCircle, AlertTriangle, Calendar, Search, Plus, ChevronDown, X, Delete } from 'lucide-react';
 import { AnimalSelectorModal } from '../ui/AnimalSelectorModal';
-// --- CORRECCIÓN: Tipos no usados eliminados ---
 import { Animal } from '../../db/local';
+// --- CORRECCIÓN: 'calculateLifecycleStage' (la local) ahora se usa en su lugar ---
 import { calculateBreedFromComposition, calculateChildComposition } from '../../utils/calculations';
 import { formatAnimalDisplay } from '../../utils/formatting';
 import { DayPicker } from 'react-day-picker';
@@ -13,6 +13,7 @@ import 'react-day-picker/dist/style.css';
 import { es } from 'date-fns/locale';
 
 // --- LÓGICA DE CÁLCULO (Completa) ---
+// (CAMBIO) "Cabra Adulta" -> "Cabra"
 const calculateLifecycleStage = (birthDate: string, sex: 'Hembra' | 'Macho'): string => {
     if (!birthDate || !sex) return 'Indefinido';
     const today = new Date();
@@ -22,11 +23,11 @@ const calculateLifecycleStage = (birthDate: string, sex: 'Hembra' | 'Macho'): st
     if (sex === 'Hembra') {
         if (ageInDays <= 60) return 'Cabrita';
         if (ageInDays <= 365) return 'Cabritona';
-        return 'Cabra Adulta';
+        return 'Cabra'; // CORREGIDO
     } else { // Macho
         if (ageInDays <= 60) return 'Cabrito';
         if (ageInDays <= 365) return 'Macho de Levante';
-        return 'Macho Cabrío';
+        return 'Reproductor'; // CORREGIDO
     }
 };
 
@@ -74,7 +75,6 @@ interface AddAnimalFormProps {
 }
 
 export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onCancel }) => {
-    // --- CORRECCIÓN: Tipos no usados eliminados de la desestructuración ---
     const { addAnimal, animals, lots, fathers } = useData();
 
     // Estados del formulario
@@ -85,6 +85,8 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
     const [birthDate, setBirthDate] = useState('');
     const [geneticMethod, setGeneticMethod] = useState('MN');
     const [birthWeight, setBirthWeight] = useState('');
+    // --- (NUEVO) Estado para Tipo de Parto ---
+    const [parturitionType, setParturitionType] = useState('Simple');
     const [fatherId, setFatherId] = useState<string | null>(null);
     const [motherId, setMotherId] = useState<string | null>(null);
     const [racialComposition, setRacialComposition] = useState('');
@@ -123,6 +125,7 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
         return animals.filter(a => a.sex === 'Macho'); // Incluir Activos Y Referencia
     }, [animals]);
 
+    // (CAMBIO) "Macho Cabrío" -> "Reproductor"
     const allFathers = useMemo(() => {
         const internalSires: Animal[] = sires; // Usar la lista 'sires' directamente
         const externalSires: Animal[] = fathers.map(f => ({
@@ -132,7 +135,7 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
             status: 'Activo',
             isReference: true,
             birthDate: 'N/A',
-            lifecycleStage: 'Macho Cabrío',
+            lifecycleStage: 'Reproductor', // CORREGIDO
             location: 'Referencia',
             reproductiveStatus: 'No Aplica',
             createdAt: 0,
@@ -171,6 +174,7 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
         e.preventDefault();
         setMessage(null); setIdExistsError(null);
 
+        // --- VALIDACIONES ---
         if (status === 'Activo' && !animalId) {
             setMessage({ type: 'error', text: 'El ID del animal es obligatorio para animales Activos.' });
             return;
@@ -185,6 +189,18 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
             }
         }
 
+        // --- ALERTA DE COMPOSICIÓN RACIAL ---
+        if (!racialComposition) {
+            const confirmed = window.confirm(
+                "ALERTA\n\nNo has especificado una Composición Racial. El animal se guardará sin raza definida.\n\n¿Deseas guardar de todas formas?"
+            );
+            if (!confirmed) {
+                setMessage({ type: 'error', text: 'Guardado cancelado. Por favor, añade la composición racial.' });
+                return; // Detener el guardado
+            }
+        }
+        // --- FIN DE ALERTA ---
+
         const newAnimal: Animal = {
             id: animalId.toUpperCase() || `REF-${Date.now()}`,
             name: name || undefined,
@@ -195,6 +211,7 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
             lifecycleStage: finalLifecycleStage as any,
             conceptionMethod: geneticMethod || undefined,
             birthWeight: birthWeight ? parseFloat(birthWeight) : undefined,
+            parturitionType: parturitionType || undefined, // --- (NUEVO) Campo añadido ---
             fatherId: fatherId || undefined,
             motherId: motherId || undefined,
             racialComposition: racialComposition || undefined,
@@ -230,6 +247,12 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
         <>
             <form onSubmit={handleSubmit} className="w-full space-y-6">
 
+                {/* Categoría (Status y Sexo) */}
+                <FormGroup title="Categoría del Animal (Obligatorio)">
+                    <Toggle labelOn="Activo" labelOff="Referencia" value={status === 'Activo'} onChange={(isActive) => { setStatus(isActive ? 'Activo' : 'Referencia'); if (!isActive) setIdExistsError(null); }} />
+                    <Toggle labelOn="Hembra" labelOff="Macho" value={sex === 'Hembra'} onChange={(isFemale) => setSex(isFemale ? 'Hembra' : 'Macho')} />
+                </FormGroup>
+
                 {/* ID Animal */}
                 <div>
                     <label className="block text-sm font-medium text-zinc-400 mb-2">ID Animal {status === 'Activo' ? '(Obligatorio)' : '(Opcional para Referencia)'}</label>
@@ -251,12 +274,6 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
                     <FormInput type="text" value={name} onChange={(e) => setName(e.target.value.toUpperCase())} placeholder="Ej: PRINCESA" />
                 </div>
 
-                {/* Categoría */}
-                <FormGroup title="Categoría">
-                    <Toggle labelOn="Hembra" labelOff="Macho" value={sex === 'Hembra'} onChange={(isFemale) => setSex(isFemale ? 'Hembra' : 'Macho')} />
-                    <Toggle labelOn="Activo" labelOff="Referencia" value={status === 'Activo'} onChange={(isActive) => { setStatus(isActive ? 'Activo' : 'Referencia'); if (!isActive) setIdExistsError(null); }} />
-                </FormGroup>
-
                 {/* Genética y Nacimiento */}
                 <FormGroup title="Genética y Nacimiento">
                     {/* Fecha de Nacimiento */}
@@ -274,25 +291,45 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
                         {birthDate ? (
                             <FormInput type="text" value={lifecycleStageAuto} readOnly disabled />
                         ) : (
+                            // (CAMBIO) "Cabra Adulta" -> "Cabra"
                             <FormSelect value={lifecycleStageManual} onChange={e => setLifecycleStageManual(e.target.value)}>
                                 <option value="Indefinido">Seleccionar Categoría...</option>
                                 <option value="Cabrita">Cabrita</option>
                                 <option value="Cabritona">Cabritona</option>
-                                <option value="Cabra Adulta">Cabra Adulta</option>
+                                <option value="Cabra">Cabra</option> 
                                 <option value="Cabrito">Cabrito</option>
                                 <option value="Macho de Levante">Macho de Levante</option>
-                                <option value="Macho Cabrío">Macho Cabrío (Reproductor)</option>
+                                <option value="Reproductor">Reproductor</option> 
                             </FormSelect>
                         )}
                     </div>
-                    {/* Método y Peso */}
+                    {/* --- (NUEVO) Layout para Método, Peso y Tipo de Parto --- */}
+                    <FormSelect value={geneticMethod} onChange={e => setGeneticMethod(e.target.value)}>
+                        <option value="MN">Monta Natural (MN)</option>
+                        <option value="IA">Inseminación Artificial (IA)</option>
+                        <option value="TE">Transferencia de Embriones (TE)</option>
+                        <option value="">Otro/Desconocido</option>
+                    </FormSelect>
                     <div className="grid grid-cols-2 gap-4">
-                        <FormSelect value={geneticMethod} onChange={e => setGeneticMethod(e.target.value)}><option value="MN">Monta Natural (MN)</option><option value="IA">Inseminación Artificial (IA)</option><option value="TE">Transferencia de Embriones (TE)</option><option value="">Otro/Desconocido</option></FormSelect>
-                        <FormInput type="number" step="0.1" value={birthWeight} onChange={e => setBirthWeight(e.target.value)} placeholder="Peso al Nacer (Kg)" />
+                        <FormInput 
+                            type="number" 
+                            step="0.1" 
+                            value={birthWeight} 
+                            onChange={e => setBirthWeight(e.target.value)} 
+                            placeholder="Peso al Nacer (Kg)" 
+                        />
+                        <FormSelect value={parturitionType} onChange={e => setParturitionType(e.target.value)}>
+                            <option value="Simple">Parto Simple</option>
+                            <option value="TW">Doble (TW)</option>
+                            <option value="TR">Triple (TR)</option>
+                            <option value="QD">Cuádruple (QD)</option>
+                        </FormSelect>
                     </div>
+                    {/* --- (FIN NUEVO LAYOUT) --- */}
+
                     {/* Padre */}
                     <div>
-                        <label className="block text-sm font-medium text-zinc-400 mb-2">Padre (Semental)</label>
+                        <label className="block text-sm font-medium text-zinc-400 mb-2">Padre (Reproductor)</label>
                         <div className="flex items-center gap-2">
                             <button type="button" onClick={() => setFatherSelectorOpen(true)} className="w-full text-left bg-brand-glass border border-brand-border rounded-xl p-3 text-white placeholder-zinc-500 flex justify-between items-center">
                                 <span className={fatherId ? 'text-white' : 'text-zinc-500'}>
@@ -332,7 +369,7 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
 
                 {/* Botones Guardar/Cancelar */}
                 <div className="space-y-3 pt-4">
-                    {message && !idExistsError && ( <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-brand-green' : 'bg-red-500/20 text-brand-red'}`}> {message.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />} <span>{message.text}</span> </div> )}
+                    {message && ( <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-brand-green' : 'bg-red-500/20 text-brand-red'}`}> {message.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />} <span>{message.text}</span> </div> )}
                     <button type="submit" disabled={!!idExistsError} className={`w-full text-white font-bold py-4 rounded-xl text-lg ${idExistsError ? 'bg-zinc-600 cursor-not-allowed' : 'bg-brand-green hover:bg-green-600'}`}>Guardar Animal</button>
                     <button type="button" onClick={onCancel} className="w-full bg-zinc-700 hover:bg-zinc-600 text-white font-semibold py-3 rounded-xl text-lg">Cancelar</button>
                 </div>
@@ -340,7 +377,6 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
 
             {/* --- Modales y Teclados del Formulario Principal --- */}
             {isDatePickerOpen && <BottomSheetDatePicker onClose={() => setDatePickerOpen(false)} onSelectDate={(d) => { if(d) setBirthDate(d.toISOString().split('T')[0]); setDatePickerOpen(false); }} currentValue={birthDate ? new Date(birthDate + 'T00:00:00') : new Date()} />}
-            {/* --- CORRECCIÓN: Pasar 'mothers' y 'allFathers' (datos crudos) al modal --- */}
             <AnimalSelectorModal isOpen={isMotherSelectorOpen} onClose={() => setMotherSelectorOpen(false)} onSelect={(id) => { setMotherId(id); setMotherSelectorOpen(false); }} animals={mothers} title="Seleccionar Madre" filterSex="Hembra" />
             <AnimalSelectorModal isOpen={isFatherSelectorOpen} onClose={() => setFatherSelectorOpen(false)} onSelect={(id) => { setFatherId(id); setFatherSelectorOpen(false); }} animals={allFathers} title="Seleccionar Padre" filterSex="Macho" />
             
@@ -421,7 +457,14 @@ const RacialCompositionKeyboard: React.FC<RacialKeyboardProps> = ({ onClose, onI
 
         if (key === '%' && (!/\d$/.test(newValue.slice(-1)) && !/[A-Z]$/.test(newValue.slice(-1)))) return;
         if (key === '%' && /%$/.test(newValue)) return;
-        if (/[A-Z]/.test(key) && !isStartingNewComponent && !/\d$/.test(newValue.slice(-1)) && !/%$/.test(newValue.slice(-1))) return;
+        
+        if (/[A-Z]/.test(key) && 
+            !isStartingNewComponent && 
+            !/\d$/.test(newValue.slice(-1)) && 
+            !/%$/.test(newValue.slice(-1)) &&
+            !/[A-Z]$/.test(newValue.slice(-1))
+        ) return;
+
         if (/\d/.test(key) && /[A-Z]$/.test(newValue)) return;
 
         const currentNumPart = newValue.split(' ').pop()?.match(/\d+$/)?.[0] || '';
@@ -468,6 +511,24 @@ const AddQuickParentModal: React.FC<AddQuickParentModalProps> = ({ type, onClose
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [isRacialKeyboardOpenModal, setIsRacialKeyboardOpenModal] = useState(false);
 
+    // (CAMBIO) "Cabra Adulta" -> "Cabra"
+    const calculateLifecycleStageLocal = (birthDate: string, sex: 'Hembra' | 'Macho'): string => {
+        if (!birthDate || !sex) return 'Indefinido';
+        const today = new Date();
+        const birth = new Date(birthDate + 'T00:00:00');
+        if (isNaN(birth.getTime())) return 'Indefinido';
+        const ageInDays = (today.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24);
+        if (sex === 'Hembra') {
+            if (ageInDays <= 60) return 'Cabrita';
+            if (ageInDays <= 365) return 'Cabritona';
+            return 'Cabra'; // CORREGIDO
+        } else {
+            if (ageInDays <= 60) return 'Cabrito';
+            if (ageInDays <= 365) return 'Macho de Levante';
+            return 'Reproductor'; // CORREGIDO
+        }
+    };
+
     useEffect(() => { setBreed(calculateBreedFromComposition(racialComposition)); }, [racialComposition]);
 
     const handleSubmit = async () => {
@@ -485,6 +546,7 @@ const AddQuickParentModal: React.FC<AddQuickParentModalProps> = ({ type, onClose
         }
 
         const sex = type === 'mother' ? 'Hembra' : 'Macho';
+        // (CAMBIO) "Cabra Adulta" -> "Cabra"
         const newParent: Animal = {
             id: finalId,
             name: name.toUpperCase() || undefined,
@@ -492,7 +554,7 @@ const AddQuickParentModal: React.FC<AddQuickParentModalProps> = ({ type, onClose
             sex: sex,
             isReference: status === 'Referencia',
             status: 'Activo',
-            lifecycleStage: birthDate ? calculateLifecycleStage(birthDate, sex) as any : (sex === 'Hembra' ? 'Cabra Adulta' : 'Macho Cabrío'),
+            lifecycleStage: birthDate ? calculateLifecycleStageLocal(birthDate, sex) as any : (sex === 'Hembra' ? 'Cabra' : 'Reproductor'), // CORREGIDO
             racialComposition: racialComposition || undefined,
             breed: breed || undefined,
             location: 'Referencia',

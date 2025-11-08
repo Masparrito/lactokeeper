@@ -1,5 +1,11 @@
+// src/utils/pdfExporter.ts (Actualizado)
+
 import jsPDF from 'jspdf';
 import autoTable, { HAlignType, VAlignType, FontStyle } from 'jspdf-autotable';
+// --- (NUEVO) Importar html2canvas y Animal ---
+import html2canvas from 'html2canvas';
+import { Animal } from '../db/local';
+// ---
 import { 
   AnnualEvolutionStep, 
   SemestralEvolutionStep 
@@ -10,6 +16,7 @@ import {
   YearlyMilkKpis // V8.0: Importar este tipo
 } from '../hooks/useReportAnalytics'; // Ajusta esta ruta
 import { formatNumber, formatCurrency } from './formatters';
+import { formatAnimalDisplay } from './formatting'; // <-- Importar esto
 
 // ---------------------------------------------------------------------------
 // --- V8.0: FUNCIONES DE AYUDA DE DISEÑO ---
@@ -323,4 +330,74 @@ export const exportDetailedReport = (
 
   // --- Guardar el PDF ---
   doc.save(`Reporte_Simulacion_GanaderoOS_${new Date().toISOString().split('T')[0]}.pdf`);
+};
+
+// ---------------------------------------------------------------------------
+// --- (NUEVO) FUNCIÓN DE EXPORTACIÓN DE PEDIGRÍ ---
+// ---------------------------------------------------------------------------
+/**
+ * Exporta un gráfico de pedigrí a un PDF A4 horizontal con fondo blanco.
+ * @param element El elemento HTML que contiene el gráfico (debe ser el <PedigreeChart />)
+ * @param animal El animal raíz para el título del PDF
+ */
+export const exportPedigreeToPDF = async (
+  element: HTMLElement,
+  animal: Animal
+) => {
+  // 1. Crear el Canvas desde el elemento HTML
+  const canvas = await html2canvas(element, {
+    scale: 2.5, // Mayor escala para mejor resolución
+    backgroundColor: '#ffffff', // Fondo Blanco
+    useCORS: true,
+  });
+  const imgData = canvas.toDataURL('image/png');
+
+  // 2. Calcular dimensiones (A4 Landscape: 297 x 210 mm)
+  const pdfWidth = 297;
+  const pdfHeight = 210;
+  const pdfMargin = 10;
+  const contentWidth = pdfWidth - pdfMargin * 2;
+  
+  const imgProps = {
+    width: canvas.width,
+    height: canvas.height
+  };
+  const imgHeight = (imgProps.height * contentWidth) / imgProps.width;
+
+  // 3. Crear el documento PDF en horizontal
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  // 4. Añadir Título y Cabecera de GanaderoOS
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(HEADING_COLOR); // Azul
+  doc.text('GanaderoOS - Pedigrí de Animal', pdfMargin, pdfMargin + 5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(14);
+  doc.setTextColor(TEXT_COLOR_DARK); // Gris oscuro
+  doc.text(`Animal: ${formatAnimalDisplay(animal)}`, pdfMargin, pdfMargin + 15);
+
+  // 5. Añadir la imagen del pedigrí
+  let startY = pdfMargin + 25;
+  if (imgHeight < (pdfHeight - startY - pdfMargin)) {
+      startY = (pdfHeight - imgHeight) / 2; // Centrar verticalmente
+  }
+  
+  doc.addImage(imgData, 'PNG', pdfMargin, startY, contentWidth, imgHeight);
+
+  // 6. Añadir Pie de Página
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor('#9ca3af'); // Gris claro
+  const pageStr = `Página 1 de 1`;
+  doc.text(pageStr, pdfWidth - pdfMargin, pdfHeight - 10, { align: 'right' });
+  doc.text(`Generado: ${new Date().toLocaleString('es-VE')}`, pdfMargin, pdfHeight - 10);
+
+  // 7. Guardar el PDF
+  doc.save(`Pedigri_${animal.id}_${new Date().toISOString().split('T')[0]}.pdf`);
 };

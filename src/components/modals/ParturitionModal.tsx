@@ -1,4 +1,4 @@
-// src/components/modals/ParturitionModal.tsx
+// src/components/modals/ParturitionModal.tsx (Corregido)
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../../context/DataContext';
@@ -81,6 +81,25 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
     const motherAnimal = useMemo(() => animals.find((a: Animal) => a.id === motherId), [animals, motherId]);
     const formattedMotherName = motherAnimal?.name ? String(motherAnimal.name).toUpperCase().trim() : '';
 
+    // --- (NUEVO) Lógica para listar Reproductores ---
+    const allReproducers = useMemo(() => {
+        // 1. Reproductores Internos (Machos activos del rebaño)
+        const internalSires: Animal[] = animals.filter(a => a.sex === 'Macho' && a.status === 'Activo');
+        
+        // 2. Reproductores Externos (De la tabla 'fathers')
+        const externalSires: any[] = fathers.map(f => ({
+            id: f.id, 
+            name: f.name, 
+            sex: 'Macho',
+            isReference: true, // Para que formatAnimalDisplay funcione
+        }));
+        
+        // Combinar y ordenar
+        const combined = [...internalSires, ...externalSires];
+        return combined.sort((a, b) => (a.id || '').localeCompare(b.id || ''));
+    }, [animals, fathers]);
+    // --- (FIN NUEVO) ---
+
     // Effect to reset state when the modal is opened
     useEffect(() => {
         if (isOpen) {
@@ -113,6 +132,9 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
         setOffspring(updated);
     };
 
+    // (CAMBIO) Usar la lista 'allReproducers' para el display
+    const selectedFather = useMemo(() => allReproducers.find((f) => f.id === sireId), [sireId, allReproducers]);
+
     // Handler for final submission in step 3
     const handleSubmit = async () => {
         setIsLoading(true); setError('');
@@ -131,21 +153,27 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
         }
 
         try {
-            const selectedFather = fathers.find((f: Father) => f.id === sireId);
-            if (!selectedFather) throw new Error("Padre (semental) no encontrado en la base de datos.");
+            // (CAMBIO) selectedFather ya está memoizado
+            if (!selectedFather) throw new Error("Padre (reproductor) no encontrado en la base de datos.");
 
             const liveOffspring = offspring.filter(kid => kid.status === 'Viva');
             const hasStillbirths = offspring.some(kid => kid.status === 'Mortinato');
 
+            // --- CORRECCIÓN DE LÓGICA DE ID ---
+            // Usar 'selectedFather.name' en lugar de 'formatAnimalDisplay'
+            const fatherInitial = selectedFather?.name?.charAt(0).toUpperCase() || '?';
+            
             const finalLiveOffspringForDB = liveOffspring.map(kid => ({
                 sex: kid.sex, birthWeight: kid.birthWeight,
-                id: `${kid.sex === 'Macho' ? 'X' : (formatAnimalDisplay(selectedFather).charAt(0).toUpperCase() || '?')}${kid.correlative}`
+                id: `${kid.sex === 'Macho' ? 'X' : fatherInitial}${kid.correlative}`
             }));
+            // --- FIN DE CORRECCIÓN ---
 
             await addParturition({
                 motherId: motherId.toUpperCase(), parturitionDate, sireId,
                 parturitionType: parturitionTypes.find(p => p.count === offspringCount)?.name || 'Simple',
                 offspringCount: offspring.length, liveOffspring: finalLiveOffspringForDB,
+                // (CAMBIO) Mensajes de evento actualizados
                 parturitionOutcome: hasStillbirths ? 'Con Mortinatos' : 'Normal',
                 inducedLactation: true,
             });
@@ -156,9 +184,7 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
             console.error(err); setIsLoading(false);
         }
     };
-
-    const selectedFather = useMemo(() => fathers.find((f: Father) => f.id === sireId), [sireId, fathers]);
-
+    
     const handleSaveFather = async (newFather: Father) => {
         try {
             await addFather(newFather); setSireId(newFather.id); setIsFatherModalOpen(false);
@@ -197,11 +223,13 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
                                     </button>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-zinc-400 mb-2">Padre (Semental)</label>
+                                    {/* (CAMBIO) Label actualizado */}
+                                    <label className="block text-sm font-medium text-zinc-400 mb-2">Padre (Reproductor)</label>
                                     <div className="flex items-center gap-2">
                                         <select value={sireId} onChange={e => setSireId(e.target.value)} className="w-full bg-zinc-800 p-4 rounded-xl text-lg appearance-none text-white">
-                                            <option value="" className="text-zinc-500">Seleccionar Padre...</option>
-                                            {fathers.map((f: Father) => <option key={f.id} value={f.id} className="text-white">{formatAnimalDisplay(f)}</option>)}
+                                            {/* (CAMBIO) Label actualizado y lista filtrada */}
+                                            <option value="" className="text-zinc-500">Seleccionar Reproductor...</option>
+                                            {allReproducers.map((f) => <option key={f.id} value={f.id} className="text-white">{formatAnimalDisplay(f)}</option>)}
                                         </select>
                                         <button type="button" onClick={() => setIsFatherModalOpen(true)} className="flex-shrink-0 p-4 bg-brand-orange hover:bg-orange-600 text-white rounded-xl"><Plus size={24} /></button>
                                     </div>
@@ -238,7 +266,8 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
                                             </div>
                                             <div className={`grid grid-cols-2 gap-3 items-center transition-opacity ${isStillborn ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
                                                 <div className="flex items-center bg-zinc-800 p-3 rounded-xl gap-2">
-                                                    <span className="font-mono text-zinc-400 text-lg">{kid.sex === 'Macho' ? 'X' : (formatAnimalDisplay(selectedFather).charAt(0).toUpperCase() || '?')}</span>
+                                                    {/* --- CORRECCIÓN DE LÓGICA DE ID (VISTA PREVIA) --- */}
+                                                    <span className="font-mono text-zinc-400 text-lg">{kid.sex === 'Macho' ? 'X' : (selectedFather?.name?.charAt(0).toUpperCase() || '?')}</span>
                                                     <input autoFocus={index === 0} value={kid.correlative} onChange={e => handleOffspringChange(index, 'correlative', e.target.value.toUpperCase())} placeholder="ID" className="w-full bg-transparent text-lg text-white focus:outline-none" disabled={isStillborn} required={!isStillborn}/>
                                                 </div>
                                                 <input value={kid.birthWeight} onChange={e => handleOffspringChange(index, 'birthWeight', e.target.value)} placeholder="Peso (Kg)" type="number" step="0.1" className="w-full bg-zinc-800 p-3 rounded-xl text-lg text-white" disabled={isStillborn} required={!isStillborn}/>
@@ -264,7 +293,6 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
             <Modal isOpen={isDatePickerOpen} onClose={() => setDatePickerOpen(false)} title="Seleccionar Fecha del Parto">
                 <style>{calendarCss}</style>
                 <div className="flex justify-center">
-                    {/* --- CAMBIO: Eliminada la prop timeZone="UTC" --- */}
                     <DayPicker
                         mode="single"
                         selected={new Date(parturitionDate + 'T00:00:00Z')} // Asumir UTC para la selección

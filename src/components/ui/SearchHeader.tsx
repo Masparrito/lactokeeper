@@ -1,3 +1,5 @@
+// src/components/ui/SearchHeader.tsx (Corregido)
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
 
@@ -6,9 +8,10 @@ interface SearchHeaderProps {
     subtitle: string;
     searchTerm: string;
     setSearchTerm: (value: string) => void;
+    isSticky?: boolean; // <-- (NUEVO) Prop añadida
 }
 
-export const SearchHeader: React.FC<SearchHeaderProps> = ({ title, subtitle, searchTerm, setSearchTerm }) => {
+export const SearchHeader: React.FC<SearchHeaderProps> = ({ title, subtitle, searchTerm, setSearchTerm, isSticky }) => {
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -23,8 +26,16 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({ title, subtitle, sea
         setIsSearchVisible(false);
     };
 
+    // --- (NUEVO) Clases dinámicas basadas en 'isSticky' ---
+    const headerClasses = [
+        "text-center pb-4 relative overflow-hidden",
+        isSticky 
+            ? "sticky top-0 z-10 bg-brand-dark/80 backdrop-blur-md border-b border-brand-border px-4" // Se pega y añade fondo
+            : "pt-4 px-4" // Padding normal si no es sticky
+    ].join(' ');
+
     return (
-        <header className="text-center pt-4 pb-4 relative overflow-hidden">
+        <header className={headerClasses}>
             {/* Títulos */}
             <div className={`transition-transform duration-300 ${isSearchVisible ? '-translate-y-20' : 'translate-y-0'}`}>
                 <h1 className="text-2xl font-bold tracking-tight text-white">{title}</h1>
@@ -32,7 +43,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({ title, subtitle, sea
             </div>
 
             {/* Barra de Búsqueda */}
-            <div className={`absolute inset-0 transition-transform duration-300 flex items-center pt-2 ${isSearchVisible ? 'translate-y-0' : 'translate-y-20'}`}>
+            <div className={`absolute inset-0 transition-transform duration-300 flex items-center pt-2 ${isSearchVisible ? 'translate-y-0' : 'translate-y-20'} ${isSticky ? 'px-4' : ''}`}>
                 <input
                     ref={inputRef}
                     type="text"
@@ -45,9 +56,10 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({ title, subtitle, sea
 
             {/* Botón para activar/limpiar la búsqueda */}
             <div className="absolute top-4 right-0 pt-1">
+                 {/* --- (NUEVO) Añadido px-4 si es sticky --- */}
                 <button 
                     onClick={isSearchVisible ? handleClear : () => setIsSearchVisible(true)}
-                    className="p-2 text-zinc-400 hover:text-white transition-colors"
+                    className={`p-2 text-zinc-400 hover:text-white transition-colors ${isSticky ? 'px-4' : ''}`}
                 >
                     {isSearchVisible ? <X size={22} /> : <Search size={22} />}
                 </button>

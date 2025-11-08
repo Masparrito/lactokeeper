@@ -11,7 +11,7 @@ interface LogHealthEventFormProps {
 
 export const LogHealthEventForm: React.FC<LogHealthEventFormProps> = ({ task, onSave, onCancel }) => {
     // --- CAMBIO: Se obtiene appConfig de useData ---
-    const { addHealthEvent, products, bodyWeighings, appConfig } = useData();
+    const { addHealthEvent, products, bodyWeighings } = useData();
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [notes, setNotes] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -65,9 +65,12 @@ export const LogHealthEventForm: React.FC<LogHealthEventFormProps> = ({ task, on
         setIsLoading(true);
         setError(null);
 
-        // --- CAMBIO: Determinar los días de retiro ---
-        const diasRetiroLeche = product?.withdrawalDaysMilk ?? appConfig.diasRetiroLecheDefault;
-        const diasRetiroCarne = product?.withdrawalDaysMeat ?? appConfig.diasRetiroCarneDefault;
+        // --- (INICIO) CORRECCIÓN DE ERRORES ---
+        // 'diasRetiroLecheDefault' y 'diasRetiroCarneDefault' ya no existen en appConfig.
+        // Usamos un valor por defecto local (7 y 30) hasta que el módulo StockCare se configure.
+        const diasRetiroLeche = product?.withdrawalDaysMilk ?? 7;
+        const diasRetiroCarne = product?.withdrawalDaysMeat ?? 30;
+        // --- (FIN) CORRECCIÓN DE ERRORES ---
 
         try {
             await addHealthEvent({
@@ -78,13 +81,13 @@ export const LogHealthEventForm: React.FC<LogHealthEventFormProps> = ({ task, on
                 type: activity.name,
                 productUsed: product?.id,
                 doseApplied,
-                unit: 'ml',
+                unit: 'ml', // Asumimos ml, se podría mejorar si el producto tiene otra unidad
                 calculatedCost,
                 notes,
                 executedBy: 'self',
                 // --- CAMBIO: Se añaden los días de retiro al evento ---
-                diasRetiroLeche: diasRetiroLeche,
-                diasRetiroCarne: diasRetiroCarne,
+                diasRetiroLeche: diasRetiroLeche > 0 ? diasRetiroLeche : undefined,
+                diasRetiroCarne: diasRetiroCarne > 0 ? diasRetiroCarne : undefined,
             });
             onSave();
         } catch (err) {

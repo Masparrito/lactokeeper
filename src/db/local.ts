@@ -2,9 +2,11 @@ import Dexie, { Table } from 'dexie';
 
 // --- TIPOS DE DATOS ---
 export type ReproductiveStatus = 'Vacía' | 'En Servicio' | 'Preñada' | 'Post-Parto' | 'No Aplica';
-// --- CORRECCIÓN: Añadido 'Cabra Adulta' para consistencia con 'calculateLifecycleStage' ---
-export type FemaleLifecycleStage = 'Cabrita' | 'Cabritona' | 'Cabra Primípara' | 'Cabra Multípara' | 'Cabra Adulta';
-export type MaleLifecycleStage = 'Cabrito' | 'Macho de Levante' | 'Macho Cabrío';
+
+// --- CORRECCIÓN: 'Cabra Adulta' -> 'Cabra' ---
+export type FemaleLifecycleStage = 'Cabrita' | 'Cabritona' | 'Cabra Primípara' | 'Cabra Multípara' | 'Cabra';
+export type MaleLifecycleStage = 'Cabrito' | 'Macho de Levante' | 'Reproductor'; // <-- Esto ya estaba correcto
+
 // --- TIPO DE EVENTO ACTUALIZADO: Añadido 'Registro' ---
 export type EventType = 'Nacimiento' | 'Registro' | 'Movimiento' | 'Cambio de Estado' | 'Pesaje Lechero' | 'Pesaje Corporal' | 'Servicio' | 'Tratamiento' | 'Diagnóstico' | 'Parto' | 'Aborto';
 

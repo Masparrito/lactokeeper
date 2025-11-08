@@ -1,7 +1,7 @@
 import { useState } from 'react';
-// --- CAMBIO CLAVE: Se importan los tipos centralizados ---
+// --- (NUEVO) Importar 'Grid' ---
+import { ArrowLeft, BarChart2, PlusCircle, Scale, Grid } from 'lucide-react';
 import type { PageState as RebanoPageState, AppModule } from '../../types/navigation';
-import { ArrowLeft, BarChart2, PlusCircle, Scale } from 'lucide-react';
 import { GiChart } from 'react-icons/gi';
 import AddWeightPage from './kilos/AddWeightPage';
 import KilosDashboard from './kilos/KilosDashboard';
@@ -20,6 +20,9 @@ interface KilosShellProps {
 export default function KilosShell({ navigateToRebano, onSwitchModule }: KilosShellProps) {
     const { syncStatus } = useData();
     const [page, setPage] = useState<KilosPage>('dashboard');
+    
+    // --- (NUEVO) Estado para el modal de Módulos ---
+    const [isModuleSwitcherOpen, setIsModuleSwitcherOpen] = useState(false);
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: BarChart2 },
@@ -49,10 +52,11 @@ export default function KilosShell({ navigateToRebano, onSwitchModule }: KilosSh
     };
 
     return (
-        <div className="min-h-screen animate-fade-in text-white flex flex-col">
+        // --- CORRECCIÓN SCROLL: 'h-screen overflow-hidden' ---
+        <div className="h-screen overflow-hidden animate-fade-in text-white flex flex-col">
             
-            <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border">
-                <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-16">
+            <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border h-16">
+                <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-full">
                     <button onClick={handleBackPress} className="p-2 -ml-2 text-zinc-400 hover:text-white" aria-label="Atrás">
                         <ArrowLeft size={24} />
                     </button>
@@ -63,19 +67,34 @@ export default function KilosShell({ navigateToRebano, onSwitchModule }: KilosSh
                             <p className="text-xs text-zinc-400 leading-none">Kilos</p>
                         </div>
                     </div>
-                    <div className="w-8 flex justify-end">
+                    {/* --- (NUEVO) Contenedor para iconos de header --- */}
+                    <div className="flex items-center gap-4">
                         <SyncStatusIcon status={syncStatus} />
+                        {/* --- (NUEVO) Botón de Módulos --- */}
+                        <button 
+                            onClick={() => setIsModuleSwitcherOpen(true)}
+                            className="p-2 text-zinc-400 hover:text-white transition-colors"
+                            title="Módulos"
+                        >
+                            <Grid size={20} />
+                        </button>
                     </div>
                 </div>
             </header>
             
-            <main className="flex-grow pt-16 pb-24">
+            {/* --- CORRECCIÓN SCROLL: 'flex-1 overflow-y-auto' y padding --- */}
+            <main className="flex-1 overflow-y-auto pt-16 pb-16">
                 {renderContent()}
             </main>
 
-            <ModuleSwitcher onSwitchModule={onSwitchModule} />
+            {/* --- (NUEVO) ModuleSwitcher actualizado a modal --- */}
+            <ModuleSwitcher 
+                isOpen={isModuleSwitcherOpen}
+                onClose={() => setIsModuleSwitcherOpen(false)}
+                onSwitchModule={onSwitchModule} 
+            />
 
-            <nav className="flex-shrink-0 fixed bottom-0 left-0 right-0 bg-black/30 backdrop-blur-xl border-t border-white/20 flex justify-around">
+            <nav className="flex-shrink-0 fixed bottom-0 left-0 right-0 bg-black/30 backdrop-blur-xl border-t border-white/20 flex justify-around h-16">
                 {navItems.map((item) => (
                     <button
                         key={item.id}

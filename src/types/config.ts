@@ -4,41 +4,31 @@
  * y se distribuirán a toda la app a través de DataContext.
  */
 export interface AppConfig {
-    // --- E. Configuración General ---
+    // --- Configuración General ---
     nombreFinca: string;
     theme: 'light' | 'dark';
 
-    // --- A. Parámetros Biológicos (Reproductivos y Crecimiento) ---
-    porcentajePrenez: number;
-    porcentajeProlificidad: number;
-    mortalidadCrias: number; // 0-3 meses
-    mortalidadLevante: number; // 3-12 meses
-    mortalidadCabras: number; // Adultas
-    tasaReemplazo: number; // Descarte anual de adultas
-    eliminacionCabritos: number; // Venta/Descarte de machos jóvenes
-
-    // --- B. Parámetros de Manejo (Generales) ---
+    // --- Parámetros de Manejo (Reproductivo) ---
     pesoPrimerServicioKg: number;
-    edadDesteteDias: number;
-    pesoDesteteMetaKg: number;
+    edadPrimerServicioMeses: number; 
     diasGestacion: number;
-    diasLactanciaObjetivo: number;
-    diasSecadoObjetivo: number;
-    diasConfirmarPrenez: number;
-    diasPreParto: number;
+    diasConfirmarPrenez: number; // Alerta para confirmar preñez (eco/palpación)
+    diasPreParto: number; // Alerta para mover a lote de pre-parto
 
-    // --- C. Parámetros Sanitarios (StockCare) ---
-    diasAlertaAtraso: number; // Días para marcar una tarea como "Atrasada"
-    diasRetiroLecheDefault: number;
-    diasRetiroCarneDefault: number;
+    // --- Parámetros de Manejo (Productivo y Secado) ---
+    diasLactanciaObjetivo: number; // (Alerta Vacías) Días máx de lactancia si está vacía
+    // (NUEVO) Alerta 1 de Secado: Días ANTES del parto para INICIAR secado
+    diasAlertaInicioSecado: number;
+    // (NUEVO) Alerta 2 de Secado: Días ANTES del parto en que DEBE ESTAR seca
+    diasMetaSecadoCompleto: number; 
 
-    // --- D. Parámetros Económicos (Cents) ---
-    monedaSimbolo: string;
-    costoSacoAlimento: number;
-    pesoSacoAlimentoKg: number;
-    precioLecheLitro: number;
-    precioVentaCabritoKg: number;
-    precioVentaDescarteAdulto: number;
+    // --- Parámetros de Manejo (Crecimiento y Destete) ---
+    // (NUEVO) Alerta 1 de Destete: Edad y peso para la PRIMERA revisión
+    diasAlertaPesarDestete: number;
+    pesoMinimoPesarDestete: number;
+    // (NUEVO) Alerta 2 de Destete: Edad y peso para el destete FINAL
+    diasMetaDesteteFinal: number;
+    pesoMinimoDesteteFinal: number;
 }
 
 /**
@@ -46,39 +36,25 @@ export interface AppConfig {
  * configure sus propios parámetros.
  */
 export const DEFAULT_CONFIG: AppConfig = {
-    // E. Configuración General
+    // General
     nombreFinca: "Mi Finca",
     theme: 'dark',
 
-    // A. Parámetros Biológicos
-    porcentajePrenez: 90,
-    porcentajeProlificidad: 120,
-    mortalidadCrias: 8,
-    mortalidadLevante: 3,
-    mortalidadCabras: 5,
-    tasaReemplazo: 20,
-    eliminacionCabritos: 100,
-
-    // B. Parámetros de Manejo
+    // Reproductivo
     pesoPrimerServicioKg: 30,
-    edadDesteteDias: 90,
-    pesoDesteteMetaKg: 15,
+    edadPrimerServicioMeses: 11, 
     diasGestacion: 150,
-    diasLactanciaObjetivo: 305,
-    diasSecadoObjetivo: 60,
     diasConfirmarPrenez: 60,
     diasPreParto: 15,
 
-    // C. Parámetros Sanitarios
-    diasAlertaAtraso: 7,
-    diasRetiroLecheDefault: 7,
-    diasRetiroCarneDefault: 30,
+    // Productivo y Secado
+    diasLactanciaObjetivo: 300, // (Tu valor)
+    diasAlertaInicioSecado: 75, // (Tu valor)
+    diasMetaSecadoCompleto: 60, // (Tu valor)
 
-    // D. Parámetros Económicos
-    monedaSimbolo: "$",
-    costoSacoAlimento: 25,
-    pesoSacoAlimentoKg: 40,
-    precioLecheLitro: 0.8,
-    precioVentaCabritoKg: 3.5,
-    precioVentaDescarteAdulto: 50,
+    // Crecimiento y Destete
+    diasAlertaPesarDestete: 45, // (Tu valor)
+    pesoMinimoPesarDestete: 9.0, // (Tu valor)
+    diasMetaDesteteFinal: 52, // (Tu valor)
+    pesoMinimoDesteteFinal: 9.5, // (Tu valor)
 };

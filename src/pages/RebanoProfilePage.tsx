@@ -1,60 +1,55 @@
-import React, { useState, useMemo, useEffect } from 'react';
+// src/pages/RebanoProfilePage.tsx (Corregido)
+
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useData } from '../context/DataContext';
 // --- Iconos Utilizados ---
 import {
     ArrowLeft, Edit, Save, X, Droplets, Scale, Syringe, Replace, CheckCircle, PlusCircle,
     HeartPulse, Milk, FileText, Feather, AlertTriangle, ChevronRight, Archive,
-    DollarSign, HeartCrack, Ban, RefreshCw, Trash2, Award, Baby, Eye,
-    Calendar, Search, Plus, ChevronDown, Delete, // Añadidos faltantes
-    Move, Tag // Re-añadidos para EVENT_ICONS
+    DollarSign, HeartCrack, Ban, RefreshCw, Trash2, Award, Baby, 
+    Calendar, Search, Plus, ChevronDown, Delete,
+    Move, Tag,
+    Printer
 } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { ActionSheetModal, ActionSheetAction } from '../components/ui/ActionSheetModal';
 import type { PageState } from '../types/navigation';
-// --- CAMBIO: Tipos no usados eliminados ---
-import { Animal, Origin } from '../db/local'; // Father eliminado
+import { Animal, Origin, Lot } from '../db/local';
 import { AddLotModal } from '../components/modals/AddLotModal';
-// --- CAMBIO: Corregida ruta de importación ---
 import { AddOriginModal } from '../components/ui/AddOriginModal';
 import { useEvents } from '../hooks/useEvents';
-// --- CAMBIO: calculateLifecycleStage eliminado de la importación ---
-// --- CAMBIO: calculateAgeInDays añadido ---
-import { formatAge, getAnimalZootecnicCategory, calculateBreedFromComposition, calculateAgeInDays } from '../utils/calculations';
+import { usePedigree, PedigreeNode } from '../hooks/usePedigree';
+import { PedigreeChart } from '../components/pedigree/PedigreeChart';
+import { exportPedigreeToPDF } from '../utils/pdfExporter'; 
+import { formatAge, getAnimalZootecnicCategory, calculateBreedFromComposition, calculateAgeInDays, calculateChildComposition } from '../utils/calculations';
 import { WeanAnimalForm } from '../components/forms/WeanAnimalForm';
 import { ParturitionModal } from '../components/modals/ParturitionModal';
 import { formatAnimalDisplay } from '../utils/formatting';
-import { PedigreeModal } from '../components/modals/PedigreeModal';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { DecommissionAnimalModal, DecommissionDetails } from '../components/modals/DecommissionAnimalModal';
-// --- CAMBIO: AddFatherModal eliminado ---
-// import { AddFatherModal } from '../components/ui/AddFatherModal';
 import { AnimalSelectorModal } from '../components/ui/AnimalSelectorModal';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { es } from 'date-fns/locale';
 
 // =================================================================================
-// --- COMPONENTES DE UI Y SUB-COMPONENTES DEFINIDOS AQUÍ ---
+// --- COMPONENTES DE UI Y SUB-COMPONENTES (Sin cambios) ---
 // =================================================================================
 
-// ... (El resto de sub-componentes UI no cambian: FormInput, FormSelect, FormGroup, Toggle, BottomSheetDatePicker, CustomAlphanumericKeyboard, RacialCompositionKeyboard, AddQuickParentModal, InfoRow, GeneticsTab, EVENT_ICONS, EventsTab, ProgenyTab, MainInfoTab) ...
-// PEGAR AQUÍ TODOS LOS SUB-COMPONENTES DESDE LA LÍNEA 63 HASTA LA 515 DEL ARCHIVO ORIGINAL
-// --- Componentes UI Estilo iOS ---
 const FormInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(({ className, ...props }, ref) => (
     <input
         ref={ref}
         {...props}
-        className={`w-full bg-brand-glass border border-brand-border rounded-xl p-3 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-brand-orange disabled:opacity-50 disabled:bg-brand-dark/50 ${className}`}
+        className={`w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-brand-orange disabled:opacity-50 disabled:bg-brand-dark/50 ${className}`}
     />
 ));
 
-// --- CAMBIO: FormSelect Re-añadido ---
 const FormSelect = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(({ children, ...props }, ref) => (
     <div className="relative w-full">
         <select
             ref={ref}
             {...props}
-            className="w-full bg-brand-glass border border-brand-border rounded-xl p-3 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-brand-orange"
+            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-brand-orange"
         >
             {children}
         </select>
@@ -63,11 +58,25 @@ const FormSelect = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttribute
 ));
 
 const FormGroup: React.FC<{ title: string, children: React.ReactNode }> = ({ title, children }) => (
-    <div className="bg-brand-glass rounded-2xl border border-brand-border p-4 space-y-4">
-        <h2 className="text-zinc-400 font-semibold text-sm uppercase tracking-wide">{title}</h2>
-        {children}
+    <div className="bg-brand-glass rounded-2xl border border-brand-border overflow-hidden">
+        <h2 className="text-zinc-400 font-semibold text-sm uppercase tracking-wide px-4 pt-4 pb-2">{title}</h2>
+        <div className="space-y-4 p-4">
+            {children}
+        </div>
     </div>
 );
+
+const InfoRow: React.FC<{ label: string, value?: React.ReactNode, children?: React.ReactNode, className?: string, isEditing?: boolean }> = ({ label, value, children, className = '', isEditing }) => (
+    <div className={className}>
+        <dt className="text-sm font-medium text-zinc-400">{label}</dt>
+        {isEditing ? (
+            <div className="mt-1">{children}</div>
+        ) : (
+            <dd className="mt-1 text-base font-semibold text-white truncate">{value || 'N/A'}</dd>
+        )}
+    </div>
+);
+
 
 const Toggle = ({ labelOn, labelOff, value, onChange }: { labelOn: string, labelOff: string, value: boolean, onChange: (newValue: boolean) => void }) => (
     <div onClick={() => onChange(!value)} className="w-full bg-brand-dark rounded-xl p-1 flex cursor-pointer">
@@ -76,7 +85,6 @@ const Toggle = ({ labelOn, labelOff, value, onChange }: { labelOn: string, label
     </div>
 );
 
-// --- Calendario Bottom Sheet ---
 interface BottomSheetDatePickerProps { onClose: () => void; onSelectDate: (date: Date | undefined) => void; currentValue: Date; }
 const BottomSheetDatePicker: React.FC<BottomSheetDatePickerProps> = ({ onClose, onSelectDate, currentValue }) => {
     return (
@@ -91,7 +99,6 @@ const BottomSheetDatePicker: React.FC<BottomSheetDatePickerProps> = ({ onClose, 
     );
 };
 
-// --- Teclado Alfanumérico (ID) ---
 interface CustomKeyboardProps { onClose: () => void; onInput: (value: string) => void; currentValue: string; }
 const CustomAlphanumericKeyboard: React.FC<CustomKeyboardProps> = ({ onClose, onInput, currentValue }) => {
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -117,7 +124,6 @@ const CustomAlphanumericKeyboard: React.FC<CustomKeyboardProps> = ({ onClose, on
     );
 };
 
-// --- Teclado Específico para Composición Racial ---
 interface RacialKeyboardProps { onClose: () => void; onInput: (value: string) => void; currentValue: string; }
 const RacialCompositionKeyboard: React.FC<RacialKeyboardProps> = ({ onClose, onInput, currentValue }) => {
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -135,7 +141,7 @@ const RacialCompositionKeyboard: React.FC<RacialKeyboardProps> = ({ onClose, onI
         if (isMidComponent && /\d/.test(key) ) { if (components.length < MAX_COMPONENTS) { newValue += ' '; } else { return; } }
         if (key === '%' && (!/\d$/.test(newValue.slice(-1)) && !/[A-Z]$/.test(newValue.slice(-1)))) return;
         if (key === '%' && /%$/.test(newValue)) return;
-        if (/[A-Z]/.test(key) && !isStartingNewComponent && !/\d$/.test(newValue.slice(-1)) && !/%$/.test(newValue.slice(-1))) return;
+        if (/[A-Z]/.test(key) && !isStartingNewComponent && !/\d$/.test(newValue.slice(-1)) && !/%$/.test(newValue.slice(-1)) && !/[A-Z]$/.test(newValue.slice(-1))) return;
         if (/\d/.test(key) && /[A-Z]$/.test(newValue)) return;
         const currentNumPart = newValue.split(' ').pop()?.match(/\d+$/)?.[0] || '';
         if (key === '0' && (isStartingNewComponent || /[%A-Z ]$/.test(newValue.slice(-1))) && currentNumPart.length === 0) { /* Allow leading 0 */ }
@@ -162,10 +168,9 @@ const RacialCompositionKeyboard: React.FC<RacialKeyboardProps> = ({ onClose, onI
     );
 };
 
-// --- Modal Padre Rápido ---
 interface AddQuickParentModalProps { type: 'mother' | 'father'; onClose: () => void; onSave: (animal: Animal) => void; }
 const AddQuickParentModal: React.FC<AddQuickParentModalProps> = ({ type, onClose, onSave }) => {
-    const { animals, fathers } = useData();
+    const { addAnimal, animals, fathers } = useData();
     const [status, setStatus] = useState<'Activo' | 'Referencia'>('Referencia');
     const [animalId, setAnimalId] = useState('');
     const [name, setName] = useState('');
@@ -186,11 +191,11 @@ const AddQuickParentModal: React.FC<AddQuickParentModalProps> = ({ type, onClose
         if (sex === 'Hembra') {
             if (ageInDays <= 60) return 'Cabrita';
             if (ageInDays <= 365) return 'Cabritona';
-            return 'Cabra Adulta';
+            return 'Cabra';
         } else {
             if (ageInDays <= 60) return 'Cabrito';
             if (ageInDays <= 365) return 'Macho de Levante';
-            return 'Macho Cabrío';
+            return 'Reproductor'; 
         }
     };
 
@@ -206,11 +211,14 @@ const AddQuickParentModal: React.FC<AddQuickParentModalProps> = ({ type, onClose
         const newParent: Animal = {
             id: finalId, name: name.toUpperCase() || undefined, birthDate: birthDate || 'N/A', sex: sex,
             isReference: status === 'Referencia', status: 'Activo',
-            lifecycleStage: birthDate ? calculateLifecycleStageLocal(birthDate, sex) as any : (sex === 'Hembra' ? 'Cabra Adulta' : 'Macho Cabrío'),
+            lifecycleStage: birthDate ? calculateLifecycleStageLocal(birthDate, sex) as any : (sex === 'Hembra' ? 'Cabra' : 'Reproductor'),
             racialComposition: racialComposition || undefined, breed: breed || undefined, location: 'Referencia',
             reproductiveStatus: sex === 'Hembra' ? 'Vacía' : 'No Aplica', createdAt: new Date().getTime(), lastWeighing: null,
         };
-        try { onSave(newParent); }
+        try { 
+            await addAnimal(newParent); 
+            onSave(newParent); 
+        }
         catch (error: any) { setMessage(error.message || 'Error al preparar datos del animal.'); console.error("Error creating quick parent object:", error); }
     };
     const calendarCss = ` .rdp { --rdp-cell-size: 40px; --rdp-accent-color: #FF9500; --rdp-background-color: transparent; --rdp-accent-color-dark: #FF9500; --rdp-background-color-dark: transparent; --rdp-outline: 2px solid var(--rdp-accent-color); --rdp-border-radius: 12px; color: #FFF; margin: 1em auto; } .rdp-caption_label { color: #FFF; font-weight: bold;} .rdp-nav_button { color: #FF9500; } .rdp-head_cell { color: #8e8e93; font-size: 0.8em; } .rdp-day { color: #FFF;} .rdp-day_selected { background-color: var(--rdp-accent-color); color: #000; font-weight: bold; } .rdp-day_today { font-weight: bold; color: #FF9500; } .rdp-day_disabled { color: #505054; } .rdp-day_outside { color: #505054; } .rdp-caption_dropdowns { display: flex; gap: 10px; } .rdp-dropdown { background-color: #333; border: 1px solid #555; color: #FFF; padding: 4px 8px; border-radius: 6px; } `;
@@ -220,20 +228,20 @@ const AddQuickParentModal: React.FC<AddQuickParentModalProps> = ({ type, onClose
                 <div className="w-full max-w-md bg-ios-modal-bg rounded-2xl shadow-lg animate-slide-up flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
                     <header className="flex-shrink-0 flex items-center justify-between p-4 border-b border-brand-border"><div className="w-10"></div><h2 className="text-lg font-semibold text-white">Agregar {type === 'mother' ? 'Madre' : 'Padre'} Rápido</h2><button onClick={onClose} className="p-2 -mr-2 text-zinc-400 hover:text-white rounded-full hover:bg-zinc-700/50"><X size={20} /></button></header>
                     <div className="p-4 space-y-4 overflow-y-auto">
-                         <FormGroup title="Categoría"><Toggle labelOn="Activo" labelOff="Referencia" value={status === 'Activo'} onChange={(isActive: boolean) => setStatus(isActive ? 'Activo' : 'Referencia')} /></FormGroup>
-                         <FormGroup title="Identificación">
-                             <input type="text" value={animalId} onClick={() => setIsKeyboardOpen(true)} readOnly placeholder={status === 'Activo' ? "ID (Obligatorio)" : "ID (Opcional)"} className={`w-full bg-brand-glass border rounded-xl p-3 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 cursor-pointer font-mono ${message && message.includes('ID ya existe') ? 'border-brand-red ring-brand-red' : 'border-brand-border focus:ring-brand-orange'}`} />
-                             <FormInput value={name} onChange={e => setName(e.target.value.toUpperCase())} placeholder="Nombre (Opcional)" />
-                             <button type="button" onClick={() => setIsDatePickerOpen(true)} className="w-full bg-brand-glass border border-brand-border rounded-xl p-3 text-left flex justify-between items-center">
-                                <span className={birthDate ? 'text-white' : 'text-zinc-500'}>{birthDate ? new Date(birthDate + 'T00:00:00Z').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : 'Fecha Nacimiento (Opcional)'}</span>
-                                <Calendar className="text-zinc-400" size={20} />
-                            </button>
-                         </FormGroup>
-                         <FormGroup title="Raza">
-                             <input type="text" value={racialComposition} onClick={() => setIsRacialKeyboardOpenModal(true)} readOnly placeholder="Composición Racial (Opcional)" className="w-full bg-brand-glass border border-brand-border rounded-xl p-3 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-brand-orange cursor-pointer" />
-                            <FormInput value={breed} disabled readOnly placeholder="Raza (Auto-calculada)" />
-                        </FormGroup>
-                        {message && <p className="text-sm text-brand-red text-center">{message}</p>}
+                            <FormGroup title="Categoría"><Toggle labelOn="Activo" labelOff="Referencia" value={status === 'Activo'} onChange={(isActive: boolean) => setStatus(isActive ? 'Activo' : 'Referencia')} /></FormGroup>
+                            <FormGroup title="Identificación">
+                                <input type="text" value={animalId} onClick={() => setIsKeyboardOpen(true)} readOnly placeholder={status === 'Activo' ? "ID (Obligatorio)" : "ID (Opcional)"} className={`w-full bg-brand-glass border rounded-xl p-3 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 cursor-pointer font-mono ${message && message.includes('ID ya existe') ? 'border-brand-red ring-brand-red' : 'border-brand-border focus:ring-brand-orange'}`} />
+                                <FormInput value={name} onChange={e => setName(e.target.value.toUpperCase())} placeholder="Nombre (Opcional)" />
+                                <button type="button" onClick={() => setIsDatePickerOpen(true)} className="w-full bg-brand-glass border border-brand-border rounded-xl p-3 text-left flex justify-between items-center">
+                                    <span className={birthDate ? 'text-white' : 'text-zinc-500'}>{birthDate ? new Date(birthDate + 'T00:00:00Z').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : 'Fecha Nacimiento (Opcional)'}</span>
+                                    <Calendar className="text-zinc-400" size={20} />
+                                </button>
+                            </FormGroup>
+                            <FormGroup title="Raza">
+                                <input type="text" value={racialComposition} onClick={() => setIsRacialKeyboardOpenModal(true)} readOnly placeholder="Composición Racial (Opcional)" className="w-full bg-brand-glass border border-brand-border rounded-xl p-3 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-brand-orange cursor-pointer" />
+                                <FormInput value={breed} disabled readOnly placeholder="Raza (Auto-calculada)" />
+                            </FormGroup>
+                            {message && <p className="text-sm text-brand-red text-center">{message}</p>}
                     </div>
                     <footer className="p-4 border-t border-brand-border flex-shrink-0"><button onClick={handleSubmit} className="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-lg transition-colors">Guardar</button></footer>
                 </div>
@@ -247,26 +255,42 @@ const AddQuickParentModal: React.FC<AddQuickParentModalProps> = ({ type, onClose
 };
 
 // --- SUB-COMPONENTES DE LA PÁGINA PRINCIPAL ---
+const GeneticsTab: React.FC<{ 
+    animal: Animal;
+    rootNode: PedigreeNode | null;
+    navigateTo: (page: PageState) => void;
+    onExportPDF: () => void;
+    isExporting: boolean;
+}> = ({ rootNode, navigateTo, onExportPDF, isExporting }) => {
+    
+    const handleAncestorClick = (ancestorId: string) => {
+        setTimeout(() => navigateTo({ name: 'rebano-profile', animalId: ancestorId }), 100);
+    };
 
-const InfoRow = ({ label, value, isEditing, children }: { label: string, value?: React.ReactNode, isEditing?: boolean, children?: React.ReactNode }) => (
-    <div>
-        <dt className="text-sm font-medium text-zinc-400">{label}</dt>
-        {isEditing && children ? children : <dd className={`mt-1 text-lg font-semibold text-white truncate ${label === 'ID' ? 'font-mono' : ''}`}>{value || 'N/A'}</dd>}
-    </div>
-);
-
-const GeneticsTab = ({ onOpenModal }: { onOpenModal: () => void }) => {
     return (
-        <div className="text-center p-4 min-h-[150px] flex flex-col justify-center items-center">
-            <button
-                onClick={onOpenModal}
-                className="inline-flex items-center gap-2 bg-brand-blue hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-lg transition-colors"
-            >
-                <Eye size={20} /> Ver Genealogía Completa
-            </button>
+        <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <p className="text-sm text-zinc-400">Desliza el gráfico para ver más →</p>
+                <button
+                    onClick={onExportPDF}
+                    disabled={isExporting}
+                    className="flex items-center gap-2 bg-zinc-700 hover:bg-zinc-600 text-white font-semibold py-1.5 px-3 rounded-lg transition-colors text-sm disabled:opacity-50"
+                >
+                    <Printer size={16} />
+                    {isExporting ? 'Generando...' : 'PDF'}
+                </button>
+            </div>
+
+            <div className="overflow-x-auto bg-black/20 rounded-lg p-2">
+                <PedigreeChart
+                    rootNode={rootNode}
+                    onAncestorClick={handleAncestorClick}
+                />
+            </div>
         </div>
     );
 };
+
 
 const EVENT_ICONS: Record<string, { icon: React.ElementType, color: string }> = {
     'Nacimiento': { icon: Feather, color: 'bg-green-500/20 text-brand-green' },
@@ -282,11 +306,8 @@ const EVENT_ICONS: Record<string, { icon: React.ElementType, color: string }> = 
     'Diagnóstico': { icon: CheckCircle, color: 'bg-teal-500/20 text-teal-300' },
 };
 
-const EventsTab = ({ animal }: { animal: Animal | null | undefined }) => {
-    const events = useEvents(animal?.id);
-
-    if (!animal) return <div className="text-center p-8 text-zinc-500">Cargando datos del animal...</div>;
-
+const EventsTab = ({ events, animal }: { events: any[], animal: Animal | null | undefined }) => {
+    
     if (!events || events.length === 0) {
         return <div className="text-center p-8 text-zinc-500">Este animal no tiene eventos registrados.</div>;
     }
@@ -298,7 +319,7 @@ const EventsTab = ({ animal }: { animal: Animal | null | undefined }) => {
                 let displayDate = 'Fecha desconocida';
                 let dateLabelPrefix = '';
 
-                if (event.type === 'Registro' && animal.createdAt) {
+                if (event.type === 'Registro' && animal && animal.createdAt) {
                     displayDate = new Date(animal.createdAt).toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric' });
                     dateLabelPrefix = 'Registrado el: ';
                 } else if (event.date && event.date !== 'N/A') {
@@ -339,70 +360,349 @@ const ProgenyTab = ({ offspring, navigateTo }: { offspring: Animal[], navigateTo
             {offspring.map(child => {
                  const formattedName = child.name ? String(child.name).toUpperCase().trim() : '';
                  return (
-                    <button
-                        key={child.id}
-                        onClick={() => navigateTo({ name: 'rebano-profile', animalId: child.id })}
-                        className="w-full text-left p-3 bg-black/20 hover:bg-zinc-800/60 rounded-lg transition-colors flex justify-between items-center group"
-                    >
-                       <div className="min-w-0 pr-3">
-                           <p className="font-mono font-semibold text-base text-white truncate">{child.id.toUpperCase()}</p>
-                           {formattedName && ( <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p> )}
-                           <div className="text-xs text-zinc-500 mt-1 min-h-[1rem] truncate">
-                               <span>{child.sex} | {formatAge(child.birthDate)} | Lote: {child.location || 'N/A'}</span>
-                           </div>
-                       </div>
-                       <ChevronRight className="text-zinc-600 group-hover:text-white transition-colors flex-shrink-0" />
-                    </button>
+                     <button
+                         key={child.id}
+                         onClick={() => navigateTo({ name: 'rebano-profile', animalId: child.id })}
+                         className="w-full text-left p-3 bg-black/20 hover:bg-zinc-800/60 rounded-lg transition-colors flex justify-between items-center group"
+                     >
+                        <div className="min-w-0 pr-3">
+                            <p className="font-mono font-semibold text-base text-white truncate">{child.id.toUpperCase()}</p>
+                            {formattedName && ( <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p> )}
+                            <div className="text-xs text-zinc-500 mt-1 min-h-[1rem] truncate">
+                                <span>{child.sex} | {formatAge(child.birthDate)} | Lote: {child.location || 'N/A'}</span>
+                            </div>
+                        </div>
+                        <ChevronRight className="text-zinc-600 group-hover:text-white transition-colors flex-shrink-0" />
+                     </button>
                  )
             })}
         </div>
     );
 };
 
-const MainInfoTab = ({ animal, isEditing, editedData, setEditedData, origins, onAddOriginClick, onLocationClick }: {
+const MainInfoTab = ({ animal, isEditing, editedData, setEditedData, origins, lots, onAddOriginClick, onAddLotClick, allFathers, mothers, navigateTo }: {
     animal: Animal,
     isEditing: boolean,
     editedData: Partial<Animal>,
     setEditedData: React.Dispatch<React.SetStateAction<Partial<Animal>>>,
     origins: Origin[],
+    lots: Lot[], 
     onAddOriginClick: () => void,
-    onLocationClick: () => void,
+    onAddLotClick: () => void, 
+    allFathers: any[], 
+    mothers: Animal[], 
+    navigateTo: (page: PageState) => void 
 }) => {
     const handleChange = (field: keyof Animal, value: any) => { setEditedData(prev => ({ ...prev, [field]: value })); };
     const formattedAge = formatAge(animal.birthDate);
+    
+    const father = useMemo(() => allFathers.find(f => f.id === animal.fatherId), [allFathers, animal.fatherId]);
+    const mother = useMemo(() => mothers.find(m => m.id === animal.motherId), [mothers, animal.motherId]);
+
+    const handleCategoryChange = (isActivo: boolean) => {
+        setEditedData(prev => ({ ...prev, isReference: !isActivo }));
+    };
+    
+    const conceptionMethodMap: { [key: string]: string } = {
+        'MN': 'Monta Natural (MN)',
+        'IA': 'Inseminación Artificial (IA)',
+        'TE': 'Transferencia de Embriones (TE)',
+        '': 'Otro/Desconocido',
+    };
+    
+    const parturitionTypeMap: { [key: string]: string } = {
+        'Simple': 'Parto Simple',
+        'TW': 'Doble (TW)',
+        'TR': 'Triple (TR)',
+        'QD': 'Cuádruple (QD)',
+        '': 'N/A',
+    };
+
+    const compositionData = useMemo(() => {
+        const compString = isEditing ? editedData.racialComposition : animal.racialComposition;
+        if (!compString) return [];
+        
+        const breedColors = {
+            'A': 'bg-blue-500',
+            'S': 'bg-green-500',
+            'AN': 'bg-red-500',
+            'AGC': 'bg-yellow-500',
+            'T': 'bg-purple-500',
+            'C': 'bg-orange-500',
+        };
+
+        const regex = /(\d+(\.\d+)?)%?([A-Z]+)/g;
+        let match;
+        const data = [];
+        while ((match = regex.exec(compString.toUpperCase())) !== null) {
+            const percentage = parseFloat(match[1]);
+            const code = match[3] as keyof typeof breedColors;
+            data.push({
+                label: `${code} (${percentage}%)`,
+                percentage: percentage,
+                color: breedColors[code] || 'bg-gray-500'
+            });
+        }
+        return data;
+    }, [animal.racialComposition, editedData.racialComposition, isEditing]);
+
+
     return (
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-6">
-            <InfoRow label="ID" value={animal.id} />
-            <InfoRow label="Sexo" value={animal.sex} />
-            <InfoRow label="Fecha Nacimiento" value={animal.birthDate !== 'N/A' ? new Date(animal.birthDate + 'T00:00:00Z').toLocaleDateString('es-VE', {timeZone: 'UTC'}) : 'N/A'} isEditing={isEditing}>
-                <input type="date" value={editedData.birthDate === 'N/A' ? '' : editedData.birthDate || ''} onChange={e => handleChange('birthDate', e.target.value || 'N/A')} className="w-full bg-zinc-700 p-2 rounded-md mt-1 text-white" />
-            </InfoRow>
-            <InfoRow label="Edad" value={formattedAge} />
-            <InfoRow label="Ubicación / Lote">{!isEditing && ( <dd className="mt-1 text-lg"><button onClick={onLocationClick} className="font-semibold text-brand-orange hover:underline text-left">{animal.location || 'Sin Asignar'}</button></dd> )}</InfoRow>
-            <InfoRow label="Categoría" value={animal.lifecycleStage} />
-            <InfoRow label="Origen" value={animal.origin} isEditing={isEditing}>
-                <div className="flex items-center gap-2 mt-1">
-                    <FormSelect value={editedData.origin || ''} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange('origin', e.target.value)}>
-                        <option value="">Seleccionar Origen...</option>
-                        <option value="Finca Masparrito">Finca Masparrito</option>
-                        {origins.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
-                    </FormSelect>
-                    <button type="button" onClick={onAddOriginClick} className="p-2 bg-brand-orange hover:bg-orange-600 text-white rounded-md"><PlusCircle size={20} /></button>
+        <div className="space-y-4">
+            <FormGroup title="Estado">
+                <div className="grid grid-cols-2 gap-4">
+                    <InfoRow label="Categoría" value={animal.lifecycleStage} />
+                    <InfoRow 
+                        label="Ubicación / Lote" 
+                        value={animal.location || 'Sin Asignar'} 
+                        isEditing={isEditing}
+                    >
+                        <div className="flex items-center gap-2">
+                            <FormSelect value={editedData.location || ''} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange('location', e.target.value)}>
+                                <option value="">Sin Asignar</option>
+                                {lots.map(lot => <option key={lot.id} value={lot.name}>{lot.name}</option>)}
+                            </FormSelect>
+                            <button type="button" onClick={onAddLotClick} className="p-2.5 bg-zinc-700 hover:bg-zinc-600 text-brand-orange rounded-lg"><Plus size={18} /></button>
+                        </div>
+                    </InfoRow>
+                    <InfoRow label="Edad" value={formattedAge} />
+                    <InfoRow 
+                        label="Estado (Activo/Ref)" 
+                        value={animal.isReference ? 'Referencia' : 'Activo'}
+                        isEditing={isEditing}
+                    >
+                        <Toggle
+                            labelOn="Activo"
+                            labelOff="Referencia"
+                            value={!editedData.isReference}
+                            onChange={handleCategoryChange}
+                        />
+                    </InfoRow>
                 </div>
-            </InfoRow>
-            {animal.weaningDate && <InfoRow label="Fecha de Destete" value={new Date(animal.weaningDate + 'T00:00:00Z').toLocaleDateString('es-VE', {timeZone: 'UTC'})} />}
-            {animal.weaningWeight && <InfoRow label="Peso al Destete" value={`${animal.weaningWeight} Kg`} />}
-        </dl>
+            </FormGroup>
+
+            <FormGroup title="Genética">
+                <div className="grid grid-cols-2 gap-4">
+                    <InfoRow 
+                        label="Padre (Reproductor)" 
+                        value={father ? (
+                            <button onClick={() => father.id && navigateTo({ name: 'rebano-profile', animalId: father.id })} className="text-brand-orange hover:underline text-left">
+                                {formatAnimalDisplay(father)}
+                            </button>
+                        ) : 'Desconocido'}
+                        isEditing={isEditing}
+                    >
+                        <button type="button" id="edit-father-btn" onClick={() => (isEditing ? (document.getElementById('edit-father-btn')?.click()) : null)} className="w-full text-left bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-white placeholder-zinc-500 flex justify-between items-center">
+                            <span className={editedData.fatherId ? 'text-white' : 'text-zinc-400'}>
+                                {editedData.fatherId ? (formatAnimalDisplay(allFathers.find(f => f.id === editedData.fatherId)) || editedData.fatherId) : 'Seleccionar...'}
+                            </span>
+                            <Search size={16} className="text-zinc-400" />
+                        </button>
+                    </InfoRow>
+                    
+                    <InfoRow 
+                        label="Madre" 
+                        value={mother ? (
+                            <button onClick={() => mother.id && navigateTo({ name: 'rebano-profile', animalId: mother.id })} className="text-brand-orange hover:underline text-left">
+                                {formatAnimalDisplay(mother)}
+                            </button>
+                        ) : 'Desconocida'}
+                        isEditing={isEditing}
+                    >
+                         <button type="button" id="edit-mother-btn" onClick={() => (isEditing ? (document.getElementById('edit-mother-btn')?.click()) : null)} className="w-full text-left bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-white placeholder-zinc-500 flex justify-between items-center">
+                            <span className={editedData.motherId ? 'text-white' : 'text-zinc-400'}>
+                                {editedData.motherId ? (formatAnimalDisplay(mothers.find(m => m.id === editedData.motherId)) || editedData.motherId) : 'Seleccionar...'}
+                            </span>
+                            <Search size={16} className="text-zinc-400" />
+                        </button>
+                    </InfoRow>
+                </div>
+                
+                <InfoRow 
+                    label="Composición Racial" 
+                    value={animal.racialComposition || 'N/A'} 
+                    isEditing={isEditing}
+                >
+                    {!isEditing && compositionData.length > 0 && (
+                        <div className="w-full flex h-2 rounded-full overflow-hidden mt-2 bg-zinc-700">
+                            {compositionData.map((breed) => (
+                                <div
+                                    key={breed.label}
+                                    className={`${breed.color}`}
+                                    style={{ width: `${breed.percentage}%` }}
+                                    title={breed.label}
+                                />
+                            ))}
+                        </div>
+                    )}
+                    {isEditing && (
+                        <FormInput
+                            type="text"
+                            value={editedData.racialComposition || ''}
+                            onChange={e => handleChange('racialComposition', e.target.value.toUpperCase())}
+                            className="w-full font-mono"
+                            placeholder="Ej: 100%A ó 50%A 50%AGC"
+                        />
+                    )}
+                </InfoRow>
+            </FormGroup>
+
+            <FormGroup title="Nacimiento y Origen">
+                <div className="grid grid-cols-2 gap-4">
+                    <InfoRow 
+                        label="Fecha Nacimiento" 
+                        value={animal.birthDate !== 'N/A' ? new Date(animal.birthDate + 'T00:00:00Z').toLocaleDateString('es-VE', {timeZone: 'UTC'}) : 'N/A'} 
+                        isEditing={isEditing}
+                    >
+                        <input type="date" value={editedData.birthDate === 'N/A' ? '' : editedData.birthDate || ''} onChange={e => handleChange('birthDate', e.target.value || 'N/A')} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-white" />
+                    </InfoRow>
+
+                    <InfoRow 
+                        label="Peso al Nacer" 
+                        value={animal.birthWeight ? `${animal.birthWeight} Kg` : 'N/A'} 
+                        isEditing={isEditing}
+                    >
+                        <FormInput
+                            type="number"
+                            step="0.1"
+                            value={editedData.birthWeight || ''}
+                            onChange={e => handleChange('birthWeight', e.target.value ? parseFloat(e.target.value) : undefined)}
+                            className="w-full"
+                            placeholder="Kg (ej: 3.5)"
+                        />
+                    </InfoRow>
+
+                    <InfoRow 
+                        label="Método de Concepción" 
+                        value={conceptionMethodMap[animal.conceptionMethod || ''] || 'N/A'} 
+                        isEditing={isEditing}
+                    >
+                        <FormSelect value={editedData.conceptionMethod || 'MN'} onChange={e => handleChange('conceptionMethod', e.target.value)}>
+                            <option value="MN">Monta Natural (MN)</option>
+                            <option value="IA">Inseminación Artificial (IA)</option>
+                            <option value="TE">Transferencia de Embriones (TE)</option>
+                            <option value="">Otro/Desconocido</option>
+                        </FormSelect>
+                    </InfoRow>
+
+                    <InfoRow 
+                        label="Tipo de Parto (Origen)" 
+                        value={parturitionTypeMap[animal.parturitionType || ''] || 'N/A'} 
+                        isEditing={isEditing}
+                    >
+                        <FormSelect value={editedData.parturitionType || 'Simple'} onChange={e => handleChange('parturitionType', e.target.value)}>
+                            <option value="Simple">Parto Simple</option>
+                            <option value="TW">Doble (TW)</option>
+                            <option value="TR">Triple (TR)</option>
+                            <option value="QD">Cuádruple (QD)</option>
+                            <option value="">N/A</option>
+                        </FormSelect>
+                    </InfoRow>
+
+                    <InfoRow 
+                        label="Origen" 
+                        value={animal.origin} 
+                        isEditing={isEditing}
+                        className="col-span-2"
+                    >
+                        <div className="flex items-center gap-2">
+                            <FormSelect value={editedData.origin || ''} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange('origin', e.target.value)}>
+                                <option value="">Seleccionar Origen...</option>
+                                <option value="Finca Masparrito">Finca Masparrito</option>
+                                {origins.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
+                            </FormSelect>
+                            <button type="button" onClick={onAddOriginClick} className="p-2.5 bg-zinc-700 hover:bg-zinc-600 text-brand-orange rounded-lg"><Plus size={18} /></button>
+                        </div>
+                    </InfoRow>
+                </div>
+            </FormGroup>
+        </div>
     );
 };
+// --- (FIN CAMBIO) MainInfoTab ---
+
+
+// --- (INICIO) CORRECCIÓN: Componente 'RecentEvents' restaurado ---
+const RecentEvents = ({ events }: { events: any[] }) => {
+    const recentEvents = events.slice(0, 3); // Obtener solo los primeros 3
+    
+    if (recentEvents.length === 0) {
+        return (
+            <div className="text-center p-4 text-zinc-500">
+                No hay eventos recientes.
+            </div>
+        );
+    }
+    
+    return (
+        <FormGroup title="Últimos 3 Eventos">
+            {recentEvents.map((event: any) => {
+                const eventMeta = EVENT_ICONS[event.type] || { icon: FileText, color: 'bg-gray-500/20 text-gray-300' };
+                const IconComponent = eventMeta.icon;
+                let displayDate = 'Fecha desconocida';
+                if (event.date && event.date !== 'N/A') {
+                     try {
+                         displayDate = new Date(event.date + 'T00:00:00Z').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+                     } catch (e) { displayDate = event.date; }
+                }
+                
+                return (
+                    <div key={event.id} className="flex items-start gap-4">
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${eventMeta.color}`}>
+                            <IconComponent size={20} />
+                        </div>
+                        <div>
+                            <p className="font-semibold text-white">{event.type}</p>
+                            <p className="text-sm text-zinc-300">{event.details}</p>
+                            <p className="text-xs text-zinc-500 mt-1">{displayDate}</p>
+                        </div>
+                    </div>
+                );
+            })}
+        </FormGroup>
+    );
+};
+// --- (FIN) CORRECCIÓN ---
+
+
+const HiddenPdfChart = React.forwardRef<HTMLDivElement, { rootNode: PedigreeNode | null }>(({ rootNode }, ref) => (
+    <div 
+        ref={ref} 
+        style={{ 
+            position: 'absolute', 
+            left: '-9999px', 
+            width: '1200px', 
+            padding: '20px', 
+            backgroundColor: '#FFFFFF', 
+            color: '#000000', 
+        }}
+    >
+        <PedigreeChart 
+            rootNode={rootNode} 
+            onAncestorClick={() => {}} 
+            theme="light" 
+        />
+    </div>
+));
+HiddenPdfChart.displayName = 'HiddenPdfChart';
+
 
 // --- COMPONENTE PRINCIPAL RebanoProfilePage ---
 interface RebanoProfilePageProps { animalId: string; onBack: () => void; navigateTo: (page: PageState) => void; }
 
 export default function RebanoProfilePage({ animalId, onBack, navigateTo }: RebanoProfilePageProps) {
-    // --- CAMBIO: appConfig añadido ---
+    // --- CORRECCIÓN SCROLL: 'parentRef' ahora se usa para el div raíz ---
+    const parentRef = useRef<HTMLDivElement>(null);
+    const pdfChartRef = useRef<HTMLDivElement>(null);
+
     const { animals, lots, origins, parturitions, updateAnimal, deleteAnimalPermanently, fathers, addAnimal, appConfig } = useData();
-    const [activeTab, setActiveTab] = useState<'main' | 'genetics' | 'events' | 'progeny'>('main');
+    
+    const animal = useMemo(() => animals.find(a => a.id === animalId), [animals, animalId]);
+    const events = useEvents(animal ? animal.id : undefined); 
+    
+    const pedigreeRoot = usePedigree(animalId);
+    
+    const [activeTab, setActiveTab] = useState<'main' | 'genetics' | 'progeny' | 'events'>('main');
     const [isEditing, setIsEditing] = useState(false);
     const [editedData, setEditedData] = useState<Partial<Animal>>({});
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
@@ -416,12 +716,10 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
     const [isReferenceActionsOpen, setIsReferenceActionsOpen] = useState(false);
     const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
     const [isWeanModalOpen, setWeanModalOpen] = useState(false);
-    const [isPedigreeModalOpen, setIsPedigreeModalOpen] = useState(false);
     const [isMotherSelectorOpen, setMotherSelectorOpen] = useState(false);
     const [isFatherSelectorOpen, setFatherSelectorOpen] = useState(false);
     const [isParentModalOpen, setIsParentModalOpen] = useState<'mother' | 'father' | null>(null);
-
-    const animal = useMemo(() => animals.find(a => a.id === animalId), [animals, animalId]);
+    const [isExporting, setIsExporting] = useState(false);
 
     const progeny = useMemo(() => {
         if (!animal) return [];
@@ -431,11 +729,12 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
     }, [animals, animal]);
 
     const mothers = useMemo(() => animals.filter(a => a.sex === 'Hembra'), [animals]);
+    
     const allFathers = useMemo(() => {
         const internalSires: Animal[] = animals.filter(a => a.sex === 'Macho');
         const externalSires: any[] = fathers.map(f => ({
             id: f.id, name: f.name, sex: 'Macho', status: 'Activo', isReference: true,
-            birthDate: 'N/A', lifecycleStage: 'Macho Cabrío', location: 'Referencia', reproductiveStatus: 'No Aplica',
+            birthDate: 'N/A', lifecycleStage: 'Reproductor', location: 'Referencia', reproductiveStatus: 'No Aplica',
             createdAt: 0, lastWeighing: null,
         }));
         return [...internalSires, ...externalSires];
@@ -446,7 +745,8 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
         return getAnimalZootecnicCategory(animal, parturitions);
     }, [animal, parturitions]);
 
-    // --- CAMBIO: Lógica de Alerta de Destete ---
+
+    // --- LÓGICA DE DESTETE (Corregida) ---
     const isWeaningOverdue = useMemo(() => {
         if (!animal || animal.weaningDate || animal.isReference || animal.status !== 'Activo') {
             return false;
@@ -456,51 +756,170 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
             return false;
         }
         const ageInDays = calculateAgeInDays(animal.birthDate);
-        return ageInDays > appConfig.edadDesteteDias;
+        return ageInDays > appConfig.diasMetaDesteteFinal; // <-- USA LA VARIABLE NUEVA
 
-    }, [animal, zootecnicCategoryForLogic, appConfig.edadDesteteDias]);
+    }, [animal, zootecnicCategoryForLogic, appConfig.diasMetaDesteteFinal]); // <-- CORREGIDO
 
     const breedingFailures = animal?.breedingFailures || 0;
-    // --- CAMBIO: Lógica de Alerta de Destete añadida al header ---
-    const headerAlertClass = (breedingFailures >= 2 || isWeaningOverdue) ? 'border-brand-red ring-2 ring-brand-red/80' : 'border-brand-border';
+    
+    const alertInfo = useMemo(() => {
+        if (!animal) return null; 
+        if (isWeaningOverdue) {
+            return {
+                text: `Destete Atrasado (${calculateAgeInDays(animal.birthDate)} días)`,
+                icon: <AlertTriangle className="text-brand-red" size={20} />,
+                title: `Destete atrasado (Meta: ${appConfig.diasMetaDesteteFinal} días)` // <-- CORREGIDO
+            };
+        }
+        if (breedingFailures >= 2) {
+            return {
+                text: `${breedingFailures} Fallos Reprod.`,
+                icon: <AlertTriangle className="text-brand-red" size={20} />,
+                title: `${breedingFailures} fallos reproductivos reportados`
+            };
+        }
+        if (breedingFailures === 1) {
+            return {
+                text: `1 Fallo Reprod.`,
+                icon: <AlertTriangle className="text-yellow-400" size={20} />,
+                title: `1 fallo reproductivo reportado`
+            };
+        }
+        return null;
+    }, [animal, isWeaningOverdue, breedingFailures, appConfig.diasMetaDesteteFinal]); // <-- CORREGIDO
+    // --- FIN LÓGICA DE DESTETE ---
 
 
     useEffect(() => {
         if (animal) {
             if (isEditing) {
                 setEditedData({
+                    name: animal.name,
                     birthDate: animal.birthDate,
+                    birthWeight: animal.birthWeight,
                     origin: animal.origin,
                     fatherId: animal.fatherId,
-                    motherId: animal.motherId
+                    motherId: animal.motherId,
+                    racialComposition: animal.racialComposition,
+                    location: animal.location, 
+                    isReference: animal.isReference,
+                    conceptionMethod: animal.conceptionMethod, 
+                    parturitionType: animal.parturitionType,
                 });
+            } else {
+                setEditedData({});
             }
             setSelectedNewLot(animal.location || '');
         }
     }, [animal, isEditing]);
 
-    const handleSave = async () => { if (!animal) return; setSaveStatus('saving'); try { await updateAnimal(animal.id, editedData); setSaveStatus('success'); setTimeout(() => { setIsEditing(false); setSaveStatus('idle'); }, 1500); } catch (error) { console.error("Error al actualizar:", error); setSaveStatus('idle'); } };
+    useEffect(() => {
+        if (!isEditing) return; 
+
+        const mother = mothers.find(a => a.id === editedData.motherId);
+        const father = allFathers.find(a => a.id === editedData.fatherId);
+
+        if (mother?.racialComposition && father?.racialComposition) {
+            const childComp = calculateChildComposition(mother.racialComposition, father.racialComposition);
+            setEditedData(prev => ({ ...prev, racialComposition: childComp }));
+        }
+
+    }, [editedData.motherId, editedData.fatherId, isEditing, mothers, allFathers]);
+
+    const handleSave = async () => { 
+        if (!animal) return; 
+        setSaveStatus('saving'); 
+        try { 
+            const finalData = { ...editedData };
+            if (editedData.racialComposition !== animal.racialComposition) {
+                finalData.breed = calculateBreedFromComposition(editedData.racialComposition);
+            }
+            if (editedData.birthDate && editedData.birthDate !== animal.birthDate) {
+                 finalData.lifecycleStage = getAnimalZootecnicCategory({ ...animal, ...finalData } as Animal, parturitions);
+            }
+
+            await updateAnimal(animal.id, finalData); 
+            setSaveStatus('success'); 
+            setTimeout(() => { setIsEditing(false); setSaveStatus('idle'); }, 1500); 
+        } catch (error) { 
+            console.error("Error al actualizar:", error); 
+            setSaveStatus('idle'); 
+        } 
+    };
+
     const handleCancel = () => { setIsEditing(false); setEditedData({}); };
-    const handleUpdateLocation = async () => { if (!animal) return; try { await updateAnimal(animal.id, { location: selectedNewLot }); setLotChangeModalOpen(false); } catch (error) { console.error("Error al actualizar ubicación:", error); } };
-    const handleDecommission = async (details: DecommissionDetails) => {
+    
+    const handleUpdateLocation = async () => { 
+        if (!animal) return; 
+        try { 
+            await updateAnimal(animal.id, { location: selectedNewLot }); 
+            setLotChangeModalOpen(false); 
+        } catch (error) { 
+            console.error("Error al actualizar ubicación:", error); 
+        } 
+    };
+
+    // --- CORRECCIÓN: 'handleDecommission' renombrado a 'handleDecommissionConfirm' ---
+    const handleDecommissionConfirm = async (details: DecommissionDetails) => {
         if (!animal || !decommissionReason) return;
         const dataToUpdate: Partial<Animal> = { status: decommissionReason, isReference: true, endDate: details.date };
         if (decommissionReason === 'Venta') { Object.assign(dataToUpdate, { salePrice: details.salePrice, saleBuyer: details.saleBuyer, salePurpose: details.salePurpose }); }
         if (decommissionReason === 'Muerte') { dataToUpdate.deathReason = details.deathReason; }
         if (decommissionReason === 'Descarte') { Object.assign(dataToUpdate, { cullReason: details.cullReason, cullReasonDetails: details.cullReasonDetails }); }
-        await updateAnimal(animal.id, dataToUpdate);
-        setDecommissionReason(null);
+        
+        // ¡BUG CRÍTICO!
+        // Si la acción de 'updateAnimal' falla, el animal no se mueve.
+        // Pero si tiene éxito, DEBEMOS navegar hacia atrás,
+        // porque este animal ya no pertenece a la lista de "Activos".
+        try {
+            await updateAnimal(animal.id, dataToUpdate);
+            setDecommissionReason(null);
+            onBack(); // <-- NAVEGAR HACIA ATRÁS AL CONFIRMAR
+        } catch (error) {
+            console.error("Error al dar de baja:", error);
+            // Opcional: mostrar un error al usuario
+            setDecommissionReason(null);
+        }
     };
-    const handleReintegrate = async () => { if (!animal) return; await updateAnimal(animal.id, { isReference: false, status: 'Activo', endDate: undefined }); };
+    const handleReintegrate = async () => { 
+        if (!animal) return; 
+        await updateAnimal(animal.id, { isReference: false, status: 'Activo', endDate: undefined }); 
+        setIsReferenceActionsOpen(false); // Cerrar el action sheet
+    };
     const handlePermanentDelete = async () => { if (!animal) return; await deleteAnimalPermanently(animal.id); onBack(); };
     const handleSaveWean = async (data: { weaningDate: string, weaningWeight: number }) => { if (!animal) return; await updateAnimal(animal.id, { weaningDate: data.weaningDate, weaningWeight: data.weaningWeight }); setWeanModalOpen(false); };
+    
     const handleSaveQuickParent = async (newParent: Animal) => {
         try {
             await addAnimal(newParent);
-             if (isParentModalOpen === 'father') { setEditedData(prev => ({ ...prev, fatherId: newParent.id })); }
-             else if (isParentModalOpen === 'mother') { setEditedData(prev => ({ ...prev, motherId: newParent.id })); }
-        } catch (error) { console.error("Error saving quick parent:", error); }
+             if (isParentModalOpen === 'father') { 
+                setEditedData(prev => ({ ...prev, fatherId: newParent.id })); 
+                allFathers.push(newParent); 
+            }
+             else if (isParentModalOpen === 'mother') { 
+                setEditedData(prev => ({ ...prev, motherId: newParent.id })); 
+                mothers.push(newParent); 
+            }
+        } catch (error) { 
+            console.error("Error saving quick parent:", error); 
+        }
         finally { setIsParentModalOpen(null); }
+    };
+
+    const handleExportPedigree = async () => {
+        if (!pdfChartRef.current || !animal) {
+            alert("Error: No se pudo encontrar el gráfico para exportar.");
+            return;
+        }
+        setIsExporting(true);
+        try {
+            await exportPedigreeToPDF(pdfChartRef.current, animal);
+        } catch (error) {
+            console.error("Error al exportar PDF:", error);
+            alert("Ocurrió un error al generar el PDF.");
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     const decommissionActions: ActionSheetAction[] = [ { label: "Por Venta", icon: DollarSign, onClick: () => setDecommissionReason('Venta') }, { label: "Por Muerte", icon: HeartCrack, onClick: () => setDecommissionReason('Muerte'), color: 'text-brand-red' }, { label: "Por Descarte", icon: Ban, onClick: () => setDecommissionReason('Descarte'), color: 'text-brand-red' }, ];
@@ -509,118 +928,176 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
     if (!animal) { return ( <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Animal no encontrado.</h1><button onClick={onBack} className="mt-4 text-brand-orange">Volver</button></div> ); }
 
     const formattedName = animal.name ? animal.name.toUpperCase().trim() : '';
+    const displayFormattedName = isEditing ? (editedData.name || '') : formattedName;
+
+    // --- (INICIO) CORRECCIÓN LÓGICA 'quickActions' ---
+    // La lógica ahora se basa en 'animal.isReference'
+    const quickActions = [
+        // Acciones Específicas de Hembra
+        ...(animal.sex === 'Hembra' ? [
+            { label: "Leche", icon: Droplets, onClick: () => navigateTo({ name: 'lactation-profile', animalId: animal.id }), color: "text-blue-300", disabled: false },
+            { label: "Parto", icon: Baby, onClick: () => setParturitionModalOpen(true), color: "text-pink-400", disabled: animal.isReference }
+        ] : []),
+        
+        // Acción de Destete (solo para crías activas)
+        ...((zootecnicCategoryForLogic === 'Cabrita' || zootecnicCategoryForLogic === 'Cabrito') && !animal.weaningDate && !animal.isReference ? [
+            { label: "Destetar", icon: Award, onClick: () => setWeanModalOpen(true), color: "text-yellow-300", disabled: false }
+        ] : []),
+
+        // Acciones Universales
+        { label: "Peso", icon: Scale, onClick: () => navigateTo({ name: 'growth-profile', animalId: animal.id }), color: "text-brand-green", disabled: false },
+        { label: "Sanidad", icon: Syringe, onClick: () => alert('Función en desarrollo'), color: "text-teal-300", disabled: animal.isReference },
+        
+        // LÓGICA DE ACCIONES DE ESTADO (CORREGIDA)
+        ...(!animal.isReference ? [
+            // Si el animal NO es de referencia (está ACTIVO):
+            { label: "Mover", icon: Replace, onClick: () => setLotChangeModalOpen(true), color: "text-brand-blue", disabled: isEditing },
+            { label: "Dar de Baja", icon: Archive, onClick: () => setDecommissionSheetOpen(true), color: "text-amber-400", disabled: isEditing }
+        ] : [
+            // Si el animal SÍ es de referencia (está INACTIVO):
+            { label: "Acciones", icon: Replace, onClick: () => setIsReferenceActionsOpen(true), color: "text-brand-blue", disabled: isEditing }
+        ])
+    ];
+    // --- (FIN) CORRECCIÓN LÓGICA 'quickActions' ---
 
     // --- RENDERIZADO DEL COMPONENTE ---
     return (
         <>
-            <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in pb-12">
-                <header className={`bg-brand-glass backdrop-blur-xl rounded-b-2xl p-4 border-b border-x sticky top-0 z-10 transition-all ${headerAlertClass}`}>
-                   <div className="flex justify-between items-center mb-1">
-                       <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
-                       <div className="text-center min-w-0">
-                           <h1 className="text-2xl font-mono font-bold tracking-tight text-white truncate">{animal.id.toUpperCase()}</h1>
-                           {formattedName && <p className="text-sm text-zinc-300 truncate">{formattedName}</p>}
-                       </div>
-                       <div className="w-8 flex items-center justify-end gap-1">
-                           {/* --- CAMBIO: Lógica de Alerta de Destete añadida --- */}
-                           {isWeaningOverdue && ( <span title={`Destete atrasado (Meta: ${appConfig.edadDesteteDias} días)`}><AlertTriangle className="text-brand-red" size={20} /></span> )}
-                           {breedingFailures === 1 && !isWeaningOverdue && ( <span title="1 fallo reproductivo reportado"><AlertTriangle className="text-yellow-400" size={20} /></span> )}
-                           {breedingFailures >= 2 && !isWeaningOverdue && ( <span title={`${breedingFailures} fallos reproductivos reportados`}><AlertTriangle className="text-brand-red" size={20} /></span> )}
-                       </div>
-                   </div>
-                   <p className="text-center text-brand-orange font-semibold text-sm -mt-1 mb-3 uppercase tracking-wider">
-                       {animal.isReference ? 'REFERENCIA' : (animal.status !== 'Activo' ? animal.status : (animal.location || 'Sin Asignar'))}
-                   </p>
-                   {/* --- CAMBIO: Alerta de Destete --- */}
-                   {isWeaningOverdue && (
-                       <div className="mb-3 p-3 bg-brand-red/20 border border-brand-red rounded-lg text-center">
-                           <p className="text-red-300 text-sm font-semibold">Destete Atrasado</p>
-                           <p className="text-red-400 text-xs">Este animal tiene {calculateAgeInDays(animal.birthDate)} días (Meta: {appConfig.edadDesteteDias} días) y no ha sido destetado.</p>
-                       </div>
-                   )}
-                   <div className="flex justify-around bg-black/20 rounded-xl p-1">
-                        {animal.sex === 'Hembra' && ( <> <button onClick={() => navigateTo({ name: 'lactation-profile', animalId: animal.id })} className="flex flex-col items-center p-2 text-blue-300 hover:bg-zinc-700/50 w-full rounded-lg transition-colors"><Droplets size={22}/><span className="text-xs mt-1">Leche</span></button> <button onClick={() => setParturitionModalOpen(true)} disabled={animal.isReference || animal.status !== 'Activo'} className="flex flex-col items-center p-2 text-pink-400 hover:bg-zinc-700/50 w-full rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><Baby size={22}/><span className="text-xs mt-1">Parto</span></button> </> )}
-                        {(zootecnicCategoryForLogic === 'Cabrita' || zootecnicCategoryForLogic === 'Cabrito') && !animal.weaningDate && !animal.isReference && animal.status === 'Activo' && ( <button onClick={() => setWeanModalOpen(true)} className="flex flex-col items-center p-2 text-yellow-300 hover:bg-zinc-700/50 w-full rounded-lg transition-colors"><Award size={22}/><span className="text-xs mt-1">Destetar</span></button> )}
-                        <button onClick={() => navigateTo({ name: 'growth-profile', animalId: animal.id })} className="flex flex-col items-center p-2 text-brand-green hover:bg-zinc-700/50 w-full rounded-lg transition-colors"><Scale size={22}/><span className="text-xs mt-1">Peso</span></button>
-                        <button onClick={() => alert('Función en desarrollo')} disabled={animal.isReference || animal.status !== 'Activo'} className="flex flex-col items-center p-2 text-teal-300 hover:bg-zinc-700/50 w-full rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><Syringe size={22}/><span className="text-xs mt-1">Sanidad</span></button>
-                        <button onClick={() => animal.isReference ? setIsReferenceActionsOpen(true) : setLotChangeModalOpen(true)} className="flex flex-col items-center p-2 text-brand-blue hover:bg-zinc-700/50 w-full rounded-lg transition-colors"><Replace size={22}/><span className="text-xs mt-1">Mover</span></button>
-                        {animal.status === 'Activo' && !animal.isReference && ( <button onClick={() => setDecommissionSheetOpen(true)} className="flex flex-col items-center p-2 text-amber-400 hover:bg-zinc-700/50 w-full rounded-lg transition-colors"><Archive size={22}/><span className="text-xs mt-1">Dar de baja</span></button> )}
-                        <button onClick={() => setIsEditing(!isEditing)} className={`flex flex-col items-center p-2 w-full rounded-lg transition-colors ${isEditing ? 'text-green-400' : 'text-brand-orange'} hover:bg-zinc-700/50`}>
-                            <Edit size={22}/>
-                            <span className="text-xs mt-1">Editar</span>
+            {/* CORRECCIÓN SCROLL: Eliminados 100vh y overflow-y-auto */}
+            <div 
+                ref={parentRef}
+                className="w-full max-w-2xl mx-auto" 
+            >
+                {/* Header de la Página (Scrollable) */}
+                <header className="p-4 space-y-4">
+                    <div className="flex justify-between items-start">
+                        <button onClick={onBack} className="flex items-center gap-1 text-zinc-400 hover:text-white transition-colors">
+                            <ArrowLeft size={20} />
+                            <span>Volver</span>
                         </button>
-                   </div>
-                </header>
-
-                <main className="p-4 space-y-4">
-                    <div className="flex bg-brand-glass rounded-xl p-1 border border-brand-border">
-                         <button onClick={() => setActiveTab('main')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'main' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Ficha</button>
-                        <button onClick={() => setActiveTab('genetics')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'genetics' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Genealogía</button>
-                        <button onClick={() => setActiveTab('progeny')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'progeny' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Progenie</button>
-                        <button onClick={() => setActiveTab('events')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'events' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Eventos</button>
+                        
+                        <div className="flex gap-2">
+                            {isEditing ? (
+                                <>
+                                    <button onClick={handleCancel} className="bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                                        <X size={18}/>
+                                    </button>
+                                    <button onClick={handleSave} disabled={saveStatus !== 'idle'} className="bg-brand-green hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 disabled:opacity-50 min-w-[100px] justify-center">
+                                        {saveStatus === 'saving' && <span className="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full"/>}
+                                        {saveStatus === 'success' && <CheckCircle size={18}/>}
+                                        {saveStatus === 'idle' && <Save size={18}/>}
+                                        {saveStatus === 'idle' && <span>Guardar</span>}
+                                    </button>
+                                </>
+                            ) : (
+                                <button onClick={() => setIsEditing(true)} className={`bg-brand-orange/20 hover:bg-brand-orange/30 text-brand-orange font-bold py-2 px-4 rounded-lg flex items-center gap-2`}>
+                                    <Edit size={16}/>
+                                    <span>Editar</span>
+                                </button>
+                            )}
+                        </div>
                     </div>
-                    <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border min-h-[200px]">
-                        {activeTab === 'main' && (
-                            <div className="space-y-6">
-                                {/* --- CAMBIO: Prop parturitions eliminada --- */}
-                                <MainInfoTab
-                                    animal={animal}
-                                    isEditing={isEditing}
-                                    editedData={editedData}
-                                    setEditedData={setEditedData}
-                                    origins={origins}
-                                    onAddOriginClick={() => setAddOriginModalOpen(true)}
-                                    onLocationClick={() => setLotChangeModalOpen(true)}
-                                />
-                                {isEditing && (
-                                     <div className="space-y-4 pt-4 border-t border-zinc-700">
-                                        <h3 className="text-sm font-medium text-zinc-400">Padres (Opcional)</h3>
-                                        <div className="flex items-center gap-2">
-                                            <button type="button" onClick={() => setFatherSelectorOpen(true)} className="w-full text-left bg-zinc-700 border border-zinc-600 rounded-xl p-3 text-white placeholder-zinc-500 flex justify-between items-center">
-                                                <span className={editedData.fatherId ? 'text-white' : 'text-zinc-500'}>
-                                                    Padre: {editedData.fatherId ? (formatAnimalDisplay(allFathers.find(f => f.id === editedData.fatherId)) || editedData.fatherId) : 'Seleccionar...'}
-                                                </span>
-                                                <Search size={18} className="text-zinc-400" />
-                                            </button>
-                                            <button type="button" onClick={() => setIsParentModalOpen('father')} className="p-3 bg-zinc-700 border border-zinc-600 rounded-xl text-brand-orange hover:bg-brand-orange/20 flex-shrink-0"><Plus size={20} /></button>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                             <button type="button" onClick={() => setMotherSelectorOpen(true)} className="w-full text-left bg-zinc-700 border border-zinc-600 rounded-xl p-3 text-white placeholder-zinc-500 flex justify-between items-center">
-                                                <span className={editedData.motherId ? 'text-white' : 'text-zinc-500'}>
-                                                    Madre: {editedData.motherId ? (formatAnimalDisplay(mothers.find(m => m.id === editedData.motherId)) || editedData.motherId) : 'Seleccionar...'}
-                                                </span>
-                                                <Search size={18} className="text-zinc-400" />
-                                            </button>
-                                            <button type="button" onClick={() => setIsParentModalOpen('mother')} className="p-3 bg-zinc-700 border border-zinc-600 rounded-xl text-brand-orange hover:bg-brand-orange/20 flex-shrink-0"><Plus size={20} /></button>
-                                        </div>
-                                     </div>
-                                )}
-                                {isEditing && (
-                                    <div className="flex justify-end gap-4 pt-4 border-t border-zinc-700">
-                                        <button onClick={handleCancel} className="bg-zinc-600 hover:bg-zinc-500 text-white font-bold py-2 px-6 rounded-lg flex items-center gap-2"><X size={18}/> Cancelar</button>
-                                        <button onClick={handleSave} disabled={saveStatus !== 'idle'} className="bg-brand-green hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg flex items-center gap-2 disabled:opacity-50 min-w-[130px] justify-center">
-                                            {saveStatus === 'saving' && <span className="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full"/>}
-                                            {saveStatus === 'success' && <CheckCircle size={18}/>}
-                                            {saveStatus === 'idle' && <Save size={18}/>}
-                                            <span className="ml-2">{saveStatus === 'success' ? 'Guardado' : 'Guardar'}</span>
-                                        </button>
-                                    </div>
-                                )}
+                    
+                    <div className="flex justify-between items-center">
+                        <div className="min-w-0">
+                            <h1 className="text-3xl font-mono font-bold tracking-tight text-white truncate">{animal.id.toUpperCase()}</h1>
+                            {displayFormattedName && <p className="text-lg text-zinc-400 truncate -mt-1">{displayFormattedName}</p>}
+                        </div>
+                        {alertInfo && !isEditing && (
+                            <div title={alertInfo.title} className="flex-shrink-0 ml-4">
+                                {alertInfo.icon}
                             </div>
                         )}
-                        {activeTab === 'genetics' && <GeneticsTab onOpenModal={() => setIsPedigreeModalOpen(true)} />}
-                        {activeTab === 'progeny' && <ProgenyTab offspring={progeny} navigateTo={navigateTo} />}
-                        {activeTab === 'events' && <EventsTab animal={animal} />}
                     </div>
+                    
+                    {!isEditing && (
+                        <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                            {quickActions.map((action) => (
+                                <button 
+                                    key={action.label} 
+                                    onClick={action.onClick}
+                                    disabled={action.disabled}
+                                    className={`flex-shrink-0 flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 ${action.color} font-semibold px-3 py-1.5 rounded-full text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
+                                >
+                                    <action.icon size={14} />
+                                    <span>{action.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </header>
+
+
+                <main className="px-4 space-y-4">
+                    <div className="flex bg-brand-glass rounded-xl p-1 border border-brand-border">
+                         <button onClick={() => setActiveTab('main')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'main' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Ficha</button>
+                         <button onClick={() => setActiveTab('genetics')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'genetics' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Genealogía</button>
+                         <button onClick={() => setActiveTab('progeny')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'progeny' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Progenie</button>
+                         <button onClick={() => setActiveTab('events')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'events' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Eventos</button>
+                    </div>
+                    
+                    {activeTab === 'main' && (
+                        <div className="space-y-4">
+                            <MainInfoTab
+                                animal={animal}
+                                isEditing={isEditing}
+                                editedData={editedData}
+                                setEditedData={setEditedData}
+                                origins={origins}
+                                lots={lots} 
+                                onAddOriginClick={() => setAddOriginModalOpen(true)}
+                                onAddLotClick={() => setAddLotModalOpen(true)} 
+                                allFathers={allFathers} 
+                                mothers={mothers} 
+                                navigateTo={navigateTo} 
+                            />
+                            
+                            {isEditing && (
+                                <div className="hidden">
+                                    <button id="edit-father-btn" type="button" onClick={() => setFatherSelectorOpen(true)}></button>
+                                    <button id="edit-mother-btn" type="button" onClick={() => setMotherSelectorOpen(true)}></button>
+                                </div>
+                            )}
+
+                            {!isEditing && (
+                                <div className="pt-4">
+                                    <RecentEvents events={events} /> 
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {activeTab === 'genetics' && (
+                        <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border min-h-[200px]">
+                            <GeneticsTab 
+                                animal={animal}
+                                rootNode={pedigreeRoot}
+                                navigateTo={navigateTo}
+                                onExportPDF={handleExportPedigree}
+                                isExporting={isExporting}
+                            />
+                        </div>
+                    )}
+                    {activeTab === 'progeny' && (
+                         <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border min-h-[200px]">
+                            <ProgenyTab offspring={progeny} navigateTo={navigateTo} />
+                        </div>
+                    )}
+                    {activeTab === 'events' && (
+                        <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border min-h-[200px]">
+                            <EventsTab animal={animal} events={events} />
+                        </div>
+                    )}
                 </main>
             </div>
+            
+            <HiddenPdfChart ref={pdfChartRef} rootNode={pedigreeRoot} />
+            
             {/* --- Modales --- */}
-            <Modal isOpen={isLotChangeModalOpen} onClose={() => setLotChangeModalOpen(false)} title={`Cambiar Lote para ${formatAnimalDisplay(animal)}`}>
+            <Modal isOpen={isLotChangeModalOpen} onClose={() => setLotChangeModalOpen(false)} title={`Mover a ${formatAnimalDisplay(animal)}`}>
                  <div className="space-y-4">
                      <div>
                          <label className="block text-sm font-medium text-zinc-400 mb-1">Seleccionar nuevo lote</label>
                          <div className="flex items-center gap-2">
-                             {/* --- CAMBIO: Se usa FormSelect --- */}
                              <FormSelect value={selectedNewLot} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedNewLot(e.target.value)}>
                                  <option value="">Sin Asignar</option>
                                  {lots.map(lot => <option key={lot.id} value={lot.name}>{lot.name}</option>)}
@@ -635,26 +1112,29 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
                  </div>
             </Modal>
             <ActionSheetModal isOpen={isDecommissionSheetOpen} onClose={() => setDecommissionSheetOpen(false)} title="Causa de la Baja" actions={decommissionActions} />
+            
+            {/* --- (INICIO) CORRECCIÓN DEL BUG: 'handleDecommission' -> 'handleDecommissionConfirm' --- */}
             {decommissionReason && animal && (
                 <DecommissionAnimalModal
                     isOpen={!!decommissionReason}
                     animal={animal}
                     onCancel={() => setDecommissionReason(null)}
-                    onConfirm={handleDecommission}
-                    reason={decommissionReason} // <-- Prop 'reason' añadida
+                    onConfirm={handleDecommissionConfirm} 
+                    reason={decommissionReason}
                 />
             )}
+            {/* --- (FIN) CORRECCIÓN DEL BUG --- */}
+
             <ActionSheetModal isOpen={isReferenceActionsOpen} onClose={() => setIsReferenceActionsOpen(false)} title="Acciones de Referencia" actions={referenceActions} />
             <ConfirmationModal isOpen={isDeleteConfirmationOpen} onClose={() => setIsDeleteConfirmationOpen(false)} onConfirm={handlePermanentDelete} title={`¿Eliminar ${formatAnimalDisplay(animal)} Permanentemente?`} message="Esta acción borrará el registro del animal de la base de datos para siempre y no se puede deshacer." />
             <AddLotModal isOpen={isAddLotModalOpen} onClose={() => setAddLotModalOpen(false)} />
             <AddOriginModal isOpen={isAddOriginModalOpen} onClose={() => setAddOriginModalOpen(false)} />
             <ParturitionModal isOpen={isParturitionModalOpen} onClose={() => setParturitionModalOpen(false)} motherId={animal.id} />
             <Modal isOpen={isWeanModalOpen} onClose={() => setWeanModalOpen(false)} title={`Registrar Destete de ${formatAnimalDisplay(animal)}`}> <WeanAnimalForm animalId={animal.id} birthDate={animal.birthDate} onSave={handleSaveWean} onCancel={() => setWeanModalOpen(false)} /> </Modal>
-            <PedigreeModal isOpen={isPedigreeModalOpen} onClose={() => setIsPedigreeModalOpen(false)} animalId={animal.id} navigateTo={navigateTo} />
+            
             <AnimalSelectorModal isOpen={isMotherSelectorOpen} onClose={() => setMotherSelectorOpen(false)} onSelect={(id) => { setEditedData(prev => ({ ...prev, motherId: id })); setMotherSelectorOpen(false); }} animals={mothers} title="Seleccionar Madre" filterSex="Hembra" />
             <AnimalSelectorModal isOpen={isFatherSelectorOpen} onClose={() => setFatherSelectorOpen(false)} onSelect={(id) => { setEditedData(prev => ({ ...prev, fatherId: id })); setFatherSelectorOpen(false); }} animals={allFathers} title="Seleccionar Padre" filterSex="Macho" />
             {isParentModalOpen && <AddQuickParentModal type={isParentModalOpen} onClose={() => setIsParentModalOpen(null)} onSave={handleSaveQuickParent} />}
-            {/* --- FIN Modales --- */}
         </>
     );
 }

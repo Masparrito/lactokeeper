@@ -1,3 +1,5 @@
+// src/types/navigation.ts (Corregido)
+
 // El tipo para los módulos de la aplicación, ahora en un solo lugar.
 // --- CAMBIO: Añadido 'evolucion' ---
 export type AppModule = 'rebano' | 'lactokeeper' | 'kilos' | 'salud' | 'cents' | 'evolucion';
@@ -8,7 +10,8 @@ export type PageState =
   | { name: 'lot-detail', lotName: string }
   | { name: 'sire-lot-detail', lotId: string }
   | { name: 'breeding-season-detail', seasonId: string }
-  | { name: 'herd', locationFilter?: string }
+  // --- (CORRECCIÓN) Añadida la prop kpiFilter con todos los tipos ---
+  | { name: 'herd', locationFilter?: string, kpiFilter?: 'all' | 'females' | 'vientres' | 'Cabra' | 'Cabritona' | 'Crias' | 'Reproductor' }
   | { name: 'manage-lots' }
   | { name: 'management' } 
   // --- ACTUALIZACIÓN v4.0 ---

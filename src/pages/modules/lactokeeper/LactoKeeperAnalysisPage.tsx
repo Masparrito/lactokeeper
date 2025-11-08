@@ -1,9 +1,9 @@
-// src/pages/modules/lactokeeper/LactoKeeperAnalysisPage.tsx
-
 import React, { useState, useMemo, useRef } from 'react';
 import { useData } from '../../../context/DataContext';
-import { Plus, ChevronRight, ArrowUp, ArrowDown, Sparkles, ChevronLeft, FilterX, Info, Sigma, Droplets, TrendingUp, LogIn, LogOut, Target, Search, Trash2, BarChart as BarChartIconLucide, Wind, Archive } from 'lucide-react'; // Added Loader2
-import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, LabelList } from 'recharts';
+// --- CORRECCIÓN: Imports limpios ---
+import { Plus, ChevronRight, ArrowUp, ArrowDown, Sparkles, ChevronLeft, FilterX, Info, Sigma, Droplets, TrendingUp, LogIn, LogOut, Target, Search, Trash2, BarChart as BarChartIconLucide, Wind, Archive } from 'lucide-react';
+import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, LabelList, CartesianGrid, ReferenceLine } from 'recharts';
+// ---
 import { useGaussAnalysis, AnalyzedAnimal } from '../../../hooks/useGaussAnalysis';
 import { WeighingTrendIcon } from '../../../components/ui/WeighingTrendIcon';
 import { Modal } from '../../../components/ui/Modal';
@@ -20,7 +20,6 @@ import { useDryingCandidates } from '../../../hooks/useDryingCandidates';
 import { STATUS_DEFINITIONS, AnimalStatusKey } from '../../../hooks/useAnimalStatus';
 import { ExitingAnimalsModal } from '../../../components/modals/ExitingAnimalsModal';
 import { DeleteSessionModal } from '../../../components/modals/DeleteSessionModal';
-// --- CAMBIO: Tipos no usados eliminados ---
 import { Animal } from '../../../db/local';
 
 // --- SUB-COMPONENTES ---
@@ -35,8 +34,9 @@ const KpiCard = ({ title, value, unit, icon: Icon, onClick }: { title: string, v
     </button>
 );
 
-// Componente para mostrar la fila de un animal en la lista de análisis
-const MilkingAnimalRow = ({ animal, onSelectAnimal, onOpenActions, isNewEntry }: {
+// --- CORRECCIÓN: Hook 'useWeighingTrend' movido fuera del componente de fila ---
+// Este componente wrapper calcula el trend
+const MilkingAnimalRowWrapper = ({ animal, onSelectAnimal, onOpenActions, isNewEntry }: {
     animal: AnalyzedAnimal & Animal & { formattedAge: string; statusObjects: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] },
     onSelectAnimal: (id: string) => void,
     onOpenActions: (animal: AnalyzedAnimal) => void,
@@ -44,6 +44,29 @@ const MilkingAnimalRow = ({ animal, onSelectAnimal, onOpenActions, isNewEntry }:
 }) => {
     const { weighings } = useData();
     const { trend, isLongTrend } = useWeighingTrend(animal.id, weighings);
+
+    return (
+        <MilkingAnimalRow
+            animal={animal}
+            onSelectAnimal={onSelectAnimal}
+            onOpenActions={onOpenActions}
+            isNewEntry={isNewEntry}
+            trend={trend}
+            isLongTrend={isLongTrend}
+        />
+    );
+};
+
+// Componente para mostrar la fila de un animal en la lista de análisis
+const MilkingAnimalRow = ({ animal, onSelectAnimal, onOpenActions, isNewEntry, trend, isLongTrend }: {
+    animal: AnalyzedAnimal & Animal & { formattedAge: string; statusObjects: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] },
+    onSelectAnimal: (id: string) => void,
+    onOpenActions: (animal: AnalyzedAnimal) => void,
+    isNewEntry: boolean,
+    // --- CORRECCIÓN (Error 1): Se permite 'null' ---
+    trend: 'up' | 'down' | 'stable' | 'single' | null, 
+    isLongTrend: boolean
+}) => {
     const swipeControls = useAnimation();
     const dragStarted = useRef(false);
     const buttonsWidth = 80;
@@ -116,12 +139,16 @@ const MilkingAnimalRow = ({ animal, onSelectAnimal, onOpenActions, isNewEntry }:
     );
 };
 
-// Componente para el contenido del modal de tendencia (CORREGIDO RETORNO y variable no usada)
-const TrendModalContent = ({ animalId }: { animalId: string }) => { // <-- animalId sí se usa aquí
+// --- CORRECCIÓN: 'return' añadido ---
+const TrendModalContent = ({ animalId }: { animalId: string }) => {
     const { weighings } = useData();
     const { lastTwoWeighings, difference } = useWeighingTrend(animalId, weighings);
-    if (lastTwoWeighings.length < 2) return <p>No hay suficientes datos para comparar.</p>;
-    return ( // <-- Añadido return
+    
+    if (lastTwoWeighings.length < 2) {
+        return <p>No hay suficientes datos para comparar.</p>;
+    }
+    
+    return ( // <-- return FALTABA AQUÍ
         <div className="text-center text-white space-y-4">
              <div className="grid grid-cols-2 gap-4 text-center">
                  <div>
@@ -140,17 +167,18 @@ const TrendModalContent = ({ animalId }: { animalId: string }) => { // <-- anima
                  </p>
              </div>
          </div>
-    ); // <-- Fin return
+    );
 };
 
-// Componente para las etiquetas de las barras del gráfico (CORREGIDO RETORNO y props no usada)
-const CustomBarLabel = (props: any) => { // <-- props sí se usa aquí
+// --- CORRECCIÓN: 'return' añadido ---
+const CustomBarLabel = (props: any) => {
     const { x, y, width, height, value, total } = props;
     if (total === 0 || value === 0) return null;
     const percentage = ((value / total) * 100).toFixed(0);
-    return ( // <-- Añadido return
+    
+    return ( // <-- return FALTABA AQUÍ
          <text x={x + width / 2} y={y + height / 2} fill="#fff" textAnchor="middle" dominantBaseline="middle" fontSize="14px" fontWeight="bold" opacity={0.8}>{`${percentage}%`}</text>
-    ); // <-- Fin return
+    );
 };
 
 // Props para la página de análisis
@@ -202,7 +230,7 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
         return classifiedAnimals.map(ca => {
             const originalAnimal = animalMap.get(ca.id);
             return {
-                ...originalAnimal,
+                ...(originalAnimal as Animal), // Aseguramos que 'animal' esté completamente definido
                 ...ca,
                 formattedAge: originalAnimal ? formatAge(originalAnimal.birthDate) : 'N/A',
                 statusObjects: originalAnimal ? getAnimalStatusObjects(originalAnimal, parturitions, serviceRecords, sireLots, breedingSeasons) : []
@@ -257,15 +285,32 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
         return { trendData, kpi: { total, max, min }, topPerformer, bottomPerformer, consistency: { percentage: consistencyPercentage }, newAnimalIds, exitingAnimalIds };
     }, [classifiedAnimals, classifiedAnimalsWithStatus, previousDayAnalysis.classifiedAnimals, availableDates, dateIndex, weighingsByDate, mean, stdDev]);
 
-    const { searchTerm, setSearchTerm, filteredItems } = useSearch(classifiedAnimalsWithStatus, ['id', 'name']);
+    // --- (INICIO) CORRECCIÓN ERRORES 2-8: Lógica de 'useSearch' y 'finalAnimalList' ---
+    
+    // 1. Llamar a useSearch PRIMERO con la lista base
+    // CORRECCIÓN: Se añade el tipo explícito para 'filteredItems'
+    const { searchTerm, setSearchTerm, filteredItems } = useSearch(
+        classifiedAnimalsWithStatus, 
+        ['id', 'name']
+    ) as { 
+        searchTerm: string; 
+        setSearchTerm: (term: string) => void; 
+        filteredItems: (AnalyzedAnimal & Animal & { formattedAge: string; statusObjects: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] })[]; 
+    };
 
+    // 2. 'finalAnimalList' ahora filtra los 'filteredItems' (que vienen de useSearch)
     const finalAnimalList = useMemo(() => {
-        let list: (AnalyzedAnimal & Animal & { formattedAge: string; statusObjects: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] })[] = searchTerm ? filteredItems : classifiedAnimalsWithStatus;
+        let list = filteredItems; // Empezar con la lista ya filtrada por búsqueda
 
-        if (classificationFilter !== 'all') { list = list.filter(a => a.classification === classificationFilter); }
-        if (specialFilter === 'new') { list = list.filter(animal => pageData.newAnimalIds.has(animal.id)); }
-        if (trendFilter !== 'all') {
-             list = list.filter(animal => { const { trend } = useWeighingTrend(animal.id, weighings); return trend === trendFilter; });
+        if (classificationFilter !== 'all') { 
+            list = list.filter(a => a.classification === classificationFilter); 
+        }
+        if (specialFilter === 'new') { 
+            list = list.filter(animal => pageData.newAnimalIds.has(animal.id)); 
+        }
+        if (trendFilter !== 'all') { 
+            // CORRECCIÓN: Usar la propiedad 'trend' que ya existe en el objeto
+            list = list.filter(animal => animal.trend === trendFilter); 
         }
         if (lactationPhaseFilter !== 'all') {
             list = list.filter(animal => {
@@ -279,7 +324,10 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
             });
         }
         return list.sort((a,b) => b.latestWeighing - a.latestWeighing);
-    }, [searchTerm, filteredItems, classifiedAnimalsWithStatus, classificationFilter, trendFilter, lactationPhaseFilter, specialFilter, pageData.newAnimalIds, dryingCandidateIds, weighings]);
+    }, [filteredItems, classificationFilter, trendFilter, lactationPhaseFilter, specialFilter, pageData.newAnimalIds, dryingCandidateIds]); 
+    
+    // --- (FIN) CORRECCIÓN ERRORES 2-8 ---
+
 
     const trendCounts = useMemo(() => {
         const totalWithHistory = classifiedAnimals.filter(a => !pageData.newAnimalIds.has(a.id)).length;
@@ -364,14 +412,16 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
                         <div className="w-full h-48">
                             <ResponsiveContainer>
                                 <BarChart data={distribution} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                                    {/* CORRECCIÓN: CartesianGrid y ReferenceLine restaurados */}
+                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
                                     <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
                                     <YAxis orientation="left" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} allowDecimals={false}/>
                                     <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(255, 255, 255, 0.05)'}} />
                                     <Bar dataKey="count" onClick={handleBarClick} cursor="pointer">
                                         {distribution.map((entry) => (<Cell key={entry.name} fill={entry.fill} className={`${classificationFilter !== 'all' && classificationFilter !== entry.name ? 'opacity-30' : 'opacity-100'} transition-opacity`} />))}
-                                        {/* --- CAMBIO: Se pasa el componente CustomBarLabel --- */}
                                         <LabelList dataKey="count" content={<CustomBarLabel total={classifiedAnimals.length} />} />
                                     </Bar>
+                                    <ReferenceLine x={mean.toFixed(2)} stroke="#34C759" strokeWidth={2} label={{ value: `μ`, fill: '#34C759', position: 'insideTopLeft' }} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -414,8 +464,15 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
                 <div className="pt-2 space-y-0 pb-4">
                     {finalAnimalList.length > 0 ? (
                         <div className="bg-brand-glass rounded-2xl border border-brand-border overflow-hidden mx-4">
-                            {finalAnimalList.map(animal => (
-                                <MilkingAnimalRow key={animal.id} animal={animal} onSelectAnimal={onSelectAnimal} onOpenActions={handleOpenActions} isNewEntry={pageData.newAnimalIds.has(animal.id)}/>
+                            {/* --- CORRECCIÓN (Error 9): Tipo 'animal' añadido --- */}
+                            {finalAnimalList.map((animal: AnalyzedAnimal & Animal & { formattedAge: string; statusObjects: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] }) => (
+                                <MilkingAnimalRowWrapper 
+                                    key={animal.id} 
+                                    animal={animal} 
+                                    onSelectAnimal={onSelectAnimal} 
+                                    onOpenActions={handleOpenActions} 
+                                    isNewEntry={pageData.newAnimalIds.has(animal.id)}
+                                />
                             ))}
                         </div>
                     ) : (
@@ -438,8 +495,8 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
             </Modal>
             <Modal isOpen={activeModal === 'rango'} onClose={() => setActiveModal(null)} title="Extremos de Producción del Día">
                  <div className="space-y-4">
-                     {pageData.topPerformer && <div className="bg-green-900/40 border border-green-500/50 rounded-2xl p-4"><h3 className="font-semibold text-brand-green mb-2">Producción Máxima</h3><MilkingAnimalRow animal={pageData.topPerformer} onSelectAnimal={() => { setActiveModal(null); onSelectAnimal(pageData.topPerformer!.id); }} onOpenActions={handleOpenActions} isNewEntry={pageData.newAnimalIds.has(pageData.topPerformer.id)} /></div>}
-                     {pageData.bottomPerformer && <div className="bg-red-900/40 border border-red-500/50 rounded-2xl p-4"><h3 className="font-semibold text-brand-red mb-2">Producción Mínima</h3><MilkingAnimalRow animal={pageData.bottomPerformer} onSelectAnimal={() => { setActiveModal(null); onSelectAnimal(pageData.bottomPerformer!.id); }} onOpenActions={handleOpenActions} isNewEntry={pageData.newAnimalIds.has(pageData.bottomPerformer.id)} /></div>}
+                     {pageData.topPerformer && <div className="bg-green-900/40 border border-green-500/50 rounded-2xl p-4"><h3 className="font-semibold text-brand-green mb-2">Producción Máxima</h3><MilkingAnimalRowWrapper animal={pageData.topPerformer} onSelectAnimal={() => { setActiveModal(null); onSelectAnimal(pageData.topPerformer!.id); }} onOpenActions={handleOpenActions} isNewEntry={pageData.newAnimalIds.has(pageData.topPerformer.id)} /></div>}
+                     {pageData.bottomPerformer && <div className="bg-red-900/40 border border-red-500/50 rounded-2xl p-4"><h3 className="font-semibold text-brand-red mb-2">Producción Mínima</h3><MilkingAnimalRowWrapper animal={pageData.bottomPerformer} onSelectAnimal={() => { setActiveModal(null); onSelectAnimal(pageData.bottomPerformer!.id); }} onOpenActions={handleOpenActions} isNewEntry={pageData.newAnimalIds.has(pageData.bottomPerformer.id)} /></div>}
                  </div>
             </Modal>
             <Modal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} title="¿Qué es el Análisis del Ordeño?">
@@ -449,7 +506,6 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
                 <div className="text-zinc-300 space-y-4 text-base"><p>Ajusta la producción para premiar la **persistencia lechera**.</p><div><h4 className="font-semibold text-white mb-1">Fórmula</h4><div className="bg-black/30 p-3 rounded-lg text-sm font-mono text-center text-orange-300">Score = Kg × (1 + ((DEL - 50) / (DEL + 50)))</div></div><p className="pt-2 border-t border-zinc-700/80 text-sm">2 Kg en día **200** valen más que 2 Kg en día 40.</p></div>
             </Modal>
 
-            {/* --- CAMBIO: Modal de Tendencia --- */}
             {trendModalAnimal && <Modal isOpen={!!trendModalAnimal} onClose={() => setTrendModalAnimal(null)} title={`Tendencia de ${formatAnimalDisplay(trendModalAnimal)}`}>
                 <TrendModalContent animalId={trendModalAnimal.id} />
             </Modal>}
