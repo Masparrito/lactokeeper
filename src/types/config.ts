@@ -1,3 +1,5 @@
+// types/config.ts (Actualizado)
+
 /**
  * Define la estructura de todos los parámetros configurables de la finca.
  * Estos valores se almacenarán en un único documento en Firestore (/configuracion/{userId})
@@ -12,23 +14,33 @@ export interface AppConfig {
     pesoPrimerServicioKg: number;
     edadPrimerServicioMeses: number; 
     diasGestacion: number;
-    diasConfirmarPrenez: number; // Alerta para confirmar preñez (eco/palpación)
-    diasPreParto: number; // Alerta para mover a lote de pre-parto
+    diasConfirmarPrenez: number;
+    diasPreParto: number; 
+    edadParaAlertaVaciasMeses: number; 
+
+    // --- Lógica de Vientres ---
+    edadMinimaVientreMeses: number;
 
     // --- Parámetros de Manejo (Productivo y Secado) ---
-    diasLactanciaObjetivo: number; // (Alerta Vacías) Días máx de lactancia si está vacía
-    // (NUEVO) Alerta 1 de Secado: Días ANTES del parto para INICIAR secado
+    diasLactanciaObjetivo: number; 
     diasAlertaInicioSecado: number;
-    // (NUEVO) Alerta 2 de Secado: Días ANTES del parto en que DEBE ESTAR seca
     diasMetaSecadoCompleto: number; 
 
     // --- Parámetros de Manejo (Crecimiento y Destete) ---
-    // (NUEVO) Alerta 1 de Destete: Edad y peso para la PRIMERA revisión
     diasAlertaPesarDestete: number;
     pesoMinimoPesarDestete: number;
-    // (NUEVO) Alerta 2 de Destete: Edad y peso para el destete FINAL
     diasMetaDesteteFinal: number;
     pesoMinimoDesteteFinal: number;
+
+    // --- Lógica de Categorías Zootécnicas ---
+    categoriaCabritaEdadMaximaDias: number;
+    categoriaCabritoEdadMaximaDias: number;
+    categoriaCabritonaEdadMinimaDias: number;
+    categoriaCabritonaEdadMaximaMeses: number; // <-- Ajustado
+    categoriaCabraEdadMinimaMeses: number;     // <-- Ajustado
+    categoriaCabraRequiereParto: boolean;
+    categoriaMachoLevanteEdadMinimaDias: number;
+    categoriaMachoLevanteEdadMaximaMeses: number;
 }
 
 /**
@@ -46,15 +58,29 @@ export const DEFAULT_CONFIG: AppConfig = {
     diasGestacion: 150,
     diasConfirmarPrenez: 60,
     diasPreParto: 15,
+    edadParaAlertaVaciasMeses: 19, // (Esto es para ALERTA, no para el icono 'vacía')
+    
+    // Lógica de Vientres
+    edadMinimaVientreMeses: 10,
 
     // Productivo y Secado
-    diasLactanciaObjetivo: 300, // (Tu valor)
-    diasAlertaInicioSecado: 75, // (Tu valor)
-    diasMetaSecadoCompleto: 60, // (Tu valor)
+    diasLactanciaObjetivo: 300, 
+    diasAlertaInicioSecado: 75, 
+    diasMetaSecadoCompleto: 60, 
 
     // Crecimiento y Destete
-    diasAlertaPesarDestete: 45, // (Tu valor)
-    pesoMinimoPesarDestete: 9.0, // (Tu valor)
-    diasMetaDesteteFinal: 52, // (Tu valor)
-    pesoMinimoDesteteFinal: 9.5, // (Tu valor)
+    diasAlertaPesarDestete: 45,
+    pesoMinimoPesarDestete: 9.0,
+    diasMetaDesteteFinal: 52, 
+    pesoMinimoDesteteFinal: 9.5, 
+
+    // Lógica de Categorías (AJUSTADO)
+    categoriaCabritaEdadMaximaDias: 90,
+    categoriaCabritoEdadMaximaDias: 90,
+    categoriaCabritonaEdadMinimaDias: 91,
+    categoriaCabritonaEdadMaximaMeses: 12, // <-- CORREGIDO a 12
+    categoriaCabraEdadMinimaMeses: 12,     // <-- CORREGIDO a 12
+    categoriaCabraRequiereParto: true,
+    categoriaMachoLevanteEdadMinimaDias: 91,
+    categoriaMachoLevanteEdadMaximaMeses: 12,
 };

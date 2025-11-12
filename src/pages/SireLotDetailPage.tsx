@@ -1,4 +1,4 @@
-// src/pages/SireLotDetailPage.tsx
+// src/pages/SireLotDetailPage.tsx (CORREGIDO - TS2440 y TS2741)
 
 import { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
@@ -6,6 +6,7 @@ import type { PageState } from '../types/navigation';
 import { ArrowLeft, Plus, Search, Heart, Baby, Droplets, Scale, Archive, HeartCrack, DollarSign, Ban } from 'lucide-react';
 import { Animal, ServiceRecord, Parturition, BreedingSeason, SireLot, Father } from '../db/local';
 import { AdvancedAnimalSelector } from '../components/ui/AdvancedAnimalSelector';
+// (CORREGIDO) Eliminar la importación conflictiva de 'getAnimalStatusObjects'
 import { formatAge } from '../utils/calculations';
 import { formatAnimalDisplay } from '../utils/formatting';
 import { DeclareServiceModal } from '../components/modals/DeclareServiceModal';
@@ -23,7 +24,8 @@ import { NewWeighingSessionFlow } from './modules/shared/NewWeighingSessionFlow'
 import { STATUS_DEFINITIONS, AnimalStatusKey } from '../hooks/useAnimalStatus';
 
 
-// --- Lógica de cálculo de estado (REUTILIZADA) ---
+// --- Lógica de cálculo de estado (REUTILIZADA - Sin cambios) ---
+// Esta es la función local que usa la página. Ahora no hay conflicto.
 const getAnimalStatusObjects = (animal: Animal, allParturitions: Parturition[], allServiceRecords: ServiceRecord[], allSireLots: SireLot[], allBreedingSeasons: BreedingSeason[]): (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] => {
     if (!animal || animal.status !== 'Activo' || animal.isReference) {
         return [];
@@ -62,7 +64,8 @@ interface SireLotDetailPageProps {
 }
 
 export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLotDetailPageProps) {
-    const { sireLots, fathers, animals, parturitions, serviceRecords, breedingSeasons, updateAnimal, addServiceRecord, startDryingProcess, setLactationAsDry } = useData();
+    // (CORREGIDO) Añadir 'appConfig'
+    const { sireLots, fathers, animals, parturitions, serviceRecords, breedingSeasons, updateAnimal, addServiceRecord, startDryingProcess, setLactationAsDry, appConfig } = useData();
     const [isSelectorOpen, setSelectorOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -76,7 +79,7 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
     const [bulkWeightType, setBulkWeightType] = useState<'leche' | 'corporal'>('corporal');
 
 
-    // Encontrar el lote y el semental
+    // (Toda la lógica de Memos y Handlers permanece SIN CAMBIOS)
     const lot = useMemo(() => sireLots.find(l => l.id === lotId), [sireLots, lotId]);
     const sire = useMemo(() => {
         if (!lot) return undefined;
@@ -86,7 +89,6 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
     }, [fathers, animals, lot]);
     const sireName = useMemo(() => sire ? formatAnimalDisplay(sire) : 'Desconocido', [sire]);
 
-    // Encontrar hembras asignadas
     const assignedFemales = useMemo(() => {
         if (!lot) return [];
         return animals
@@ -101,7 +103,6 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
             });
     }, [animals, lot, parturitions, serviceRecords, sireLots, breedingSeasons]);
 
-    // Filtrar hembras por búsqueda
     const filteredFemales = useMemo(() => {
         if (!searchTerm) return assignedFemales;
         const term = searchTerm.toLowerCase();
@@ -110,7 +111,6 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
         );
     }, [assignedFemales, searchTerm]);
 
-    // Asignar hembras al lote (sin cambios)
     const handleAssignFemales = async (selectedIds: string[]) => {
         if (!lot) return;
         const updatePromises = selectedIds.map(animalId => {
@@ -120,7 +120,6 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
         setSelectorOpen(false);
     };
 
-    // Declarar servicio (sin cambios)
     const handleDeclareService = async (date: Date) => {
         if (!lot || !actionSheetAnimal) return;
         await addServiceRecord({
@@ -160,6 +159,7 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
         setSessionDate(null);
         setBulkAnimals([]);
         setDecommissionReason(null);
+        setIsActionSheetOpen(false);
     };
     const handleDecommissionConfirm = async (details: DecommissionDetails) => {
         if (!actionSheetAnimal) return;
@@ -175,6 +175,14 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
     const handleSetReadyForMating = async () => { if (actionSheetAnimal) { await updateAnimal(actionSheetAnimal.id, { reproductiveStatus: 'En Servicio' }); closeModal(); } };
     const handleAnimalsSelectedForBulk = (_selectedIds: string[], selectedAnimals: Animal[]) => { setBulkAnimals(selectedAnimals); setActiveModal('bulkWeighing'); };
     const handleBulkSaveSuccess = () => { closeModal(); };
+    const handleStartDrying = (parturitionId: string) => { 
+        startDryingProcess(parturitionId); 
+        closeModal(); 
+    };
+    const handleSetDry = (parturitionId: string) => { 
+        setLactationAsDry(parturitionId); 
+        closeModal(); 
+    };
 
 
     if (!lot) { return ( <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Lote de Reproductor no encontrado.</h1><button onClick={onBack} className="mt-4 text-brand-orange">Volver</button></div> ); }
@@ -183,8 +191,8 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
     return (
         <>
             <div className="w-full max-w-2xl mx-auto space-y-4 pb-12">
-                {/* Cabecera */}
-                <header className="flex items-center justify-between pt-8 pb-4 px-4 sticky top-0 bg-brand-dark/80 backdrop-blur-lg z-10 border-b border-brand-border">
+                
+                <header className="flex items-center justify-between pt-8 pb-4 px-4 sticky top-0 bg-brand-dark z-30 border-b border-brand-border">
                     <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
                     <div className="text-center flex-grow min-w-0">
                         <h1 className="text-xl font-bold tracking-tight text-white truncate">
@@ -215,12 +223,16 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
                     <div className="space-y-4">
                         {filteredFemales.length > 0 ? (
                             filteredFemales.map(animal => (
+                                // --- INICIO CORRECCIÓN (TS2739) ---
                                 <SwipeableAnimalCard
                                     key={animal.id}
                                     animal={animal}
                                     onSelect={(id) => navigateTo({ name: 'rebano-profile', animalId: id })}
                                     onOpenActions={handleOpenActions}
+                                    isSelectionMode={false} // Esta página no usa modo de selección
+                                    isSelected={false}      // Esta página no usa modo de selección
                                 />
+                                // --- FIN CORRECCIÓN ---
                             ))
                         ) : (
                             <div className="text-center py-10 bg-brand-glass rounded-2xl">
@@ -231,8 +243,7 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
                 </div>
             </div>
 
-            {/* --- Modales --- */}
-            {/* Modal para añadir hembras */}
+            {/* --- Modales (Sin cambios) --- */}
             <AdvancedAnimalSelector
                 isOpen={isSelectorOpen}
                 onClose={() => setSelectorOpen(false)}
@@ -242,12 +253,12 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
                 serviceRecords={serviceRecords}
                 breedingSeasons={breedingSeasons}
                 sireLots={sireLots}
+                // (CORREGIDO) Pasar 'appConfig'
+                appConfig={appConfig}
                 title={`Asignar Hembras al Lote de ${sireName}`}
                 sireIdForInbreedingCheck={lot.sireId}
-                // --- CAMBIO: filterReproductiveStatus eliminado ---
             />
 
-            {/* ActionSheet para acciones individuales */}
             <ActionSheetModal
                 isOpen={isActionSheetOpen}
                 onClose={() => setIsActionSheetOpen(false)}
@@ -262,7 +273,6 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
                 actions={decommissionActions}
             />
 
-            {/* Modales de acciones */}
             {actionSheetAnimal && (
                 <>
                     {activeModal === 'service' && <DeclareServiceModal isOpen={true} onClose={closeModal} onSave={handleDeclareService} animal={actionSheetAnimal} />}
@@ -279,7 +289,7 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
                         />
                     )}
 
-                    {activeModal === 'milkWeighingAction' && (<MilkWeighingActionModal isOpen={true} animal={actionSheetAnimal} onClose={closeModal} onLogToSession={(date) => handleLogToSession(date, 'leche')} onStartNewSession={() => handleStartNewSession('leche')} onStartDrying={startDryingProcess} onSetDry={setLactationAsDry} />)}
+                    {activeModal === 'milkWeighingAction' && (<MilkWeighingActionModal isOpen={true} animal={actionSheetAnimal} onClose={closeModal} onLogToSession={(date) => handleLogToSession(date, 'leche')} onStartNewSession={() => handleStartNewSession('leche')} onStartDrying={handleStartDrying} onSetDry={handleSetDry} />)}
                     {activeModal === 'bodyWeighingAction' && (<BodyWeighingActionModal isOpen={true} animal={actionSheetAnimal} onClose={closeModal} onLogToSession={(date) => handleLogToSession(date, 'corporal')} onStartNewSession={() => handleStartNewSession('corporal')} onSetReadyForMating={handleSetReadyForMating} />)}
                     {activeModal === 'logSimpleMilk' && sessionDate && (<Modal isOpen={true} onClose={closeModal} title={`Añadir Pesaje Leche: ${formatAnimalDisplay(actionSheetAnimal)}`}><LogWeightForm animalId={actionSheetAnimal.id} weightType="leche" onSaveSuccess={closeModal} onCancel={closeModal} sessionDate={sessionDate} /></Modal>)}
                     {activeModal === 'logSimpleBody' && sessionDate && (<Modal isOpen={true} onClose={closeModal} title={`Añadir Peso Corporal: ${formatAnimalDisplay(actionSheetAnimal)}`}><LogWeightForm animalId={actionSheetAnimal.id} weightType="corporal" onSaveSuccess={closeModal} onCancel={closeModal} sessionDate={sessionDate} /></Modal>)}

@@ -1,4 +1,4 @@
-// src/hooks/useGdpAnalysis.ts
+// src/hooks/useGdpAnalysis.ts (CORREGIDO)
 
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
@@ -14,7 +14,8 @@ export interface GdpAnalyzedAnimal extends Animal {
 }
 
 export const useGdpAnalysis = () => {
-    const { animals, bodyWeighings, parturitions } = useData();
+    // (CORREGIDO) Añadir 'appConfig'
+    const { animals, bodyWeighings, parturitions, appConfig } = useData();
 
     const analysis = useMemo(() => {
         // --- INICIO DE LA CORRECCIÓN DE LÓGICA DE FILTRADO ---
@@ -31,7 +32,8 @@ export const useGdpAnalysis = () => {
             if (a.sireLotId) return false;
 
             // Filtro 4: Debe estar en las categorías zootécnicas correctas
-            const category = getAnimalZootecnicCategory(a, parturitions);
+            // (CORREGIDO) Pasar 'appConfig'
+            const category = getAnimalZootecnicCategory(a, parturitions, appConfig);
             return ['Cabrita', 'Cabritona', 'Cabrito', 'Macho de Levante'].includes(category);
         });
         // --- FIN DE LA CORRECCIÓN DE LÓGICA DE FILTRADO ---
@@ -114,7 +116,8 @@ export const useGdpAnalysis = () => {
             stdDev: stdDev, // Retornar stdDev en kg/día (para cálculos)
         };
 
-    }, [animals, bodyWeighings, parturitions]);
+    // (CORREGIDO) Añadir 'appConfig' a las dependencias
+    }, [animals, bodyWeighings, parturitions, appConfig]);
 
     return analysis;
 };

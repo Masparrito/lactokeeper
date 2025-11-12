@@ -1,4 +1,4 @@
-// src/pages/ManageLotsPage.tsx
+// src/pages/ManageLotsPage.tsx (CORREGIDO)
 
 import { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
@@ -20,7 +20,9 @@ export default function ManageLotsPage({ onBack }: ManageLotsPageProps) {
       sireLots, 
       addLot, 
       deleteLot, 
-      updateAnimal 
+      updateAnimal,
+      // (CORREGIDO) Añadir 'appConfig'
+      appConfig
     } = useData();
 
     const [newLotName, setNewLotName] = useState('');
@@ -95,7 +97,7 @@ export default function ManageLotsPage({ onBack }: ManageLotsPageProps) {
                         <p className="text-md text-zinc-400">Crea ubicaciones y asigna animales</p>
                     </div>
                     <div className="w-8"></div>
-                </header>
+section-end                 </header>
 
                 <div className="px-4">
                     <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border space-y-4">
@@ -120,7 +122,7 @@ export default function ManageLotsPage({ onBack }: ManageLotsPageProps) {
                                 <div className="flex items-center gap-2">
                                     <button onClick={() => handleOpenSelector(lot.name)} className="flex items-center gap-2 bg-zinc-700/80 text-white font-semibold py-2 px-3 rounded-lg hover:bg-zinc-600/80 transition-colors"><Users size={16} /> Asignar</button>
                                     <button onClick={() => handleDeleteLot(lot.id, lot.animalCount)} className="p-2 text-zinc-500 hover:text-brand-red transition-colors"><Trash2 size={18} /></button>
-                                </div>
+section-end                                 </div>
                             </div>
                         ))
                     ) : (
@@ -132,12 +134,14 @@ export default function ManageLotsPage({ onBack }: ManageLotsPageProps) {
             <AdvancedAnimalSelector
                 isOpen={isSelectorOpen}
                 onClose={() => setSelectorOpen(false)}
-                onSelect={handleAssignAnimals}
+  section-end             onSelect={handleAssignAnimals}
                 animals={animals}
                 parturitions={parturitions}
                 serviceRecords={serviceRecords}
                 breedingSeasons={breedingSeasons}
                 sireLots={sireLots}
+                // (CORREGIDO) Pasar 'appConfig'
+                appConfig={appConfig}
                 title={`Asignar animales a: ${selectedLot}`}
             />
         </>

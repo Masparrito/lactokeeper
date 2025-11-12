@@ -1,3 +1,5 @@
+// src/pages/ManagementPage.tsx (CORREGIDO)
+
 import React, { useMemo, useState } from 'react';
 import { useManagementAlerts, ManagementAlert } from '../hooks/useManagementAlerts';
 import type { PageState } from '../types/navigation';
@@ -119,8 +121,8 @@ export default function ManagementPage({ navigateTo, onBack }: ManagementPagePro
     return (
         <div className="w-full max-w-lg mx-auto pb-8">
             
-            {/* --- (CORRECCIÓN) Header ahora incluye el botón 'onBack' --- */}
-            <div className="sticky top-0 z-10 bg-gray-900/80 backdrop-blur-lg pt-4 pb-4 px-4">
+            {/* --- (CORRECCIÓN DE COLOR) Header ahora usa el fondo de la app y borde --- */}
+            <div className="sticky top-0 z-10 bg-[#1C1C1E] pt-4 pb-4 px-4 border-b border-brand-border">
                 {/* Botón de Volver */}
                 <div className="absolute top-4 left-4">
                     <button onClick={onBack} className="p-2 text-zinc-400 hover:text-white transition-colors">

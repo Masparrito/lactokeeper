@@ -1,4 +1,4 @@
-// src/components/modals/BodyWeighingActionModal.tsx
+// src/components/modals/BodyWeighingActionModal.tsx (CORREGIDO)
 
 import React, { useMemo } from 'react';
 import { useData } from '../../context/DataContext';
@@ -28,7 +28,8 @@ export const BodyWeighingActionModal: React.FC<BodyWeighingActionModalProps> = (
   onSetReadyForMating,
 }) => {
   // Get data from context
-  const { bodyWeighings, parturitions } = useData();
+  // (CORREGIDO) Añadir 'appConfig'
+  const { bodyWeighings, parturitions, appConfig } = useData();
 
   // Memoize recent body weighing session dates
   const recentSessions = useMemo(() => {
@@ -40,7 +41,9 @@ export const BodyWeighingActionModal: React.FC<BodyWeighingActionModalProps> = (
   }, [bodyWeighings]); // Recalculate if bodyWeighings change
 
   // Determine zootecnic category for conditional actions
-  const zootecnicCategory = getAnimalZootecnicCategory(animal, parturitions);
+  // (CORREGIDO) Pasar 'appConfig' como tercer argumento
+  const zootecnicCategory = getAnimalZootecnicCategory(animal, parturitions, appConfig);
+  
   // Check if the "Ready for Mating" action should be available
   const isReadyForMatingAction = zootecnicCategory === 'Cabritona' && animal.reproductiveStatus === 'Vacía';
 

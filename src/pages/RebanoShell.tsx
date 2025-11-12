@@ -1,3 +1,5 @@
+// src/pages/RebanoShell.tsx (CORREGIDO)
+
 import { useState, useEffect, useRef } from 'react';
 import LotsDashboardPage from './LotsDashboardPage';
 import LotDetailPage from './LotDetailPage';
@@ -12,7 +14,8 @@ import LactationProfilePage from './LactationProfilePage';
 import FeedingPlanPage from './FeedingPlanPage';
 import BatchTreatmentPage from './BatchTreatmentPage';
 import GrowthProfilePage from './modules/kilos/GrowthProfilePage';
-import OcrPage from './OcrPage';
+// (CORREGIDO) 'OcrPage' eliminado. Ya no es una página de nivel superior.
+// import OcrPage from './BatchImportPage'; 
 import FarmCalendarPage from './FarmCalendarPage';
 import BirthingSeasonDetailPage from './BirthingSeasonDetailPage';
 import ConfiguracionPage from './ConfiguracionPage'; 
@@ -46,6 +49,12 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
     const allAlerts = useManagementAlerts();
     const hasAlerts = allAlerts.length > 0;
 
+    const [viewMode, setViewMode] = useState<'Activos' | 'Referencia'>('Activos');
+    const [categoryFilter, setCategoryFilter] = useState<string>('Todos');
+    const [productiveFilter, setProductiveFilter] = useState<string>('ALL');
+    const [reproductiveFilter, setReproductiveFilter] = useState<string>('ALL');
+    const [decommissionFilter, setDecommissionFilter] = useState<'all' | 'Venta' | 'Muerte' | 'Descarte'>('all');
+
     useEffect(() => {
         if (initialState && initialState.page) {
             setPage(initialState.page);
@@ -59,7 +68,8 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
     const navItems = [
         { id: 'lots-dashboard', page: { name: 'lots-dashboard' }, label: 'Lotes', icon: GiBarn, mapsTo: ['lots-dashboard', 'lot-detail', 'breeding-season-detail', 'sire-lot-detail', 'feeding-plan', 'batch-treatment'] },
         { id: 'herd', page: { name: 'herd' }, label: 'Rebaño', icon: FaCow, mapsTo: ['herd', 'rebano-profile', 'manage-lots', 'lactation-profile', 'growth-profile', 'configuracion', 'management'] },
-        { id: 'add-animal', page: { name: 'add-animal' }, label: 'Añadir', icon: PlusCircle, mapsTo: ['add-animal', 'ocr'] },
+        // (CORREGIDO) El 'mapsTo' de 'add-animal' ya no incluye 'ocr'
+        { id: 'add-animal', page: { name: 'add-animal' }, label: 'Añadir', icon: PlusCircle, mapsTo: ['add-animal'] },
         { id: 'farm-calendar', page: { name: 'farm-calendar' }, label: 'Calendario', icon: CalendarDays, mapsTo: ['farm-calendar', 'birthing-season-detail'] },
         { id: 'modules', label: 'Módulos', icon: Grid, mapsTo: [] }, 
     ] as const;
@@ -100,8 +110,22 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
 
         switch (page.name) {
             case 'lots-dashboard': return <LotsDashboardPage navigateTo={navigateTo} />;
-            case 'lot-detail': return <LotDetailPage lotName={page.lotName} onBack={navigateBack} navigateTo={navigateTo} />;
-            case 'breeding-season-detail': return <BreedingSeasonDetailPage seasonId={page.seasonId} onBack={navigateBack} navigateTo={navigateTo} />;
+            
+            case 'lot-detail': 
+                return <LotDetailPage 
+                    lotName={page.lotName} 
+                    onBack={navigateBack} 
+                    navigateTo={navigateTo} 
+                    scrollContainerRef={mainScrollRef}
+                />;
+            
+            case 'breeding-season-detail': 
+                return <BreedingSeasonDetailPage 
+                    seasonId={page.seasonId} 
+                    onBack={navigateBack} 
+                    navigateTo={navigateTo} 
+                />;
+
             case 'sire-lot-detail': return <SireLotDetailPage lotId={page.lotId} onBack={navigateBack} navigateTo={navigateTo} />;
             case 'herd': 
                 return <HerdPage 
@@ -109,6 +133,20 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
                     locationFilter={page.locationFilter}
                     kpiFilter={page.kpiFilter}
                     scrollContainerRef={mainScrollRef} 
+                    filterStates={{
+                        viewMode,
+                        categoryFilter,
+                        productiveFilter,
+                        reproductiveFilter,
+                        decommissionFilter
+                    }}
+                    filterSetters={{
+                        setViewMode,
+                        setCategoryFilter,
+                        setProductiveFilter,
+                        setReproductiveFilter,
+                        setDecommissionFilter
+                    }}
                 />;
             case 'manage-lots': return <ManageLotsPage onBack={() => handleNavClick(navItems.find(i => i.id === 'herd')!)} />;
             case 'management': return <ManagementPage navigateTo={navigateTo} onBack={navigateBack} />; 
@@ -116,7 +154,10 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
             case 'rebano-profile': return <RebanoProfilePage animalId={page.animalId} onBack={navigateBack} navigateTo={navigateTo} />;
             case 'lactation-profile': return <LactationProfilePage animalId={page.animalId} onBack={navigateBack} navigateTo={navigateTo} />;
             case 'growth-profile': return <GrowthProfilePage animalId={page.animalId} onBack={navigateBack} />;
-            case 'ocr': return <OcrPage onBack={navigateBack} />;
+            
+            // (CORREGIDO) Caso 'ocr' eliminado. TS2739 resuelto.
+            // case 'ocr': return <OcrPage onBack={navigateBack} />;
+
             case 'feeding-plan': return <FeedingPlanPage lotName={page.lotName} onBack={navigateBack} />;
             case 'batch-treatment': return <BatchTreatmentPage lotName={page.lotName} onBack={navigateBack} />;
             case 'farm-calendar': return <FarmCalendarPage navigateTo={navigateTo} />;
@@ -181,8 +222,7 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
                     let buttonClasses = `relative flex flex-col items-center justify-center pt-3 pb-2 w-full transition-colors `;
 
                     if (isAddButton) {
-                        // --- CAMBIO AQUÍ: Eliminado el fondo naranja, solo texto/icono naranja ---
-                        buttonClasses += `text-brand-orange hover:bg-white/5`; // Fondo sutil al hacer hover
+                        buttonClasses += `text-brand-orange hover:bg-white/5`;
                     } else if (isActive) {
                         buttonClasses += `text-amber-400`;
                     } else {

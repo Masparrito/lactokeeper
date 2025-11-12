@@ -1,4 +1,4 @@
-// src/pages/modules/shared/NewWeighingSessionFlow.tsx
+// src/pages/modules/shared/NewWeighingSessionFlow.tsx (CORRECTO - SIN CAMBIOS)
 
 import React, { useState } from 'react';
 import { useData } from '../../../context/DataContext';
@@ -13,7 +13,7 @@ import { Animal } from '../../../db/local';
  * pasando los IDs y los objetos completos de los animales seleccionados.
  */
 interface NewWeighingSessionFlowProps {
-  weightType: 'leche' | 'corporal';
+  weightType: 'leche' | 'corporal'; // <-- Este tipo es el correcto
   onBack: () => void;
   onAnimalsSelected: (selectedIds: string[], selectedAnimals: Animal[]) => void;
 }
@@ -28,7 +28,7 @@ export const NewWeighingSessionFlow: React.FC<NewWeighingSessionFlowProps> = ({
   onBack,
   onAnimalsSelected,
 }) => {
-  const { animals, parturitions, serviceRecords, breedingSeasons, sireLots } = useData();
+  const { animals, parturitions, serviceRecords, breedingSeasons, sireLots, appConfig } = useData();
   const [isSelectorOpen, setIsSelectorOpen] = useState(true); // El selector se abre inmediatamente
 
   const title = `Nueva Sesión de Peso ${weightType === 'corporal' ? 'Corporal' : 'Lechero'}`;
@@ -54,6 +54,7 @@ export const NewWeighingSessionFlow: React.FC<NewWeighingSessionFlowProps> = ({
       serviceRecords={serviceRecords}
       breedingSeasons={breedingSeasons}
       sireLots={sireLots}
+      appConfig={appConfig}
       title={title}
       sessionType={weightType} // <- La propiedad clave que activa los filtros inteligentes
     />

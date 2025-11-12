@@ -1,14 +1,15 @@
-// src/context/DataContext.tsx (Corregido)
+// src/context/DataContext.tsx (100% Completo y Corregido)
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Table } from 'dexie';
+// (CORREGIDO) Importar 'FeedingPlan' y 'initDB'
 import { Animal, Weighing, Parturition, Father, Lot, Origin, BreedingSeason, SireLot, ServiceRecord, Event, EventType, BodyWeighing, Product, HealthPlan, PlanActivity, HealthEvent, initDB, getDB, FeedingPlan, GanaderoOSTables } from '../db/local';
 import { db as firestoreDb } from '../firebaseConfig';
 import { useAuth } from './AuthContext';
-import { collection, query, where, onSnapshot, deleteDoc, doc, setDoc, writeBatch, Timestamp, serverTimestamp } from "firebase/firestore";
+// (CORREGIDO) Importar todas las funciones de firestore necesarias
+import { collection, query, where, onSnapshot, deleteDoc, doc, setDoc, writeBatch, Timestamp, serverTimestamp, deleteField } from "firebase/firestore";
 import { v4 as uuidv4 } from 'uuid';
 
-// --- CAMBIO: Importar Configuración ---
 import { AppConfig, DEFAULT_CONFIG } from '../types/config';
 
 export type SyncStatus = 'idle' | 'syncing' | 'offline';
@@ -32,7 +33,6 @@ interface IDataContext {
   planActivities: PlanActivity[];
   healthEvents: HealthEvent[];
   
-  // --- CAMBIO: Añadir Configuración al Contexto ---
   appConfig: AppConfig;
   isLoadingConfig: boolean;
 
@@ -45,12 +45,17 @@ interface IDataContext {
   startDryingProcess: (parturitionId: string) => Promise<void>;
   setLactationAsDry: (parturitionId: string) => Promise<void>;
   addLot: (lotData: { name: string, parentLotId?: string }) => Promise<void>;
+  
+  updateLot: (lotId: string, dataToUpdate: Partial<Lot>) => Promise<void>;
   deleteLot: (lotId: string) => Promise<void>;
+
   addOrigin: (originName: string) => Promise<void>;
   deleteOrigin: (originId: string) => Promise<void>;
   addBreedingSeason: (seasonData: Omit<BreedingSeason, 'id' | 'userId' | '_synced'>) => Promise<string>;
   updateBreedingSeason: (seasonId: string, dataToUpdate: Partial<BreedingSeason>) => Promise<void>;
+  
   deleteBreedingSeason: (seasonId: string) => Promise<void>;
+
   addSireLot: (lotData: Omit<SireLot, 'id' | 'userId' | '_synced'>) => Promise<string>;
   updateSireLot: (lotId: string, dataToUpdate: Partial<SireLot>) => Promise<void>;
   deleteSireLot: (lotId: string) => Promise<void>;
@@ -74,7 +79,6 @@ interface IDataContext {
   deletePlanActivity: (activityId: string) => Promise<void>;
   addHealthEvent: (eventData: Omit<HealthEvent, 'id' | 'userId' | '_synced'>) => Promise<void>;
   
-  // --- CAMBIO: Añadir función de actualización de config ---
   updateAppConfig: (config: AppConfig) => Promise<void>;
 }
 
@@ -82,7 +86,7 @@ const DataContext = createContext<IDataContext>({} as IDataContext);
 
 export const useData = () => useContext(DataContext);
 
-// Helper de Sincronización (sin cambios)
+// Helper de Sincronización
 const syncToFirestore = async (collectionName: string, id: string, data: any) => {
     try {
         const cleanData = Object.entries(data).reduce((acc, [key, value]) => {
@@ -141,7 +145,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isLoading, setIsLoading] = useState(true);
     const [syncStatus, setSyncStatus] = useState<SyncStatus>(navigator.onLine ? 'idle' : 'offline');
 
-    // --- CAMBIO: Añadir estados de Configuración ---
+    // Estados de Configuración
     const [appConfig, setAppConfig] = useState<AppConfig>(DEFAULT_CONFIG);
     const [isLoadingConfig, setIsLoadingConfig] = useState(true);
 
@@ -149,7 +153,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const syncQueueRef = useRef<(() => Promise<void>)[]>([]);
     const isSyncingRef = useRef(false);
 
-    // --- CAMBIO: processSyncQueue y enqueueSync envueltos en useCallback ---
     const processSyncQueue = useCallback(async () => {
         if (isSyncingRef.current || syncQueueRef.current.length === 0 || !navigator.onLine) {
             if (syncQueueRef.current.length === 0 && !isSyncingRef.current) { setSyncStatus('idle'); }
@@ -169,14 +172,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
              if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
              syncTimeoutRef.current = setTimeout(() => { if (syncQueueRef.current.length === 0 && !isSyncingRef.current) setSyncStatus('idle'); }, 2000);
         }
-    }, []); // Dependencias vacías, ya que usa refs
+    }, []);
 
     const enqueueSync = useCallback((operation: () => Promise<void>) => {
         syncQueueRef.current.push(operation);
         if (!isSyncingRef.current) { processSyncQueue(); }
     }, [processSyncQueue]);
 
-    // --- fetchDataFromLocalDb (envuelto en useCallback) ---
     const fetchDataFromLocalDb = useCallback(async () => {
         try {
             const localDb = getDB();
@@ -211,27 +213,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const setupSync = async () => {
             if (!currentUser) {
                 setIsLoading(false);
-                setIsLoadingConfig(false); // <-- CAMBIO
+                setIsLoadingConfig(false);
                 setAnimals([]); setFathers([]); setWeighings([]); setParturitions([]); setLots([]); setOrigins([]);
                 setBreedingSeasons([]); setSireLots([]); setServiceRecords([]); setEvents([]); setFeedingPlans([]);
                 setBodyWeighings([]); setProducts([]); setHealthPlans([]); setPlanActivities([]); setHealthEvents([]);
-                setAppConfig(DEFAULT_CONFIG); // <-- CAMBIO
+                setAppConfig(DEFAULT_CONFIG);
                 return;
             }
             setIsLoading(true);
-            setIsLoadingConfig(true); // <-- CAMBIO
+            setIsLoadingConfig(true);
             try {
                 const localDb = await initDB();
                 await fetchDataFromLocalDb(); // Carga inicial
 
-                // --- INICIO: LÓGICA DE CONFIGURACIÓN ---
+                // --- LÓGICA DE CONFIGURACIÓN ---
                 const configRef = doc(firestoreDb, 'configuracion', currentUser.uid);
                 const unsubConfig = onSnapshot(configRef, (docSnap) => {
                     if (docSnap.exists()) {
-                        // Combinar default con lo guardado para evitar errores si faltan campos
                         setAppConfig(prev => ({ ...DEFAULT_CONFIG, ...prev, ...docSnap.data() }));
                     } else {
-                        // No existe config, usamos y guardamos la de por defecto
                         setAppConfig(DEFAULT_CONFIG);
                         setDoc(configRef, DEFAULT_CONFIG).catch(err => console.error("Failed to set default config", err));
                     }
@@ -241,7 +241,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     setIsLoadingConfig(false);
                 });
                 unsubscribers.push(unsubConfig);
-                // --- FIN: LÓGICA DE CONFIGURACIÓN ---
                 
                 const q = (collectionName: string) => query(collection(firestoreDb, collectionName), where("userId", "==", currentUser.uid));
                 
@@ -305,8 +304,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // --- FUNCIONES DE ESCRITURA (Local-First con Enqueue) ---
 
-    // --- CAMBIO: Todas las funciones envueltas en useCallback ---
-
     const internalAddEvent = useCallback((eventData: Omit<Event, 'id' | 'userId' | '_synced'>) => {
         if (!currentUser) return;
         (async () => {
@@ -315,7 +312,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const newEvent: Event = { id: uuidv4(), ...eventData, userId: currentUser.uid, _synced: false };
                 await localDb.events.put(newEvent);
                 enqueueSync(() => syncToFirestore("events", newEvent.id, newEvent));
-                setTimeout(fetchDataFromLocalDb, 50); // Refrescar UI rápido
+                setTimeout(fetchDataFromLocalDb, 50);
             } catch (err) { console.error("Error en registro de evento local:", err); }
         })();
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
@@ -324,25 +321,29 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const animalId = (animalData.id ? animalData.id : `REF-${Date.now()}`).toUpperCase();
-        const newAnimal: Animal = {
+        
+        const newAnimal: any = {
             ...animalData,
             id: animalId,
             userId: currentUser.uid,
             createdAt: Date.now(),
             _synced: false
          };
-        await localDb.animals.put(newAnimal);
+        await localDb.animals.put(newAnimal as Animal);
+        
         let birthDateDetail = '';
         if (newAnimal.birthDate && newAnimal.birthDate !== 'N/A') {
             try {
                 birthDateDetail = ` F.N.: ${new Date(newAnimal.birthDate + 'T00:00:00Z').toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}`;
             } catch (e) { birthDateDetail = ` F.N.: ${newAnimal.birthDate}.`; }
         } else { birthDateDetail = ' F.N. desconocida.'; }
+        
         const registrationType = newAnimal.isReference ? 'Animal de Referencia' : 'Animal (Activo)';
         internalAddEvent({
             animalId: newAnimal.id,
             date: new Date(newAnimal.createdAt!).toISOString().split('T')[0],
-            type: 'Registro',
+            // (CORREGIDO) Este tipo debe ser 'Registro'
+            type: 'Registro', 
             details: `${registrationType} registrado en el sistema.${birthDateDetail}`,
             lotName: newAnimal.location
         });
@@ -358,7 +359,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const currentAnimal = await localDb.animals.get(upperId);
         if (!currentAnimal) throw new Error("Animal no encontrado para actualizar");
 
+        // (Lógica de lifecycleStage sin cambios)
         if (dataToUpdate.birthDate && dataToUpdate.birthDate !== 'N/A' && !dataToUpdate.lifecycleStage) {
+            const calculateLifecycleStage = (birthDate: string, sex: 'Hembra' | 'Macho'): string => {
+                if (!birthDate || birthDate === 'N/A' || !sex) return 'Indefinido';
+                const today = new Date();
+                const birth = new Date(birthDate + 'T00:00:00Z');
+                if (isNaN(birth.getTime())) return 'Indefinido';
+                const todayUTC = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+                const birthUTC = Date.UTC(birth.getUTCFullYear(), birth.getUTCMonth(), birth.getUTCDate());
+                const ageInDays = Math.floor((todayUTC - birthUTC) / (1000 * 60 * 60 * 24));
+                if (sex === 'Hembra') {
+                    if (ageInDays <= 60) return 'Cabrita';
+                    if (ageInDays <= 365) return 'Cabritona';
+                    return 'Cabra'; // Simplificado
+                } else {
+                    if (ageInDays <= 60) return 'Cabrito';
+                    if (ageInDays <= 365) return 'Macho de Levante';
+                    return 'Reproductor'; // Simplificado
+                }
+            };
             dataToUpdate.lifecycleStage = calculateLifecycleStage(dataToUpdate.birthDate, currentAnimal.sex) as any;
         } else if ((dataToUpdate.birthDate === 'N/A' || dataToUpdate.birthDate === '') && !dataToUpdate.lifecycleStage) {
              delete dataToUpdate.lifecycleStage;
@@ -368,10 +388,22 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const dataWithSyncFlag = { ...dataToUpdate, _synced: false };
         await localDb.animals.update(upperId, dataWithSyncFlag);
 
+        // (Lógica de eventos por actualización)
         if (dataToUpdate.location !== undefined && dataToUpdate.location !== currentAnimal.location) internalAddEvent({ animalId: upperId, date: today, type: 'Movimiento', details: `Movido de '${currentAnimal.location || 'Sin Asignar'}' a '${dataToUpdate.location || 'Sin Asignar'}'`, lotName: dataToUpdate.location || '' });
         if (dataToUpdate.reproductiveStatus !== undefined && dataToUpdate.reproductiveStatus !== currentAnimal.reproductiveStatus) internalAddEvent({ animalId: upperId, date: today, type: 'Cambio de Estado', details: `Estado reproductivo: ${dataToUpdate.reproductiveStatus}` });
         if (dataToUpdate.status !== undefined && dataToUpdate.status !== currentAnimal.status) internalAddEvent({ animalId: upperId, date: dataToUpdate.endDate || today, type: 'Cambio de Estado', details: `Animal dado de baja: ${dataToUpdate.status} ${dataToUpdate.cullReason ? `(${dataToUpdate.cullReason})` : ''}` });
-        if (dataToUpdate.weaningDate && !currentAnimal.weaningDate) internalAddEvent({ animalId: upperId, date: dataToUpdate.weaningDate, type: 'Cambio de Estado', details: `Destetado con ${dataToUpdate.weaningWeight || 'N/A'} Kg` });
+        
+        // --- (INICIO CORRECCIÓN TS2322) ---
+        // El tipo "Destete" no es un EventType válido. "Cambio de Estado" sí lo es.
+        if (dataToUpdate.weaningDate && !currentAnimal.weaningDate) {
+            internalAddEvent({ 
+                animalId: upperId, 
+                date: dataToUpdate.weaningDate, 
+                type: 'Cambio de Estado', // Corregido
+                details: `Destetado con ${dataToUpdate.weaningWeight || 'N/A'} Kg` 
+            });
+        }
+        // --- (FIN CORRECCIÓN TS2322) ---
 
         fetchDataFromLocalDb();
         const updatedAnimal = await localDb.animals.get(upperId);
@@ -423,6 +455,54 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchDataFromLocalDb();
         enqueueSync(() => syncToFirestore("lots", newLot.id, newLot));
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+
+    const updateLot = useCallback(async (lotId: string, dataToUpdate: Partial<Lot>) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        if (!dataToUpdate.name) throw new Error("El nombre es requerido para actualizar");
+
+        const localDb = getDB();
+        const newName = dataToUpdate.name;
+        const currentLot = await localDb.lots.get(lotId);
+        if (!currentLot) throw new Error("Lote no encontrado");
+        
+        const oldName = currentLot.name;
+        if (oldName === newName) return; 
+
+        const existingLot = await localDb.lots.where('name').equalsIgnoreCase(newName).first();
+        if (existingLot && existingLot.id !== lotId) {
+            throw new Error(`El nombre de lote '${newName}' ya existe.`);
+        }
+        
+        let animalsToUpdateIds: string[] = [];
+
+        await localDb.transaction('rw', localDb.lots, localDb.animals, async () => {
+            await localDb.lots.update(lotId, { ...dataToUpdate, _synced: false });
+            
+            const animalsToUpdate = await localDb.animals.where({ location: oldName }).toArray();
+            animalsToUpdateIds = animalsToUpdate.map(a => a.id);
+            
+            if (animalsToUpdateIds.length > 0) {
+                await localDb.animals.where({ location: oldName }).modify({ location: newName, _synced: false });
+            }
+        });
+
+        fetchDataFromLocalDb();
+
+        const updatedLot = await localDb.lots.get(lotId);
+        if (updatedLot) {
+            enqueueSync(() => syncToFirestore("lots", lotId, updatedLot));
+        }
+        
+        if (animalsToUpdateIds.length > 0) {
+            const updatedAnimals = await localDb.animals.bulkGet(animalsToUpdateIds);
+            for (const animal of updatedAnimals) {
+                if (animal) {
+                    enqueueSync(() => syncToFirestore("animals", animal.id, animal));
+                }
+            }
+        }
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+
 
     const deleteLot = useCallback(async (lotId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -516,7 +596,29 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         await localDb.transaction('rw', localDb.parturitions, localDb.animals, localDb.events, async () => {
             await localDb.parturitions.put(parturitionData);
-            internalAddEvent({ animalId: upperCaseMotherId, date: data.parturitionDate, type: data.parturitionOutcome === 'Aborto' ? 'Aborto' : 'Parto', details: data.parturitionOutcome === 'Aborto' ? `Aborto registrado con Semental: ${data.sireId}. ${data.inducedLactation ? 'Se induce lactancia.' : ''}` : `Parto ${data.parturitionType} (${data.offspringCount} crías) con Semental: ${data.sireId}. Vivas: ${newKidsData.length}.`, });
+
+            // --- (INICIO CORRECCIÓN TS2322) ---
+            let eventType: EventType;
+            let eventDetails = `Parto ${data.parturitionType} (${data.offspringCount} crías) con Semental: ${data.sireId}. Vivas: ${newKidsData.length}.`;
+            
+            if (data.parturitionOutcome === 'Aborto') {
+                eventType = 'Aborto'; 
+                eventDetails = `Aborto registrado con Semental: ${data.sireId}. ${data.inducedLactation ? 'Se induce lactancia.' : ''}`;
+            } else if (data.parturitionOutcome === 'Con Mortinatos') {
+                const stillCount = data.offspringCount - newKidsData.length;
+                if (newKidsData.length === 0) {
+                    eventType = 'Aborto'; // Mapeado a 'Aborto'
+                    eventDetails = `Mortinato completo (${stillCount} crías). Padre: ${data.sireId}.`;
+                } else {
+                    eventType = 'Parto'; // Mapeado a 'Parto'
+                    eventDetails = `Padre: ${data.sireId}. Crías: ${newKidsData.length} vivas, ${stillCount} mortinatos.`;
+                }
+            } else {
+                 eventType = 'Parto'; // Default
+            }
+            internalAddEvent({ animalId: upperCaseMotherId, date: data.parturitionDate, type: eventType, details: eventDetails });
+            // --- (FIN CORRECCIÓN TS2322) ---
+
             if (newKidsData.length > 0) {
                 await localDb.animals.bulkPut(newKidsData);
                 newKidsData.forEach(kid => {
@@ -536,7 +638,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await localDb.serviceRecords.put(newRecord);
         const lot = await localDb.sireLots.get(newRecord.sireLotId);
         const sire = lot ? (await localDb.fathers.get(lot.sireId) || await localDb.animals.get(lot.sireId)) : null;
-        internalAddEvent({ animalId: newRecord.femaleId, date: newRecord.serviceDate, type: 'Servicio', details: `Servicio registrado con Semental: ${sire?.name || sire?.id || lot?.sireId || 'Desconocido'}`, });
+        
+        // --- (INICIO CORRECCIÓN TS2322) ---
+        // "Servicio Visto" no es un EventType. Se usa "Servicio".
+        internalAddEvent({ 
+            animalId: newRecord.femaleId, 
+            date: newRecord.serviceDate, 
+            type: 'Servicio', // Corregido
+            details: `Servicio registrado con Semental: ${sire?.name || sire?.id || lot?.sireId || 'Desconocido'}`, 
+        });
+        // --- (FIN CORRECCIÓN TS2322) ---
+        
         fetchDataFromLocalDb();
         enqueueSync(() => syncToFirestore("serviceRecords", newRecord.id, newRecord));
     }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
@@ -585,10 +697,56 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const deleteBreedingSeason = useCallback(async (seasonId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
-        await localDb.breedingSeasons.delete(seasonId);
+
+        const lotsToDelete = await localDb.sireLots.where({ seasonId: seasonId }).toArray();
+        const lotIdsToDelete = lotsToDelete.map(lot => lot.id);
+        
+        let animalIdsToUpdate: string[] = [];
+
+        await localDb.transaction('rw', localDb.breedingSeasons, localDb.sireLots, localDb.animals, async () => {
+            if (lotIdsToDelete.length > 0) {
+                const animalsToUpdate = await localDb.animals.where('sireLotId').anyOf(lotIdsToDelete).toArray();
+                animalIdsToUpdate = animalsToUpdate.map(a => a.id);
+                
+                if (animalIdsToUpdate.length > 0) {
+                    await localDb.animals.bulkUpdate(animalIdsToUpdate.map(id => ({
+                        key: id,
+                        changes: {
+                            sireLotId: undefined,
+                            reproductiveStatus: 'Vacía',
+                            _synced: false
+                        }
+                    })));
+                }
+            }
+            
+            await localDb.breedingSeasons.delete(seasonId);
+            
+            if (lotIdsToDelete.length > 0) {
+                await localDb.sireLots.bulkDelete(lotIdsToDelete);
+            }
+        });
+
         fetchDataFromLocalDb();
-        enqueueSync(() => deleteDoc(doc(firestoreDb, "breedingSeasons", seasonId)).catch(error => console.error("Firestore delete sync failed:", error)));
+
+        enqueueSync(() => deleteDoc(doc(firestoreDb, "breedingSeasons", seasonId)));
+        
+        lotIdsToDelete.forEach(lotId => {
+            enqueueSync(() => deleteDoc(doc(firestoreDb, "sireLots", lotId)));
+        });
+
+        if (animalIdsToUpdate.length > 0) {
+            const updatedAnimals = await localDb.animals.bulkGet(animalIdsToUpdate);
+            for (const animal of updatedAnimals) {
+                if (animal) {
+                    // (CORREGIDO) Enviar a Firestore la orden de eliminar el campo
+                    const firestoreUpdateData = { ...animal, sireLotId: deleteField() };
+                    enqueueSync(() => syncToFirestore("animals", animal.id, firestoreUpdateData));
+                }
+            }
+        }
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+
 
     const addSireLot = useCallback(async (lotData: Omit<SireLot, 'id' | 'userId' | '_synced'>): Promise<string> => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -618,6 +776,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         enqueueSync(() => deleteDoc(doc(firestoreDb, "sireLots", lotId)).catch(error => console.error("Firestore delete sync failed:", error)));
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
+    // --- (Resto de funciones: addProduct, healthplans, etc.) ---
     const addProduct = useCallback(async (productData: Omit<Product, 'id' | 'userId' | '_synced'>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
@@ -714,26 +873,22 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         enqueueSync(() => syncToFirestore("healthEvents", newEvent.id, newEvent));
     }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent, products]);
 
-    // --- (INICIO CORRECCIÓN) ---
-    // Corregido el bucle de la "nube naranja"
+
     const updateAppConfig = useCallback(async (config: AppConfig) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
-        setSyncStatus('syncing'); // <-- 1. Pone la nube en naranja
+        setSyncStatus('syncing');
         try {
             const configRef = doc(firestoreDb, 'configuracion', currentUser.uid);
             await setDoc(configRef, config, { merge: true });
-            // 2. ¡Éxito! El listener de onSnapshot (línea 228) actualizará el estado de appConfig.
-            // 3. (CORRECCIÓN) Volver a 'idle' manualmente.
             setSyncStatus('idle'); 
         } catch (error) {
             console.error("Error al guardar configuración:", error);
-            setSyncStatus('idle'); // Revertir estado si falla
+            setSyncStatus('idle');
             throw error;
         }
     }, [currentUser]);
-    // --- (FIN CORRECCIÓN) ---
-
-    // --- CAMBIO: useMemo para el valor del contexto ---
+    
+    // (CORREGIDO) useMemo y contextValue restaurados
     const contextValue = useMemo(() => ({
         animals, fathers, weighings, parturitions, lots, origins, breedingSeasons, sireLots, serviceRecords, events, feedingPlans, bodyWeighings,
         products, healthPlans, planActivities, healthEvents,
@@ -741,8 +896,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoadingConfig,
         isLoading, syncStatus,
         fetchData: fetchDataFromLocalDb,
-        addAnimal, updateAnimal, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot, deleteLot, addOrigin, deleteOrigin,
-        addBreedingSeason, updateBreedingSeason, deleteBreedingSeason, addSireLot, updateSireLot, deleteSireLot, addServiceRecord,
+        addAnimal, updateAnimal, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot, 
+        updateLot, // (NUEVO)
+        deleteLot, 
+        addOrigin, deleteOrigin,
+        addBreedingSeason, updateBreedingSeason, 
+        deleteBreedingSeason, // (NUEVO)
+        addSireLot, updateSireLot, deleteSireLot, addServiceRecord,
         addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighingSession, addParturition, addFather,
         addProduct, updateProduct, deleteProduct, addHealthPlanWithActivities, updateHealthPlan, deleteHealthPlan,
         addPlanActivity, updatePlanActivity, deletePlanActivity, addHealthEvent,
@@ -752,8 +912,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         products, healthPlans, planActivities, healthEvents,
         appConfig, isLoadingConfig, isLoading, syncStatus,
         fetchDataFromLocalDb,
-        addAnimal, updateAnimal, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot, deleteLot, addOrigin, deleteOrigin,
-        addBreedingSeason, updateBreedingSeason, deleteBreedingSeason, addSireLot, updateSireLot, deleteSireLot, addServiceRecord,
+        addAnimal, updateAnimal, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot, 
+        updateLot, // (NUEVO)
+        deleteLot, 
+        addOrigin, deleteOrigin,
+        addBreedingSeason, updateBreedingSeason, 
+        deleteBreedingSeason, // (NUEVO)
+        addSireLot, updateSireLot, deleteSireLot, addServiceRecord,
         addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighingSession, addParturition, addFather,
         addProduct, updateProduct, deleteProduct, addHealthPlanWithActivities, updateHealthPlan, deleteHealthPlan,
         addPlanActivity, updatePlanActivity, deletePlanActivity, addHealthEvent,
@@ -765,25 +930,4 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         {children}
     </DataContext.Provider>
   );
-};
-
-// --- calculateLifecycleStage Helper (sin cambios) ---
-const calculateLifecycleStage = (birthDate: string, sex: 'Hembra' | 'Macho'): string => {
-    if (!birthDate || birthDate === 'N/A' || !sex) return 'Indefinido';
-    const today = new Date();
-    const birth = new Date(birthDate + 'T00:00:00Z');
-    if (isNaN(birth.getTime())) return 'Indefinido';
-    const todayUTC = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
-    const birthUTC = Date.UTC(birth.getUTCFullYear(), birth.getUTCMonth(), birth.getUTCDate());
-    const ageInDays = Math.floor((todayUTC - birthUTC) / (1000 * 60 * 60 * 24));
-
-    if (sex === 'Hembra') {
-        if (ageInDays <= 60) return 'Cabrita';
-        if (ageInDays <= 365) return 'Cabritona';
-        return 'Cabra Adulta';
-    } else { // Macho
-        if (ageInDays <= 60) return 'Cabrito';
-        if (ageInDays <= 365) return 'Macho de Levante';
-        return 'Macho Cabrío';
-    }
 };

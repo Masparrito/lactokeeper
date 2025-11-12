@@ -1,52 +1,55 @@
+// src/hooks/useHerdAnalytics.ts (Corregido y Unificado)
+
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
-import { getAnimalZootecnicCategory, calculateAgeInDays } from '../utils/calculations';
+import { DEFAULT_CONFIG } from '../types/config'; 
+// (NUEVO) Importar la lógica centralizada
+import { calculateAgeInDays, getAnimalZootecnicCategory } from '../utils/calculations'; 
+import { Animal } from '../db/local';
+
+// Helper para calcular edad en meses
+const calculateAgeInMonths = (birthDate: string): number => {
+    if (!birthDate || birthDate === 'N/A') return 0;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    if (isNaN(birth.getTime())) return 0;
+    let months = (today.getFullYear() - birth.getFullYear()) * 12;
+    months -= birth.getMonth();
+    months += today.getMonth();
+    return months <= 0 ? 0 : months;
+};
 
 export const useHerdAnalytics = () => {
     const { animals, parturitions, bodyWeighings, sireLots, breedingSeasons, weighings, appConfig } = useData();
 
     const analytics = useMemo(() => {
-        const activeAnimals = animals.filter(a => !a.isReference);
+        const config = { ...DEFAULT_CONFIG, ...appConfig };
+        
+        const activeAnimals = animals.filter(a => !a.isReference && a.status === 'Activo');
 
         const allFemales = activeAnimals.filter(a => a.sex === 'Hembra');
         const totalHembras = allFemales.length;
 
-        // --- Lógica de Vientres (Corregida y estable) ---
+        // --- (INICIO CORRECCIÓN) Tarea 8.2 / Punto 1: Unificación de Lógica ---
         
-        const edadVientreMeses = appConfig.edadPrimerServicioMeses > 0 ? appConfig.edadPrimerServicioMeses : 11;
-        const pesoVientreKg = appConfig.pesoPrimerServicioKg > 0 ? appConfig.pesoPrimerServicioKg : 30;
-        const edadVientreDias = edadVientreMeses * 30.44;
-
-        const totalVientres = allFemales.filter(hembra => {
-            const category = getAnimalZootecnicCategory(hembra, parturitions);
-            if (category === 'Cabra') return true;
-            if (category === 'Cabrita') return false;
-            if (category === 'Cabritona') {
-                const ageInDays = calculateAgeInDays(hembra.birthDate);
-                if (ageInDays < edadVientreDias) return false;
-                if (pesoVientreKg > 0) {
-                    const lastWeight = bodyWeighings
-                        .filter(bw => bw.animalId === hembra.id)
-                        .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-                    if (!lastWeight || lastWeight.kg < pesoVientreKg) return false;
-                }
-                return true;
-            }
-            return false;
-        }).length;
-        
-        // --- Categorías (Estable) ---
         const categories = {
-            cabras: [] as any[],
-            cabritonas: [] as any[],
-            cabritas: [] as any[],
-            cabritos: [] as any[],
-            machosLevante: [] as any[],
-            reproductores: [] as any[],
+            cabras: [] as Animal[],
+            cabritonas: [] as Animal[],
+            cabritas: [] as Animal[],
+            cabritos: [] as Animal[],
+            machosLevante: [] as Animal[],
+            reproductores: [] as Animal[],
         };
 
+        // (OPTIMIZACIÓN) Pre-calcular partos por animal
+        // Esto es necesario para 'getAnimalZootecnicCategory' si no queremos pasar 'parturitions' cada vez
+        // PERO la función central ya acepta 'parturitions', así que es más simple
+        // filtrar los partos una vez.
+
         activeAnimals.forEach(animal => {
-            const category = getAnimalZootecnicCategory(animal, parturitions);
+            // (CORREGIDO) Usar la fuente de verdad centralizada
+            const category = getAnimalZootecnicCategory(animal, parturitions, config);
+
             switch(category) {
                 case 'Cabra': categories.cabras.push(animal); break;
                 case 'Cabritona': categories.cabritonas.push(animal); break;
@@ -56,12 +59,32 @@ export const useHerdAnalytics = () => {
                 case 'Reproductor': categories.reproductores.push(animal); break;
             }
         });
+        
+        // --- (FIN CORRECCIÓN) ---
 
-        // --- Analítica de Hembras Adultas (Estable) ---
+        
+        // --- (INICIO NUEVA LÓGICA DE VIENTRES) ---
+        // Vientres = Todas las Cabras + Cabritonas que superen la edad mínima
+        
+        const { edadMinimaVientreMeses } = config;
+
+        const vientresCabras = categories.cabras.length;
+        
+        const vientresCabritonas = categories.cabritonas.filter(hembra => {
+            const ageInMonths = calculateAgeInMonths(hembra.birthDate);
+            // La edad mínima configurable (default 10) define un vientre
+            return ageInMonths >= edadMinimaVientreMeses;
+        }).length;
+
+        const totalVientres = vientresCabras + vientresCabritonas;
+        // --- (FIN NUEVA LÓGICA DE VIENTRES) ---
+
+        
+        // --- Analítica de Hembras Adultas ---
         const enProduccion = parturitions.filter(p => p.status === 'activa' && categories.cabras.some(c => c.id === p.goatId)).length;
         const secas = categories.cabras.length - enProduccion;
         const preñadas = categories.cabras.filter(a => a.reproductiveStatus === 'Preñada').length;
-        const vacias = categories.cabras.filter(a => a.reproductiveStatus === 'Vacía' || a.reproductiveStatus === 'Post-Parto' || a.reproductiveStatus === 'Destetada').length;
+        const vacias = categories.cabras.filter(a => a.reproductiveStatus === 'Vacía' || a.reproductiveStatus === 'Post-Parto').length;
         const enMonta = categories.cabras.filter(a => a.reproductiveStatus === 'En Servicio').length;
 
         const cabrasReproductiveStatusData = [
@@ -95,8 +118,8 @@ export const useHerdAnalytics = () => {
             });
         }
 
-        // --- Analítica de Cabritonas (Estable) ---
-        const serviceWeight = appConfig.pesoPrimerServicioKg || 30;
+        // --- Analítica de Cabritonas ---
+        const serviceWeight = config.pesoPrimerServicioKg;
         const serviceWeightThreshold = serviceWeight * 0.95; 
         
         const cabritonasEnMonta = categories.cabritonas.filter(c => c.reproductiveStatus === 'En Servicio').length;
@@ -107,9 +130,9 @@ export const useHerdAnalytics = () => {
             return (lastWeight.kg >= serviceWeightThreshold && lastWeight.kg < serviceWeight) || 
                    (lastWeight.kg >= serviceWeight && c.reproductiveStatus !== 'En Servicio' && c.reproductiveStatus !== 'Preñada');
         }).length;
-        const cabritonasDisponibles = categories.cabritonas.length - cabritonasEnMonta - preñadas;
+        const cabritonasDisponibles = categories.cabritonas.length - cabritonasEnMonta;
 
-        // --- Analítica para Crías (Estable) ---
+        // --- Analítica para Crías ---
         const criasHembras = categories.cabritas.length;
         const criasMachos = categories.cabritos.length;
         const totalCrias = criasHembras + criasMachos;
@@ -119,21 +142,18 @@ export const useHerdAnalytics = () => {
             { name: 'Machos', value: criasMachos, color: '#007AFF' },
         ].filter(item => item.value > 0);
 
-        // --- (INICIO) CORRECCIÓN LÓGICA DE DESTETE ---
-        // Se usan las nuevas variables de AppConfig
         const { 
             diasAlertaPesarDestete, 
             pesoMinimoPesarDestete, 
             diasMetaDesteteFinal, 
             pesoMinimoDesteteFinal 
-        } = appConfig;
+        } = config;
 
         const desteteConditions = [...categories.cabritas, ...categories.cabritos].map(cria => {
             const age = calculateAgeInDays(cria.birthDate);
             const lastWeight = bodyWeighings.filter(bw => bw.animalId === cria.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
             const weight = lastWeight?.kg || 0;
 
-            // Criterio 1: ¿Está LISTO? (Usa las variables FINALES)
             const isReadyByAge = age >= diasMetaDesteteFinal;
             const isReadyByWeight = weight >= pesoMinimoDesteteFinal;
 
@@ -141,7 +161,6 @@ export const useHerdAnalytics = () => {
                 return { id: cria.id, status: 'Listo para Destete' };
             }
 
-            // Criterio 2: ¿Está PRÓXIMO? (Usa las variables de ALERTA)
             const isNearByAge = age >= diasAlertaPesarDestete;
             const isNearByWeight = weight >= pesoMinimoPesarDestete;
 
@@ -149,33 +168,32 @@ export const useHerdAnalytics = () => {
                  return { id: cria.id, status: 'Próximo a Destete' };
             }
 
-            // Criterio 3: Sigue Amamantando
             return { id: cria.id, status: 'Amamantando' };
         });
 
         const listasParaDesteteCount = desteteConditions.filter(d => d.status === 'Listo para Destete').length;
         const proximasADesteteCount = desteteConditions.filter(d => d.status === 'Próximo a Destete').length;
         const amamantandoCount = desteteConditions.filter(d => d.status === 'Amamantando').length;
-        // --- (FIN) CORRECCIÓN LÓGICA DE DESTETE ---
-
+        
         const desteteStatusData = [
             { name: 'Listo', value: listasParaDesteteCount, color: '#34C759' },
             { name: 'Próximo', value: proximasADesteteCount, color: '#FF9F0A' },
             { name: 'Amamantando', value: amamantandoCount, color: '#007AFF' },
         ].filter(item => item.value > 0);
 
-        // --- Analítica para Reproductores (Estable) ---
+        // --- Analítica para Reproductores ---
         const activeSeasonIds = new Set(breedingSeasons.filter(s => s.status === 'Activo').map(s => s.id));
         const activeSireLots = sireLots.filter(sl => activeSeasonIds.has(sl.seasonId));
         
         const activeSires = categories.reproductores.filter(r => activeSireLots.some(sl => sl.sireId === r.id))
             .map(sire => {
                 const lot = activeSireLots.find(sl => sl.sireId === sire.id)!;
-                const assignedFemales = animals.filter(a => a.sireLotId === lot.id).length;
+                // (CORREGIDO TS2551)
+                const assignedFemales = animals.filter(a => a.sireLotId === lot.id && a.status === 'Activo').length;
                 return { ...sire, lotId: lot.id, assignedFemales };
             });
 
-        // --- Objeto de retorno final (Estable) ---
+        // --- Objeto de retorno final ---
         return {
             totalPoblacion: activeAnimals.length,
             totalHembras,
@@ -208,21 +226,13 @@ export const useHerdAnalytics = () => {
             }
         };
     }, [
-        // --- (INICIO) CORRECCIÓN DEPENDENCIAS ---
         animals, 
         parturitions, 
         bodyWeighings, 
         sireLots, 
         breedingSeasons, 
         weighings, 
-        appConfig.pesoPrimerServicioKg, 
-        appConfig.edadPrimerServicioMeses,
-        // Reemplazar las variables antiguas por las 4 nuevas
-        appConfig.diasAlertaPesarDestete,
-        appConfig.pesoMinimoPesarDestete,
-        appConfig.diasMetaDesteteFinal,
-        appConfig.pesoMinimoDesteteFinal
-        // --- (FIN) CORRECCIÓN DEPENDENCIAS ---
+        appConfig // Depender de appConfig asegura que recalcule con los cambios
     ]);
 
     return analytics;

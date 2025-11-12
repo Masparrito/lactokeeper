@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { PageState } from '../types/navigation';
-// --- CORRECCIÓN: Iconos que SÍ se usan ---
+// --- Iconos ---
 import { 
     Users, Plus, ChevronRight, Baby, HeartPulse, TrendingUp, Dna, 
     GitCompareArrows, CircleDot, LayoutGrid, Heart, FlaskConical, Archive 
@@ -11,15 +11,20 @@ import { AddLotModal } from '../components/ui/AddLotModal';
 import PhysicalLotsView from '../components/lots/PhysicalLotsView';
 import BreedingLotsView from '../components/lots/BreedingLotsView';
 import { Modal } from '../components/ui/Modal';
-// --- CORRECCIÓN: Imports de Recharts que SÍ se usan ---
+// --- Recharts ---
 import { PieChart, Pie, ResponsiveContainer, Cell, Legend, Tooltip, BarChart, Bar, XAxis, YAxis } from 'recharts';
 // ---
 import { useHerdAnalytics } from '../hooks/useHerdAnalytics';
-// --- CORRECCIÓN: Import que SÍ se usa ---
 import { formatAnimalDisplay } from '../utils/formatting';
-// ---
 
-// --- SUB-COMPONENTES ESTILIZADOS ---
+// --- INICIO CORRECCIÓN DE UI: Imports necesarios ---
+import { useData } from '../context/DataContext';
+import { BreedingSeason } from '../db/local';
+import { BreedingSeasonForm } from '../components/forms/BreedingSeasonForm';
+// --- FIN CORRECCIÓN DE UI ---
+
+
+// --- SUB-COMPONENTES ESTILIZADOS (Sin cambios) ---
 
 const CategoryChip = ({ title, value, icon: Icon, onClick }: { 
     title: string, 
@@ -101,13 +106,22 @@ const CustomRechartsTooltip = ({ active, payload, label }: any) => {
     }
     return null;
 };
+// --- FIN SUB-COMPONENTES ---
 
 
 // --- COMPONENTE PRINCIPAL DEL DASHBOARD ---
 
 export default function LotsDashboardPage({ navigateTo }: { navigateTo: (page: PageState) => void; }) {
     const [activeTab, setActiveTab] = useState<'physical' | 'breeding'>('physical');
+    
+    // Estado para "Lotes Físicos"
     const [isAddLotModalOpen, setAddLotModalOpen] = useState(false);
+
+    // --- INICIO CORRECCIÓN DE UI: Elevar estado de Lotes de Monta ---
+    const { addBreedingSeason, updateBreedingSeason } = useData();
+    const [isAddSeasonModalOpen, setAddSeasonModalOpen] = useState(false);
+    const [editingSeason, setEditingSeason] = useState<BreedingSeason | undefined>(undefined);
+    // --- FIN CORRECCIÓN DE UI ---
 
     const [isCabrasModalOpen, setCabrasModalOpen] = useState(false);
     const [isCabritonasModalOpen, setCabritonasModalOpen] = useState(false);
@@ -123,73 +137,107 @@ export default function LotsDashboardPage({ navigateTo }: { navigateTo: (page: P
         { title: "Reproductores", value: herdAnalytics.reproductores.total, icon: Dna, onClick: () => setReproductoresModalOpen(true) },
     ];
 
+    // --- INICIO CORRECCIÓN DE UI: Lógica de Modal elevada ---
+    const handleOpenSeasonModal = (season?: BreedingSeason) => {
+        setEditingSeason(season);
+        setAddSeasonModalOpen(true);
+    };
+
+    const handleSaveSeason = async (seasonData: Omit<BreedingSeason, 'id' | 'status'>) => {
+        if (editingSeason) {
+            await updateBreedingSeason(editingSeason.id, { ...seasonData });
+        } else {
+            await addBreedingSeason({ ...seasonData, status: 'Activo' });
+        }
+        setAddSeasonModalOpen(false);
+        setEditingSeason(undefined);
+    };
+    // --- FIN CORRECCIÓN DE UI ---
+
     return (
         <>
-            {/* --- CORRECCIÓN CRÍTICA: Eliminado pt-16 y pb-24 del div raíz --- */}
-            <div className="w-full max-w-lg mx-auto space-y-6"> 
+            <div className="w-full max-w-lg mx-auto"> 
                 
-                {/* KPIs Hero (pt-4 se mantiene para espacio interno) */}
-                <div className="flex justify-around items-baseline text-center px-4 pt-4">
-                    <button onClick={() => navigateTo({ name: 'herd', kpiFilter: 'all' })} className="hover:opacity-80 transition-opacity">
-                        <span className="text-4xl font-semibold text-zinc-200">{herdAnalytics.totalPoblacion}</span>
-                        <p className="text-sm text-zinc-400 uppercase tracking-wider">Animales</p>
-                    </button>
-                    <div className="border-l border-zinc-700 h-10 mx-2"></div>
-                    <button onClick={() => navigateTo({ name: 'herd', kpiFilter: 'females' })} className="hover:opacity-80 transition-opacity">
-                        <span className="text-4xl font-semibold text-zinc-200">{herdAnalytics.totalHembras}</span>
-                        <p className="text-sm text-zinc-400 uppercase tracking-wider">Hembras</p>
-                    </button>
-                    <div className="border-l border-zinc-700 h-10 mx-2"></div>
-                    <button onClick={() => navigateTo({ name: 'herd', kpiFilter: 'vientres' })} className="hover:opacity-80 transition-opacity">
-                        <span className="text-5xl font-bold text-white">{herdAnalytics.totalVientres}</span>
-                        <p className="text-sm text-zinc-400 uppercase tracking-wider -mt-1">Vientres</p>
-                    </button>
-                </div>
+                {/* --- INICIO CORRECCIÓN DE UI: Ocultar KPIs --- */}
+                {activeTab === 'physical' && (
+                    <>
+                        {/* KPIs Hero */}
+                        <div className="flex justify-around items-baseline text-center px-4 pt-4">
+                            <button onClick={() => navigateTo({ name: 'herd', kpiFilter: 'all' })} className="hover:opacity-80 transition-opacity">
+                                <span className="text-4xl font-semibold text-zinc-200">{herdAnalytics.totalPoblacion}</span>
+                                <p className="text-sm text-zinc-400 uppercase tracking-wider">Animales</p>
+                            </button>
+                            <div className="border-l border-zinc-700 h-10 mx-2"></div>
+                            <button onClick={() => navigateTo({ name: 'herd', kpiFilter: 'females' })} className="hover:opacity-80 transition-opacity">
+                                <span className="text-4xl font-semibold text-zinc-200">{herdAnalytics.totalHembras}</span>
+                                <p className="text-sm text-zinc-400 uppercase tracking-wider">Hembras</p>
+                            </button>
+                            <div className="border-l border-zinc-700 h-10 mx-2"></div>
+                            <button onClick={() => navigateTo({ name: 'herd', kpiFilter: 'vientres' })} className="hover:opacity-80 transition-opacity">
+                                <span className="text-5xl font-bold text-white">{herdAnalytics.totalVientres}</span>
+                                <p className="text-sm text-zinc-400 uppercase tracking-wider -mt-1">Vientres</p>
+                            </button>
+                        </div>
+
+                        {/* Grilla de KPIs */}
+                        <div className="flex gap-3 overflow-x-auto pb-4 px-4 mt-6" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                            <style>{`.horizontal-scroll::-webkit-scrollbar { display: none; }`}</style>
+                            {categoryChips.map(chip => (
+                                <CategoryChip 
+                                    key={chip.title}
+                                    title={chip.title}
+                                    value={chip.value}
+                                    icon={chip.icon}
+                                    onClick={chip.onClick}
+                                />
+                            ))}
+                        </div>
+                    </>
+                )}
+                {/* --- FIN CORRECCIÓN DE UI: Ocultar KPIs --- */}
 
 
-                {/* Grilla de KPIs (Chips Horizontales) */}
-                <div className="flex gap-3 overflow-x-auto pb-4 px-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                    <style>{`
-                        .horizontal-scroll::-webkit-scrollbar {
-                            display: none;
-                        }
-                    `}</style>
-                    {categoryChips.map(chip => (
-                        <CategoryChip 
-                            key={chip.title}
-                            title={chip.title}
-                            value={chip.value}
-                            icon={chip.icon}
-                            onClick={chip.onClick}
-                        />
-                    ))}
-                </div>
-
-
-                {/* Selector de Pestañas (pt-4 se mantiene para espacio interno) */}
-                <div className="pt-4 px-4">
+                {/* Selector de Pestañas (Sticky Header) */}
+                <div className="sticky top-0 z-10 bg-[#1C1C1E] px-4 pt-6 pb-4">
                     <div className="flex justify-between items-center mb-2">
-                        <h2 className="text-xl font-bold text-white">Lotes de Manejo</h2>
-                        {activeTab === 'physical' && (
+                        <h2 className="text-xl font-bold text-white">
+                            {activeTab === 'physical' ? 'Lotes de Manejo' : 'Lotes de Monta'}
+                        </h2>
+                        
+                        {/* --- INICIO CORRECCIÓN DE UI: Botón dinámico --- */}
+                        {activeTab === 'physical' ? (
                             <button 
                                 onClick={() => setAddLotModalOpen(true)} 
                                 className="flex items-center gap-1 text-sm text-brand-orange font-semibold"
                             >
-                                <Plus size={16} /> Añadir
+                                <Plus size={16} /> Añadir Lote
+                            </button>
+                        ) : (
+                            <button 
+                                onClick={() => handleOpenSeasonModal()} 
+                                className="flex items-center gap-1 text-sm text-brand-orange font-semibold"
+                            >
+                                <Plus size={16} /> Crear Temporada
                             </button>
                         )}
+                        {/* --- FIN CORRECCIÓN DE UI --- */}
+
                     </div>
                     <LotSegmentedControl value={activeTab} onChange={setActiveTab} />
                 </div>
 
+
                 {/* Contenido de la pestaña activa */}
-                <div className="pt-0"> 
+                <div> 
                     {activeTab === 'physical' && <PhysicalLotsView navigateTo={navigateTo} />}
-                    {activeTab === 'breeding' && <BreedingLotsView navigateTo={navigateTo} />}
+                    
+                    {/* --- INICIO CORRECCIÓN DE UI: Pasar prop onEditSeason --- */}
+                    {activeTab === 'breeding' && <BreedingLotsView navigateTo={navigateTo} onEditSeason={handleOpenSeasonModal} />}
+                    {/* --- FIN CORRECCIÓN DE UI --- */}
                 </div>
             </div>
 
-            {/* --- Modales de Análisis (Restaurados) --- */}
+            {/* --- Modales de Análisis (Sin cambios) --- */}
             
             <Modal isOpen={isCabrasModalOpen} onClose={() => setCabrasModalOpen(false)} title="Análisis de Hembras Adultas">
                 <button
@@ -313,6 +361,7 @@ export default function LotsDashboardPage({ navigateTo }: { navigateTo: (page: P
                                         <div>
                                             <p className="font-bold text-white">{formatAnimalDisplay(sire)}</p>
                                             <p className="text-xs text-brand-medium-gray">Ver lote de monta asignado</p>
+
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <span className="text-base font-semibold text-brand-orange">{sire.assignedFemales} hembras</span>
@@ -331,7 +380,18 @@ export default function LotsDashboardPage({ navigateTo }: { navigateTo: (page: P
                 </div>
             </Modal>
 
+            {/* Modal para Lotes Físicos */}
             <AddLotModal isOpen={isAddLotModalOpen} onClose={() => setAddLotModalOpen(false)} />
+
+            {/* --- INICIO CORRECCIÓN DE UI: Añadir Modal de Temporada --- */}
+            <Modal isOpen={isAddSeasonModalOpen} onClose={() => { setAddSeasonModalOpen(false); setEditingSeason(undefined); }} title={editingSeason ? "Editar Temporada de Monta" : "Crear Temporada de Monta"}>
+                <BreedingSeasonForm 
+                    onSave={handleSaveSeason}
+                    onCancel={() => { setAddSeasonModalOpen(false); setEditingSeason(undefined); }}
+                    existingSeason={editingSeason}
+                />
+            </Modal>
+            {/* --- FIN CORRECCIÓN DE UI --- */}
         </>
     );
 }

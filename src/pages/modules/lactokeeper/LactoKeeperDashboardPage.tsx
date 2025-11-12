@@ -1,14 +1,18 @@
-// src/pages/modules/lactokeeper/LactoKeeperDashboardPage.tsx
+// src/pages/modules/lactokeeper/LactoKeeperDashboardPage.tsx (CORREGIDO)
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react'; // (CORREGIDO) React eliminado
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, BarChart, Bar, ReferenceLine, Tooltip, CartesianGrid } from 'recharts';
 import { useData } from '../../../context/DataContext';
 import { calculateDEL } from '../../../utils/calculations';
-import { Droplet, ActivitySquare, BarChart as BarChartIconLucide, Info } from 'lucide-react';
+import { Droplet, ActivitySquare, BarChart as BarChartIconLucide, Info, Plus, Camera, FilePen } from 'lucide-react';
 import { CustomTooltip } from '../../../components/ui/CustomTooltip';
 import { Modal } from '../../../components/ui/Modal';
-// --- (NUEVO) Importar el tipo Weighing ---
-import { Weighing } from '../../../db/local';
+// (CORREGIDO) Importar 'Animal'
+import { Weighing, Animal } from '../../../db/local';
+import { ActionSheetModal, ActionSheetAction } from '../../../components/ui/ActionSheetModal';
+import BatchImportPage, { OcrResult } from '../../BatchImportPage'; // Esta ruta ahora es correcta
+import { BatchWeighingForm } from '../../../components/forms/BatchWeighingForm'; 
+import { NewWeighingSessionFlow } from '../shared/NewWeighingSessionFlow'; 
 
 interface LactoKeeperDashboardProps {
   onNavigateToAnalysis: () => void;
@@ -20,59 +24,54 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
   const [isChartInfoModalOpen, setIsChartInfoModalOpen] = useState(false);
   const [isGaussInfoModalOpen, setIsGaussInfoModalOpen] = useState(false);
 
+  type ActiveModal = 'idle' | 'loadOptions' | 'loadManual' | 'loadOcr' | 'loadOcrResults';
+  const [activeModal, setActiveModal] = useState<ActiveModal>('idle');
+  const [ocrResults, setOcrResults] = useState<OcrResult[]>([]); 
+  const [ocrDefaultDate, setOcrDefaultDate] = useState('');
+  const [manualAnimals, setManualAnimals] = useState<Animal[]>([]); // (CORREGIDO) Tipo 'Animal'
+
   const analytics = useMemo(() => {
+    // ... (Lógica de 'analytics' sin cambios) ...
     if (isLoading || !weighings.length || !animals.length) {
       return {  
         herdAverage: 0, activeGoats: 0, herdLactationCurve: [],
         gaussData: { distribution: [], mean: 0, stdDev: 0 }
       };
     }
-    
     let animalsInLastWeighing = 0;
     if (weighings.length > 0) {
         const latestDate = weighings.reduce((max, w) => w.date > max ? w.date : max, weighings[0].date);
         animalsInLastWeighing = new Set(weighings.filter(w => w.date === latestDate).map(w => w.goatId)).size;
     }
-    
     let weighingsForChart = weighings;
     if (chartView === 'current') {
         const milkingAnimalIds = new Set(
             parturitions.filter(p => p.status === 'activa').map(p => p.goatId)
         );
-        // --- (INICIO) CORRECCIÓN DE ERRORES ---
-        // 1. Corregido el error de tipeo "weighighings" -> "weighings"
-        // 2. Añadido el tipo 'Weighing' al parámetro 'w'
         weighingsForChart = weighings.filter((w: Weighing) => milkingAnimalIds.has(w.goatId));
-        // --- (FIN) CORRECCIÓN DE ERRORES ---
     }
-    
     const herdCurveData: { [key: number]: { totalKg: number, count: number } } = {};
     weighingsForChart.forEach(w => {
         const parturitionForWeighing = parturitions
             .filter(p => p.goatId === w.goatId && new Date(w.date) >= new Date(p.parturitionDate))
             .sort((a, b) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime())[0];
         if (!parturitionForWeighing) return;
-        
         const del = calculateDEL(parturitionForWeighing.parturitionDate, w.date);
         if (!herdCurveData[del]) herdCurveData[del] = { totalKg: 0, count: 0 };
         herdCurveData[del].totalKg += w.kg;
         herdCurveData[del].count++;
     });
-
     const herdLactationCurve = Object.entries(herdCurveData)
         .map(([del, data]) => ({ del: parseInt(del), kg: data.totalKg / data.count, name: "Promedio Rebaño" }))
         .sort((a, b) => a.del - b.del);
-
     const animalAverages = animals.map(animal => {
         const animalWeighings = weighings.filter(w => w.goatId === animal.id);
         if (animalWeighings.length === 0) return null;
         const totalKg = animalWeighings.reduce((sum, w) => sum + w.kg, 0);
         return { avg: totalKg / animalWeighings.length };
     }).filter(Boolean) as { avg: number; }[];
-    
     const mean = animalAverages.length > 0 ? animalAverages.reduce((sum, g) => sum + g.avg, 0) / animalAverages.length : 0;
     const stdDev = animalAverages.length > 0 ? Math.sqrt(animalAverages.reduce((sum, g) => sum + Math.pow(g.avg - mean, 2), 0) / animalAverages.length) : 0;
-    
     const distribution = [];
     if(animalAverages.length > 0){
         const minProd = Math.floor(Math.min(...animalAverages.map(g => g.avg)) * 4) / 4;
@@ -87,9 +86,35 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
     }
     const gaussData = { distribution, mean, stdDev };
     const totalAverage = weighings.length > 0 ? weighings.reduce((sum,w) => sum + w.kg, 0) / weighings.length : 0;
-    
     return { herdAverage: totalAverage, activeGoats: animalsInLastWeighing, herdLactationCurve, gaussData };
   }, [animals, weighings, parturitions, isLoading, chartView]);
+
+  // --- Handlers ---
+  const handleCloseModal = () => {
+    setActiveModal('idle');
+    setOcrResults([]);
+    setManualAnimals([]);
+    setOcrDefaultDate('');
+  };
+
+  const handleOcrSuccess = (results: OcrResult[], defaultDate: string) => {
+    setOcrResults(results);
+    setOcrDefaultDate(defaultDate);
+    setActiveModal('loadOcrResults'); 
+  };
+  
+  // (CORREGIDO) Ignorar 'selectedIds'
+  const handleManualSelect = (_selectedIds: string[], selectedAnimals: Animal[]) => {
+      setManualAnimals(selectedAnimals);
+      setActiveModal('loadManual'); 
+  };
+
+  const loadOptionsActions: ActionSheetAction[] = [
+    { label: 'Cargar con Foto (IA)', icon: Camera, onClick: () => setActiveModal('loadOcr') },
+    { label: 'Cargar Manual (Selección)', icon: FilePen, onClick: () => setActiveModal('loadManual') },
+  ];
+  // --- Fin Handlers ---
+
 
   if (isLoading) {
     return <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Cargando datos del rebaño...</h1></div>;
@@ -97,7 +122,14 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
 
   return (
     <>
-        <div className="w-full max-w-2xl mx-auto space-y-4 px-4">
+        <button
+          onClick={() => setActiveModal('loadOptions')}
+          className="fixed bottom-20 sm:bottom-8 right-8 z-40 bg-brand-orange text-white p-4 rounded-full shadow-lg transform active:scale-95 transition-transform"
+        >
+          <Plus size={28} />
+        </button>
+
+        <div className="w-full max-w-2xl mx-auto space-y-4 px-4 pb-24"> 
             <header className="text-center pt-4 pb-4">
                 <h1 className="text-2xl font-bold tracking-tight text-white">Dashboard de Producción</h1>
                 <p className="text-md text-zinc-400">Análisis General de LactoKeeper</p>
@@ -120,6 +152,7 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
                 </button>
             </div>
 
+            {/* ... (Gráficos) ... */}
             <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
                 <div className="flex justify-between items-center border-b border-brand-border pb-2 mb-4">
                     <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase tracking-wider">
@@ -149,7 +182,6 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
                     </AreaChart></ResponsiveContainer>
                 </div>
             </div>
-
             <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
                 <div className="flex justify-between items-center border-b border-brand-border pb-2 mb-4">
                     <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase tracking-wider">
@@ -175,6 +207,55 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
             </div>
         </div>
 
+        {/* --- Flujo de Modales de Importación --- */}
+
+        <ActionSheetModal
+          isOpen={activeModal === 'loadOptions'}
+          onClose={handleCloseModal}
+          title="Opciones de Carga de Datos"
+          actions={loadOptionsActions}
+        />
+
+        {activeModal === 'loadManual' && (
+          <NewWeighingSessionFlow
+            weightType="leche" // (CORREGIDO) 'milk' -> 'leche'
+            onBack={handleCloseModal}
+            onAnimalsSelected={handleManualSelect}
+          />
+        )}
+        
+        {activeModal === 'loadOcr' && (
+          <BatchImportPage
+            importType="leche" // (CORREGIDO) 'milk' -> 'leche'
+            onBack={handleCloseModal}
+            onImportSuccess={handleOcrSuccess}
+          />
+        )}
+        
+        {activeModal === 'loadManual' && manualAnimals.length > 0 && (
+          <Modal isOpen={true} onClose={handleCloseModal} title="Carga Manual de Ordeño" size="fullscreen">
+            <BatchWeighingForm
+              weightType="leche" // (CORREGIDO) 'milk' -> 'leche'
+              animalsToWeigh={manualAnimals}
+              onSaveSuccess={handleCloseModal}
+              onCancel={handleCloseModal}
+            />
+          </Modal>
+        )}
+
+        {activeModal === 'loadOcrResults' && (
+          <Modal isOpen={true} onClose={handleCloseModal} title="Verificar Datos de IA (Leche)" size="fullscreen">
+            <BatchWeighingForm
+              weightType="leche" // (CORREGIDO) 'milk' -> 'leche'
+              importedData={ocrResults}
+              defaultDate={ocrDefaultDate}
+              onSaveSuccess={handleCloseModal}
+              onCancel={handleCloseModal}
+            />
+          </Modal>
+        )}
+
+        {/* ... (Modales de Info) ... */}
         <Modal    
             isOpen={isChartInfoModalOpen}    
             onClose={() => setIsChartInfoModalOpen(false)}    

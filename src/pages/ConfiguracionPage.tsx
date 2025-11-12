@@ -1,19 +1,25 @@
+// src/pages/ConfiguracionPage.tsx (Actualizado con Overhaul de UI/UX)
+
 import React, { useState, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import {
     Save, CheckCircle, Loader2, Baby, Milk,
     TrendingUp, Cog, ArrowLeft,
     ChevronDown,
-    LogOut // <-- (NUEVO) Importar ícono de Salir
+    LogOut,
+    Users,
+    Heart // Icono para Lógica de Vientres
 } from 'lucide-react';
 import type { PageState } from '../types/navigation';
 import { AppConfig, DEFAULT_CONFIG } from '../types/config';
-import { auth } from '../firebaseConfig'; // <-- (NUEVO) Importar 'auth'
+import { auth } from '../firebaseConfig';
 
-// --- (Helpers: configToFormState, formStateToConfig - Sin cambios) ---
+// --- (Helpers: configToFormState, formStateToConfig - MODIFICADOS) ---
 const configToFormState = (config: AppConfig): Record<string, string | boolean> => {
     const stringState: Record<string, string | boolean> = {};
-    for (const [key, value] of Object.entries(config)) {
+    const completeConfig = { ...DEFAULT_CONFIG, ...config };
+    
+    for (const [key, value] of Object.entries(completeConfig)) {
         if (typeof value === 'number') {
             stringState[key] = String(value); 
         } else {
@@ -28,19 +34,32 @@ const formStateToConfig = (formState: Record<string, string | boolean>): AppConf
     
     for (const [key, defaultValue] of Object.entries(DEFAULT_CONFIG)) {
         if (typeof defaultValue === 'number') {
-            const stringValue = String(formState[key]);
+            let stringValue = String(formState[key]);
+            
+            if (key === 'edadMinimaVientreMeses') {
+                let parsedValue = parseFloat(stringValue);
+                if (isNaN(parsedValue) || parsedValue < 6) {
+                    parsedValue = 6; // Forzar mínimo de 6 meses
+                }
+                newConfig[key] = parsedValue;
+                continue;
+            }
+
             let parsedValue = parseFloat(stringValue);
             if (isNaN(parsedValue)) {
                 parsedValue = DEFAULT_CONFIG[key as keyof AppConfig] as number; 
             }
             newConfig[key] = parsedValue;
+        } else if (typeof defaultValue === 'boolean') {
+             newConfig[key] = !!formState[key];
         }
     }
     return newConfig as AppConfig;
 };
 
 
-// --- Componente de UI colapsable (Sin cambios) ---
+// --- Componente de UI colapsable (MODIFICADO) ---
+// startOpen ahora es 'false' por defecto para que todos los grupos inicien plegados.
 const SettingsGroup: React.FC<{ title: string, icon: React.ElementType, children: React.ReactNode, startOpen?: boolean }> = ({ title, icon: Icon, children, startOpen = false }) => {
     const [isOpen, setIsOpen] = useState(startOpen); 
 
@@ -68,40 +87,57 @@ const SettingsGroup: React.FC<{ title: string, icon: React.ElementType, children
     );
 };
 
-// --- Componente SettingsInput (Sin cambios) ---
+// --- Componente SettingsInput (MODIFICADO para Overhaul) ---
 interface SettingsInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     label: string;
     unit?: string;
+    sublabel?: string;
 }
 
-const SettingsInput = React.forwardRef<HTMLInputElement, SettingsInputProps>(({ label, unit, ...props }, ref) => (
+const SettingsInput = React.forwardRef<HTMLInputElement, SettingsInputProps>(({ label, unit, sublabel, ...props }, ref) => (
     <div className={`p-3 bg-ios-modal-bg flex justify-between items-center ${props.disabled ? 'opacity-50' : ''}`}>
-        <label htmlFor={props.id || props.name} className="text-white text-base">
-            {label}
-        </label>
-        <div className="flex items-center gap-2">
+        {/* (MODIFICADO) Label y Sublabel ahora son flexibles */}
+        <div className="flex-1 pr-2">
+            <label htmlFor={props.id || props.name} className="text-white text-base">
+                {label}
+            </label>
+            {sublabel && (
+                <p className="text-xs text-zinc-400 mt-0.5">{sublabel}</p>
+            )}
+        </div>
+        {/* (MODIFICADO) Input y Unit tienen ancho fijo para alineación */}
+        <div className="flex items-center gap-2 flex-shrink-0">
             <input
                 ref={ref}
                 {...props}
                 type={props.type === 'number' ? 'text' : props.type}
                 inputMode={props.type === 'number' ? 'decimal' : 'text'}
-                className={`w-24 bg-zinc-700/80 rounded-lg p-2 text-right font-mono text-base focus:outline-none focus:ring-2 focus:ring-brand-orange ${props.type === 'text' ? 'font-sans' : ''} ${props.disabled ? 'text-zinc-400' : 'text-white'}`}
+                // (MODIFICADO) Ancho de input ajustado
+                className={`w-20 bg-zinc-700/80 rounded-lg p-2 text-right font-mono text-base focus:outline-none focus:ring-2 focus:ring-brand-orange ${props.type === 'text' ? 'font-sans' : ''} ${props.disabled ? 'text-zinc-400' : 'text-white'}`}
             />
-            {unit && <span className="text-zinc-400 w-6 text-left">{unit}</span>}
+            {/* (MODIFICADO) Ancho de unidad w-6 -> w-12 para que "meses" no se corte */}
+            {unit && <span className="text-zinc-400 w-12 text-left">{unit}</span>}
         </div>
     </div>
 ));
 
-// --- Interfaz 'SettingsToggleProps' (Sin cambios) ---
+// --- Interfaz 'SettingsToggleProps' (MODIFICADO para Overhaul) ---
 interface SettingsToggleProps {
     label: string;
     value: boolean;
     onChange: (checked: boolean) => void;
+    sublabel?: string; // (NUEVO)
 }
 
-const SettingsToggle: React.FC<SettingsToggleProps & { disabled?: boolean }> = ({ label, value, onChange, disabled = false }) => (
+const SettingsToggle: React.FC<SettingsToggleProps & { disabled?: boolean }> = ({ label, value, onChange, sublabel, disabled = false }) => (
     <div className={`p-3 bg-ios-modal-bg flex justify-between items-center ${disabled ? 'opacity-50' : ''}`}>
-        <label className="text-white text-base">{label}</label>
+        {/* (NUEVO) Label y Sublabel ahora son flexibles */}
+        <div className="flex-1 pr-2">
+            <label className="text-white text-base">{label}</label>
+            {sublabel && (
+                <p className="text-xs text-zinc-400 mt-0.5">{sublabel}</p>
+            )}
+        </div>
         <button
             type="button"
             role="switch"
@@ -133,10 +169,10 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
 
     useEffect(() => {
-        if (savedConfig) {
-            setFormState(configToFormState(savedConfig));
+        if (savedConfig || !isLoadingConfig) {
+             setFormState(configToFormState(savedConfig || DEFAULT_CONFIG));
         }
-    }, [savedConfig]);
+    }, [savedConfig, isLoadingConfig]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -152,6 +188,13 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
             [name]: processedValue
         }));
     };
+
+    const handleToggleChange = (name: string, checked: boolean) => {
+        setFormState(prev => ({
+            ...prev,
+            [name]: checked
+        }));
+    };
     
     const handleThemeChange = (isDark: boolean) => {
         setFormState(prev => ({ ...prev, theme: isDark ? 'dark' : 'light' }));
@@ -161,6 +204,7 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
         setSaveStatus('saving');
         try {
             const configToSave = formStateToConfig(formState);
+            setFormState(configToFormState(configToSave));
             await updateAppConfig(configToSave); 
             
             setSaveStatus('success');
@@ -174,9 +218,7 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
         }
     };
     
-    // --- (NUEVO) Handler para Cerrar Sesión ---
     const handleSignOut = () => {
-        // Podríamos añadir un modal de confirmación aquí si quieres
         auth.signOut();
     };
 
@@ -185,14 +227,8 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
     }
 
     return (
-        // --- CORRECCIÓN SCROLL: Eliminado 'height: 100vh' ---
-        // El padding lo gestiona el <main> del Shell
         <div className="w-full max-w-2xl mx-auto flex flex-col">
-            {/* Header Fijo (Eliminado - ahora lo maneja el Shell) */}
-            {/* <header> ... </header> */}
             
-            {/* --- (NUEVO) Header Fijo Interno (adaptado de tu versión anterior) --- */}
-            {/* Este header se pega al 'top-16' del <main> */}
             <header className="flex-shrink-0 flex items-center justify-between pt-4 pb-4 px-4 sticky top-0 bg-brand-dark/80 backdrop-blur-lg z-10">
                 <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors">
                     <ArrowLeft size={24} />
@@ -214,7 +250,6 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
                 </button>
             </header>
 
-            {/* Contenido (ya no necesita 'flex-1 overflow-y-auto') */}
             <main className="pb-24 pt-4 px-4">
                 
                 <div className="bg-brand-glass rounded-2xl border border-brand-border p-4 mb-6">
@@ -231,6 +266,7 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
                     />
                 </div>
 
+                {/* Todos los grupos ahora están plegados por defecto (startOpen={false}) */}
                 <SettingsGroup title="General" icon={Cog}>
                     <SettingsToggle 
                         label="Modo Oscuro"
@@ -240,27 +276,55 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
                 </SettingsGroup>
                 
                 <SettingsGroup title="Manejo Reproductivo" icon={Baby}>
-                    <SettingsInput label="Edad 1er Servicio" type="number" name="edadPrimerServicioMeses" value={String(formState.edadPrimerServicioMeses)} onChange={handleChange} unit="meses" />
-                    <SettingsInput label="Peso 1er Servicio" type="number" name="pesoPrimerServicioKg" value={String(formState.pesoPrimerServicioKg)} onChange={handleChange} unit="Kg" />
-                    <SettingsInput label="Días de Gestación" type="number" name="diasGestacion" value={String(formState.diasGestacion)} onChange={handleChange} unit="días" />
-                    <SettingsInput label="Días Confirmar Preñez" type="number" name="diasConfirmarPrenez" value={String(formState.diasConfirmarPrenez)} onChange={handleChange} unit="días" />
-                    <SettingsInput label="Días de Pre-parto" type="number" name="diasPreParto" value={String(formState.diasPreParto)} onChange={handleChange} unit="días" />
+                    <SettingsInput label="Edad 1er Servicio" type="number" name="edadPrimerServicioMeses" value={String(formState.edadPrimerServicioMeses)} onChange={handleChange} unit="meses" sublabel="Edad para recibir servicio" />
+                    <SettingsInput label="Peso 1er Servicio" type="number" name="pesoPrimerServicioKg" value={String(formState.pesoPrimerServicioKg)} onChange={handleChange} unit="Kg" sublabel="Peso para recibir servicio" />
+                    <SettingsInput label="Edad Alerta Vacías" type="number" name="edadParaAlertaVaciasMeses" value={String(formState.edadParaAlertaVaciasMeses)} onChange={handleChange} unit="meses" sublabel="Alerta si la hembra nativa está vacía" />
+                    <SettingsInput label="Días de Gestación" type="number" name="diasGestacion" value={String(formState.diasGestacion)} onChange={handleChange} unit="días" sublabel="Usado para calcular FPP" />
+                    <SettingsInput label="Días Confirmar Preñez" type="number" name="diasConfirmarPrenez" value={String(formState.diasConfirmarPrenez)} onChange={handleChange} unit="días" sublabel="Alerta para eco/palpación" />
+                    <SettingsInput label="Días de Pre-parto" type="number" name="diasPreParto" value={String(formState.diasPreParto)} onChange={handleChange} unit="días" sublabel="Alerta para mover a lote de pre-parto" />
                 </SettingsGroup>
                 
+                <SettingsGroup title="Lógica de Vientres" icon={Heart}>
+                    <SettingsInput 
+                        label="Edad Mínima Vientres" 
+                        type="number" 
+                        name="edadMinimaVientreMeses" 
+                        value={String(formState.edadMinimaVientreMeses)} 
+                        onChange={handleChange} 
+                        unit="meses" 
+                        sublabel="Cabritonas mayores a esta edad contarán como Vientres (Mín. 6)"
+                    />
+                </SettingsGroup>
+
+                <SettingsGroup title="Lógica de Categorías Zootécnicas" icon={Users}>
+                    <SettingsInput label="Cabrita (Edad Máx)" type="number" name="categoriaCabritaEdadMaximaDias" value={String(formState.categoriaCabritaEdadMaximaDias)} onChange={handleChange} unit="días" />
+                    <SettingsInput label="Cabrito (Edad Máx)" type="number" name="categoriaCabritoEdadMaximaDias" value={String(formState.categoriaCabritoEdadMaximaDias)} onChange={handleChange} unit="días" />
+                    <SettingsInput label="Cabritona (Edad Mín)" type="number" name="categoriaCabritonaEdadMinimaDias" value={String(formState.categoriaCabritonaEdadMinimaDias)} onChange={handleChange} unit="días" sublabel="Usualmente 'Cabrita (Edad Máx)' + 1" />
+                    <SettingsInput label="Cabritona (Edad Máx)" type="number" name="categoriaCabritonaEdadMaximaMeses" value={String(formState.categoriaCabritonaEdadMaximaMeses)} onChange={handleChange} unit="meses" />
+                    <SettingsInput label="Cabra (Edad Mín)" type="number" name="categoriaCabraEdadMinimaMeses" value={String(formState.categoriaCabraEdadMinimaMeses)} onChange={handleChange} unit="meses" sublabel="Normalmente 'Cabritona (Edad Máx)'" />
+                    <SettingsToggle
+                        label="Cabra requiere Parto"
+                        value={!!formState.categoriaCabraRequiereParto}
+                        onChange={(checked) => handleToggleChange('categoriaCabraRequiereParto', checked)}
+                        sublabel="Si está ON, hembras > Edad Mín. sin parto serán 'Cabritonas'"
+                    />
+                    <SettingsInput label="M. Levante (Edad Mín)" type="number" name="categoriaMachoLevanteEdadMinimaDias" value={String(formState.categoriaMachoLevanteEdadMinimaDias)} onChange={handleChange} unit="días" sublabel="Usualmente 'Cabrito (Edad Máx)' + 1" />
+                    <SettingsInput label="M. Levante (Edad Máx)" type="number" name="categoriaMachoLevanteEdadMaximaMeses" value={String(formState.categoriaMachoLevanteEdadMaximaMeses)} onChange={handleChange} unit="meses" sublabel="Mayor a esto será 'Reproductor'" />
+                </SettingsGroup>
+
                 <SettingsGroup title="Manejo Productivo (Leche)" icon={Milk}>
-                    <SettingsInput label="Días Lactancia (Larga)" type="number" name="diasLactanciaObjetivo" value={String(formState.diasLactanciaObjetivo)} onChange={handleChange} unit="días" />
-                    <SettingsInput label="Alerta Iniciar Secado" type="number" name="diasAlertaInicioSecado" value={String(formState.diasAlertaInicioSecado)} onChange={handleChange} unit="días" />
-                    <SettingsInput label="Meta Secado Completo" type="number" name="diasMetaSecadoCompleto" value={String(formState.diasMetaSecadoCompleto)} onChange={handleChange} unit="días" />
+                    <SettingsInput label="Días Lactancia (Larga)" type="number" name="diasLactanciaObjetivo" value={String(formState.diasLactanciaObjetivo)} onChange={handleChange} unit="días" sublabel="Alerta de secado para hembras vacías" />
+                    <SettingsInput label="Alerta Iniciar Secado" type="number" name="diasAlertaInicioSecado" value={String(formState.diasAlertaInicioSecado)} onChange={handleChange} unit="días" sublabel="Días ANTES del parto" />
+                    <SettingsInput label="Meta Secado Completo" type="number" name="diasMetaSecadoCompleto" value={String(formState.diasMetaSecadoCompleto)} onChange={handleChange} unit="días" sublabel="Días ANTES del parto (Urgente)" />
                 </SettingsGroup>
 
                 <SettingsGroup title="Manejo Crecimiento (Kilos)" icon={TrendingUp}>
-                    <SettingsInput label="Alerta Pesar Destete" type="number" name="diasAlertaPesarDestete" value={String(formState.diasAlertaPesarDestete)} onChange={handleChange} unit="días" />
-                    <SettingsInput label="Peso Mín. Pesar Destete" type="number" name="pesoMinimoPesarDestete" value={String(formState.pesoMinimoPesarDestete)} onChange={handleChange} unit="Kg" />
-                    <SettingsInput label="Meta Edad Destete Final" type="number" name="diasMetaDesteteFinal" value={String(formState.diasMetaDesteteFinal)} onChange={handleChange} unit="días" />
-                    <SettingsInput label="Peso Mín. Destete Final" type="number" name="pesoMinimoDesteteFinal" value={String(formState.pesoMinimoDesteteFinal)} onChange={handleChange} unit="Kg" />
+                    <SettingsInput label="Alerta Pesar Destete" type="number" name="diasAlertaPesarDestete" value={String(formState.diasAlertaPesarDestete)} onChange={handleChange} unit="días" sublabel="Edad para 1ra revisión de peso" />
+                    <SettingsInput label="Peso Mín. Pesar Destete" type="number" name="pesoMinimoPesarDestete" value={String(formState.pesoMinimoPesarDestete)} onChange={handleChange} unit="Kg" sublabel="Peso para 1ra revisión" />
+                    <SettingsInput label="Meta Edad Destete Final" type="number" name="diasMetaDesteteFinal" value={String(formState.diasMetaDesteteFinal)} onChange={handleChange} unit="días" sublabel="Edad para destete definitivo" />
+                    <SettingsInput label="Peso Mín. Destete Final" type="number" name="pesoMinimoDesteteFinal" value={String(formState.pesoMinimoDesteteFinal)} onChange={handleChange} unit="Kg" sublabel="Peso para destete definitivo" />
                 </SettingsGroup>
                 
-                {/* --- (NUEVO) Botón Cerrar Sesión --- */}
                 <div className="mt-8">
                      <button 
                         onClick={handleSignOut}

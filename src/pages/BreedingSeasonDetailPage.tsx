@@ -1,5 +1,3 @@
-// src/pages/BreedingSeasonDetailPage.tsx
-
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useData } from '../context/DataContext';
 import { ArrowLeft, Plus, Users, ChevronRight, Edit, Trash2, GripVertical, AlertTriangle, PackageOpen, MoveRight } from 'lucide-react';
@@ -10,8 +8,8 @@ import type { PageState } from '../types/navigation';
 import { Reorder, motion, useAnimation, PanInfo, useDragControls } from 'framer-motion';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { TransferFemalesModal } from '../components/modals/TransferFemalesModal';
-import { Animal } from '../db/local'; // Animal SÍ se usa
-import { formatAnimalDisplay } from '../utils/formatting'; // Importar formateo
+import { Animal } from '../db/local';
+import { formatAnimalDisplay } from '../utils/formatting';
 
 // --- SUB-COMPONENTES (Sin cambios) ---
 
@@ -93,13 +91,24 @@ const ReorderableSireLotItem = ({ lot, navigateTo, onEdit, onDelete }: { lot: an
 };
 
 // --- COMPONENTE PRINCIPAL DE LA PÁGINA ---
+
+// --- INICIO CORRECCIÓN DE ADVERTENCIA ---
+// 1. Eliminar 'scrollContainerRef' de los props
 interface BreedingSeasonDetailPageProps {
     seasonId: string;
     onBack: () => void;
     navigateTo: (page: PageState) => void;
+    // scrollContainerRef: React.RefObject<HTMLDivElement>; <-- ELIMINADO
 }
 
-export default function BreedingSeasonDetailPage({ seasonId, onBack, navigateTo }: BreedingSeasonDetailPageProps) {
+export default function BreedingSeasonDetailPage({ 
+    seasonId, 
+    onBack, 
+    navigateTo,
+    // scrollContainerRef <-- ELIMINADO
+}: BreedingSeasonDetailPageProps) {
+// --- FIN CORRECCIÓN DE ADVERTENCIA ---
+
     const { breedingSeasons, sireLots, fathers, animals, serviceRecords, addSireLot, updateSireLot, deleteSireLot, updateAnimal } = useData();
     const [isModalOpen, setModalOpen] = useState(false);
     const [editingLot, setEditingLot] = useState<any | undefined>(undefined);
@@ -108,6 +117,7 @@ export default function BreedingSeasonDetailPage({ seasonId, onBack, navigateTo 
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [transferError, setTransferError] = useState<string | null>(null);
 
+    // (Lógica de Memos y Handlers sin cambios)
     const season = useMemo(() => breedingSeasons.find(s => s.id === seasonId), [breedingSeasons, seasonId]);
     
     const lotsForSeason = useMemo(() => {
@@ -117,7 +127,7 @@ export default function BreedingSeasonDetailPage({ seasonId, onBack, navigateTo 
                 const sire = fathers.find(f => f.id === lot.sireId);
                 const sireName = sire ? formatAnimalDisplay(sire) : 'Desconocido';
                 const animalCount = animals.filter(a => a.sireLotId === lot.id).length;
-                return { ...lot, sireName, animalCount, sireId: lot.sireId }; // Pasar sireId
+                return { ...lot, sireName, animalCount, sireId: lot.sireId };
             });
     }, [sireLots, seasonId, fathers, animals]);
 
@@ -139,7 +149,6 @@ export default function BreedingSeasonDetailPage({ seasonId, onBack, navigateTo 
         return femalesInSeason.filter((animal: Animal) => !femalesWithService.has(animal.id));
     }, [season, lotsForSeason, animals, serviceRecords]);
 
-    // Handlers
     const handleOpenModal = (lot?: any) => { setEditingLot(lot); setModalOpen(true); };
     const handleSaveSireLot = async (sireId: string) => { 
         if (editingLot) { 
@@ -169,27 +178,32 @@ export default function BreedingSeasonDetailPage({ seasonId, onBack, navigateTo 
         setIsTransferModalOpen(false);
     };
 
+
     if (!season) { return ( <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Temporada no encontrada.</h1><button onClick={onBack} className="mt-4 text-brand-orange">Volver</button></div> ); }
 
     return (
         <>
-            <div className="w-full max-w-2xl mx-auto space-y-6 pb-12 animate-fade-in">
-                {/* Cabecera */}
-                <header className="flex items-center pt-8 pb-4 px-4">
+            {/* Layout (sin 'scrollContainerRef') */}
+            <div className="w-full max-w-2xl mx-auto animate-fade-in">
+                
+                {/* Header (se mantiene 'sticky') */}
+                <header className="flex items-center pt-4 pb-4 px-4 sticky top-0 bg-brand-dark z-10 border-b border-brand-border">
                     <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
                     <div className="text-center flex-grow"><h1 className="text-3xl font-bold tracking-tight text-white">{season.name}</h1><p className="text-lg text-zinc-400">Detalle de la Temporada</p></div>
                     <div className="w-8"></div>
                 </header>
                 
-                {/* Sección Lotes de Reproductor */}
-                <div className="space-y-4 px-4">
+                {/* Sección Lotes (se mantiene 'sticky') */}
+                <div className="sticky top-[97px] z-10 bg-brand-dark px-4 pt-6 pb-4 border-b border-brand-border/50">
                      <div className="flex justify-between items-center">
                         <h2 className="text-xl font-semibold text-zinc-300">Lotes de Reproductor</h2>
                         <button onClick={() => handleOpenModal()} className="flex items-center gap-2 bg-brand-orange hover:bg-orange-600 text-white font-bold py-2 px-3 rounded-lg transition-colors text-sm">
                             <Plus size={16} /> Añadir Lote
                         </button>
                     </div>
-
+                </div>
+                
+                <div className="space-y-4 px-4 pt-4">
                     {orderedLots.length > 0 ? (
                         <Reorder.Group as="div" axis="y" values={orderedLots} onReorder={setOrderedLots} className="space-y-3">
                             {orderedLots.map(lot => ( <ReorderableSireLotItem key={lot.id} lot={lot} navigateTo={navigateTo} onEdit={handleOpenModal} onDelete={handleDeleteAttempt} /> ))}
@@ -199,9 +213,10 @@ export default function BreedingSeasonDetailPage({ seasonId, onBack, navigateTo 
                     )}
                 </div>
 
-                {/* Sección Hembras sin Servicio */}
+
+                {/* Sección Hembras sin Servicio (se mantiene) */}
                 {season.status === 'Cerrado' && (
-                    <div className="space-y-4 px-4 pt-6">
+                    <div className="space-y-4 px-4 pt-10">
                         <div className="flex justify-between items-center">
                             <h2 className="text-xl font-semibold text-zinc-300">Resultados: Hembras sin Servicio</h2>
                             {unservicedFemales.length > 0 && (
@@ -212,7 +227,7 @@ export default function BreedingSeasonDetailPage({ seasonId, onBack, navigateTo 
                         </div>
                         <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border space-y-2">
                             {unservicedFemales.length > 0 ? (
-                                unservicedFemales.map((animal: Animal) => ( // Tipar animal
+                                unservicedFemales.map((animal: Animal) => (
                                     <div key={animal.id} className="flex items-center justify-between p-2 bg-black/20 rounded-md">
                                         <span className="font-semibold text-white">{formatAnimalDisplay(animal)}</span>
                                         <span className="text-xs text-zinc-400">Lote Físico: {animal.location || 'N/A'}</span>
@@ -229,33 +244,27 @@ export default function BreedingSeasonDetailPage({ seasonId, onBack, navigateTo 
                 )}
             </div>
 
-            {/* --- Modales --- */}
+            {/* --- Modales (Sin cambios) --- */}
             <Modal isOpen={isModalOpen} onClose={() => { setModalOpen(false); setEditingLot(undefined); }} title={editingLot ? `Editar Lote de ${editingLot.sireName}` : "Añadir Lote de Reproductor"}>
                 <SireLotForm 
                     onSave={handleSaveSireLot} 
                     onCancel={() => { setModalOpen(false); setEditingLot(undefined); }} 
-                    // CORRECCIÓN 1: Dejamos la prop 'editingLot' para edición (asumiendo que SireLotForm la necesita)
                     editingLot={editingLot} 
                     seasonId={season.id} 
                 />
             </Modal>
             <ConfirmationModal isOpen={!!deleteConfirmation} onClose={() => setDeleteConfirmation(null)} onConfirm={handleDeleteConfirm} title={`Eliminar Lote de ${deleteConfirmation?.sireName}`} message="¿Estás seguro de que quieres eliminar este lote? Esta acción es irreversible." />
-            {/* Modal Error Borrado */}
             <Modal isOpen={!!deleteError} onClose={() => setDeleteError(null)} title="Acción no permitida">
                 <div className="space-y-4 text-center"> <AlertTriangle size={40} className="mx-auto text-amber-400" /> <p className="text-zinc-300">{deleteError}</p> <button onClick={() => setDeleteError(null)} className="mt-4 bg-brand-orange text-white font-semibold py-2 px-6 rounded-lg">Entendido</button> </div>
             </Modal>
-             {/* Modal Error Transferencia */}
-            <Modal isOpen={!!transferError} onClose={() => setTransferError(null)} title="Error de Transferencia">
+             <Modal isOpen={!!transferError} onClose={() => setTransferError(null)} title="Error de Transferencia">
                 <div className="space-y-4 text-center"> <AlertTriangle size={40} className="mx-auto text-amber-400" /> <p className="text-zinc-300">{transferError}</p> <button onClick={() => setTransferError(null)} className="mt-4 bg-brand-orange text-white font-semibold py-2 px-6 rounded-lg">Entendido</button> </div>
             </Modal>
-            {/* Modal Transferir Hembras */}
             <TransferFemalesModal
                 isOpen={isTransferModalOpen}
                 onClose={() => setIsTransferModalOpen(false)}
                 femalesToTransfer={unservicedFemales.map(a => a.id)}
-                // --- CORRECCIÓN 2: Revertir a 'originSeasonId' ---
                 originSeasonId={season.id}
-                // --- CORRECCIÓN 3: Revertir a 'onConfirmTransfer' ---
                 onConfirmTransfer={handleConfirmTransfer}
             />
         </>

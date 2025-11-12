@@ -3,9 +3,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../../context/DataContext';
 import { Animal, Father, Parturition } from '../../db/local'; // Import types
-import { ArrowLeft, CheckCircle, Plus, X, Calendar, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Plus, X, Calendar, AlertTriangle, Search } from 'lucide-react';
 import { AddFatherModal } from '../ui/AddFatherModal'; // Modal for adding sire
 import { Modal } from '../ui/Modal'; // Base Modal component
+import { AnimalSelectorModal } from '../ui/AnimalSelectorModal'; // Importar el selector
 import { DayPicker } from 'react-day-picker'; // Calendar component
 import 'react-day-picker/dist/style.css'; // Calendar styles
 import { es } from 'date-fns/locale'; // Spanish locale for calendar
@@ -14,7 +15,6 @@ import { formatAnimalDisplay } from '../../utils/formatting'; // Formatting func
 // --- Tipos y Constantes ---
 type Step = 1 | 2 | 3 | 4; // Steps in the modal flow
 
-// Structure for offspring data collected in step 3
 interface OffspringData {
     id: string; // Temporary unique ID for mapping
     sex: 'Hembra' | 'Macho';
@@ -23,17 +23,14 @@ interface OffspringData {
     birthWeight: string; // Weight input as string
 }
 
-// Data for offspring count selection buttons
 const parturitionTypes = [
     { count: 1, name: 'Simple' }, { count: 2, name: 'Doble' }, { count: 3, name: 'Triple' },
     { count: 4, name: 'Cuádruple' }, { count: 5, name: 'Quíntuple' }
 ];
-// Minimum days allowed between parturitions for the same dam
 const MIN_DAYS_BETWEEN_PARTURITIONS = 140;
-// Maximum realistic birth weight validation
 const MAX_BIRTH_WEIGHT_KG = 7.0;
 
-// Custom CSS for the DayPicker calendar
+// (CORREGIDO TS6133) CSS del calendario ahora se usa
 const calendarCss = `
   .rdp {
     --rdp-cell-size: 40px; --rdp-accent-color: #FF9500; --rdp-background-color: transparent;
@@ -52,7 +49,6 @@ const calendarCss = `
    .rdp-dropdown { background-color: #333; border: 1px solid #555; color: #FFF; padding: 4px 8px; border-radius: 6px; }
 `;
 
-// Props definition for the ParturitionModal component
 interface ParturitionModalProps {
     isOpen: boolean; // Controls modal visibility
     onClose: () => void; // Function to close the modal
@@ -61,46 +57,32 @@ interface ParturitionModalProps {
 
 // --- COMPONENTE PRINCIPAL DEL MODAL DE PARTO ---
 export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onClose, motherId }) => {
-    // Hooks for data and state
-    const { animals, fathers, addFather, addParturition, parturitions: allParturitions } = useData(); // Get data and actions
-    const [step, setStep] = useState<Step>(1); // Current step in the modal flow
+    const { animals, fathers, addFather, addParturition, parturitions: allParturitions } = useData();
+    const [step, setStep] = useState<Step>(1);
 
-    // State for form inputs
-    const [parturitionDate, setParturitionDate] = useState(new Date().toISOString().split('T')[0]); // Default date: today
-    const [sireId, setSireId] = useState(''); // Selected sire (father) ID
-    const [offspringCount, setOffspringCount] = useState(1); // Number of offspring selected in step 2
-    const [offspring, setOffspring] = useState<OffspringData[]>([]); // Array holding data for each offspring
+    const [parturitionDate, setParturitionDate] = useState(new Date().toISOString().split('T')[0]);
+    const [sireId, setSireId] = useState('');
+    const [offspringCount, setOffspringCount] = useState(1);
+    const [offspring, setOffspring] = useState<OffspringData[]>([]);
 
-    // State for auxiliary modals and loading/error handling
-    const [isFatherModalOpen, setIsFatherModalOpen] = useState(false); // Visibility of Add Father modal
-    const [isDatePickerOpen, setDatePickerOpen] = useState(false); // Visibility of calendar modal
-    const [isLoading, setIsLoading] = useState(false); // Loading state during submission
-    const [error, setError] = useState(''); // Error message display
+    const [isSireSelectorOpen, setIsSireSelectorOpen] = useState(false);
+    const [isFatherModalOpen, setIsFatherModalOpen] = useState(false);
+    const [isDatePickerOpen, setDatePickerOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
 
-    // Memoize the mother animal object for display
     const motherAnimal = useMemo(() => animals.find((a: Animal) => a.id === motherId), [animals, motherId]);
     const formattedMotherName = motherAnimal?.name ? String(motherAnimal.name).toUpperCase().trim() : '';
 
-    // --- (NUEVO) Lógica para listar Reproductores ---
     const allReproducers = useMemo(() => {
-        // 1. Reproductores Internos (Machos activos del rebaño)
         const internalSires: Animal[] = animals.filter(a => a.sex === 'Macho' && a.status === 'Activo');
-        
-        // 2. Reproductores Externos (De la tabla 'fathers')
         const externalSires: any[] = fathers.map(f => ({
-            id: f.id, 
-            name: f.name, 
-            sex: 'Macho',
-            isReference: true, // Para que formatAnimalDisplay funcione
+            id: f.id, name: f.name, sex: 'Macho', isReference: true,
         }));
-        
-        // Combinar y ordenar
         const combined = [...internalSires, ...externalSires];
         return combined.sort((a, b) => (a.id || '').localeCompare(b.id || ''));
     }, [animals, fathers]);
-    // --- (FIN NUEVO) ---
 
-    // Effect to reset state when the modal is opened
     useEffect(() => {
         if (isOpen) {
             setStep(1); setParturitionDate(new Date().toISOString().split('T')[0]); setSireId('');
@@ -108,11 +90,9 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
         }
     }, [isOpen]);
 
-    // Navigation handlers
     const handleNextStep = () => setStep(prev => (prev < 4 ? prev + 1 : prev) as Step);
     const handlePrevStep = () => setStep(prev => (prev > 1 ? prev - 1 : prev) as Step);
 
-    // Handler for selecting offspring count in step 2
     const handleOffspringCountSelect = (count: number) => {
         setOffspringCount(count);
         setOffspring(Array.from({ length: count }, (_, i) => ({
@@ -121,7 +101,6 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
         handleNextStep();
     };
 
-    // Handler for changes in offspring details
     const handleOffspringChange = (index: number, field: keyof OffspringData, value: string) => {
         const updated = [...offspring];
         let finalValue = value;
@@ -132,10 +111,8 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
         setOffspring(updated);
     };
 
-    // (CAMBIO) Usar la lista 'allReproducers' para el display
     const selectedFather = useMemo(() => allReproducers.find((f) => f.id === sireId), [sireId, allReproducers]);
 
-    // Handler for final submission in step 3
     const handleSubmit = async () => {
         setIsLoading(true); setError('');
 
@@ -153,27 +130,22 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
         }
 
         try {
-            // (CAMBIO) selectedFather ya está memoizado
             if (!selectedFather) throw new Error("Padre (reproductor) no encontrado en la base de datos.");
 
             const liveOffspring = offspring.filter(kid => kid.status === 'Viva');
             const hasStillbirths = offspring.some(kid => kid.status === 'Mortinato');
-
-            // --- CORRECCIÓN DE LÓGICA DE ID ---
-            // Usar 'selectedFather.name' en lugar de 'formatAnimalDisplay'
+            
             const fatherInitial = selectedFather?.name?.charAt(0).toUpperCase() || '?';
             
             const finalLiveOffspringForDB = liveOffspring.map(kid => ({
                 sex: kid.sex, birthWeight: kid.birthWeight,
                 id: `${kid.sex === 'Macho' ? 'X' : fatherInitial}${kid.correlative}`
             }));
-            // --- FIN DE CORRECCIÓN ---
 
             await addParturition({
                 motherId: motherId.toUpperCase(), parturitionDate, sireId,
                 parturitionType: parturitionTypes.find(p => p.count === offspringCount)?.name || 'Simple',
                 offspringCount: offspring.length, liveOffspring: finalLiveOffspringForDB,
-                // (CAMBIO) Mensajes de evento actualizados
                 parturitionOutcome: hasStillbirths ? 'Con Mortinatos' : 'Normal',
                 inducedLactation: true,
             });
@@ -223,14 +195,19 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
                                     </button>
                                 </div>
                                 <div>
-                                    {/* (CAMBIO) Label actualizado */}
                                     <label className="block text-sm font-medium text-zinc-400 mb-2">Padre (Reproductor)</label>
+                                    
                                     <div className="flex items-center gap-2">
-                                        <select value={sireId} onChange={e => setSireId(e.target.value)} className="w-full bg-zinc-800 p-4 rounded-xl text-lg appearance-none text-white">
-                                            {/* (CAMBIO) Label actualizado y lista filtrada */}
-                                            <option value="" className="text-zinc-500">Seleccionar Reproductor...</option>
-                                            {allReproducers.map((f) => <option key={f.id} value={f.id} className="text-white">{formatAnimalDisplay(f)}</option>)}
-                                        </select>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setIsSireSelectorOpen(true)} 
+                                            className="w-full text-left bg-zinc-800 p-4 rounded-xl text-lg flex justify-between items-center text-white"
+                                        >
+                                            <span className={sireId ? 'text-white' : 'text-zinc-400'}>
+                                                {selectedFather ? formatAnimalDisplay(selectedFather) : 'Seleccionar Reproductor...'}
+                                            </span>
+                                            <Search size={20} className="text-zinc-400" />
+                                        </button>
                                         <button type="button" onClick={() => setIsFatherModalOpen(true)} className="flex-shrink-0 p-4 bg-brand-orange hover:bg-orange-600 text-white rounded-xl"><Plus size={24} /></button>
                                     </div>
                                 </div>
@@ -266,7 +243,6 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
                                             </div>
                                             <div className={`grid grid-cols-2 gap-3 items-center transition-opacity ${isStillborn ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
                                                 <div className="flex items-center bg-zinc-800 p-3 rounded-xl gap-2">
-                                                    {/* --- CORRECCIÓN DE LÓGICA DE ID (VISTA PREVIA) --- */}
                                                     <span className="font-mono text-zinc-400 text-lg">{kid.sex === 'Macho' ? 'X' : (selectedFather?.name?.charAt(0).toUpperCase() || '?')}</span>
                                                     <input autoFocus={index === 0} value={kid.correlative} onChange={e => handleOffspringChange(index, 'correlative', e.target.value.toUpperCase())} placeholder="ID" className="w-full bg-transparent text-lg text-white focus:outline-none" disabled={isStillborn} required={!isStillborn}/>
                                                 </div>
@@ -290,13 +266,15 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
                 </div>
             </div>
 
+            {/* --- (INICIO CORRECCIÓN TS2741) --- */}
+            {/* El DayPicker ahora está DENTRO del Modal como 'children' */}
             <Modal isOpen={isDatePickerOpen} onClose={() => setDatePickerOpen(false)} title="Seleccionar Fecha del Parto">
                 <style>{calendarCss}</style>
                 <div className="flex justify-center">
                     <DayPicker
                         mode="single"
-                        selected={new Date(parturitionDate + 'T00:00:00Z')} // Asumir UTC para la selección
-                        onSelect={(d) => { if (d) { setParturitionDate(d.toISOString().split('T')[0]); } setDatePickerOpen(false); }}
+                        selected={new Date(parturitionDate + 'T00:00:00Z')}
+                        onSelect={(d?: Date) => { if (d) { setParturitionDate(d.toISOString().split('T')[0]); } setDatePickerOpen(false); }}
                         locale={es}
                         disabled={{ after: new Date() }}
                         captionLayout="dropdown-buttons"
@@ -305,6 +283,16 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
                     />
                 </div>
             </Modal>
+            {/* --- (FIN CORRECCIÓN TS2741) --- */}
+
+            <AnimalSelectorModal
+                isOpen={isSireSelectorOpen}
+                onClose={() => setIsSireSelectorOpen(false)}
+                onSelect={(id) => { setSireId(id); setIsSireSelectorOpen(false); }}
+                animals={allReproducers}
+                title="Seleccionar Padre (Reproductor)"
+                filterSex="Macho"
+            />
 
             <AddFatherModal isOpen={isFatherModalOpen} onClose={() => setIsFatherModalOpen(false)} onSave={handleSaveFather} />
         </>

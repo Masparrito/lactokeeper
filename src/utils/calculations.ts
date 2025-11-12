@@ -1,23 +1,47 @@
+// src/utils/calculations.ts (SIN CAMBIOS)
+
 import { BodyWeighing, Animal, Parturition, ServiceRecord, SireLot, BreedingSeason } from '../db/local';
-import { STATUS_DEFINITIONS, AnimalStatusKey } from '../hooks/useAnimalStatus'; // Importa las definiciones
+import { STATUS_DEFINITIONS, AnimalStatusKey } from '../hooks/useAnimalStatus';
+// (NUEVO) Importar AppConfig y el default
+import { AppConfig, DEFAULT_CONFIG } from '../types/config';
 
 /**
  * Calcula la edad de un animal en días completados.
+ * (Acepta una segunda fecha opcional para calcular la edad en un punto específico)
  */
-export const calculateAgeInDays = (birthDate: string): number => {
+export const calculateAgeInDays = (birthDate: string, comparisonDateStr?: string): number => {
     if (!birthDate || birthDate === 'N/A') return -1;
     
     const birth = new Date(birthDate + 'T00:00:00Z');
-    const today = new Date();
-    const todayUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    
+    let today: Date;
+    if (comparisonDateStr) {
+        today = new Date(comparisonDateStr + 'T00:00:00Z');
+    } else {
+        const now = new Date();
+        today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    }
 
-    if (isNaN(birth.getTime())) return -1;
+    if (isNaN(birth.getTime()) || isNaN(today.getTime())) return -1;
 
-    const diffTime = todayUTC.getTime() - birth.getTime();
+    const diffTime = today.getTime() - birth.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
     return Math.max(0, diffDays);
 };
+
+// Helper de meses (movido aquí para ser central)
+const calculateAgeInMonths = (birthDate: string): number => {
+    if (!birthDate || birthDate === 'N/A') return 0;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    if (isNaN(birth.getTime())) return 0;
+    let months = (today.getFullYear() - birth.getFullYear()) * 12;
+    months -= birth.getMonth();
+    months += today.getMonth();
+    return months <= 0 ? 0 : months;
+};
+
 
 /**
  * Formatea la edad de un animal según las reglas especificadas.
@@ -45,44 +69,64 @@ export const formatAge = (birthDate: string): string => {
 
 /**
  * Determina el estado fisiológico (categoría zootécnica) de un animal.
+ * ¡ESTA ES AHORA LA ÚNICA FUENTE DE VERDAD!
  */
-// --- (INICIO) CORRECCIÓN LÓGICA DE CATEGORÍAS (19 MESES) ---
-export const getAnimalZootecnicCategory = (animal: Animal, parturitions: Parturition[]) => {
+export const getAnimalZootecnicCategory = (
+    animal: Animal, 
+    parturitions: Parturition[],
+    appConfig: AppConfig // (NUEVO) Acepta la configuración
+): string => {
+    
+    // Usar la config o el default
+    const config = { ...DEFAULT_CONFIG, ...appConfig };
+
     const ageInDays = calculateAgeInDays(animal.birthDate);
     if (ageInDays < 0) return 'Indefinido';
+    const ageInMonths = calculateAgeInMonths(animal.birthDate);
 
     if (animal.sex === 'Hembra') {
-        // --- Constantes de Edad (Ajustadas a tu nueva regla) ---
-        const ADULT_AGE_THRESHOLD_DAYS = 578; // 19 meses * 30.4375
-        const WEANING_AGE_DAYS = 60; // 2 meses
+        const hasCalved = parturitions.some(p => p.goatId === animal.id);
 
-        // 1. Es 'Cabra' (adulta) si:
-        //    a) Ya ha parido.
-        //    b) O tiene más de 19 meses (578 días).
-        const hasParturitions = parturitions.some(p => p.goatId === animal.id);
-        if (hasParturitions || ageInDays > ADULT_AGE_THRESHOLD_DAYS) {
+        // REGLA 1 (Prioridad Máxima): Si ha parido, SIEMPRE es "Cabra".
+        if (hasCalved) {
             return 'Cabra';
         }
+
+        // REGLA 2: Si NO ha parido, clasificar por edad.
         
-        // 2. Es 'Cabrita' si tiene 60 días o menos.
-        if (ageInDays <= WEANING_AGE_DAYS) {
+        // 2a. Cabrita (0d a ej: 90d)
+        if (ageInDays <= config.categoriaCabritaEdadMaximaDias) {
             return 'Cabrita';
         }
-
-        // 3. Si no es 'Cabra' (adulta) ni 'Cabrita' (cría), es 'Cabritona'.
-        //    (i.e., tiene entre 61 y 578 días Y no ha parido)
-        return 'Cabritona';
+        // 2b. Cabra (por edad, si la config lo permite)
+        else if (ageInMonths > config.categoriaCabraEdadMinimaMeses && !config.categoriaCabraRequiereParto) {
+            // Si es mayor de (ej) 12m Y la configuración NO requiere parto
+            return 'Cabra';
+        }
+        // 2c. Cabritona (el resto)
+        else {
+            // Incluye:
+            // 1. Hembras de (ej) 91d a 12m (sin parto).
+            // 2. Hembras > 12m (sin parto) CUANDO el toggle "Requiere Parto" está ON.
+            return 'Cabritona';
+        }
 
     } else { // Macho
-        // Lógica de Macho (esta ya estaba correcta)
-        if (ageInDays >= 365) return 'Reproductor'; // 1 año
-        if (animal.weaningDate || ageInDays > 60) {
+        
+        // 1. Regla REPRODUCTOR:
+        if (ageInMonths > config.categoriaMachoLevanteEdadMaximaMeses) {
+            return 'Reproductor';
+        }
+        // 2. Regla MACHO LEVANTE:
+        else if (ageInDays >= config.categoriaMachoLevanteEdadMinimaDias && ageInMonths <= config.categoriaMachoLevanteEdadMaximaMeses) {
             return 'Macho de Levante';
         }
-        return 'Cabrito';
+        // 3. Regla CABRITO:
+        else { 
+            return 'Cabrito';
+        }
     }
 };
-// --- (FIN) CORRECCIÓN LÓGICA DE CATEGORÍAS ---
 
 
 /**
@@ -119,7 +163,7 @@ export const calculateGDP = (birthWeight: number | undefined, weighings: BodyWei
     let overall: number | null = null;
     if (birthWeight && birthWeight > 0) {
         // (Lógica existente)
-        const ageAtLastWeighing = calculateAgeInDays(latestWeighing.date) - calculateAgeInDays(new Date().toISOString().split('T')[0]) + calculateAgeInDays(new Date(latestWeighing.date).toISOString().split('T')[0]);
+        const ageAtLastWeighing = calculateAgeInDays(latestWeighing.date);
         if (ageAtLastWeighing > 0) {
             overall = (latestWeighing.kg - birthWeight) / ageAtLastWeighing;
         }
@@ -201,6 +245,7 @@ export const calculatePrecocityIndex = (animal: Animal, allWeighings: BodyWeighi
 // --- FUNCIÓN EXISTENTE ---
 /**
  * Obtiene los objetos de estado activos para un animal específico.
+ * ESTA FUNCIÓN ES OBSOLETA. La lógica real está en useAnimalStatus.ts
  */
 export const getAnimalStatusObjects = (
     animal: Animal | undefined | null,
@@ -209,17 +254,14 @@ export const getAnimalStatusObjects = (
     allSireLots: SireLot[],
     allBreedingSeasons: BreedingSeason[]
 ): (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] => {
+    
     const activeStatuses: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] = [];
     if (!animal) return [];
 
-    // Lógica productiva (Hembras)
     if (animal.sex === 'Hembra') {
         const lastParturition = allParturitions
             .filter(p => p.goatId === animal.id && p.status !== 'finalizada')
-            // --- (INICIO) CORRECCIÓN ERROR TYPESCRIPT ---
-            // Se usa 'parturitionDate' en lugar de 'date'
             .sort((a, b) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime())[0];
-            // --- (FIN) CORRECCIÓN ERROR TYPESCRIPT ---
 
         if (lastParturition) {
             if (lastParturition.status === 'activa') activeStatuses.push(STATUS_DEFINITIONS.MILKING);
@@ -228,7 +270,6 @@ export const getAnimalStatusObjects = (
         }
     }
 
-    // Lógica Reproductiva (Hembras)
     if (animal.reproductiveStatus === 'Preñada') activeStatuses.push(STATUS_DEFINITIONS.PREGNANT);
     else if (animal.reproductiveStatus === 'En Servicio') {
         const hasServiceRecord = allServiceRecords.some(sr => sr.femaleId === animal.id && sr.sireLotId === animal.sireLotId);
@@ -239,7 +280,6 @@ export const getAnimalStatusObjects = (
          activeStatuses.push(STATUS_DEFINITIONS.EMPTY);
     }
 
-    // Lógica Reproductiva (Machos)
     if (animal.sex === 'Macho') {
         const activeSeasons = allBreedingSeasons.filter(bs => bs.status === 'Activo');
         const activeSeasonIds = new Set(activeSeasons.map(s => s.id));
@@ -252,7 +292,8 @@ export const getAnimalStatusObjects = (
 };
 
 
-// --- Lógica para Puntos 5 y 6 (Composición Racial) ---
+// --- (INICIO CORRECCIÓN TS6133) ---
+// Lógica de Composición Racial RESTAURADA
 
 const RAZAS_BASE = {
     'A': 'Alpina',
@@ -337,3 +378,4 @@ export const calculateBreedFromComposition = (composition: string | undefined): 
 
     return 'Mestiza'; // Fallback
 };
+// --- (FIN CORRECCIÓN TS6133) ---

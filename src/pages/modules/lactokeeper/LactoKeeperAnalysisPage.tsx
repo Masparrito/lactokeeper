@@ -34,7 +34,6 @@ const KpiCard = ({ title, value, unit, icon: Icon, onClick }: { title: string, v
     </button>
 );
 
-// --- CORRECCIÓN: Hook 'useWeighingTrend' movido fuera del componente de fila ---
 // Este componente wrapper calcula el trend
 const MilkingAnimalRowWrapper = ({ animal, onSelectAnimal, onOpenActions, isNewEntry }: {
     animal: AnalyzedAnimal & Animal & { formattedAge: string; statusObjects: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] },
@@ -63,7 +62,6 @@ const MilkingAnimalRow = ({ animal, onSelectAnimal, onOpenActions, isNewEntry, t
     onSelectAnimal: (id: string) => void,
     onOpenActions: (animal: AnalyzedAnimal) => void,
     isNewEntry: boolean,
-    // --- CORRECCIÓN (Error 1): Se permite 'null' ---
     trend: 'up' | 'down' | 'stable' | 'single' | null, 
     isLongTrend: boolean
 }) => {
@@ -108,20 +106,35 @@ const MilkingAnimalRow = ({ animal, onSelectAnimal, onOpenActions, isNewEntry, t
                 className="relative w-full z-10 cursor-pointer bg-ios-modal-bg p-3"
             >
                 <div className={`absolute top-3 right-3 w-2.5 h-2.5 rounded-full ${animal.latestWeighing > 0 ? classificationColor[animal.classification] : 'bg-transparent'}`} title={`Rendimiento: ${animal.classification}`}></div>
+                
                 <div className="flex justify-between items-center w-full">
                     <div className="min-w-0 pr-3">
                         <p className="font-mono font-semibold text-base text-white truncate">{animal.id.toUpperCase()}</p>
-                        {formattedName && ( <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p> )}
+                        
+                        <p className="text-sm font-normal text-zinc-300 truncate h-5"> 
+                            {formattedName || <>&nbsp;</>}
+                        </p>
+
                         <div className="text-xs text-zinc-500 mt-1 min-h-[1rem] truncate">
                             <span>{animal.sex} | {animal.formattedAge} | Lote: {animal.location || 'N/A'}</span>
                         </div>
                     </div>
-                    <div className="flex items-center space-x-2 flex-shrink-0">
-                        <div className="text-right">
+                    {/* --- INICIO DE LA CORRECCIÓN DE POSICIÓN --- */}
+                    <div className="flex items-center space-x-2 flex-shrink-0 pl-4"> {/* Ajuste en pl */}
+                        {/* StatusIcons ahora va antes del valor de Kg */}
+                        <div className="flex-shrink-0 pt-0.5"> {/* Añadido pt-0.5 para alinear con el texto */}
+                            <StatusIcons
+                                statuses={animal.statusObjects}
+                                sex={animal.sex}
+                                size={14} // Tamaño pequeño
+                                hideLactationStatus={true} // Ocultar iconos de lactancia aquí
+                            />
+                        </div>
+                        <div className="text-right flex-shrink-0">
                             <p className="font-semibold text-base text-brand-orange">{animal.latestWeighing > 0 ? `${animal.latestWeighing.toFixed(2)} Kg` : 'Sin Pesar'}</p>
                             {animal.del > 0 && <p className="text-xs text-zinc-400">DEL: {animal.del}</p>}
                         </div>
-                        <StatusIcons statuses={animal.statusObjects} />
+                        
                         {isNewEntry ? (
                            <span title="Primer Ingreso al Control Lechero" className="w-6 h-6 flex items-center justify-center rounded-full bg-green-500/20 text-brand-green">
                                <LogIn size={16} strokeWidth={2.5}/>
@@ -133,13 +146,13 @@ const MilkingAnimalRow = ({ animal, onSelectAnimal, onOpenActions, isNewEntry, t
                        )}
                         <ChevronRight className="text-zinc-600 w-5 h-5" />
                     </div>
+                    {/* --- FIN DE LA CORRECCIÓN DE POSICIÓN --- */}
                 </div>
             </motion.div>
         </div>
     );
 };
 
-// --- CORRECCIÓN: 'return' añadido ---
 const TrendModalContent = ({ animalId }: { animalId: string }) => {
     const { weighings } = useData();
     const { lastTwoWeighings, difference } = useWeighingTrend(animalId, weighings);
@@ -148,7 +161,7 @@ const TrendModalContent = ({ animalId }: { animalId: string }) => {
         return <p>No hay suficientes datos para comparar.</p>;
     }
     
-    return ( // <-- return FALTABA AQUÍ
+    return (
         <div className="text-center text-white space-y-4">
              <div className="grid grid-cols-2 gap-4 text-center">
                  <div>
@@ -170,13 +183,12 @@ const TrendModalContent = ({ animalId }: { animalId: string }) => {
     );
 };
 
-// --- CORRECCIÓN: 'return' añadido ---
 const CustomBarLabel = (props: any) => {
     const { x, y, width, height, value, total } = props;
     if (total === 0 || value === 0) return null;
     const percentage = ((value / total) * 100).toFixed(0);
     
-    return ( // <-- return FALTABA AQUÍ
+    return (
          <text x={x + width / 2} y={y + height / 2} fill="#fff" textAnchor="middle" dominantBaseline="middle" fontSize="14px" fontWeight="bold" opacity={0.8}>{`${percentage}%`}</text>
     );
 };
@@ -230,7 +242,7 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
         return classifiedAnimals.map(ca => {
             const originalAnimal = animalMap.get(ca.id);
             return {
-                ...(originalAnimal as Animal), // Aseguramos que 'animal' esté completamente definido
+                ...(originalAnimal as Animal), 
                 ...ca,
                 formattedAge: originalAnimal ? formatAge(originalAnimal.birthDate) : 'N/A',
                 statusObjects: originalAnimal ? getAnimalStatusObjects(originalAnimal, parturitions, serviceRecords, sireLots, breedingSeasons) : []
@@ -285,10 +297,7 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
         return { trendData, kpi: { total, max, min }, topPerformer, bottomPerformer, consistency: { percentage: consistencyPercentage }, newAnimalIds, exitingAnimalIds };
     }, [classifiedAnimals, classifiedAnimalsWithStatus, previousDayAnalysis.classifiedAnimals, availableDates, dateIndex, weighingsByDate, mean, stdDev]);
 
-    // --- (INICIO) CORRECCIÓN ERRORES 2-8: Lógica de 'useSearch' y 'finalAnimalList' ---
     
-    // 1. Llamar a useSearch PRIMERO con la lista base
-    // CORRECCIÓN: Se añade el tipo explícito para 'filteredItems'
     const { searchTerm, setSearchTerm, filteredItems } = useSearch(
         classifiedAnimalsWithStatus, 
         ['id', 'name']
@@ -298,9 +307,8 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
         filteredItems: (AnalyzedAnimal & Animal & { formattedAge: string; statusObjects: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] })[]; 
     };
 
-    // 2. 'finalAnimalList' ahora filtra los 'filteredItems' (que vienen de useSearch)
     const finalAnimalList = useMemo(() => {
-        let list = filteredItems; // Empezar con la lista ya filtrada por búsqueda
+        let list = filteredItems; 
 
         if (classificationFilter !== 'all') { 
             list = list.filter(a => a.classification === classificationFilter); 
@@ -309,7 +317,6 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
             list = list.filter(animal => pageData.newAnimalIds.has(animal.id)); 
         }
         if (trendFilter !== 'all') { 
-            // CORRECCIÓN: Usar la propiedad 'trend' que ya existe en el objeto
             list = list.filter(animal => animal.trend === trendFilter); 
         }
         if (lactationPhaseFilter !== 'all') {
@@ -326,9 +333,6 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
         return list.sort((a,b) => b.latestWeighing - a.latestWeighing);
     }, [filteredItems, classificationFilter, trendFilter, lactationPhaseFilter, specialFilter, pageData.newAnimalIds, dryingCandidateIds]); 
     
-    // --- (FIN) CORRECCIÓN ERRORES 2-8 ---
-
-
     const trendCounts = useMemo(() => {
         const totalWithHistory = classifiedAnimals.filter(a => !pageData.newAnimalIds.has(a.id)).length;
         if (classifiedAnimals.length === 0) return { up: 0, down: 0, stable: 0, new: 0 };
@@ -412,7 +416,6 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
                         <div className="w-full h-48">
                             <ResponsiveContainer>
                                 <BarChart data={distribution} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                                    {/* CORRECCIÓN: CartesianGrid y ReferenceLine restaurados */}
                                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
                                     <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
                                     <YAxis orientation="left" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} allowDecimals={false}/>
@@ -464,7 +467,6 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
                 <div className="pt-2 space-y-0 pb-4">
                     {finalAnimalList.length > 0 ? (
                         <div className="bg-brand-glass rounded-2xl border border-brand-border overflow-hidden mx-4">
-                            {/* --- CORRECCIÓN (Error 9): Tipo 'animal' añadido --- */}
                             {finalAnimalList.map((animal: AnalyzedAnimal & Animal & { formattedAge: string; statusObjects: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] }) => (
                                 <MilkingAnimalRowWrapper 
                                     key={animal.id} 

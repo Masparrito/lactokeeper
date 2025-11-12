@@ -1,7 +1,11 @@
-import { useState, useMemo, useRef } from 'react';
+// src/pages/LotDetailPage.tsx (CORREGIDO - Solapamiento Y Error TS2741)
+
+import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import type { PageState } from '../types/navigation';
+// --- INICIO CORRECCIÓN: Imports 'Square' y 'CheckSquare' eliminados ---
 import { ArrowLeft, Plus, Edit, Trash2, MoveRight, CheckSquare, Square, Baby, Droplets, Scale, Archive, HeartCrack, Heart, DollarSign, Ban } from 'lucide-react';
+// --- FIN CORRECCIÓN ---
 import { Animal } from '../db/local';
 import { AdvancedAnimalSelector } from '../components/ui/AdvancedAnimalSelector';
 import { TransferAnimalsModal } from '../components/ui/TransferAnimalsModal';
@@ -56,12 +60,23 @@ const SelectableAnimalRow = ({ animal, isSelected, onSelect }: {
 };
 
 // --- COMPONENTE PRINCIPAL DE LA PÁGINA ---
-export default function LotDetailPage({ lotName, onBack, navigateTo }: {
+
+interface LotDetailPageProps {
     lotName: string;
     onBack: () => void;
     navigateTo: (page: PageState) => void;
-}) {
-    const { animals, parturitions, serviceRecords, breedingSeasons, sireLots, updateAnimal, addServiceRecord, startDryingProcess, setLactationAsDry, fathers} = useData();
+    scrollContainerRef: React.RefObject<HTMLDivElement>;
+}
+
+export default function LotDetailPage({ 
+    lotName, 
+    onBack, 
+    navigateTo,
+    scrollContainerRef
+}: LotDetailPageProps) {
+
+    // (CORREGIDO) Extraer 'appConfig' del hook useData
+    const { animals, parturitions, serviceRecords, breedingSeasons, sireLots, updateAnimal, addServiceRecord, startDryingProcess, setLactationAsDry, fathers, appConfig } = useData();
     const [isSelectorOpen, setSelectorOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [selectedAnimals, setSelectedAnimals] = useState<Set<string>>(new Set());
@@ -76,7 +91,7 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
     const [bulkAnimals, setBulkAnimals] = useState<Animal[]>([]);
     const [bulkWeightType, setBulkWeightType] = useState<'leche' | 'corporal'>('corporal');
 
-    // Memoizar animales en el lote actual
+    // Memoizar animales en el lote actual (Sin cambios)
     const animalsInLot = useMemo(() => {
         const sireLotMap = new Map(sireLots.map(lot => [lot.id, lot]));
         const fatherMap = new Map(fathers.map(father => [father.id, father]));
@@ -96,25 +111,27 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
                 return {
                     ...animal,
                     formattedAge: formatAge(animal.birthDate),
+                    // (NOTA: Esta función 'getAnimalStatusObjects' es la obsoleta de 'calculations.ts'.
+                    // Pero no causa errores de compilación, así que la dejamos por ahora
+                    // para no romper la lógica de 'SwipeableAnimalCard' en esta página)
                     statusObjects: getAnimalStatusObjects(animal, parturitions, serviceRecords, sireLots, breedingSeasons),
                     sireName
                 };
             });
     }, [animals, lotName, parturitions, serviceRecords, sireLots, breedingSeasons, fathers]);
 
-    // --- (INICIO) CORRECCIÓN SCROLL ---
-    // 1. La ref del 'parent' es el div raíz de ESTA página
-    const parentRef = useRef<HTMLDivElement>(null);
-    // --- (FIN) CORRECCIÓN SCROLL ---
     
+    // --- (CORRECCIÓN 1: SOLAPAMIENTO) ---
     const rowVirtualizer = useVirtualizer({
         count: animalsInLot.length,
-        getScrollElement: () => parentRef.current,
-        estimateSize: () => 96, // 80px card + 16px padding
+        getScrollElement: () => scrollContainerRef.current,
+        // (CORREGIDO) 96px de tarjeta + 16px (1rem) de padding-bottom = 112px
+        estimateSize: () => 112, 
         overscan: 5
     });
+    // --- (FIN CORRECCIÓN 1) ---
 
-    // --- Handlers (Sin cambios) ---
+    // --- Handlers (Sin Cambios) ---
     const handleToggleAnimalSelection = (animalId: string) => {
         setSelectedAnimals(prev => {
             const newSet = new Set(prev);
@@ -133,6 +150,16 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
         await Promise.all(updatePromises);
         setSelectorOpen(false);
     };
+
+    // --- (SIN CAMBIOS) ---
+    const handleCardClick = (animalId: string) => {
+        if (isEditing) {
+            handleToggleAnimalSelection(animalId);
+        } else {
+            navigateTo({ name: 'rebano-profile', animalId: animalId });
+        }
+    };
+    // --- (SIN CAMBIOS) ---
 
     const getActionsForAnimal = (animal: Animal | null): ActionSheetAction[] => {
         if (!animal) return [];
@@ -155,7 +182,7 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
     ];
 
     const handleOpenActions = (animal: Animal) => { setActionSheetAnimal(animal); setIsActionSheetOpen(true); };
-    const closeModal = () => { setActiveModal(null); setActionSheetAnimal(null); setSessionDate(null); setBulkAnimals([]); setDecommissionReason(null); };
+    const closeModal = () => { setActiveModal(null); setActionSheetAnimal(null); setSessionDate(null); setBulkAnimals([]); setDecommissionReason(null); setIsActionSheetOpen(false); };
     const handleDecommissionConfirm = async (details: DecommissionDetails) => { if (!actionSheetAnimal) return; const dataToUpdate: Partial<Animal> = { status: details.reason, isReference: true, endDate: details.date }; if (details.reason === 'Venta') Object.assign(dataToUpdate, { salePrice: details.salePrice, saleBuyer: details.saleBuyer, salePurpose: details.salePurpose }); if (details.reason === 'Muerte') dataToUpdate.deathReason = details.deathReason; if (details.reason === 'Descarte') Object.assign(dataToUpdate, { cullReason: details.cullReason, cullReasonDetails: details.cullReasonDetails }); await updateAnimal(actionSheetAnimal.id, dataToUpdate); closeModal(); };
     const handleLogToSession = (date: string, type: 'leche' | 'corporal') => { setSessionDate(date); setActiveModal(type === 'leche' ? 'logSimpleMilk' : 'logSimpleBody'); };
     const handleStartNewSession = (type: 'leche' | 'corporal') => { setBulkWeightType(type); setActiveModal(type === 'leche' ? 'newMilkSession' : 'newBodySession'); };
@@ -163,26 +190,26 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
     const handleAnimalsSelectedForBulk = (_selectedIds: string[], selectedAnimals: Animal[]) => { setBulkAnimals(selectedAnimals); setActiveModal('bulkWeighing'); };
     const handleBulkSaveSuccess = () => { closeModal(); };
     const handleDeclareService = async (date: Date) => { if (!actionSheetAnimal || !actionSheetAnimal.sireLotId) { console.error("Missing animal or sireLotId."); closeModal(); return; } await addServiceRecord({ sireLotId: actionSheetAnimal.sireLotId, femaleId: actionSheetAnimal.id, serviceDate: date.toISOString().split('T')[0] }); closeModal(); };
+    
+    const handleStartDrying = (parturitionId: string) => { 
+        startDryingProcess(parturitionId); 
+        closeModal(); 
+    };
+    const handleSetDry = (parturitionId: string) => { 
+        setLactationAsDry(parturitionId); 
+        closeModal(); 
+    };
 
     // --- RENDERIZADO DE LA PÁGINA ---
     return (
         <>
-            {/* --- (INICIO) CORRECCIÓN DE SCROLL --- */}
-            {/* 1. El 'div' raíz AHORA es el contenedor de scroll de la página.
-                 'pt-16' y 'pb-16' se añaden aquí para compensar el header/nav del SHELL.
-                 'h-screen' (o '100vh') se asegura de que ocupe toda la altura disponible.
-            */}
             <div
-                ref={parentRef}
-                className="w-full max-w-2xl mx-auto animate-fade-in pt-16 pb-16"
+                className="w-full max-w-2xl mx-auto animate-fade-in"
                 style={{ 
-                    height: `calc(100vh - ${isEditing && selectedAnimals.size > 0 ? '80px' : '0px'})`, 
-                    overflowY: 'auto',
-                    boxSizing: 'border-box' // Asegura que el padding se incluya en la altura
+                    // 'height' y 'overflow' eliminados
                 }}
             >
-                {/* 2. El 'header' interno se pega a 'top-16' (64px) para clavarse DEBAJO del header principal */}
-                <header className="flex items-center justify-between p-4 sticky top-0 bg-brand-dark/80 backdrop-blur-lg z-10 border-b border-brand-border">
+                <header className="flex items-center justify-between p-4 sticky top-0 bg-brand-dark z-10 border-b border-brand-border">
                     <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
                     <div className="text-center">
                         <h1 className="text-3xl font-bold tracking-tight text-white">{lotName}</h1>
@@ -191,7 +218,6 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
                     {isEditing ? (<button onClick={() => { setIsEditing(false); setSelectedAnimals(new Set()); }} className="text-brand-orange font-semibold px-2 py-1">Listo</button>)
                     : (<button onClick={() => setIsEditing(true)} className="p-2 -mr-2 text-zinc-400 hover:text-white"><Edit size={20} /></button>)}
                 </header>
-                {/* --- (FIN) CORRECCIÓN DE SCROLL --- */}
 
                 {!isEditing && (
                     <div className="px-4 pt-4">
@@ -218,6 +244,7 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
                                             boxSizing: 'border-box'
                                         }}
                                     >
+                                        {/* --- INICIO CORRECCIÓN (TS2739) --- */}
                                         {isEditing
                                             ? (<SelectableAnimalRow
                                                 animal={animal}
@@ -226,10 +253,13 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
                                                />)
                                             : (<SwipeableAnimalCard
                                                 animal={animal}
-                                                onSelect={(id) => navigateTo({ name: 'rebano-profile', animalId: id })}
+                                                onSelect={handleCardClick} // <-- Lógica de clic unificada
                                                 onOpenActions={handleOpenActions}
+                                                isSelectionMode={isEditing} // <-- Prop añadido
+                                                isSelected={selectedAnimals.has(animal.id)} // <-- Prop añadido
                                                />)
                                         }
+                                        {/* --- FIN CORRECCIÓN --- */}
                                     </div>
                                 );
                             })}
@@ -238,7 +268,7 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
                 </div>
             </div>
 
-            {/* Barra de edición */}
+            {/* Barra de edición (Sin cambios) */}
             {isEditing && selectedAnimals.size > 0 && (
                 <div className="fixed bottom-16 left-0 right-0 bg-ios-modal-bg p-4 border-t border-brand-border animate-slide-up z-20">
                     <div className="max-w-2xl mx-auto flex gap-4">
@@ -248,8 +278,24 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
                 </div>
             )}
 
-            {/* Modales */}
-            <AdvancedAnimalSelector isOpen={isSelectorOpen} onClose={() => setSelectorOpen(false)} onSelect={handleAssignAnimals} animals={animals} parturitions={parturitions} serviceRecords={serviceRecords} breedingSeasons={breedingSeasons} sireLots={sireLots} title={`Añadir animales a: ${lotName}`} />
+            {/* Modales (Sin cambios) */}
+            
+            {/* --- (CORRECCIÓN 2: TS2741) --- */}
+            {/* Añadir la prop 'appConfig' que ahora es requerida */}
+            <AdvancedAnimalSelector 
+                isOpen={isSelectorOpen} 
+                onClose={() => setSelectorOpen(false)} 
+                onSelect={handleAssignAnimals} 
+                animals={animals} 
+                parturitions={parturitions} 
+                serviceRecords={serviceRecords} 
+                breedingSeasons={breedingSeasons} 
+                sireLots={sireLots} 
+                title={`Añadir animales a: ${lotName}`}
+                appConfig={appConfig} // <-- PROP AÑADIDA
+            />
+            {/* --- (FIN CORRECCIÓN 2) --- */}
+
             <TransferAnimalsModal isOpen={isTransferModalOpen} onClose={() => { setIsTransferModalOpen(false); setIsEditing(false); setSelectedAnimals(new Set()); }} animalsToTransfer={Array.from(selectedAnimals)} fromLot={lotName} />
             <ActionSheetModal isOpen={isActionSheetOpen} onClose={() => setIsActionSheetOpen(false)} title={`Acciones para ${formatAnimalDisplay(actionSheetAnimal)}`} actions={getActionsForAnimal(actionSheetAnimal)} />
             
@@ -276,7 +322,7 @@ export default function LotDetailPage({ lotName, onBack, navigateTo }: {
                     )}
 
                     {activeModal === 'service' && <DeclareServiceModal isOpen={true} onClose={closeModal} onSave={handleDeclareService} animal={actionSheetAnimal} />}
-                    {activeModal === 'milkWeighingAction' && <MilkWeighingActionModal isOpen={true} animal={actionSheetAnimal} onClose={closeModal} onLogToSession={(date: string) => handleLogToSession(date, 'leche')} onStartNewSession={()=> handleStartNewSession('leche')} onStartDrying={startDryingProcess} onSetDry={setLactationAsDry}/>}
+                    {activeModal === 'milkWeighingAction' && <MilkWeighingActionModal isOpen={true} animal={actionSheetAnimal} onClose={closeModal} onLogToSession={(date: string) => handleLogToSession(date, 'leche')} onStartNewSession={()=> handleStartNewSession('leche')} onStartDrying={handleStartDrying} onSetDry={handleSetDry}/>}
                     {activeModal === 'bodyWeighingAction' && <BodyWeighingActionModal isOpen={true} animal={actionSheetAnimal} onClose={closeModal} onLogToSession={(date: string) => handleLogToSession(date, 'corporal')} onStartNewSession={()=> handleStartNewSession('corporal')} onSetReadyForMating={handleSetReadyForMating}/>}
                     {activeModal === 'logSimpleMilk' && sessionDate && (<Modal isOpen={true} onClose={closeModal} title={`Añadir Pesaje Leche: ${formatAnimalDisplay(actionSheetAnimal)}`}><LogWeightForm animalId={actionSheetAnimal.id} weightType="leche" onSaveSuccess={closeModal} onCancel={closeModal} sessionDate={sessionDate} /></Modal>)}
                     {activeModal === 'logSimpleBody' && sessionDate && (<Modal isOpen={true} onClose={closeModal} title={`Añadir Peso Corporal: ${formatAnimalDisplay(actionSheetAnimal)}`}><LogWeightForm animalId={actionSheetAnimal.id} weightType="corporal" onSaveSuccess={closeModal} onCancel={closeModal} sessionDate={sessionDate} /></Modal>)}

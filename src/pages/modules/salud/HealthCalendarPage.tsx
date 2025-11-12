@@ -1,131 +1,240 @@
-// src/pages/modules/health/HealthCalendarPage.tsx
-
-import { useState, useRef, useMemo } from 'react';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import interactionPlugin from '@fullcalendar/interaction';
-import esLocale from '@fullcalendar/core/locales/es';
-import { useHealthAgenda, AgendaTask } from '../../../hooks/useHealthAgenda';
+import React, { useState, useMemo, useRef } from 'react';
+// --- INICIO CORRECCIÓN (Error TS2304) ---
+// Importamos 'AgendaTask' que es necesario para el estado 'loggingTask'
+import { useHealthAgenda, GroupedAgendaTask, AgendaTask } from '../../../hooks/useHealthAgenda';
+// --- FIN CORRECCIÓN ---
 import { Modal } from '../../../components/ui/Modal';
-import { LogHealthEventForm } from '../../../components/forms/LogHealthEventForm';
-// --- CAMBIO: Añadido ChevronRight ---
-import { Plus, ArrowLeft, ChevronRight } from 'lucide-react';
+import { LogHealthEventForm } from '../../../components/forms/LogHealthEventForm'; 
+import { Plus, Calendar, AlertTriangle, Check, Clock, Users } from 'lucide-react';
 import { LogUnplannedHealthEventForm } from '../../../components/forms/LogUnplannedHealthEventForm';
-import { motion } from 'framer-motion';
+import { motion, useAnimation, PanInfo } from 'framer-motion';
+// Componentes movidos al nivel superior (sin cambios en imports)
 
-// Importar los estilos personalizados
-import './CalendarStyles.css';
 
-// --- Función personalizada para renderizar el contenido del evento ---
-const renderEventContent = (eventInfo: any) => {
-    const { task } = eventInfo.event.extendedProps;
-    if (!task) return <div>Evento inválido</div>;
+// =================================================================================
+// --- COMPONENTES INTERNOS ---
+// =================================================================================
 
-    const { animal, activity } = task;
-    const formattedName = animal.name ? String(animal.name).toUpperCase().trim() : '';
+// --- Modal de Detalle de Actividad (Lista de Animales) ---
+interface ActivityDetailModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    taskGroup: GroupedAgendaTask | null;
+}
+
+const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({ isOpen, onClose, taskGroup }) => {
+    if (!isOpen || !taskGroup) return null;
 
     return (
-        <div className="p-1 overflow-hidden w-full" style={{ whiteSpace: 'normal' }}>
-            {/* ID (Protagonista) - Fuente y tamaño aplicados */}
-            <p className="font-mono font-semibold text-xs text-white truncate">{animal.id.toUpperCase()}</p>
-            
-            {/* Nombre (Secundario, si existe) */}
-            {formattedName && (
-                <p className="text-[10px] font-normal text-zinc-300 truncate">{formattedName}</p>
-            )}
-            
-            {/* Detalles (Contexto) */}
-            <p className="text-[10px] text-zinc-400 truncate">{activity.name}</p>
-        </div>
+        <Modal isOpen={isOpen} onClose={onClose} title={taskGroup.activity.name}>
+            <div className="flex flex-col space-y-3 max-h-[60vh] overflow-y-auto">
+                <p className="text-zinc-400 text-sm">
+                    Esta actividad aplica a los siguientes {taskGroup.animalCount} animales:
+                </p>
+                <div className="bg-black/20 rounded-lg p-2 space-y-1">
+                    {taskGroup.animals.map(animal => (
+                        <div key={animal.id} className="flex justify-between items-center p-2 rounded hover:bg-zinc-700/50">
+                            <div>
+                                <p className="font-mono text-white font-semibold">{animal.id}</p>
+                                <p className="text-xs text-zinc-400">{animal.name || 'Sin Nombre'}</p>
+                            </div>
+                            <span className="text-xs text-zinc-500">{animal.location || 'N/A'}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </Modal>
     );
 };
 
+// --- Componente de Tarjeta Agrupada Swipeable ---
+const GroupedActivityCard = ({ task, onMarkDone, onClick }: { 
+    task: GroupedAgendaTask, 
+    onMarkDone: () => void,
+    onClick: () => void
+}) => {
+    const { activity, dueDate, status, animalCount } = task;
+    const isOverdue = status === 'Atrasada';
+
+    const swipeControls = useAnimation();
+    const dragStarted = useRef(false);
+    const buttonsWidth = 80;
+
+    const onDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+        const offset = info.offset.x;
+        const velocity = info.velocity.x;
+
+        if (offset > buttonsWidth / 2 || velocity > 500) {
+            swipeControls.start({ x: buttonsWidth });
+            setTimeout(() => onMarkDone(), 150);
+        } else {
+            swipeControls.start({ x: 0 });
+        }
+        setTimeout(() => { dragStarted.current = false; }, 50);
+    };
+
+    return (
+        <div className="relative w-full overflow-hidden rounded-2xl bg-brand-glass border border-brand-border">
+            <div className="absolute inset-y-0 left-0 flex items-center justify-start z-0 h-full w-[80px] bg-brand-green text-white">
+                <div className="flex flex-col items-center justify-center w-full">
+                    <Check size={20} />
+                    <span className="text-[10px] mt-0.5 font-semibold">Hecho</span>
+                </div>
+            </div>
+            <div className="absolute inset-y-0 right-0 flex items-center justify-end z-0 h-full w-[80px] bg-brand-blue text-white opacity-30">
+                <div className="flex flex-col items-center justify-center w-full">
+                    <Clock size={20} />
+                    <span className="text-[10px] mt-0.5 font-semibold">Mover</span>
+                </div>
+            </div>
+
+            <motion.div
+                drag="x"
+                dragConstraints={{ left: 0, right: buttonsWidth }}
+                dragElastic={0.1}
+                onDragStart={() => { dragStarted.current = true; }}
+                onDragEnd={onDragEnd}
+                onTap={() => { if (!dragStarted.current) onClick(); }}
+                animate={swipeControls}
+                transition={{ type: "spring", stiffness: 400, damping: 40 }}
+                className="relative w-full z-10 cursor-pointer bg-ios-modal-bg p-4 flex items-center gap-4"
+            >
+                {isOverdue && (
+                    <div className="flex-shrink-0 text-brand-red" title="Actividad Vencida">
+                        <AlertTriangle size={24} />
+                    </div>
+                )}
+                <div className="flex-grow min-w-0">
+                    <p className="font-semibold text-white truncate">{activity.name}</p>
+                    <p className="text-sm text-zinc-400 flex items-center gap-1.5">
+                        <Users size={14} />
+                        {animalCount} {animalCount === 1 ? 'animal' : 'animales'}
+                    </p>
+                </div>
+                <div className="flex-shrink-0 text-right">
+                    <p className={`font-semibold text-sm ${isOverdue ? 'text-brand-red' : 'text-zinc-300'}`}>
+                        {new Date(dueDate).toLocaleString('es-VE', { timeZone: 'UTC' })}
+                    </p>
+                    <p className="text-xs text-zinc-500">{status}</p>
+                </div>
+            </motion.div>
+        </div>
+    );
+};
+// =================================================================================
+// --- FIN DE COMPONENTES
+// =================================================================================
+
+
 export default function HealthCalendarPage() {
-    const { allTasks } = useHealthAgenda();
+    // --- INICIO CORRECCIÓN (Error TS2339) ---
+    // El hook ahora devuelve 'overdueWeeks' y 'upcomingWeeks'
+    const { overdueWeeks, upcomingWeeks } = useHealthAgenda();
+    // --- FIN CORRECCIÓN ---
+    
+    // Esta línea ahora es válida gracias a la corrección de importación
     const [loggingTask, setLoggingTask] = useState<AgendaTask | null>(null);
+    
     const [isUnplannedModalOpen, setIsUnplannedModalOpen] = useState(false);
-    const calendarRef = useRef<FullCalendar>(null);
-    const [view, setView] = useState('dayGridMonth');
-    const [calendarTitle, setCalendarTitle] = useState('');
+    const [detailTaskGroup, setDetailTaskGroup] = useState<GroupedAgendaTask | null>(null);
+    
+    // --- INICIO CORRECCIÓN (Errores TS2339 y Lógica) ---
+    // Creamos 'overdueTasks' aplanando las actividades de 'overdueWeeks'
+    const overdueTasks = useMemo(() => {
+        // flatMap toma todas las listas 'activities' de cada 'week' y las une en una sola lista
+        return overdueWeeks.flatMap(week => week.activities);
+    }, [overdueWeeks]);
+    // --- FIN CORRECCIÓN ---
 
-    const events = useMemo(() => allTasks.map(task => ({
-        id: task.key,
-        title: `${task.animal.id} - ${task.activity.name}`,
-        start: task.dueDate,
-        allDay: true,
-        extendedProps: { task },
-        backgroundColor: task.status === 'Atrasada' ? '#FF3B30' : (task.status === 'Para Hoy' ? '#34C759' : '#007AFF'),
-        borderColor: task.status === 'Atrasada' ? '#FF3B30' : (task.status === 'Para Hoy' ? '#34C759' : '#007AFF'),
-    })), [allTasks]);
+    // --- INICIO CORRECCIÓN (Errores TS2339, TS7006 y Lógica) ---
+    // Creamos 'allUpcomingTasks' aplanando las actividades de 'upcomingWeeks'
+    const allUpcomingTasks = useMemo(() => {
+        // Esto corrige el error TS7006 porque 'upcomingWeeks' está bien tipado (no es 'any')
+        return upcomingWeeks.flatMap(week => week.activities);
+    }, [upcomingWeeks]);
+    // --- FIN CORRECCIÓN ---
 
-    const handleEventClick = (clickInfo: any) => {
-        setLoggingTask(clickInfo.event.extendedProps.task);
+    const handleEventClick = (taskGroup: GroupedAgendaTask) => {
+        if (taskGroup.tasks.length > 0) {
+            setLoggingTask(taskGroup.tasks[0]);
+        }
     };
 
     const handleSaveSuccess = () => {
-        setLoggingTask(null);
         setIsUnplannedModalOpen(false);
-    };
-
-    const changeView = (newView: string) => {
-        calendarRef.current?.getApi().changeView(newView);
-        setView(newView);
-    };
-    
-    const handleDatesSet = (dateInfo: any) => {
-        setCalendarTitle(dateInfo.view.title);
+        setLoggingTask(null);
     };
 
     return (
         <>
-            <div className="w-full h-full max-w-4xl mx-auto p-4 flex flex-col">
-                <header className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 gap-4">
+            <div className="w-full h-full max-w-2xl mx-auto flex flex-col">
+                
+                <header className="flex justify-between items-center p-4">
                     <div>
-                        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white leading-tight">Calendario Sanitario</h1>
-                        <p className="text-base sm:text-lg text-zinc-400">Vista completa de actividades</p>
+                        <h1 className="text-3xl font-bold tracking-tight text-white">StockCare</h1>
+                        <p className="text-lg text-zinc-400">Agenda Sanitaria</p>
                     </div>
-                     <button
-                        onClick={() => setIsUnplannedModalOpen(true)}
-                        className="flex-shrink-0 flex items-center justify-center gap-2 bg-brand-blue text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm w-full sm:w-auto"
-                    >
-                        <Plus size={16} /> Registrar Actividad
-                    </button>
+                    <div className="flex items-center gap-2">
+                         <button
+                            onClick={() => setIsUnplannedModalOpen(true)}
+                            className="flex-shrink-0 bg-brand-blue text-white font-semibold p-2 rounded-lg transition-colors"
+                            title="Registrar Actividad"
+                        >
+                            <Plus size={20} />
+                        </button>
+                         <button
+                            onClick={() => alert('Modal de Calendario (en desarrollo)')}
+                            className="flex-shrink-0 bg-zinc-700 text-white font-semibold p-2 rounded-lg transition-colors"
+                            title="Ver Calendario"
+                        >
+                            <Calendar size={20} />
+                        </button>
+                    </div>
                 </header>
 
-                <div className="flex flex-col sm:flex-row items-center justify-between mb-4 gap-4">
-                     <div className="flex items-center gap-2">
-                        {/* --- CAMBIO: Corregido icono ‹ por ArrowLeft --- */}
-                        <button onClick={() => calendarRef.current?.getApi().prev()} className="p-2 bg-zinc-700 rounded-md hover:bg-zinc-600"><ArrowLeft size={16} /></button>
-                        {/* --- CAMBIO: Icono ChevronRight (ya importado) --- */}
-                        <button onClick={() => calendarRef.current?.getApi().next()} className="p-2 bg-zinc-700 rounded-md hover:bg-zinc-600"><ChevronRight size={16} /></button>
-                        <h2 className="text-xl font-semibold text-white capitalize w-40 text-center">{calendarTitle}</h2>
-                    </div>
-                     <div className="flex items-center gap-2">
-                        <button onClick={() => calendarRef.current?.getApi().today()} className="px-4 py-1.5 bg-zinc-700 rounded-md hover:bg-zinc-600 text-sm font-semibold">Hoy</button>
-                        <div className="relative flex justify-between rounded-lg bg-zinc-700 p-1 text-sm font-semibold">
-                            <button onClick={() => changeView('dayGridMonth')} className="relative z-10 w-20 py-1 rounded-md">Mes</button>
-                            <button onClick={() => changeView('dayGridWeek')} className="relative z-10 w-20 py-1 rounded-md">Semana</button>
-                            <motion.div layoutId="calendar-view-bg" transition={{ type: "spring", stiffness: 400, damping: 30 }} className={`absolute top-1 h-[calc(100%-0.5rem)] w-20 rounded-md bg-zinc-500 ${view === 'dayGridWeek' ? 'left-[calc(50%_-_2px)]' : 'left-1'}`} />
-                        </div>
-                    </div>
-                </div>
+                <div className="flex-grow overflow-y-auto px-4 space-y-6 pb-4">
+                    
+                    {/* Esta sección ahora usa el 'overdueTasks' corregido */}
+                    {overdueTasks.length > 0 && (
+                        <section className="animate-fade-in">
+                            <h2 className="text-xl font-semibold text-brand-red mb-3">Vencidas</h2>
+                            <div className="space-y-3">
+                                {overdueTasks.map(taskGroup => (
+                                    <GroupedActivityCard 
+                                        key={taskGroup.groupKey} 
+                                        task={taskGroup}
+                                        onMarkDone={() => handleEventClick(taskGroup)}
+                                        onClick={() => setDetailTaskGroup(taskGroup)}
+                                    />
+                                ))}
+                            </div>
+                        </section>
+                    )}
 
-                <div className="flex-grow">
-                    <FullCalendar
-                        ref={calendarRef}
-                        plugins={[dayGridPlugin, interactionPlugin]}
-                        initialView={view}
-                        locale={esLocale}
-                        events={events}
-                        eventClick={handleEventClick}
-                        height="100%"
-                        headerToolbar={false}
-                        datesSet={handleDatesSet}
-                        eventContent={renderEventContent}
-                    />
+                    {/* Esta sección ahora usa 'allUpcomingTasks' corregido (y corrige TS7006) */}
+                    <section className="animate-fade-in">
+                        <h2 className="text-xl font-semibold text-zinc-300 mb-3">Próximas</h2>
+                        {allUpcomingTasks.length > 0 ? (
+                            <div className="space-y-3">
+                                {allUpcomingTasks.map(taskGroup => ( // 'taskGroup' ahora está correctamente tipado
+                                    <GroupedActivityCard 
+                                        key={taskGroup.groupKey} 
+                                        task={taskGroup}
+                                        onMarkDone={() => handleEventClick(taskGroup)}
+                                        onClick={() => setDetailTaskGroup(taskGroup)}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-10 bg-brand-glass rounded-2xl">
+                                <p className="text-zinc-500">No hay actividades próximas agendadas.</p>
+                            </div>
+                        )}
+                    </section>
                 </div>
             </div>
 
+            {/* Modal para registrar evento "Realizado" (usa LogHealthEventForm) */}
             {loggingTask && (
                 <Modal    
                     isOpen={!!loggingTask}    
@@ -139,6 +248,7 @@ export default function HealthCalendarPage() {
                     />
                 </Modal>
             )}
+
              <Modal
                 isOpen={isUnplannedModalOpen}
                 onClose={() => setIsUnplannedModalOpen(false)}
@@ -149,6 +259,15 @@ export default function HealthCalendarPage() {
                     onCancel={() => setIsUnplannedModalOpen(false)}
                 />
             </Modal>
+            
+            {/* Modal para ver la lista de animales */}
+            <ActivityDetailModal
+                isOpen={!!detailTaskGroup}
+                onClose={() => setDetailTaskGroup(null)}
+                taskGroup={detailTaskGroup}
+            />
+
+            {/* Modales de reprogramación eliminados (lógica del componente original) */}
         </>
     );
 }
