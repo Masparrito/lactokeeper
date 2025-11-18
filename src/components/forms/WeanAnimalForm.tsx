@@ -1,8 +1,8 @@
 // src/components/forms/WeanAnimalForm.tsx
+// (ACTUALIZADO: Acepta y usa defaultDate y defaultWeight para pre-cargar el formulario)
 
-import React, { useState, useMemo } from 'react'; // Añadido useMemo
-import { AlertTriangle, Loader2 } from 'lucide-react'; // Añadido Loader2
-// --- CAMBIO: Importar useData y Animal ---
+import React, { useState, useMemo } from 'react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { Animal } from '../../db/local';
 
@@ -11,15 +11,27 @@ interface WeanAnimalFormProps {
   birthDate: string;
   onSave: (data: { weaningDate: string, weaningWeight: number }) => Promise<void>;
   onCancel: () => void;
+  // (NUEVO) Props opcionales para pre-cargar el modal
+  defaultDate?: string;
+  defaultWeight?: number;
 }
 
-export const WeanAnimalForm: React.FC<WeanAnimalFormProps> = ({ animalId, birthDate, onSave, onCancel }) => {
-  const [weaningDate, setWeaningDate] = useState(new Date().toISOString().split('T')[0]);
-  const [weaningWeight, setWeaningWeight] = useState('');
+export const WeanAnimalForm: React.FC<WeanAnimalFormProps> = ({ 
+  animalId, 
+  birthDate, 
+  onSave, 
+  onCancel,
+  defaultDate,    // <-- Prop recibida
+  defaultWeight   // <-- Prop recibida
+}) => {
+  
+  // (ACTUALIZADO) useState ahora usa las props para el valor inicial
+  const [weaningDate, setWeaningDate] = useState(defaultDate || new Date().toISOString().split('T')[0]);
+  const [weaningWeight, setWeaningWeight] = useState(defaultWeight ? String(defaultWeight) : '');
+  
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // --- CAMBIO: Obtener animal para mostrar nombre ---
   const { animals } = useData();
   const animal = useMemo(() => animals.find((a: Animal) => a.id === animalId), [animals, animalId]);
   const formattedName = animal?.name ? String(animal.name).toUpperCase().trim() : '';
@@ -38,7 +50,7 @@ export const WeanAnimalForm: React.FC<WeanAnimalFormProps> = ({ animalId, birthD
       setIsLoading(false);
       return;
     }
-    if (new Date(weaningDate) < new Date(birthDate)) {
+    if (birthDate && birthDate !== 'N/A' && new Date(weaningDate) < new Date(birthDate)) {
       setError('La fecha de destete no puede ser anterior a la fecha de nacimiento.');
       setIsLoading(false);
       return;
@@ -46,7 +58,7 @@ export const WeanAnimalForm: React.FC<WeanAnimalFormProps> = ({ animalId, birthD
 
     try {
       await onSave({ weaningDate, weaningWeight: weight });
-      // onSaveSuccess (cierre del modal) se maneja en el componente padre (RebanoProfilePage)
+      // El cierre del modal se maneja en RebanoProfilePage
     } catch (err) {
       setError('No se pudo guardar el registro de destete.');
       console.error(err);
@@ -57,16 +69,14 @@ export const WeanAnimalForm: React.FC<WeanAnimalFormProps> = ({ animalId, birthD
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-        {/* --- INICIO: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
         <div className="text-center mb-2">
             <p className="font-mono font-semibold text-xl text-white truncate">{animalId.toUpperCase()}</p>
             {formattedName && (
                 <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
             )}
         </div>
-        {/* --- FIN: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
         <p className="text-sm text-zinc-400 text-center -mt-2">
-            Registra la fecha y el peso al momento del destete.
+            Confirma o edita la fecha y el peso del destete.
         </p>
 
       <div>
@@ -90,7 +100,7 @@ export const WeanAnimalForm: React.FC<WeanAnimalFormProps> = ({ animalId, birthD
           step="0.1"
           value={weaningWeight}
           onChange={(e) => setWeaningWeight(e.target.value)}
-          placeholder="Ej: 15.5"
+          placeholder="Ej: 9.5"
           className="w-full bg-zinc-800/80 text-white p-3 rounded-xl text-lg"
           required
         />
@@ -110,11 +120,10 @@ export const WeanAnimalForm: React.FC<WeanAnimalFormProps> = ({ animalId, birthD
         <button 
           type="submit" 
           disabled={isLoading}
-          className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg disabled:opacity-50 flex items-center gap-2" // Añadido flex/gap
+          className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg disabled:opacity-50 flex items-center gap-2"
         >
-          {/* --- CAMBIO: Añadido Loader --- */}
           {isLoading && <Loader2 size={18} className="animate-spin" />}
-          {isLoading ? 'Guardando...' : 'Guardar Destete'}
+          {isLoading ? 'Guardando...' : 'Confirmar Destete'}
         </button>
       </div>
     </form>

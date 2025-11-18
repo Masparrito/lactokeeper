@@ -1,13 +1,13 @@
-// src/utils/calculations.ts (SIN CAMBIOS)
+// src/utils/calculations.ts
+// (CORREGIDO: Arregla el bug de '168 años' (Date.UTC) y aplica la lógica 'Nativo vs. Registrado')
+// (CORREGIDO: Error de lógica en 'calculateGDP' (Overall))
 
 import { BodyWeighing, Animal, Parturition, ServiceRecord, SireLot, BreedingSeason } from '../db/local';
 import { STATUS_DEFINITIONS, AnimalStatusKey } from '../hooks/useAnimalStatus';
-// (NUEVO) Importar AppConfig y el default
 import { AppConfig, DEFAULT_CONFIG } from '../types/config';
 
 /**
  * Calcula la edad de un animal en días completados.
- * (Acepta una segunda fecha opcional para calcular la edad en un punto específico)
  */
 export const calculateAgeInDays = (birthDate: string, comparisonDateStr?: string): number => {
     if (!birthDate || birthDate === 'N/A') return -1;
@@ -16,8 +16,11 @@ export const calculateAgeInDays = (birthDate: string, comparisonDateStr?: string
     
     let today: Date;
     if (comparisonDateStr) {
+        // Usar la fecha de comparación (ej. para un pesaje)
         today = new Date(comparisonDateStr + 'T00:00:00Z');
     } else {
+        // (ESTA ES LA CORRECCIÓN DEL BUG DE 168 AÑOS)
+        // Usar la fecha de "hoy"
         const now = new Date();
         today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     }
@@ -30,16 +33,14 @@ export const calculateAgeInDays = (birthDate: string, comparisonDateStr?: string
     return Math.max(0, diffDays);
 };
 
-// Helper de meses (movido aquí para ser central)
-const calculateAgeInMonths = (birthDate: string): number => {
-    if (!birthDate || birthDate === 'N/A') return 0;
-    const today = new Date();
-    const birth = new Date(birthDate);
-    if (isNaN(birth.getTime())) return 0;
-    let months = (today.getFullYear() - birth.getFullYear()) * 12;
-    months -= birth.getMonth();
-    months += today.getMonth();
-    return months <= 0 ? 0 : months;
+/**
+ * Calcula la edad de un animal en MESES completados, usando la edad en días.
+ */
+export const calculateAgeInMonths = (birthDate: string): number => {
+    const ageInDays = calculateAgeInDays(birthDate);
+    if (ageInDays < 0) return 0;
+    const avgDaysInMonth = 30.4375; 
+    return Math.floor(ageInDays / avgDaysInMonth);
 };
 
 
@@ -48,20 +49,16 @@ const calculateAgeInMonths = (birthDate: string): number => {
  */
 export const formatAge = (birthDate: string): string => {
     const totalDays = calculateAgeInDays(birthDate);
-
     if (totalDays < 0) return 'N/A';
     if (totalDays <= 60) {
         return `${totalDays} día${totalDays !== 1 ? 's' : ''}`;
     }
-
     const avgDaysInMonth = 30.4375;
     const totalMonths = Math.floor(totalDays / avgDaysInMonth);
-
     if (totalMonths < 12) {
         const remainingDays = Math.round(totalDays % avgDaysInMonth);
         return `${totalMonths} mes${totalMonths !== 1 ? 'es' : ''}${remainingDays > 0 ? ` y ${remainingDays} día${remainingDays !== 1 ? 's' : ''}` : ''}`;
     }
-
     const totalYears = Math.floor(totalMonths / 12);
     const remainingMonths = Math.round(totalMonths % 12);
     return `${totalYears} año${totalYears !== 1 ? 's' : ''}${remainingMonths > 0 ? ` y ${remainingMonths} mes${remainingMonths !== 1 ? 'es' : ''}` : ''}`;
@@ -69,66 +66,80 @@ export const formatAge = (birthDate: string): string => {
 
 /**
  * Determina el estado fisiológico (categoría zootécnica) de un animal.
- * ¡ESTA ES AHORA LA ÚNICA FUENTE DE VERDAD!
  */
 export const getAnimalZootecnicCategory = (
     animal: Animal, 
     parturitions: Parturition[],
-    appConfig: AppConfig // (NUEVO) Acepta la configuración
+    appConfig: AppConfig // Mantenido para la lógica de Macho
 ): string => {
     
-    // Usar la config o el default
     const config = { ...DEFAULT_CONFIG, ...appConfig };
 
-    const ageInDays = calculateAgeInDays(animal.birthDate);
-    if (ageInDays < 0) return 'Indefinido';
-    const ageInMonths = calculateAgeInMonths(animal.birthDate);
+    // 1. Determinar si el animal es "Nativo" (nacido dentro de la app)
+    // Un animal es nativo si su ID aparece en la lista de 'liveOffspring' de un parto
+    const isNativo = parturitions.some(p => 
+        p.liveOffspring && p.liveOffspring.some(kid => kid.id === animal.id)
+    );
 
     if (animal.sex === 'Hembra') {
         const hasCalved = parturitions.some(p => p.goatId === animal.id);
 
-        // REGLA 1 (Prioridad Máxima): Si ha parido, SIEMPRE es "Cabra".
-        if (hasCalved) {
-            return 'Cabra';
-        }
+        // --- (NUEVA LÓGICA HÍBRIDA: NATIVO vs. REGISTRADO) ---
 
-        // REGLA 2: Si NO ha parido, clasificar por edad.
-        
-        // 2a. Cabrita (0d a ej: 90d)
-        if (ageInDays <= config.categoriaCabritaEdadMaximaDias) {
+        // REGLA A: Lógica para ANIMALES NATIVOS (basada en eventos)
+        if (isNativo) {
+            // A.1. Si ha parido -> Cabra
+            if (hasCalved) {
+                return 'Cabra';
+            }
+            // A.2. Si no ha parido, pero está destetada -> Cabritona
+            if (animal.weaningDate) {
+                return 'Cabritona';
+            }
+            // A.3. Si no ha parido y no está destetada -> Cabrita
             return 'Cabrita';
-        }
-        // 2b. Cabra (por edad, si la config lo permite)
-        else if (ageInMonths > config.categoriaCabraEdadMinimaMeses && !config.categoriaCabraRequiereParto) {
-            // Si es mayor de (ej) 12m Y la configuración NO requiere parto
-            return 'Cabra';
-        }
-        // 2c. Cabritona (el resto)
-        else {
-            // Incluye:
-            // 1. Hembras de (ej) 91d a 12m (sin parto).
-            // 2. Hembras > 12m (sin parto) CUANDO el toggle "Requiere Parto" está ON.
-            return 'Cabritona';
+        
+        } else {
+        // REGLA B: Lógica para ANIMALES REGISTRADOS (importados)
+            
+            // B.1. Excepción: Si el usuario la registró como "Cabritona" pero
+            // luego le registró un parto manual, se actualiza a "Cabra".
+            if (hasCalved) {
+                return 'Cabra';
+            }
+            
+            // B.2. Devolver la categoría asignada al momento del registro.
+            // (Soluciona "A451" y el bug de "65 Crías")
+            return animal.lifecycleStage || 'Indefinido';
         }
 
-    } else { // Macho
+    } else { 
+        // Lógica de Macho (sigue basándose en edad, lo cual es correcto)
         
-        // 1. Regla REPRODUCTOR:
-        if (ageInMonths > config.categoriaMachoLevanteEdadMaximaMeses) {
-            return 'Reproductor';
+        const ageInDays = calculateAgeInDays(animal.birthDate);
+        if (ageInDays < 0) {
+             // Si no hay fecha, respetar la categoría manual
+             return animal.lifecycleStage || 'Indefinido';
         }
-        // 2. Regla MACHO LEVANTE:
-        else if (ageInDays >= config.categoriaMachoLevanteEdadMinimaDias && ageInMonths <= config.categoriaMachoLevanteEdadMaximaMeses) {
+        const ageInMonths = calculateAgeInMonths(animal.birthDate);
+
+        // 1. Regla CABRITO: (0d a ej: 90d)
+        if (ageInDays <= config.categoriaCabritoEdadMaximaDias) {
+            return 'Cabrito';
+        }
+        // 2. Regla MACHO LEVANTE: (ej: 91d a 12m)
+        if (ageInMonths <= config.categoriaMachoLevanteEdadMaximaMeses) {
             return 'Macho de Levante';
         }
-        // 3. Regla CABRITO:
+        // 3. Regla REPRODUCTOR: (ej: > 12m)
         else { 
-            return 'Cabrito';
+            return 'Reproductor';
         }
     }
 };
 
 
+// ... (Resto de las funciones 'calculateDEL', 'calculateWeightedScore', etc., sin cambios) ...
 /**
  * Calcula los "Días en Leche" (DEL) para un pesaje específico.
  */
@@ -153,64 +164,95 @@ export const calculateWeightedScore = (kg: number, del: number): number => {
 
 /**
  * Calcula la Ganancia Diaria de Peso (GDP) de un animal.
+ * (CORREGIDO: Ahora acepta 'birthDate' y calcula 'overall' correctamente)
  */
-export const calculateGDP = (birthWeight: number | undefined, weighings: BodyWeighing[]): { overall: number | null, recent: number | null } => {
-    if (weighings.length === 0) return { overall: null, recent: null };
-
-    const sortedWeighings = [...weighings].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    const latestWeighing = sortedWeighings[sortedWeighings.length - 1];
+export const calculateGDP = (
+    birthDate: string | undefined,
+    birthWeight: number | undefined, 
+    weighings: BodyWeighing[]
+): { overall: number | null, recent: number | null } => {
     
-    let overall: number | null = null;
-    if (birthWeight && birthWeight > 0) {
-        // (Lógica existente)
-        const ageAtLastWeighing = calculateAgeInDays(latestWeighing.date);
-        if (ageAtLastWeighing > 0) {
-            overall = (latestWeighing.kg - birthWeight) / ageAtLastWeighing;
-        }
-    }
-    
+    // --- GDP Reciente (entre los dos últimos pesajes) ---
     let recent: number | null = null;
-    if (sortedWeighings.length >= 2) {
-        const last = latestWeighing;
+    if (weighings.length >= 2) {
+        // Asegurarse de que están ordenados por fecha
+        const sortedWeighings = [...weighings].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const last = sortedWeighings[sortedWeighings.length - 1];
         const secondLast = sortedWeighings[sortedWeighings.length - 2];
+        
         const daysBetween = (new Date(last.date).getTime() - new Date(secondLast.date).getTime()) / (1000 * 60 * 60 * 24);
+        
         if (daysBetween > 0) {
             recent = (last.kg - secondLast.kg) / daysBetween;
         }
     }
     
+    // --- GDP General (Desde el nacimiento hasta el último pesaje) ---
+    let overall: number | null = null;
+    
+    // Se necesita fecha de nacimiento, peso al nacer y al menos un pesaje
+    if (birthDate && birthDate !== 'N/A' && birthWeight && birthWeight > 0 && weighings.length > 0) {
+        
+        // Encontrar el último pesaje (el array puede no venir ordenado)
+        const latestWeighing = [...weighings].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+        // Calcular la edad del animal *en el día de ese último pesaje*
+        const ageAtLastWeighing = calculateAgeInDays(birthDate, latestWeighing.date);
+        
+        if (ageAtLastWeighing > 0) {
+            const totalGain = latestWeighing.kg - birthWeight;
+            overall = totalGain / ageAtLastWeighing;
+        }
+    }
+    
+    // Devolver ambos valores (Nota: 'recent' se calcula en kg/día, 'overall' también)
     return { overall, recent };
 };
+
 
 /**
  * Estima el peso de un animal en una edad objetivo usando interpolación lineal.
  */
 export const getInterpolatedWeight = (weighings: BodyWeighing[], birthDate: string, targetAgeInDays: number): number | null => {
-    const weighingsWithAge = weighings.map(w => ({
-        age: (new Date(w.date).getTime() - new Date(birthDate).getTime()) / (1000 * 60 * 60 * 24),
-        kg: w.kg,
-    })).sort((a, b) => a.age - b.age);
-
+    // (CORRECCIÓN IMPORTANTE) La función de interpolación debe incluir el peso al nacer como el punto '0'.
+    
+    const weighingsWithAge = weighings
+        .map(w => ({
+            age: (new Date(w.date).getTime() - new Date(birthDate + 'T00:00:00Z').getTime()) / (1000 * 60 * 60 * 24),
+            kg: w.kg,
+        }))
+        .sort((a, b) => a.age - b.age);
+    
+    // El 'weighings' que entra aquí YA DEBE contener el peso al nacer.
+    // La lógica en 'GrowthProfilePage.tsx' se asegura de esto.
+    
     if (weighingsWithAge.length < 1) return null;
 
-    const before = weighingsWithAge.filter(w => w.age <= targetAgeInDays).pop();
-    const after = weighingsWithAge.find(w => w.age >= targetAgeInDays);
-
-    if (before && before.age === targetAgeInDays) return before.kg;
-    if (after && after.age === targetAgeInDays) return after.kg;
-
-    if (!before || !after) return null;
-    if (before.age === after.age) return before.kg;
-
-    const ageRange = after.age - before.age;
-    if (ageRange === 0) return before.kg;
-
-    const weightRange = after.kg - before.kg;
-    const ageOffset = targetAgeInDays - before.age;
+    // Buscar el punto exacto, anterior y siguiente
+    const exactMatch = weighingsWithAge.find(w => w.age === targetAgeInDays);
+    if (exactMatch) return exactMatch.kg;
     
-    const interpolatedWeight = before.kg + (ageOffset / ageRange) * weightRange;
+    const before = weighingsWithAge.filter(w => w.age < targetAgeInDays).pop();
+    const after = weighingsWithAge.find(w => w.age > targetAgeInDays);
+
+    // Si tenemos un punto antes y uno después, interpolamos
+    if (before && after) {
+        if (before.age === after.age) return before.kg; // Evitar división por cero
+
+        const ageRange = after.age - before.age;
+        if (ageRange === 0) return before.kg;
+
+        const weightRange = after.kg - before.kg;
+        const ageOffset = targetAgeInDays - before.age;
+        
+        const interpolatedWeight = before.kg + (ageOffset / ageRange) * weightRange;
+        
+        return parseFloat(interpolatedWeight.toFixed(2));
+    }
     
-    return parseFloat(interpolatedWeight.toFixed(2));
+    // Si no hay un punto "después" (ej. 90 días, pero el animal tiene 80)
+    // Devolvemos null porque no podemos predecir el futuro.
+    return null;
 };
 
 /**
@@ -223,7 +265,7 @@ export const calculateGrowthScore = (individualGdp: number, averageGdp: number, 
     return Math.round(baseScore * ageFactor);
 };
 
-// --- NUEVA FUNCIÓN: ÍNDICE DE DESTETE ---
+// --- ÍNDICE DE DESTETE ---
 export const calculateWeaningIndex = (animal: Animal): number | null => {
     if (!animal.weaningWeight || !animal.weaningDate || !animal.birthWeight || !animal.birthDate) {
         return null;
@@ -236,17 +278,26 @@ export const calculateWeaningIndex = (animal: Animal): number | null => {
     return parseFloat(adjustedWeight.toFixed(2));
 };
 
-// --- NUEVA FUNCIÓN: ÍNDICE DE PRECOCIDAD ---
+// --- ÍNDICE DE PRECOCIDAD ---
 export const calculatePrecocityIndex = (animal: Animal, allWeighings: BodyWeighing[]): number | null => {
     const animalWeighings = allWeighings.filter(w => w.animalId === animal.id);
+    
+    // (CORRECCIÓN) Asegurarse de que el peso al nacer se incluya para la interpolación
+    if (animal.birthWeight && animal.birthDate) {
+        animalWeighings.unshift({
+            id: 'birth_weight_temp',
+            animalId: animal.id,
+            date: animal.birthDate,
+            kg: animal.birthWeight,
+            userId: animal.userId,
+            _synced: true
+        });
+    }
+    
     return getInterpolatedWeight(animalWeighings, animal.birthDate, 210); // 7 meses = 210 días
 };
 
 // --- FUNCIÓN EXISTENTE ---
-/**
- * Obtiene los objetos de estado activos para un animal específico.
- * ESTA FUNCIÓN ES OBSOLETA. La lógica real está en useAnimalStatus.ts
- */
 export const getAnimalStatusObjects = (
     animal: Animal | undefined | null,
     allParturitions: Parturition[],
@@ -292,9 +343,7 @@ export const getAnimalStatusObjects = (
 };
 
 
-// --- (INICIO CORRECCIÓN TS6133) ---
-// Lógica de Composición Racial RESTAURADA
-
+// --- Lógica de Composición Racial RESTAURADA ---
 const RAZAS_BASE = {
     'A': 'Alpina',
     'S': 'Saanen',
@@ -378,4 +427,3 @@ export const calculateBreedFromComposition = (composition: string | undefined): 
 
     return 'Mestiza'; // Fallback
 };
-// --- (FIN CORRECCIÓN TS6133) ---

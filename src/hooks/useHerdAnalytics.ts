@@ -1,23 +1,20 @@
-// src/hooks/useHerdAnalytics.ts (Corregido y Unificado)
+// src/hooks/useHerdAnalytics.ts
+// (CORREGIDO: Eliminada la lógica de 'calculateAgeInMonths' duplicada)
 
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { DEFAULT_CONFIG } from '../types/config'; 
-// (NUEVO) Importar la lógica centralizada
-import { calculateAgeInDays, getAnimalZootecnicCategory } from '../utils/calculations'; 
-import { Animal } from '../db/local';
+// (ACTUALIZADO) Importar la lógica centralizada
+import { 
+    calculateAgeInDays, 
+    getAnimalZootecnicCategory,
+    // (NUEVO) Importar el cálculo de meses correcto
+    calculateAgeInMonths 
+} from '../utils/calculations'; 
+// (ACTUALIZADO) Solo se importa 'Animal', que es el único tipo necesario
+import { Animal } from '../db/local'; 
 
-// Helper para calcular edad en meses
-const calculateAgeInMonths = (birthDate: string): number => {
-    if (!birthDate || birthDate === 'N/A') return 0;
-    const today = new Date();
-    const birth = new Date(birthDate);
-    if (isNaN(birth.getTime())) return 0;
-    let months = (today.getFullYear() - birth.getFullYear()) * 12;
-    months -= birth.getMonth();
-    months += today.getMonth();
-    return months <= 0 ? 0 : months;
-};
+// (ELIMINADO) La función 'calculateAgeInMonths' local y defectuosa ha sido eliminada.
 
 export const useHerdAnalytics = () => {
     const { animals, parturitions, bodyWeighings, sireLots, breedingSeasons, weighings, appConfig } = useData();
@@ -29,8 +26,6 @@ export const useHerdAnalytics = () => {
 
         const allFemales = activeAnimals.filter(a => a.sex === 'Hembra');
         const totalHembras = allFemales.length;
-
-        // --- (INICIO CORRECCIÓN) Tarea 8.2 / Punto 1: Unificación de Lógica ---
         
         const categories = {
             cabras: [] as Animal[],
@@ -41,13 +36,9 @@ export const useHerdAnalytics = () => {
             reproductores: [] as Animal[],
         };
 
-        // (OPTIMIZACIÓN) Pre-calcular partos por animal
-        // Esto es necesario para 'getAnimalZootecnicCategory' si no queremos pasar 'parturitions' cada vez
-        // PERO la función central ya acepta 'parturitions', así que es más simple
-        // filtrar los partos una vez.
-
+        // 1. (CORREGIDO) Usar la fuente de verdad centralizada
         activeAnimals.forEach(animal => {
-            // (CORREGIDO) Usar la fuente de verdad centralizada
+            // Llama a la lógica híbrida (Nativo vs Registrado) de calculations.ts
             const category = getAnimalZootecnicCategory(animal, parturitions, config);
 
             switch(category) {
@@ -60,24 +51,15 @@ export const useHerdAnalytics = () => {
             }
         });
         
-        // --- (FIN CORRECCIÓN) ---
+        // --- Lógica de Vientres Corregida ---
+        const { edadMinimaVientreMeses } = config; // ej: 10 meses
 
-        
-        // --- (INICIO NUEVA LÓGICA DE VIENTRES) ---
-        // Vientres = Todas las Cabras + Cabritonas que superen la edad mínima
-        
-        const { edadMinimaVientreMeses } = config;
-
-        const vientresCabras = categories.cabras.length;
-        
-        const vientresCabritonas = categories.cabritonas.filter(hembra => {
+        const totalVientres = allFemales.filter(hembra => {
+            // (CORREGIDO) Usar la función importada y precisa
             const ageInMonths = calculateAgeInMonths(hembra.birthDate);
-            // La edad mínima configurable (default 10) define un vientre
             return ageInMonths >= edadMinimaVientreMeses;
         }).length;
-
-        const totalVientres = vientresCabras + vientresCabritonas;
-        // --- (FIN NUEVA LÓGICA DE VIENTRES) ---
+        // --- Fin Lógica de Vientres ---
 
         
         // --- Analítica de Hembras Adultas ---
@@ -177,7 +159,7 @@ export const useHerdAnalytics = () => {
         
         const desteteStatusData = [
             { name: 'Listo', value: listasParaDesteteCount, color: '#34C759' },
-            { name: 'Próximo', value: proximasADesteteCount, color: '#FF9F0A' },
+            { name: 'Próximo', value: proximasADesteteCount, color: '#FF9F0A' }, 
             { name: 'Amamantando', value: amamantandoCount, color: '#007AFF' },
         ].filter(item => item.value > 0);
 
@@ -188,7 +170,6 @@ export const useHerdAnalytics = () => {
         const activeSires = categories.reproductores.filter(r => activeSireLots.some(sl => sl.sireId === r.id))
             .map(sire => {
                 const lot = activeSireLots.find(sl => sl.sireId === sire.id)!;
-                // (CORREGIDO TS2551)
                 const assignedFemales = animals.filter(a => a.sireLotId === lot.id && a.status === 'Activo').length;
                 return { ...sire, lotId: lot.id, assignedFemales };
             });
@@ -197,9 +178,9 @@ export const useHerdAnalytics = () => {
         return {
             totalPoblacion: activeAnimals.length,
             totalHembras,
-            totalVientres,
+            totalVientres, // <-- Este número ahora es independiente
             cabras: {
-                total: categories.cabras.length,
+                total: categories.cabras.length, // <-- Este número depende del toggle
                 enProduccion, secas, preñadas, vacias, enMonta,
                 reproductiveStatusData: cabrasReproductiveStatusData,
                 milkingPercentageData: milkingPercentageData,
@@ -232,7 +213,7 @@ export const useHerdAnalytics = () => {
         sireLots, 
         breedingSeasons, 
         weighings, 
-        appConfig // Depender de appConfig asegura que recalcule con los cambios
+        appConfig 
     ]);
 
     return analytics;

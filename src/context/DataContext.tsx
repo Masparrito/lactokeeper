@@ -1,12 +1,11 @@
-// src/context/DataContext.tsx (100% Completo y Corregido)
+// (CORREGIDO: Se añade 'FeedingPlan' a la lista de importación de db/local)
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Table } from 'dexie';
-// (CORREGIDO) Importar 'FeedingPlan' y 'initDB'
-import { Animal, Weighing, Parturition, Father, Lot, Origin, BreedingSeason, SireLot, ServiceRecord, Event, EventType, BodyWeighing, Product, HealthPlan, PlanActivity, HealthEvent, initDB, getDB, FeedingPlan, GanaderoOSTables } from '../db/local';
+// --- (CORRECCIÓN AQUÍ) ---
+import { Animal, Weighing, Parturition, Father, Lot, Origin, BreedingSeason, SireLot, ServiceRecord, Event, EventType, BodyWeighing, Product, HealthPlan, PlanActivity, HealthEvent, FeedingPlan, initDB, getDB, GanaderoOSTables } from '../db/local';
 import { db as firestoreDb } from '../firebaseConfig';
 import { useAuth } from './AuthContext';
-// (CORREGIDO) Importar todas las funciones de firestore necesarias
 import { collection, query, where, onSnapshot, deleteDoc, doc, setDoc, writeBatch, Timestamp, serverTimestamp, deleteField } from "firebase/firestore";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -65,6 +64,7 @@ interface IDataContext {
   addWeighing: (weighing: Omit<Weighing, 'id' | 'userId' | '_synced'>) => Promise<void>;
   addBodyWeighing: (weighing: Omit<BodyWeighing, 'id' | 'userId' | '_synced'>) => Promise<void>;
   deleteWeighingSession: (date: string) => Promise<void>;
+  deleteBodyWeighingSession: (date: string) => Promise<void>;
   addParturition: (data: any) => Promise<void>;
   fetchData: () => Promise<void>;
   addFather: (father: { id: string, name: string }) => Promise<void>;
@@ -79,6 +79,9 @@ interface IDataContext {
   deletePlanActivity: (activityId: string) => Promise<void>;
   addHealthEvent: (eventData: Omit<HealthEvent, 'id' | 'userId' | '_synced'>) => Promise<void>;
   
+  deleteEvent: (eventId: string) => Promise<void>;
+  updateEventNotes: (eventId: string, notes: string) => Promise<void>;
+
   updateAppConfig: (config: AppConfig) => Promise<void>;
 }
 
@@ -86,7 +89,7 @@ const DataContext = createContext<IDataContext>({} as IDataContext);
 
 export const useData = () => useContext(DataContext);
 
-// Helper de Sincronización
+// Helper de Sincronización (Usado para items individuales)
 const syncToFirestore = async (collectionName: string, id: string, data: any) => {
     try {
         const cleanData = Object.entries(data).reduce((acc, [key, value]) => {
@@ -153,6 +156,23 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const syncQueueRef = useRef<(() => Promise<void>)[]>([]);
     const isSyncingRef = useRef(false);
 
+    // Helper DEFINITIVO para limpiar objetos antes de un batch.set()
+    const cleanForBatch = (data: any) => {
+        const cleanData = Object.entries(data).reduce((acc, [key, value]) => {
+            if (value !== undefined && key !== '_synced') {
+                (acc as any)[key] = value;
+            }
+            return acc;
+        }, {});
+
+        if ((cleanData as any).createdAt === undefined || (cleanData as any).createdAt === null) {
+            (cleanData as any).createdAt = serverTimestamp();
+        }
+        
+        return cleanData;
+    };
+
+
     const processSyncQueue = useCallback(async () => {
         if (isSyncingRef.current || syncQueueRef.current.length === 0 || !navigator.onLine) {
             if (syncQueueRef.current.length === 0 && !isSyncingRef.current) { setSyncStatus('idle'); }
@@ -162,7 +182,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSyncStatus('syncing');
         const syncOperation = syncQueueRef.current.shift();
         if (syncOperation) {
-            try { await syncOperation(); } catch (error) { console.error("Sync Queue: Error processing item:", error); }
+            try { 
+                await syncOperation(); 
+            } catch (error) { 
+                console.error("Sync Queue: Error processing item (batch fallido):", error); 
+            }
         }
         isSyncingRef.current = false;
         if (syncQueueRef.current.length > 0) {
@@ -300,7 +324,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setupSync();
         return () => { unsubscribers.forEach(unsub => unsub()); window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current); };
-    }, [currentUser?.uid, fetchDataFromLocalDb, processSyncQueue]); // Dependencias estables
+    }, [currentUser?.uid, fetchDataFromLocalDb, processSyncQueue]);
 
     // --- FUNCIONES DE ESCRITURA (Local-First con Enqueue) ---
 
@@ -342,7 +366,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         internalAddEvent({
             animalId: newAnimal.id,
             date: new Date(newAnimal.createdAt!).toISOString().split('T')[0],
-            // (CORREGIDO) Este tipo debe ser 'Registro'
             type: 'Registro', 
             details: `${registrationType} registrado en el sistema.${birthDateDetail}`,
             lotName: newAnimal.location
@@ -359,7 +382,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const currentAnimal = await localDb.animals.get(upperId);
         if (!currentAnimal) throw new Error("Animal no encontrado para actualizar");
 
-        // (Lógica de lifecycleStage sin cambios)
         if (dataToUpdate.birthDate && dataToUpdate.birthDate !== 'N/A' && !dataToUpdate.lifecycleStage) {
             const calculateLifecycleStage = (birthDate: string, sex: 'Hembra' | 'Macho'): string => {
                 if (!birthDate || birthDate === 'N/A' || !sex) return 'Indefinido';
@@ -388,13 +410,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const dataWithSyncFlag = { ...dataToUpdate, _synced: false };
         await localDb.animals.update(upperId, dataWithSyncFlag);
 
-        // (Lógica de eventos por actualización)
         if (dataToUpdate.location !== undefined && dataToUpdate.location !== currentAnimal.location) internalAddEvent({ animalId: upperId, date: today, type: 'Movimiento', details: `Movido de '${currentAnimal.location || 'Sin Asignar'}' a '${dataToUpdate.location || 'Sin Asignar'}'`, lotName: dataToUpdate.location || '' });
         if (dataToUpdate.reproductiveStatus !== undefined && dataToUpdate.reproductiveStatus !== currentAnimal.reproductiveStatus) internalAddEvent({ animalId: upperId, date: today, type: 'Cambio de Estado', details: `Estado reproductivo: ${dataToUpdate.reproductiveStatus}` });
         if (dataToUpdate.status !== undefined && dataToUpdate.status !== currentAnimal.status) internalAddEvent({ animalId: upperId, date: dataToUpdate.endDate || today, type: 'Cambio de Estado', details: `Animal dado de baja: ${dataToUpdate.status} ${dataToUpdate.cullReason ? `(${dataToUpdate.cullReason})` : ''}` });
         
-        // --- (INICIO CORRECCIÓN TS2322) ---
-        // El tipo "Destete" no es un EventType válido. "Cambio de Estado" sí lo es.
         if (dataToUpdate.weaningDate && !currentAnimal.weaningDate) {
             internalAddEvent({ 
                 animalId: upperId, 
@@ -403,7 +422,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 details: `Destetado con ${dataToUpdate.weaningWeight || 'N/A'} Kg` 
             });
         }
-        // --- (FIN CORRECCIÓN TS2322) ---
 
         fetchDataFromLocalDb();
         const updatedAnimal = await localDb.animals.get(upperId);
@@ -573,6 +591,32 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         enqueueSync(syncDeletion);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
+    const deleteBodyWeighingSession = useCallback(async (date: string) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        const weighingsToDelete = await localDb.bodyWeighings.where({ date }).toArray();
+        if (weighingsToDelete.length === 0) return;
+        const idsToDelete = weighingsToDelete.map(w => w.id);
+        const animalIds = weighingsToDelete.map(w => w.animalId);
+        const eventsToDelete = await localDb.events
+            .where('date').equals(date)
+            .and(e => e.type === 'Pesaje Corporal' && animalIds.includes(e.animalId))
+            .toArray();
+        const eventIdsToDelete = eventsToDelete.map(e => e.id);
+        await localDb.transaction('rw', localDb.bodyWeighings, localDb.events, async () => {
+            await localDb.bodyWeighings.bulkDelete(idsToDelete);
+            await localDb.events.bulkDelete(eventIdsToDelete);
+        });
+        await fetchDataFromLocalDb();
+        const syncDeletion = async () => {
+            const batch = writeBatch(firestoreDb);
+            idsToDelete.forEach(id => batch.delete(doc(firestoreDb, "bodyWeighings", id)));
+            eventIdsToDelete.forEach(id => batch.delete(doc(firestoreDb, "events", id)));
+            await batch.commit();
+        };
+        enqueueSync(syncDeletion);
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+
     const addFather = useCallback(async (father: { id: string, name: string }) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
@@ -585,19 +629,59 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         enqueueSync(() => syncToFirestore("fathers", newFather.id, newFather));
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
+    // --- (CONTIENE LA CORRECCIÓN ANTERIOR) addParturition ---
     const addParturition = useCallback(async (data: any) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const upperCaseMotherId = data.motherId.toUpperCase();
         const lactationStatus: Parturition['status'] = (data.parturitionOutcome === 'Aborto' && !data.inducedLactation) ? 'finalizada' : 'activa';
         const newParturitionId = uuidv4();
-        const parturitionData: Parturition = { id: newParturitionId, goatId: upperCaseMotherId, parturitionDate: data.parturitionDate, sireId: data.sireId, offspringCount: data.offspringCount, parturitionType: data.parturitionType, parturitionOutcome: data.parturitionOutcome, status: lactationStatus, userId: currentUser.uid, _synced: false, dryingStartDate: data.inducedLactation && data.parturitionOutcome === 'Aborto' ? data.parturitionDate : undefined, liveOffspring: data.liveOffspring ? data.liveOffspring.map((kid: any) => ({ id: kid.id?.toUpperCase(), sex: kid.sex, birthWeight: kid.birthWeight })) : undefined };
-        const newKidsData: Animal[] = (data.liveOffspring || []).map((kid: any) => ({ id: kid.id.toUpperCase(), sex: kid.sex, status: 'Activo', birthDate: data.parturitionDate, motherId: upperCaseMotherId, fatherId: data.sireId, birthWeight: parseFloat(kid.birthWeight) || undefined, userId: currentUser.uid, createdAt: Date.now(), lifecycleStage: kid.sex === 'Hembra' ? 'Cabrita' : 'Cabrito', location: '', reproductiveStatus: 'No Aplica', isReference: false, _synced: false, }));
+        
+        const parturitionData: Parturition = { 
+            id: newParturitionId, 
+            goatId: upperCaseMotherId, 
+            parturitionDate: data.parturitionDate, 
+            sireId: data.sireId, 
+            offspringCount: data.offspringCount, 
+            parturitionType: data.parturitionType, 
+            parturitionOutcome: data.parturitionOutcome, 
+            status: lactationStatus, 
+            userId: currentUser.uid, 
+            _synced: false, 
+            dryingStartDate: data.inducedLactation && data.parturitionOutcome === 'Aborto' ? data.parturitionDate : undefined, 
+            liveOffspring: data.liveOffspring ? data.liveOffspring.map((kid: any) => ({ id: kid.id?.toUpperCase(), sex: kid.sex, birthWeight: kid.birthWeight })) : undefined 
+        };
+        
+        const newKidsData: Animal[] = (data.liveOffspring || []).map((kid: any) => ({ 
+            id: kid.id.toUpperCase(), 
+            sex: kid.sex, 
+            status: 'Activo', 
+            birthDate: data.parturitionDate, 
+            motherId: upperCaseMotherId, 
+            fatherId: data.sireId, 
+            birthWeight: parseFloat(kid.birthWeight) || undefined, 
+            userId: currentUser.uid, 
+            createdAt: Date.now(), 
+            lifecycleStage: kid.sex === 'Hembra' ? 'Cabrita' : 'Cabrito', 
+            location: '', 
+            reproductiveStatus: 'No Aplica', 
+            isReference: false, 
+            _synced: false, 
+        }));
         
         await localDb.transaction('rw', localDb.parturitions, localDb.animals, localDb.events, async () => {
             await localDb.parturitions.put(parturitionData);
 
-            // --- (INICIO CORRECCIÓN TS2322) ---
+            // --- (INICIO DE LA CORRECCIÓN) ---
+            const mother = await localDb.animals.get(upperCaseMotherId);
+            if (mother && mother.lifecycleStage !== 'Cabra' && data.parturitionOutcome !== 'Aborto') {
+                await localDb.animals.update(upperCaseMotherId, {
+                    lifecycleStage: 'Cabra',
+                    _synced: false
+                });
+            }
+            // --- (FIN DE LA CORRECCIÓN) ---
+
             let eventType: EventType;
             let eventDetails = `Parto ${data.parturitionType} (${data.offspringCount} crías) con Semental: ${data.sireId}. Vivas: ${newKidsData.length}.`;
             
@@ -607,17 +691,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } else if (data.parturitionOutcome === 'Con Mortinatos') {
                 const stillCount = data.offspringCount - newKidsData.length;
                 if (newKidsData.length === 0) {
-                    eventType = 'Aborto'; // Mapeado a 'Aborto'
+                    eventType = 'Aborto';
                     eventDetails = `Mortinato completo (${stillCount} crías). Padre: ${data.sireId}.`;
                 } else {
-                    eventType = 'Parto'; // Mapeado a 'Parto'
+                    eventType = 'Parto';
                     eventDetails = `Padre: ${data.sireId}. Crías: ${newKidsData.length} vivas, ${stillCount} mortinatos.`;
                 }
             } else {
-                 eventType = 'Parto'; // Default
+                 eventType = 'Parto';
             }
             internalAddEvent({ animalId: upperCaseMotherId, date: data.parturitionDate, type: eventType, details: eventDetails });
-            // --- (FIN CORRECCIÓN TS2322) ---
 
             if (newKidsData.length > 0) {
                 await localDb.animals.bulkPut(newKidsData);
@@ -626,10 +709,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 });
             }
         });
+        
         await fetchDataFromLocalDb();
-        const sync = async () => { const batch = writeBatch(firestoreDb); batch.set(doc(firestoreDb, "parturitions", newParturitionId), parturitionData); newKidsData.forEach((kid: Animal) => batch.set(doc(firestoreDb, "animals", kid.id), kid)); await batch.commit(); };
+        
+        const sync = async () => { 
+            const batch = writeBatch(firestoreDb); 
+            batch.set(doc(firestoreDb, "parturitions", newParturitionId), cleanForBatch(parturitionData)); 
+            newKidsData.forEach((kid: Animal) => batch.set(doc(firestoreDb, "animals", kid.id), cleanForBatch(kid))); 
+            
+            const updatedMother = await localDb.animals.get(upperCaseMotherId);
+            if (updatedMother && updatedMother._synced === false) {
+                 batch.set(doc(firestoreDb, "animals", updatedMother.id), cleanForBatch(updatedMother));
+            }
+            
+            await batch.commit(); 
+        };
         enqueueSync(sync);
-    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent, cleanForBatch]);
+    // --- Fin de addParturition ---
 
     const addServiceRecord = useCallback(async (recordData: Omit<ServiceRecord, 'id' | 'userId' | '_synced'>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -639,15 +736,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const lot = await localDb.sireLots.get(newRecord.sireLotId);
         const sire = lot ? (await localDb.fathers.get(lot.sireId) || await localDb.animals.get(lot.sireId)) : null;
         
-        // --- (INICIO CORRECCIÓN TS2322) ---
-        // "Servicio Visto" no es un EventType. Se usa "Servicio".
         internalAddEvent({ 
             animalId: newRecord.femaleId, 
             date: newRecord.serviceDate, 
-            type: 'Servicio', // Corregido
+            type: 'Servicio',
             details: `Servicio registrado con Semental: ${sire?.name || sire?.id || lot?.sireId || 'Desconocido'}`, 
         });
-        // --- (FIN CORRECCIÓN TS2322) ---
         
         fetchDataFromLocalDb();
         enqueueSync(() => syncToFirestore("serviceRecords", newRecord.id, newRecord));
@@ -661,9 +755,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const newEvents: Event[] = animalsInLot.map(animal => ({ id: uuidv4(), animalId: animal.id, date: data.date, type: data.type, details: data.details, lotName: data.lotName, userId: currentUser.uid, notes: `Evento aplicado a todo el lote: ${data.lotName}`, _synced: false }));
         await localDb.events.bulkPut(newEvents);
         fetchDataFromLocalDb();
-        const sync = async () => { const batch = writeBatch(firestoreDb); newEvents.forEach(event => batch.set(doc(firestoreDb, "events", event.id), event)); await batch.commit(); };
+        
+        const sync = async () => { 
+            const batch = writeBatch(firestoreDb); 
+            newEvents.forEach(event => batch.set(doc(firestoreDb, "events", event.id), cleanForBatch(event))); 
+            await batch.commit(); 
+        };
         enqueueSync(sync);
-    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, cleanForBatch]);
 
     const addFeedingPlan = useCallback(async (planData: Omit<FeedingPlan, 'id' | 'userId' | '_synced'>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -739,7 +838,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const updatedAnimals = await localDb.animals.bulkGet(animalIdsToUpdate);
             for (const animal of updatedAnimals) {
                 if (animal) {
-                    // (CORREGIDO) Enviar a Firestore la orden de eliminar el campo
                     const firestoreUpdateData = { ...animal, sireLotId: deleteField() };
                     enqueueSync(() => syncToFirestore("animals", animal.id, firestoreUpdateData));
                 }
@@ -776,7 +874,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         enqueueSync(() => deleteDoc(doc(firestoreDb, "sireLots", lotId)).catch(error => console.error("Firestore delete sync failed:", error)));
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
-    // --- (Resto de funciones: addProduct, healthplans, etc.) ---
     const addProduct = useCallback(async (productData: Omit<Product, 'id' | 'userId' | '_synced'>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
@@ -811,9 +908,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const newActivities: PlanActivity[] = activities.map(act => ({ id: uuidv4(), ...act, healthPlanId: newPlan.id, userId: currentUser.uid, _synced: false }));
         await localDb.transaction('rw', localDb.healthPlans, localDb.planActivities, async () => { await localDb.healthPlans.put(newPlan); await localDb.planActivities.bulkPut(newActivities); });
         fetchDataFromLocalDb();
-        const sync = async () => { const batch = writeBatch(firestoreDb); batch.set(doc(firestoreDb, "healthPlans", newPlan.id), newPlan); newActivities.forEach(act => batch.set(doc(firestoreDb, "planActivities", act.id), act)); await batch.commit(); };
+        
+        const sync = async () => { 
+            const batch = writeBatch(firestoreDb); 
+            batch.set(doc(firestoreDb, "healthPlans", newPlan.id), cleanForBatch(newPlan)); 
+            newActivities.forEach(act => batch.set(doc(firestoreDb, "planActivities", act.id), cleanForBatch(act))); 
+            await batch.commit(); 
+        };
         enqueueSync(sync);
-    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, cleanForBatch]);
 
     const updateHealthPlan = useCallback(async (planId: string, dataToUpdate: Partial<HealthPlan>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -873,6 +976,124 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         enqueueSync(() => syncToFirestore("healthEvents", newEvent.id, newEvent));
     }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent, products]);
 
+    const deleteEvent = useCallback(async (eventId: string) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+
+        const localDb = getDB();
+        let event: Event | undefined;
+        let assocParturition: Parturition | undefined;
+        
+        let eventIdToDelete: string | undefined;
+        let parturitionIdToDelete: string | undefined;
+
+        event = await localDb.events.get(eventId);
+
+        if (event) {
+            eventIdToDelete = event.id;
+            if (event.type === 'Parto' || event.type === 'Aborto') {
+                assocParturition = await localDb.parturitions
+                    .where({ goatId: event.animalId, parturitionDate: event.date })
+                    .first();
+                if (assocParturition) {
+                    parturitionIdToDelete = assocParturition.id;
+                }
+            }
+        } else {
+            assocParturition = await localDb.parturitions.get(eventId);
+
+            if (assocParturition) {
+                parturitionIdToDelete = assocParturition.id;
+                const realEvent = await localDb.events
+                    .where({ animalId: assocParturition.goatId, date: assocParturition.parturitionDate })
+                    .filter(e => e.type === 'Parto' || e.type === 'Aborto')
+                    .first();
+                if (realEvent) {
+                    eventIdToDelete = realEvent.id;
+                }
+            } else {
+                if (eventId === 'manual-registration-event') {
+                    throw new Error("El evento de 'Registro' no se puede eliminar.");
+                }
+                const isWean = eventId.endsWith('_wean');
+                const isDecom = eventId.endsWith('_decom');
+                const isService = await localDb.serviceRecords.get(eventId);
+                const isBodyWeighing = await localDb.bodyWeighings.get(eventId);
+                
+                if (isWean || isDecom || isService || isBodyWeighing) {
+                     console.warn(`Intento de eliminar evento sintetizado: ${eventId}`);
+                     throw new Error("Este evento no se puede eliminar. Es un evento 'sintetizado'. Para revertirlo, edite la ficha del animal.");
+                }
+                console.warn(`Evento ${eventId} no encontrado para eliminar.`);
+                throw new Error(`Evento ${eventId} no encontrado.`);
+            }
+        }
+
+        try {
+            if (!eventIdToDelete && !parturitionIdToDelete) {
+                console.warn(`Nada que eliminar para el ID ${eventId}`);
+                return;
+            }
+
+            await localDb.transaction('rw', localDb.events, localDb.parturitions, async () => {
+                if (eventIdToDelete) {
+                    await localDb.events.delete(eventIdToDelete);
+                }
+                if (parturitionIdToDelete) {
+                    await localDb.parturitions.delete(parturitionIdToDelete);
+                }
+            });
+
+            await fetchDataFromLocalDb();
+
+            enqueueSync(async () => {
+                const batch = writeBatch(firestoreDb);
+                if (eventIdToDelete) {
+                    batch.delete(doc(firestoreDb, "events", eventIdToDelete));
+                }
+                if (parturitionIdToDelete) {
+                    batch.delete(doc(firestoreDb, "parturitions", parturitionIdToDelete));
+                }
+                if (eventIdToDelete || parturitionIdToDelete) {
+                    await batch.commit();
+                }
+            });
+
+        } catch (error: any) {
+            console.error("Error al eliminar el evento y/o sus asociados:", error);
+            throw new Error(`Error al eliminar evento: ${error.message}`);
+        }
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+
+    const updateEventNotes = useCallback(async (eventId: string, notes: string) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        
+        const localDb = getDB();
+        const event = await localDb.events.get(eventId);
+        if (!event) {
+             if (eventId === 'manual-registration-event') {
+                throw new Error("El evento de 'Registro' no se puede editar.");
+            }
+            throw new Error("Evento no encontrado.");
+        }
+
+        const dataToUpdate = {
+            notes: notes,
+            _synced: false
+        };
+
+        try {
+            await localDb.events.update(eventId, dataToUpdate);
+            await fetchDataFromLocalDb(); 
+            
+            const updatedEvent = await localDb.events.get(eventId);
+            if (updatedEvent) {
+                enqueueSync(() => syncToFirestore("events", eventId, updatedEvent));
+            }
+        } catch (error: any) {
+            console.error("Error al actualizar notas del evento:", error);
+            throw new Error(`Error al actualizar notas: ${error.message}`);
+        }
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
     const updateAppConfig = useCallback(async (config: AppConfig) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -888,7 +1109,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, [currentUser]);
     
-    // (CORREGIDO) useMemo y contextValue restaurados
     const contextValue = useMemo(() => ({
         animals, fathers, weighings, parturitions, lots, origins, breedingSeasons, sireLots, serviceRecords, events, feedingPlans, bodyWeighings,
         products, healthPlans, planActivities, healthEvents,
@@ -897,15 +1117,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading, syncStatus,
         fetchData: fetchDataFromLocalDb,
         addAnimal, updateAnimal, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot, 
-        updateLot, // (NUEVO)
+        updateLot,
         deleteLot, 
         addOrigin, deleteOrigin,
         addBreedingSeason, updateBreedingSeason, 
-        deleteBreedingSeason, // (NUEVO)
+        deleteBreedingSeason,
         addSireLot, updateSireLot, deleteSireLot, addServiceRecord,
-        addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighingSession, addParturition, addFather,
+        addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighingSession, 
+        deleteBodyWeighingSession,
+        addParturition, addFather,
         addProduct, updateProduct, deleteProduct, addHealthPlanWithActivities, updateHealthPlan, deleteHealthPlan,
         addPlanActivity, updatePlanActivity, deletePlanActivity, addHealthEvent,
+        
+        deleteEvent,
+        updateEventNotes,
+
         updateAppConfig
     }), [
         animals, fathers, weighings, parturitions, lots, origins, breedingSeasons, sireLots, serviceRecords, events, feedingPlans, bodyWeighings,
@@ -913,16 +1139,22 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         appConfig, isLoadingConfig, isLoading, syncStatus,
         fetchDataFromLocalDb,
         addAnimal, updateAnimal, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot, 
-        updateLot, // (NUEVO)
+        updateLot,
         deleteLot, 
         addOrigin, deleteOrigin,
         addBreedingSeason, updateBreedingSeason, 
-        deleteBreedingSeason, // (NUEVO)
+        deleteBreedingSeason,
         addSireLot, updateSireLot, deleteSireLot, addServiceRecord,
-        addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighingSession, addParturition, addFather,
+        addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighingSession, 
+        deleteBodyWeighingSession,
+        addParturition, addFather,
         addProduct, updateProduct, deleteProduct, addHealthPlanWithActivities, updateHealthPlan, deleteHealthPlan,
         addPlanActivity, updatePlanActivity, deletePlanActivity, addHealthEvent,
-        updateAppConfig
+        
+        deleteEvent,
+        updateEventNotes,
+
+        updateAppConfig,
     ]);
 
   return (

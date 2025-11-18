@@ -1,6 +1,5 @@
 // src/components/profile/MainInfoTab.tsx
-// Componente principal para la pestaña "Ficha"
-// CORREGIDO
+// (ACTUALIZADO: La 'Categoría' ahora es editable para animales NO NATIVOS)
 
 import React, { useMemo } from 'react';
 import { Info, Network, Search, Plus } from 'lucide-react';
@@ -20,6 +19,8 @@ type ManualIndicatorFields = {
 
 interface MainInfoTabProps {
     animal: Animal;
+    // --- (NUEVO) Prop para determinar si el animal es nativo ---
+    isNativo: boolean; 
     isEditing: boolean;
     editedData: Partial<Animal & ManualIndicatorFields>;
     setEditedData: React.Dispatch<React.SetStateAction<Partial<Animal & ManualIndicatorFields>>>;
@@ -40,8 +41,25 @@ interface MainInfoTabProps {
 }
 
 export const MainInfoTab: React.FC<MainInfoTabProps> = ({
-    animal, isEditing, editedData, setEditedData, origins, lots, onAddOriginClick, onAddLotClick, allFathers, mothers, navigateTo,
-    statusObjects, onOpenPedigree, onOpenLegend, indicators, indicatorsLoading, onEditFather, onEditMother
+    animal, 
+    isNativo, // --- (NUEVO) ---
+    isEditing, 
+    editedData, 
+    setEditedData, 
+    origins, 
+    lots, 
+    onAddOriginClick, 
+    onAddLotClick, 
+    allFathers, 
+    mothers, 
+    navigateTo,
+    statusObjects, 
+    onOpenPedigree, 
+    onOpenLegend, 
+    indicators, 
+    indicatorsLoading, 
+    onEditFather, 
+    onEditMother
 }) => {
 
     const handleChange = (field: keyof Omit<Animal, 'id' | 'name'> | keyof ManualIndicatorFields, value: any) => {
@@ -96,14 +114,40 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
                     <InfoRow
                         label="Categoría"
                         value={(animal.lifecycleStage as string) === 'Cabra Adulta' ? 'Cabra' : animal.lifecycleStage}
-                    />
+                        // --- (ACTUALIZADO) Solo editable si 'isEditing' Y 'NO es Nativo' ---
+                        isEditing={isEditing && !isNativo}
+                    >
+                        {/* --- (NUEVO) Dropdown para editar categoría en animales registrados --- */}
+                        <FormSelect 
+                            value={editedData.lifecycleStage || animal.lifecycleStage} 
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange('lifecycleStage', e.target.value)}
+                        >
+                            {animal.sex === 'Hembra' ? (
+                                <>
+                                    <option value="Cabrita">Cabrita</option>
+                                    <option value="Cabritona">Cabritona</option>
+                                    <option value="Cabra">Cabra</option>
+                                </>
+                            ) : (
+                                <>
+                                    <option value="Cabrito">Cabrito</option>
+                                    <option value="Macho de Levante">Macho de Levante</option>
+                                    <option value="Reproductor">Reproductor</option>
+                                </>
+                            )}
+                            <option value="Indefinido">Indefinido</option>
+                        </FormSelect>
+                        {isEditing && isNativo && (
+                             <p className="text-xs text-zinc-500 mt-1">La categoría de animales nativos se calcula automáticamente.</p>
+                        )}
+                    </InfoRow>
+
                     <InfoRow
                         label="Ubicación / Lote"
                         value={animal.location || 'Sin Asignar'}
                         isEditing={isEditing}
                     >
                         <div className="flex items-center gap-2">
-                            {/* 'e' tipado */}
                             <FormSelect value={editedData.location || ''} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange('location', e.target.value)}>
                                 <option value="">Sin Asignar</option>
                                 {lots.map(lot => <option key={lot.id} value={lot.name}>{lot.name}</option>)}
@@ -189,7 +233,6 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
                             <FormInput
                                 type="text"
                                 value={editedData.racialComposition || ''}
-                                // 'e' tipado
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('racialComposition', e.target.value.toUpperCase())}
                                 className="w-full font-mono"
                                 placeholder="Ej: 100%A ó 50%A 50%AGC"
@@ -202,7 +245,6 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
             <FormGroup title="Nacimiento y Origen">
                 <div className="grid grid-cols-2 gap-4">
                     <InfoRow label="Fecha Nacimiento" value={animal.birthDate !== 'N/A' ? new Date(animal.birthDate + 'T00:00:00Z').toLocaleDateString('es-VE', { timeZone: 'UTC' }) : 'N/A'} isEditing={isEditing}>
-                        {/* 'e' tipado */}
                         <input type="date" value={editedData.birthDate === 'N/A' ? '' : editedData.birthDate || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('birthDate', e.target.value || 'N/A')} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-white" />
                     </InfoRow>
                     <InfoRow label="Peso al Nacer" value={animal.birthWeight ? `${animal.birthWeight} Kg` : 'N/A'} isEditing={isEditing}>
@@ -210,14 +252,12 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
                             type="number"
                             step="0.1"
                             value={editedData.birthWeight || ''}
-                            // 'e' tipado
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('birthWeight', e.target.value ? parseFloat(e.target.value) : undefined)}
                             className="w-full"
                             placeholder="Kg (ej: 3.5)"
                         />
                     </InfoRow>
                     <InfoRow label="Método de Concepción" value={conceptionMethodMap[animal.conceptionMethod || ''] || 'N/A'} isEditing={isEditing}>
-                        {/* 'e' tipado */}
                         <FormSelect value={editedData.conceptionMethod || 'MN'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange('conceptionMethod', e.target.value)}>
                             <option value="MN">Monta Natural (MN)</option>
                             <option value="IA">Inseminación Artificial (IA)</option>
@@ -226,7 +266,6 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
                         </FormSelect>
                     </InfoRow>
                     <InfoRow label="Tipo de Parto (Origen)" value={parturitionTypeMap[animal.parturitionType || ''] || 'N/A'} isEditing={isEditing}>
-                        {/* 'e' tipado */}
                         <FormSelect value={editedData.parturitionType || 'Simple'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange('parturitionType', e.target.value)}>
                             <option value="Simple">Parto Simple</option>
                             <option value="TW">Doble (TW)</option>
@@ -237,7 +276,6 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
                     </InfoRow>
                     <InfoRow label="Origen" value={animal.origin} isEditing={isEditing} className="col-span-2">
                         <div className="flex items-center gap-2">
-                            {/* 'e' tipado */}
                             <FormSelect value={editedData.origin || ''} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange('origin', e.target.value)}>
                                 <option value="">Seleccionar Origen...</option>
                                 <option value="Finca Masparrito">Finca Masparrito</option>
@@ -262,7 +300,6 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
                                         step="1"
                                         min="0"
                                         value={editedData.priorParturitions || ''}
-                                        // 'e' tipado y CORRECCIÓN DE TIPO (priorParturITIONS -> priorParturitions)
                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('priorParturitions', e.target.value ? parseInt(e.target.value) : undefined)}
                                         placeholder="Partos antes de usar la app"
                                     />
@@ -272,7 +309,6 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
                                     <input
                                         type="date"
                                         value={editedData.manualFirstParturitionDate || ''}
-                                        // 'e' tipado
                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('manualFirstParturitionDate', e.target.value || undefined)}
                                         className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-white"
                                     />

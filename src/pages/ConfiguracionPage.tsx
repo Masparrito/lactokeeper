@@ -1,4 +1,5 @@
-// src/pages/ConfiguracionPage.tsx (Actualizado con Overhaul de UI/UX)
+// src/pages/ConfiguracionPage.tsx
+// (ACTUALIZADO: Se elimina 'handleToggleChange' y toda la lógica de categoría basada en edad)
 
 import React, { useState, useEffect } from 'react';
 import { useData } from '../context/DataContext';
@@ -8,13 +9,14 @@ import {
     ChevronDown,
     LogOut,
     Users,
-    Heart // Icono para Lógica de Vientres
+    Heart,
+    Target 
 } from 'lucide-react';
 import type { PageState } from '../types/navigation';
 import { AppConfig, DEFAULT_CONFIG } from '../types/config';
 import { auth } from '../firebaseConfig';
 
-// --- (Helpers: configToFormState, formStateToConfig - MODIFICADOS) ---
+// --- (Helpers: configToFormState, formStateToConfig - Sin cambios) ---
 const configToFormState = (config: AppConfig): Record<string, string | boolean> => {
     const stringState: Record<string, string | boolean> = {};
     const completeConfig = { ...DEFAULT_CONFIG, ...config };
@@ -39,7 +41,7 @@ const formStateToConfig = (formState: Record<string, string | boolean>): AppConf
             if (key === 'edadMinimaVientreMeses') {
                 let parsedValue = parseFloat(stringValue);
                 if (isNaN(parsedValue) || parsedValue < 6) {
-                    parsedValue = 6; // Forzar mínimo de 6 meses
+                    parsedValue = 6;
                 }
                 newConfig[key] = parsedValue;
                 continue;
@@ -47,7 +49,7 @@ const formStateToConfig = (formState: Record<string, string | boolean>): AppConf
 
             let parsedValue = parseFloat(stringValue);
             if (isNaN(parsedValue)) {
-                parsedValue = DEFAULT_CONFIG[key as keyof AppConfig] as number; 
+                newConfig[key] = DEFAULT_CONFIG[key as keyof AppConfig] as number; 
             }
             newConfig[key] = parsedValue;
         } else if (typeof defaultValue === 'boolean') {
@@ -58,8 +60,7 @@ const formStateToConfig = (formState: Record<string, string | boolean>): AppConf
 };
 
 
-// --- Componente de UI colapsable (MODIFICADO) ---
-// startOpen ahora es 'false' por defecto para que todos los grupos inicien plegados.
+// --- Componente de UI colapsable (SIN CAMBIOS) ---
 const SettingsGroup: React.FC<{ title: string, icon: React.ElementType, children: React.ReactNode, startOpen?: boolean }> = ({ title, icon: Icon, children, startOpen = false }) => {
     const [isOpen, setIsOpen] = useState(startOpen); 
 
@@ -87,7 +88,7 @@ const SettingsGroup: React.FC<{ title: string, icon: React.ElementType, children
     );
 };
 
-// --- Componente SettingsInput (MODIFICADO para Overhaul) ---
+// --- Componente SettingsInput (SIN CAMBIOS) ---
 interface SettingsInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     label: string;
     unit?: string;
@@ -96,7 +97,6 @@ interface SettingsInputProps extends React.InputHTMLAttributes<HTMLInputElement>
 
 const SettingsInput = React.forwardRef<HTMLInputElement, SettingsInputProps>(({ label, unit, sublabel, ...props }, ref) => (
     <div className={`p-3 bg-ios-modal-bg flex justify-between items-center ${props.disabled ? 'opacity-50' : ''}`}>
-        {/* (MODIFICADO) Label y Sublabel ahora son flexibles */}
         <div className="flex-1 pr-2">
             <label htmlFor={props.id || props.name} className="text-white text-base">
                 {label}
@@ -105,33 +105,29 @@ const SettingsInput = React.forwardRef<HTMLInputElement, SettingsInputProps>(({ 
                 <p className="text-xs text-zinc-400 mt-0.5">{sublabel}</p>
             )}
         </div>
-        {/* (MODIFICADO) Input y Unit tienen ancho fijo para alineación */}
         <div className="flex items-center gap-2 flex-shrink-0">
             <input
                 ref={ref}
                 {...props}
                 type={props.type === 'number' ? 'text' : props.type}
                 inputMode={props.type === 'number' ? 'decimal' : 'text'}
-                // (MODIFICADO) Ancho de input ajustado
                 className={`w-20 bg-zinc-700/80 rounded-lg p-2 text-right font-mono text-base focus:outline-none focus:ring-2 focus:ring-brand-orange ${props.type === 'text' ? 'font-sans' : ''} ${props.disabled ? 'text-zinc-400' : 'text-white'}`}
             />
-            {/* (MODIFICADO) Ancho de unidad w-6 -> w-12 para que "meses" no se corte */}
             {unit && <span className="text-zinc-400 w-12 text-left">{unit}</span>}
         </div>
     </div>
 ));
 
-// --- Interfaz 'SettingsToggleProps' (MODIFICADO para Overhaul) ---
+// --- Componente SettingsToggle (SIN CAMBIOS) ---
 interface SettingsToggleProps {
     label: string;
     value: boolean;
     onChange: (checked: boolean) => void;
-    sublabel?: string; // (NUEVO)
+    sublabel?: string;
 }
 
 const SettingsToggle: React.FC<SettingsToggleProps & { disabled?: boolean }> = ({ label, value, onChange, sublabel, disabled = false }) => (
     <div className={`p-3 bg-ios-modal-bg flex justify-between items-center ${disabled ? 'opacity-50' : ''}`}>
-        {/* (NUEVO) Label y Sublabel ahora son flexibles */}
         <div className="flex-1 pr-2">
             <label className="text-white text-base">{label}</label>
             {sublabel && (
@@ -189,12 +185,13 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
         }));
     };
 
-    const handleToggleChange = (name: string, checked: boolean) => {
-        setFormState(prev => ({
-            ...prev,
-            [name]: checked
-        }));
-    };
+    // (ELIMINADO) 'handleToggleChange' ya no se usa
+    // const handleToggleChange = (name: string, checked: boolean) => {
+    //     setFormState(prev => ({
+    //         ...prev,
+    //         [name]: checked
+    //     }));
+    // };
     
     const handleThemeChange = (isDark: boolean) => {
         setFormState(prev => ({ ...prev, theme: isDark ? 'dark' : 'light' }));
@@ -266,7 +263,6 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
                     />
                 </div>
 
-                {/* Todos los grupos ahora están plegados por defecto (startOpen={false}) */}
                 <SettingsGroup title="General" icon={Cog}>
                     <SettingsToggle 
                         label="Modo Oscuro"
@@ -296,20 +292,12 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
                     />
                 </SettingsGroup>
 
+                {/* --- (ACTUALIZADO) Sección de Categorías Limpiada --- */}
                 <SettingsGroup title="Lógica de Categorías Zootécnicas" icon={Users}>
-                    <SettingsInput label="Cabrita (Edad Máx)" type="number" name="categoriaCabritaEdadMaximaDias" value={String(formState.categoriaCabritaEdadMaximaDias)} onChange={handleChange} unit="días" />
-                    <SettingsInput label="Cabrito (Edad Máx)" type="number" name="categoriaCabritoEdadMaximaDias" value={String(formState.categoriaCabritoEdadMaximaDias)} onChange={handleChange} unit="días" />
-                    <SettingsInput label="Cabritona (Edad Mín)" type="number" name="categoriaCabritonaEdadMinimaDias" value={String(formState.categoriaCabritonaEdadMinimaDias)} onChange={handleChange} unit="días" sublabel="Usualmente 'Cabrita (Edad Máx)' + 1" />
-                    <SettingsInput label="Cabritona (Edad Máx)" type="number" name="categoriaCabritonaEdadMaximaMeses" value={String(formState.categoriaCabritonaEdadMaximaMeses)} onChange={handleChange} unit="meses" />
-                    <SettingsInput label="Cabra (Edad Mín)" type="number" name="categoriaCabraEdadMinimaMeses" value={String(formState.categoriaCabraEdadMinimaMeses)} onChange={handleChange} unit="meses" sublabel="Normalmente 'Cabritona (Edad Máx)'" />
-                    <SettingsToggle
-                        label="Cabra requiere Parto"
-                        value={!!formState.categoriaCabraRequiereParto}
-                        onChange={(checked) => handleToggleChange('categoriaCabraRequiereParto', checked)}
-                        sublabel="Si está ON, hembras > Edad Mín. sin parto serán 'Cabritonas'"
-                    />
-                    <SettingsInput label="M. Levante (Edad Mín)" type="number" name="categoriaMachoLevanteEdadMinimaDias" value={String(formState.categoriaMachoLevanteEdadMinimaDias)} onChange={handleChange} unit="días" sublabel="Usualmente 'Cabrito (Edad Máx)' + 1" />
-                    <SettingsInput label="M. Levante (Edad Máx)" type="number" name="categoriaMachoLevanteEdadMaximaMeses" value={String(formState.categoriaMachoLevanteEdadMaximaMeses)} onChange={handleChange} unit="meses" sublabel="Mayor a esto será 'Reproductor'" />
+                    <p className="text-sm text-zinc-400 px-3 pb-2 text-center">
+                        La categoría de un animal se define por su registro (si es importado) o por sus eventos (si es nativo).
+                    </p>
+                    {/* (ELIMINADO) Todos los campos de edad de categoría se han ido */}
                 </SettingsGroup>
 
                 <SettingsGroup title="Manejo Productivo (Leche)" icon={Milk}>
@@ -325,6 +313,17 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
                     <SettingsInput label="Peso Mín. Destete Final" type="number" name="pesoMinimoDesteteFinal" value={String(formState.pesoMinimoDesteteFinal)} onChange={handleChange} unit="Kg" sublabel="Peso para destete definitivo" />
                 </SettingsGroup>
                 
+                <SettingsGroup title="Metas de Crecimiento (Curva)" icon={Target}>
+                    <SettingsInput label="Meta Peso al Nacer" type="number" name="growthGoalBirthWeight" value={String(formState.growthGoalBirthWeight)} onChange={handleChange} unit="Kg" />
+                    <SettingsInput label="Meta Destete (Macho)" type="number" name="growthGoalWeaningWeightMale" value={String(formState.growthGoalWeaningWeightMale)} onChange={handleChange} unit="Kg" sublabel="Opcional" />
+                    <SettingsInput label="Meta Peso a 90d (Hembra)" type="number" name="growthGoal90dWeight" value={String(formState.growthGoal90dWeight)} onChange={handleChange} unit="Kg" />
+                    <SettingsInput label="Meta Peso a 90d (Macho)" type="number" name="growthGoal90dWeightMale" value={String(formState.growthGoal90dWeightMale)} onChange={handleChange} unit="Kg" sublabel="Opcional" />
+                    <SettingsInput label="Meta Peso a 180d (Hembra)" type="number" name="growthGoal180dWeight" value={String(formState.growthGoal180dWeight)} onChange={handleChange} unit="Kg" />
+                    <SettingsInput label="Meta Peso a 180d (Macho)" type="number" name="growthGoal180dWeightMale" value={String(formState.growthGoal180dWeightMale)} onChange={handleChange} unit="Kg" sublabel="Opcional" />
+                    <SettingsInput label="Meta Peso a 270d (Hembra)" type="number" name="growthGoal270dWeight" value={String(formState.growthGoal270dWeight)} onChange={handleChange} unit="Kg" />
+                    <SettingsInput label="Umbral de Alerta" type="number" name="growthAlertThreshold" value={String(formState.growthAlertThreshold)} onChange={handleChange} unit="0.0 - 1.0" sublabel="Ej: 0.85 = Alerta si está 15% bajo meta" />
+                </SettingsGroup>
+
                 <div className="mt-8">
                      <button 
                         onClick={handleSignOut}

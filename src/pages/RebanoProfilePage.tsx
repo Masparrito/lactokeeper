@@ -1,23 +1,23 @@
 // src/pages/RebanoProfilePage.tsx
-// CORREGIDO: Eliminada la importación de 'Network' (no se usa)
+// (ACTUALIZADO: Añade la lógica 'isNativo' y la pasa al Tab)
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useData } from '../context/DataContext';
-// --- Iconos Utilizados (Corregidos) ---
 import {
     ArrowLeft, Edit, Save, X, Droplets, Scale, Syringe, Replace, CheckCircle,
     Baby, AlertTriangle, Archive,
     DollarSign, HeartCrack, Ban, RefreshCw, Trash2, Award,
     PlusCircle,
     Printer
-} from 'lucide-react'; // Network eliminado
+} from 'lucide-react'; 
 
-// --- Modales y UI (Importados sin extensiones .tsx) ---
+// --- Modales y UI ---
 import { Modal } from '../components/ui/Modal';
 import { ActionSheetModal, ActionSheetAction } from '../components/ui/ActionSheetModal';
 import { AddLotModal } from '../components/modals/AddLotModal';
 import { AddOriginModal } from '../components/ui/AddOriginModal';
 import { ParturitionModal } from '../components/modals/ParturitionModal';
+import { DeclareAbortionModal } from '../components/modals/DeclareAbortionModal'; 
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { DecommissionAnimalModal, DecommissionDetails } from '../components/modals/DecommissionAnimalModal';
 import { AnimalSelectorModal } from '../components/ui/AnimalSelectorModal';
@@ -26,26 +26,28 @@ import { WeanAnimalForm } from '../components/forms/WeanAnimalForm';
 import { StatusLegendModal } from '../components/ui/StatusLegendModal';
 import { FormInput, FormSelect } from '../components/ui/FormControls';
 
-// --- Componentes de Pestañas (Importados sin extensiones .tsx) ---
+// --- Componentes de Pestañas ---
 import { MainInfoTab } from '../components/profile/MainInfoTab';
 import { GeneticsTab } from '../components/profile/GeneticsTab';
 import { ProgenyTab } from '../components/profile/ProgenyTab';
 import { EventsTab } from '../components/profile/EventsTab';
 import { RecentEvents } from '../components/profile/RecentEvents';
 import { HiddenPdfChart } from '../components/profile/HiddenPdfChart';
-// Importación añadida para Corregir TS2552
 import { PedigreeChart } from '../components/pedigree/PedigreeChart';
 
-// --- Hooks y Utilitarios (Importados sin extensiones .ts) ---
+// --- Hooks y Utilitarios ---
 import type { PageState } from '../types/navigation';
-import { Animal } from '../db/local';
+import { Animal, BodyWeighing } from '../db/local';
 import { useEvents } from '../hooks/useEvents';
 import { usePedigree } from '../hooks/usePedigree';
 import { useAnimalStatus } from '../hooks/useAnimalStatus';
 import { useAnimalIndicators } from '../hooks/useAnimalIndicators';
 import { exportPedigreeToPDF } from '../utils/pdfExporter';
 import {
-    getAnimalZootecnicCategory, calculateBreedFromComposition, calculateAgeInDays, calculateChildComposition
+    getAnimalZootecnicCategory, 
+    calculateBreedFromComposition, 
+    calculateAgeInDays, 
+    calculateChildComposition
 } from '../utils/calculations';
 import { formatAnimalDisplay } from '../utils/formatting';
 
@@ -54,6 +56,7 @@ interface RebanoProfilePageProps {
     animalId: string;
     onBack: () => void;
     navigateTo: (page: PageState) => void;
+    contextDate?: string; 
 }
 
 // Tipo para los campos manuales de indicadores
@@ -62,13 +65,19 @@ type ManualIndicatorFields = {
     manualFirstParturitionDate?: string;
 };
 
+
 // --- COMPONENTE PRINCIPAL RebanoProfilePage ---
-export default function RebanoProfilePage({ animalId, onBack, navigateTo }: RebanoProfilePageProps) {
+export default function RebanoProfilePage({ 
+    animalId, 
+    onBack, 
+    navigateTo, 
+    contextDate 
+}: RebanoProfilePageProps) {
     const parentRef = useRef<HTMLDivElement>(null);
     const pdfChartRef = useRef<HTMLDivElement>(null);
 
     // --- Hooks de Datos ---
-    const { animals, lots, origins, parturitions, updateAnimal, deleteAnimalPermanently, fathers, appConfig } = useData();
+    const { animals, lots, origins, parturitions, updateAnimal, deleteAnimalPermanently, fathers, appConfig, bodyWeighings } = useData();
 
     const animal = useMemo(() => animals.find(a => a.id === animalId), [animals, animalId]);
     const events = useEvents(animal ? animal.id : undefined);
@@ -77,6 +86,7 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
     const { indicators, loading: indicatorsLoading } = useAnimalIndicators(animal, parturitions);
 
     // --- Estado de la Página ---
+    // ... (sin cambios) ...
     const [isPedigreeModalOpen, setIsPedigreeModalOpen] = useState(false);
     const [isStatusLegendOpen, setIsStatusLegendOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'main' | 'genetics' | 'progeny' | 'events'>('main');
@@ -86,6 +96,7 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
     const [isAddLotModalOpen, setAddLotModalOpen] = useState(false);
     const [isAddOriginModalOpen, setAddOriginModalOpen] = useState(false);
     const [isParturitionModalOpen, setParturitionModalOpen] = useState(false);
+    const [isAbortionModalOpen, setIsAbortionModalOpen] = useState(false); 
     const [isLotChangeModalOpen, setLotChangeModalOpen] = useState(false);
     const [selectedNewLot, setSelectedNewLot] = useState('');
     const [isDecommissionSheetOpen, setDecommissionSheetOpen] = useState(false);
@@ -99,15 +110,23 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
     const [isExporting, setIsExporting] = useState(false);
 
     // --- Lógica de Datos Derivados (useMemo) ---
+    
+    // --- (NUEVO) Determinar si el animal es Nativo ---
+    const isNativo = useMemo(() => {
+        if (!animal) return false;
+        // La lógica de 'calculations.ts': es nativo si aparece como cría en un parto.
+        return parturitions.some(p => 
+            p.liveOffspring && p.liveOffspring.some(kid => kid.id === animal.id)
+        );
+    }, [animal, parturitions]);
+
     const progeny = useMemo(() => {
         if (!animal) return [];
         if (animal.sex === 'Hembra') { return animals.filter(a => a.motherId === animal.id).sort((a, b) => new Date(b.birthDate).getTime() - new Date(a.birthDate).getTime()); }
         if (animal.sex === 'Macho') { return animals.filter(a => a.fatherId === animal.id).sort((a, b) => new Date(b.birthDate).getTime() - new Date(a.birthDate).getTime()); }
         return [];
     }, [animals, animal]);
-
     const mothers = useMemo(() => animals.filter(a => a.sex === 'Hembra'), [animals]);
-
     const allFathers = useMemo(() => {
         const internalSires: Animal[] = animals.filter(a => a.sex === 'Macho');
         const externalSires: any[] = fathers.map(f => ({
@@ -117,34 +136,44 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
         }));
         return [...internalSires, ...externalSires];
     }, [animals, fathers]);
-
-    const zootecnicCategoryForLogic = useMemo(() => {
-        if (!animal) return '';
-        return getAnimalZootecnicCategory(animal, parturitions, appConfig);
-    }, [animal, parturitions, appConfig]); 
-
-    const isWeaningOverdue = useMemo(() => {
-        if (!animal || animal.weaningDate || animal.isReference || animal.status !== 'Activo') {
-            return false;
+    
+    const weaningCandidateInfo = useMemo(() => {
+        if (!animal || !animal.birthDate || animal.birthDate === 'N/A') return null;
+        if (animal.weaningDate) return null;
+        const animalWeighings = bodyWeighings
+            .filter(w => w.animalId === animal.id)
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        if (animalWeighings.length === 0) return null;
+        let weighingToEvaluate: BodyWeighing | undefined;
+        if (contextDate) {
+            weighingToEvaluate = animalWeighings.find(w => w.date === contextDate);
+        } else {
+            weighingToEvaluate = animalWeighings[0];
         }
-        const category = zootecnicCategoryForLogic;
-        if (category !== 'Cabrita' && category !== 'Cabrito') {
-            return false;
+        if (!weighingToEvaluate) return null;
+        const weighDate = weighingToEvaluate.date;
+        const weighKg = weighingToEvaluate.kg;
+        const ageAtWeighing = calculateAgeInDays(animal.birthDate, weighDate);
+        const metaEdad = appConfig.diasMetaDesteteFinal;
+        const metaPeso = appConfig.pesoMinimoDesteteFinal;
+        const pesoMinimoConTolerancia = metaPeso - 0.1;
+        const meetsMinAge = ageAtWeighing >= metaEdad;
+        const meetsMinWeight = weighKg >= pesoMinimoConTolerancia;
+        if (meetsMinAge && meetsMinWeight) {
+            return { date: weighDate, weight: weighKg };
         }
-        const ageInDays = calculateAgeInDays(animal.birthDate);
-        return ageInDays > appConfig.diasMetaDesteteFinal;
-
-    }, [animal, zootecnicCategoryForLogic, appConfig.diasMetaDesteteFinal]); 
+        return null;
+    }, [animal, bodyWeighings, appConfig, contextDate]);
 
     const breedingFailures = animal?.breedingFailures || 0;
-
+    
     const alertInfo = useMemo(() => {
         if (!animal) return null;
-        if (isWeaningOverdue) {
+        if (weaningCandidateInfo) {
             return {
-                text: `Destete Atrasado (${calculateAgeInDays(animal.birthDate)} días)`, 
-                icon: <AlertTriangle className="text-brand-red" size={20} />,
-                title: `Destete atrasado (Meta: ${appConfig.diasMetaDesteteFinal} días)`
+                text: `Listo para Destete`, 
+                icon: <Award className="text-yellow-400 animate-pulse" size={20} />,
+                title: `Candidato a destete basado en el pesaje del ${weaningCandidateInfo.date} (${weaningCandidateInfo.weight} Kg)`
             };
         }
         if (breedingFailures >= 2) {
@@ -162,9 +191,11 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
             };
         }
         return null;
-    }, [animal, isWeaningOverdue, breedingFailures, appConfig.diasMetaDesteteFinal]);
+    }, [animal, weaningCandidateInfo, breedingFailures]);
+
 
     // --- Efectos (useEffect) ---
+    // ... (sin cambios) ...
     useEffect(() => {
         if (animal) {
             if (isEditing) {
@@ -181,6 +212,8 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
                     isReference: animal.isReference,
                     conceptionMethod: animal.conceptionMethod,
                     parturitionType: animal.parturitionType,
+                    // --- (NUEVO) Añadir lifecycleStage a los datos editables ---
+                    lifecycleStage: animal.lifecycleStage, 
                     priorParturitions: (animal as any).priorParturitions,
                     manualFirstParturitionDate: (animal as any).manualFirstParturitionDate,
                 });
@@ -190,24 +223,21 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
             setSelectedNewLot(animal.location || '');
         }
     }, [animal, isEditing]);
-
+    
     useEffect(() => {
         if (!isEditing) return;
-
         const mother = mothers.find(a => a.id === editedData.motherId);
         const father = allFathers.find(a => a.id === editedData.fatherId);
-
         if (mother?.racialComposition && father?.racialComposition) {
             const childComp = calculateChildComposition(mother.racialComposition, father.racialComposition);
             setEditedData(prev => ({ ...prev, racialComposition: childComp }));
         }
-
     }, [editedData.motherId, editedData.fatherId, isEditing, mothers, allFathers]);
 
     // --- Manejadores de Eventos (Handlers) ---
+    // ... (sin cambios) ...
     const handleSave = async () => {
         if (!animal) return;
-        
         if (editedData.id && editedData.id.trim() === '') {
              alert("Error: El ID no puede estar vacío.");
              setSaveStatus('idle');
@@ -219,16 +249,19 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
             setSaveStatus('idle');
             return;
         }
-
         setSaveStatus('saving');
         try {
             const { id, ...finalData } = editedData;
-
             if (editedData.racialComposition !== animal.racialComposition) {
                 (finalData as Partial<Animal>).breed = calculateBreedFromComposition(editedData.racialComposition);
             }
+            
+            // (ACTUALIZADO) Esta lógica ahora usa la 'getAnimalZootecnicCategory' 100% correcta
             if (editedData.birthDate && editedData.birthDate !== animal.birthDate) {
-                (finalData as Partial<Animal>).lifecycleStage = getAnimalZootecnicCategory({ ...animal, ...finalData } as Animal, parturitions, appConfig) as any;
+                // Solo recalcula la categoría si es Nativo O si el usuario no la cambió manualmente
+                if(isNativo || finalData.lifecycleStage === animal.lifecycleStage) {
+                    (finalData as Partial<Animal>).lifecycleStage = getAnimalZootecnicCategory({ ...animal, ...finalData } as Animal, parturitions, appConfig) as any;
+                }
             }
             if ((finalData as any).manualFirstParturitionDate === '') {
                 (finalData as any).manualFirstParturitionDate = undefined;
@@ -236,9 +269,7 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
             if ((finalData as any).priorParturitions === 0) {
                 (finalData as any).priorParturitions = undefined;
             }
-
             await updateAnimal(animal.id, finalData);
-
             setSaveStatus('success');
             setTimeout(() => { setIsEditing(false); setSaveStatus('idle'); }, 1500);
         } catch (error) {
@@ -246,9 +277,7 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
             setSaveStatus('idle');
         }
     };
-
     const handleCancel = () => { setIsEditing(false); setEditedData({}); };
-
     const handleUpdateLocation = async () => {
         if (!animal) return;
         try {
@@ -258,14 +287,12 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
             console.error("Error al actualizar ubicación:", error);
         }
     };
-
     const handleDecommissionConfirm = async (details: DecommissionDetails) => {
         if (!animal || !decommissionReason) return;
         const dataToUpdate: Partial<Animal> = { status: decommissionReason, isReference: true, endDate: details.date };
         if (decommissionReason === 'Venta') { Object.assign(dataToUpdate, { salePrice: details.salePrice, saleBuyer: details.saleBuyer, salePurpose: details.salePurpose }); }
         if (decommissionReason === 'Muerte') { dataToUpdate.deathReason = details.deathReason; }
         if (decommissionReason === 'Descarte') { Object.assign(dataToUpdate, { cullReason: details.cullReason, cullReasonDetails: details.cullReasonDetails }); }
-
         try {
             await updateAnimal(animal.id, dataToUpdate);
             setDecommissionReason(null);
@@ -275,6 +302,7 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
             setDecommissionReason(null);
         }
     };
+    
     const handleReintegrate = async () => { 
         if (!animal) return;
         await updateAnimal(animal.id, { isReference: false, status: 'Activo', endDate: undefined });
@@ -282,7 +310,6 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
     };
     const handlePermanentDelete = async () => { if (!animal) return; await deleteAnimalPermanently(animal.id); onBack(); };
     const handleSaveWean = async (data: { weaningDate: string, weaningWeight: number }) => { if (!animal) return; await updateAnimal(animal.id, { weaningDate: data.weaningDate, weaningWeight: data.weaningWeight }); setWeanModalOpen(false); };
-
     const handleSaveQuickParent = async (newParent: Animal) => {
         try {
             if (isParentModalOpen === 'father') {
@@ -298,7 +325,6 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
         }
         finally { setIsParentModalOpen(null); }
     };
-
     const handleExportPedigree = async () => {
         if (!pdfChartRef.current || !animal) {
             alert("Error: No se pudo encontrar el gráfico para exportar."); 
@@ -315,7 +341,9 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
         }
     };
 
+
     // --- Configuraciones de Acciones ---
+    // ... (sin cambios) ...
     const decommissionActions: ActionSheetAction[] = [
         { label: "Por Venta", icon: DollarSign, onClick: () => setDecommissionReason('Venta') },
         { label: "Por Muerte", icon: HeartCrack, onClick: () => setDecommissionReason('Muerte'), color: 'text-brand-red' },
@@ -330,18 +358,30 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
     if (!animal) { return (<div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Animal no encontrado.</h1><button onClick={onBack} className="mt-4 text-brand-orange">Volver</button></div>); }
 
     // --- Variables de Renderizado ---
+    // ... (sin cambios) ...
     const formattedName = animal.name ? animal.name.toUpperCase().trim() : '';
     const displayFormattedName = isEditing ? (editedData.name || '') : formattedName;
     const displayId = (isEditing ? (editedData.id || '') : animal.id.toUpperCase()).toUpperCase();
 
+    // --- 'quickActions' (ACTUALIZADO) ---
     const quickActions = [
         ...(animal.sex === 'Hembra' ? [
             { label: "Leche", icon: Droplets, onClick: () => navigateTo({ name: 'lactation-profile', animalId: animal.id }), color: "text-blue-300", disabled: false },
-            { label: "Parto", icon: Baby, onClick: () => setParturitionModalOpen(true), color: "text-pink-400", disabled: animal.isReference }
+            { label: "Parto", icon: Baby, onClick: () => setParturitionModalOpen(true), color: "text-pink-400", disabled: animal.isReference },
+            { label: "Aborto", icon: HeartCrack, onClick: () => setIsAbortionModalOpen(true), color: "text-yellow-400", disabled: animal.isReference }
         ] : []),
-        ...((zootecnicCategoryForLogic === 'Cabrita' || zootecnicCategoryForLogic === 'Cabrito') && !animal.weaningDate && !animal.isReference ? [
-            { label: "Destetar", icon: Award, onClick: () => setWeanModalOpen(true), color: "text-yellow-300", disabled: false }
+        
+        ...(weaningCandidateInfo ? [
+            { 
+                label: "Destetar", 
+                icon: Award, 
+                onClick: () => setWeanModalOpen(true), 
+                color: "text-yellow-300", 
+                disabled: false,
+                isPulsing: true 
+            }
         ] : []),
+        
         { label: "Peso", icon: Scale, onClick: () => navigateTo({ name: 'growth-profile', animalId: animal.id }), color: "text-brand-green", disabled: false },
         { label: "Sanidad", icon: Syringe, onClick: () => alert('Función en desarrollo'), color: "text-teal-300", disabled: animal.isReference },
         ...(!animal.isReference ? [
@@ -359,13 +399,13 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
                 ref={parentRef}
                 className="w-full max-w-2xl mx-auto"
             >
+                {/* --- Header --- */}
                 <header className="p-4 space-y-4">
                     <div className="flex justify-between items-start">
                         <button onClick={onBack} className="flex items-center gap-1 text-zinc-400 hover:text-white transition-colors">
                             <ArrowLeft size={20} />
                             <span>Volver</span>
                         </button>
-
                         <div className="flex gap-2">
                             {isEditing ? (
                                 <>
@@ -387,11 +427,9 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
                             )}
                         </div>
                     </div>
-
                     <div className="flex justify-between items-center">
                         <div className="min-w-0 flex-1">
                             {isEditing ? (
-                                // Corrección TS7006: 'e' tipado
                                 <FormInput
                                     type="text"
                                     value={displayId}
@@ -402,9 +440,7 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
                             ) : (
                                 <h1 className="text-2xl font-mono font-bold tracking-tight text-white truncate">{displayId}</h1>
                             )}
-
                             {isEditing ? (
-                                // Corrección TS7006: 'e' tipado
                                 <FormInput
                                     type="text"
                                     value={displayFormattedName}
@@ -416,14 +452,12 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
                                 <p className="text-lg text-zinc-400 truncate -mt-1">{displayFormattedName}</p>
                             )}
                         </div>
-
                         {alertInfo && !isEditing && (
                             <div title={alertInfo.title} className="flex-shrink-0 ml-4">
                                 {alertInfo.icon}
                             </div>
                         )}
                     </div>
-
                     {!isEditing && (
                         <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                             {quickActions.map((action) => (
@@ -431,7 +465,9 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
                                     key={action.label}
                                     onClick={action.onClick}
                                     disabled={action.disabled}
-                                    className={`flex-shrink-0 flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 ${action.color} font-semibold px-3 py-1.5 rounded-full text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
+                                    className={`flex-shrink-0 flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 ${action.color} font-semibold px-3 py-1.5 rounded-full text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                                        (action as any).isPulsing ? 'animate-pulse' : ''
+                                    }`}
                                 >
                                     <action.icon size={14} />
                                     <span>{action.label}</span>
@@ -441,7 +477,7 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
                     )}
                 </header>
 
-
+                {/* --- Main Tabs --- */}
                 <main className="px-4 space-y-4">
                     <div className="flex bg-brand-glass rounded-xl p-1 border border-brand-border">
                         <button onClick={() => setActiveTab('main')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'main' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Ficha</button>
@@ -454,6 +490,8 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
                         <div className="space-y-4">
                             <MainInfoTab
                                 animal={animal}
+                                // --- (NUEVO) Prop 'isNativo' pasada al Tab ---
+                                isNativo={isNativo}
                                 isEditing={isEditing}
                                 editedData={editedData}
                                 setEditedData={setEditedData}
@@ -472,7 +510,6 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
                                 onEditFather={() => setFatherSelectorOpen(true)}
                                 onEditMother={() => setMotherSelectorOpen(true)}
                             />
-
                             {!isEditing && (
                                 <div className="pt-4">
                                     <RecentEvents events={events} />
@@ -498,7 +535,7 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
                     )}
                     {activeTab === 'events' && (
                         <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border min-h-[200px]">
-                            <EventsTab animal={animal} events={events} />
+                            <EventsTab events={events as any[]} />
                         </div>
                     )}
                 </main>
@@ -507,12 +544,12 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
             <HiddenPdfChart ref={pdfChartRef} rootNode={pedigreeRoot} />
 
             {/* --- Modales --- */}
+            {/* (Omitidos por brevedad, sin cambios) */}
             <Modal isOpen={isLotChangeModalOpen} onClose={() => setLotChangeModalOpen(false)} title={`Mover a ${formatAnimalDisplay(animal)}`}>
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-zinc-400 mb-1">Seleccionar nuevo lote</label>
                         <div className="flex items-center gap-2">
-                            {/* Corrección TS7006: 'e' tipado */}
                             <FormSelect value={selectedNewLot} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedNewLot(e.target.value)}>
                                 <option value="">Sin Asignar</option>
                                 {lots.map(lot => <option key={lot.id} value={lot.name}>{lot.name}</option>)}
@@ -526,6 +563,7 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
                     </div>
                 </div>
             </Modal>
+            
             <ActionSheetModal isOpen={isDecommissionSheetOpen} onClose={() => setDecommissionSheetOpen(false)} title="Causa de la Baja" actions={decommissionActions} />
 
             {decommissionReason && animal && (
@@ -543,7 +581,27 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
             <AddLotModal isOpen={isAddLotModalOpen} onClose={() => setAddLotModalOpen(false)} />
             <AddOriginModal isOpen={isAddOriginModalOpen} onClose={() => setAddOriginModalOpen(false)} />
             <ParturitionModal isOpen={isParturitionModalOpen} onClose={() => setParturitionModalOpen(false)} motherId={animal.id} />
-            <Modal isOpen={isWeanModalOpen} onClose={() => setWeanModalOpen(false)} title={`Registrar Destete de ${formatAnimalDisplay(animal)}`}> <WeanAnimalForm animalId={animal.id} birthDate={animal.birthDate} onSave={handleSaveWean} onCancel={() => setWeanModalOpen(false)} /> </Modal>
+            
+            {isAbortionModalOpen && (
+                <DeclareAbortionModal
+                    animal={animal}
+                    onCancel={() => setIsAbortionModalOpen(false)}
+                    onSaveSuccess={() => setIsAbortionModalOpen(false)}
+                />
+            )}
+
+            {isWeanModalOpen && (
+                <Modal isOpen={isWeanModalOpen} onClose={() => setWeanModalOpen(false)} title={`Confirmar Destete de ${formatAnimalDisplay(animal)}`}> 
+                    <WeanAnimalForm 
+                        animalId={animal.id} 
+                        birthDate={animal.birthDate} 
+                        onSave={handleSaveWean} 
+                        onCancel={() => setWeanModalOpen(false)} 
+                        defaultDate={weaningCandidateInfo?.date}
+                        defaultWeight={weaningCandidateInfo?.weight}
+                    /> 
+                </Modal>
+            )}
 
             <AnimalSelectorModal isOpen={isMotherSelectorOpen} onClose={() => setMotherSelectorOpen(false)} onSelect={(id) => { setEditedData(prev => ({ ...prev, motherId: id })); setMotherSelectorOpen(false); }} animals={mothers} title="Seleccionar Madre" filterSex="Hembra" />
             <AnimalSelectorModal isOpen={isFatherSelectorOpen} onClose={() => setFatherSelectorOpen(false)} onSelect={(id) => { setEditedData(prev => ({ ...prev, fatherId: id })); setFatherSelectorOpen(false); }} animals={allFathers} title="Seleccionar Padre" filterSex="Macho" />
@@ -561,10 +619,8 @@ export default function RebanoProfilePage({ animalId, onBack, navigateTo }: Reba
                             {isExporting ? 'Generando...' : 'Exportar PDF'}
                         </button>
                     </div>
-                    {/* Corrección TS2552: Usar PedigreeChart */}
                     <PedigreeChart
                         rootNode={pedigreeRoot}
-                        // Corrección TS7006: 'id' tipado
                         onAncestorClick={(id: string) => {
                             setIsPedigreeModalOpen(false);
                             setTimeout(() => navigateTo({ name: 'rebano-profile', animalId: id }), 50);

@@ -1,4 +1,5 @@
-// src/components/forms/AddAnimalForm.tsx (100% Completo y Corregido)
+// src/components/forms/AddAnimalForm.tsx 
+// (CORREGIDO: El dropdown de categoría ahora muestra las 6 opciones)
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
@@ -11,24 +12,7 @@ import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { es } from 'date-fns/locale';
 
-// --- LÓGICA DE CÁLCULO (Completa) ---
-const calculateLifecycleStage = (birthDate: string, sex: 'Hembra' | 'Macho'): string => {
-    if (!birthDate || !sex) return 'Indefinido';
-    const today = new Date();
-    const birth = new Date(birthDate + 'T00:00:00'); // Asegurar UTC
-    if (isNaN(birth.getTime())) return 'Indefinido';
-    const ageInDays = (today.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24);
-    if (sex === 'Hembra') {
-        if (ageInDays <= 60) return 'Cabrita';
-        if (ageInDays <= 365) return 'Cabritona';
-        return 'Cabra'; 
-    } else { // Macho
-        if (ageInDays <= 60) return 'Cabrito';
-        if (ageInDays <= 365) return 'Macho de Levante';
-        return 'Reproductor';
-    }
-};
-
+// --- (Función 'calculateLifecycleStage' local eliminada) ---
 
 // --- SUB-COMPONENTES DE UI ESTILO iOS (Completos) ---
 const FormInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(({ className, ...props }, ref) => (
@@ -39,12 +23,12 @@ const FormInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<H
     />
 ));
 
-const FormSelect = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(({ children, ...props }, ref) => (
+const FormSelect = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(({ className, children, ...props }, ref) => (
     <div className="relative w-full">
         <select
             ref={ref}
             {...props}
-            className="w-full bg-brand-glass border border-brand-border rounded-xl p-3 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-brand-orange"
+            className={`w-full bg-brand-glass border border-brand-border rounded-xl p-3 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-brand-orange ${className}`}
         >
             {children}
         </select>
@@ -94,27 +78,20 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
     const [idExistsError, setIdExistsError] = useState<string | null>(null);
     const [lifecycleStageManual, setLifecycleStageManual] = useState<string>('Indefinido');
 
-    // --- (NUEVO) Tarea 3.3 / Punto 4: Estados para indicadores manuales ---
     const [priorParturitions, setPriorParturitions] = useState('');
     const [manualFirstParturitionDate, setManualFirstParturitionDate] = useState('');
-    // ---
 
     // Estados de Modales y Teclados
     const [isDatePickerOpen, setDatePickerOpen] = useState(false);
-    const [isFirstPartDateOpen, setIsFirstPartDateOpen] = useState(false); // (NUEVO)
+    const [isFirstPartDateOpen, setIsFirstPartDateOpen] = useState(false);
     const [isMotherSelectorOpen, setMotherSelectorOpen] = useState(false);
     const [isFatherSelectorOpen, setFatherSelectorOpen] = useState(false);
     const [isIdKeyboardOpen, setIsIdKeyboardOpen] = useState(false);
     const [isRacialKeyboardOpen, setIsRacialKeyboardOpen] = useState(false);
     const [isParentModalOpen, setIsParentModalOpen] = useState<'mother' | 'father' | null>(null);
 
-    // Lógica para el Estado de Ciclo de Vida (Auto si hay fecha, Manual si no)
-    const lifecycleStageAuto = useMemo(() => {
-        if (!birthDate) return 'Indefinido';
-        return calculateLifecycleStage(birthDate, sex);
-    }, [birthDate, sex]);
-
-    const finalLifecycleStage = birthDate ? lifecycleStageAuto : lifecycleStageManual;
+    // El estado final es SIEMPRE el manual
+    const finalLifecycleStage = lifecycleStageManual;
 
     // Calcular Raza
     useEffect(() => {
@@ -125,7 +102,7 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
     const mothers = useMemo(() => animals.filter(a => a.sex === 'Hembra'), [animals]);
     
     const sires = useMemo(() => {
-        return animals.filter(a => a.sex === 'Macho'); // Incluir Activos Y Referencia
+        return animals.filter(a => a.sex === 'Macho');
     }, [animals]);
 
     const allFathers = useMemo(() => {
@@ -142,7 +119,6 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
             reproductiveStatus: 'No Aplica',
             createdAt: 0,
             lastWeighing: null,
-            // (El resto de campos opcionales de Animal se infieren como undefined)
         }));
         return [...internalSires, ...externalSires];
     }, [sires, fathers]);
@@ -180,7 +156,6 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
             setMessage({ type: 'error', text: 'El ID del animal es obligatorio para animales Activos.' });
             return;
         }
-
         if (animalId && status === 'Activo') {
             const exists = animals.some(a => a.id.toLowerCase() === animalId.toLowerCase());
             if (exists) {
@@ -190,12 +165,15 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
             }
         }
         
-        // (NUEVO) Tarea 3.3: Validar que la fecha de 1er parto no sea anterior al nacimiento
+        if (finalLifecycleStage === 'Indefinido') {
+             setMessage({ type: 'error', text: 'Debe seleccionar una Categoría Zootécnica para el animal.' });
+             return;
+        }
+        
         if (birthDate && manualFirstParturitionDate && new Date(manualFirstParturitionDate) < new Date(birthDate)) {
              setMessage({ type: 'error', text: 'La Fecha del 1er Parto no puede ser anterior a la Fecha de Nacimiento.' });
              return;
         }
-
         if (!racialComposition) {
             const confirmed = window.confirm(
                 "ALERTA\n\nNo has especificado una Composición Racial. El animal se guardará sin raza definida.\n\n¿Deseas guardar de todas formas?"
@@ -206,9 +184,6 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
             }
         }
 
-        // --- (CORREGIDO) Tarea 3.3 / Error TS2353 ---
-        // Se define 'newAnimal' como 'any' para permitir los campos extra
-        // que no están en la interfaz 'Animal' de db/local.ts.
         const newAnimal: any = {
             id: animalId.toUpperCase() || `REF-${Date.now()}`,
             name: name || undefined,
@@ -228,15 +203,12 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
             reproductiveStatus: sex === 'Hembra' ? 'Vacía' : 'No Aplica',
             createdAt: new Date().getTime(),
             lastWeighing: null,
-            // --- Tarea 3.3: Añadir campos manuales ---
             priorParturitions: priorParturitions ? parseInt(priorParturitions) : undefined,
             manualFirstParturitionDate: manualFirstParturitionDate || undefined,
-            // ---
         };
-        // --- (FIN CORRECCIÓN TS2353) ---
 
         try {
-            await addAnimal(newAnimal); // addAnimal (en DataContext) guardará el objeto 'any'
+            await addAnimal(newAnimal); 
             setMessage({ type: 'success', text: `Animal ${formatAnimalDisplay(newAnimal)} agregado con éxito.` });
             setTimeout(onSaveSuccess, 1000);
         } catch (error: any) {
@@ -298,22 +270,24 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
                         </button>
                     </div>
 
-                    {/* ESTADO (Auto-calculado/Manual) */}
+                    {/* (ACTUALIZADO) ESTADO (100% manual y obligatorio) */}
                     <div>
                         <label className="block text-sm font-medium text-zinc-400 mb-2">Estado (Categoría Zootécnica)</label>
-                        {birthDate ? (
-                            <FormInput type="text" value={lifecycleStageAuto} readOnly disabled />
-                        ) : (
-                            <FormSelect value={lifecycleStageManual} onChange={e => setLifecycleStageManual(e.target.value)}>
-                                <option value="Indefinido">Seleccionar Categoría...</option>
-                                <option value="Cabrita">Cabrita</option>
-                                <option value="Cabritona">Cabritona</option>
-                                <option value="Cabra">Cabra</option> 
-                                <option value="Cabrito">Cabrito</option>
-                                <option value="Macho de Levante">Macho de Levante</option>
-                                <option value="Reproductor">Reproductor</option> 
-                            </FormSelect>
-                        )}
+                        <FormSelect 
+                            value={lifecycleStageManual} 
+                            onChange={e => setLifecycleStageManual(e.target.value)}
+                            className={finalLifecycleStage === 'Indefinido' && message?.type === 'error' ? 'border-brand-red ring-2 ring-brand-red' : 'border-brand-border'}
+                        >
+                            <option value="Indefinido">Seleccionar Categoría...</option>
+                            {/* (ESTA ES LA CORRECCIÓN) */}
+                            <option value="Cabrita">Cabrita</option>
+                            <option value="Cabritona">Cabritona</option>
+                            <option value="Cabra">Cabra</option> 
+                            <option value="Cabrito">Cabrito</option>
+                            <option value="Macho de Levante">Macho de Levante</option>
+                            <option value="Reproductor">Reproductor</option> 
+                        </FormSelect>
+                        <p className="text-xs text-zinc-500 mt-1 px-1">Categoría asignada al animal. Si nace en la app, se actualizará por eventos.</p>
                     </div>
                     
                     <FormSelect value={geneticMethod} onChange={e => setGeneticMethod(e.target.value)}>
@@ -373,7 +347,7 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
                     <div><label className="block text-sm font-medium text-zinc-400 mb-2">Raza (Auto-calculada)</label><FormInput type="text" value={breed} readOnly disabled placeholder="Ej: Mestiza Alpina"/></div>
                 </FormGroup>
 
-                {/* --- (NUEVO) Tarea 3.3 / Punto 4: Indicadores Manuales --- */}
+                {/* Indicadores Manuales */}
                 {sex === 'Hembra' && (
                     <FormGroup title="Indicadores Reproductivos (Opcional)">
                          <p className="text-xs text-zinc-500 text-center -mt-2">Solo para hembras que ya han parido antes de usar la app.</p>
@@ -399,7 +373,6 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
                         )}
                     </FormGroup>
                 )}
-                {/* --- (FIN) Tarea 3.3 --- */}
 
 
                 {/* Manejo */}
@@ -411,7 +384,17 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
                 {/* Botones Guardar/Cancelar */}
                 <div className="space-y-3 pt-4">
                     {message && ( <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-brand-green' : 'bg-red-500/20 text-brand-red'}`}> {message.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />} <span>{message.text}</span> </div> )}
-                    <button type="submit" disabled={!!idExistsError} className={`w-full text-white font-bold py-4 rounded-xl text-lg ${idExistsError ? 'bg-zinc-600 cursor-not-allowed' : 'bg-brand-green hover:bg-green-600'}`}>Guardar Animal</button>
+                    <button 
+                        type="submit" 
+                        disabled={!!idExistsError || finalLifecycleStage === 'Indefinido'} 
+                        className={`w-full text-white font-bold py-4 rounded-xl text-lg ${
+                            !!idExistsError || finalLifecycleStage === 'Indefinido' 
+                                ? 'bg-zinc-600 cursor-not-allowed' 
+                                : 'bg-brand-green hover:bg-green-600'
+                        }`}
+                    >
+                        Guardar Animal
+                    </button>
                     <button type="button" onClick={onCancel} className="w-full bg-zinc-700 hover:bg-zinc-600 text-white font-semibold py-3 rounded-xl text-lg">Cancelar</button>
                 </div>
             </form>
@@ -419,7 +402,6 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
             {/* --- Modales y Teclados del Formulario Principal --- */}
             {isDatePickerOpen && <BottomSheetDatePicker onClose={() => setDatePickerOpen(false)} onSelectDate={(d: Date | undefined) => { if(d) setBirthDate(d.toISOString().split('T')[0]); setDatePickerOpen(false); }} currentValue={birthDate ? new Date(birthDate + 'T00:00:00Z') : new Date()} />}
             
-            {/* (NUEVO) Tarea 3.3: Date picker para fecha de 1er parto */}
             {isFirstPartDateOpen && <BottomSheetDatePicker onClose={() => setIsFirstPartDateOpen(false)} onSelectDate={(d: Date | undefined) => { if(d) setManualFirstParturitionDate(d.toISOString().split('T')[0]); setIsFirstPartDateOpen(false); }} currentValue={manualFirstParturitionDate ? new Date(manualFirstParturitionDate + 'T00:00:00Z') : (birthDate ? new Date(birthDate + 'T00:00:00Z') : new Date())} />}
 
             <AnimalSelectorModal isOpen={isMotherSelectorOpen} onClose={() => setMotherSelectorOpen(false)} onSelect={(id) => { setMotherId(id); setMotherSelectorOpen(false); }} animals={mothers} title="Seleccionar Madre" filterSex="Hembra" />
@@ -439,6 +421,7 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
 // --- Calendario Bottom Sheet ---
 interface BottomSheetDatePickerProps { onClose: () => void; onSelectDate: (date: Date | undefined) => void; currentValue: Date; }
 const BottomSheetDatePicker: React.FC<BottomSheetDatePickerProps> = ({ onClose, onSelectDate, currentValue }) => {
+    // ... (sin cambios) ...
     return (
         <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
             <div className="fixed bottom-0 left-0 right-0 w-full bg-ios-modal-bg rounded-t-2xl p-4 shadow-lg animate-slide-up" onClick={(e) => e.stopPropagation()} style={{ paddingBottom: 'env(safe-area-inset-bottom, 1rem)' }}>
@@ -454,6 +437,7 @@ const BottomSheetDatePicker: React.FC<BottomSheetDatePickerProps> = ({ onClose, 
 // --- Teclado Alfanumérico (ID) ---
 interface CustomKeyboardProps { onClose: () => void; onInput: (value: string) => void; currentValue: string; }
 const CustomAlphanumericKeyboard: React.FC<CustomKeyboardProps> = ({ onClose, onInput, currentValue }) => {
+    // ... (sin cambios) ...
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
     const numpadKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '0', 'DEL'];
     const handleKeyPress = (key: string) => {
@@ -480,6 +464,7 @@ const CustomAlphanumericKeyboard: React.FC<CustomKeyboardProps> = ({ onClose, on
 // --- Teclado Específico para Composición Racial ---
 interface RacialKeyboardProps { onClose: () => void; onInput: (value: string) => void; currentValue: string; }
 const RacialCompositionKeyboard: React.FC<RacialKeyboardProps> = ({ onClose, onInput, currentValue }) => {
+    // ... (sin cambios) ...
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
     const numpadKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '%', '0', 'DEL'];
     const MAX_COMPONENTS = 4;
@@ -544,6 +529,7 @@ const RacialCompositionKeyboard: React.FC<RacialKeyboardProps> = ({ onClose, onI
 // --- Modal Padre Rápido ---
 interface AddQuickParentModalProps { type: 'mother' | 'father'; onClose: () => void; onSave: (animal: Animal) => void; }
 const AddQuickParentModal: React.FC<AddQuickParentModalProps> = ({ type, onClose, onSave }) => {
+    // ... (sin cambios) ...
     const { addAnimal, animals, fathers } = useData();
     const [status, setStatus] = useState<'Activo' | 'Referencia'>('Referencia');
     const [animalId, setAnimalId] = useState('');
@@ -556,22 +542,7 @@ const AddQuickParentModal: React.FC<AddQuickParentModalProps> = ({ type, onClose
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [isRacialKeyboardOpenModal, setIsRacialKeyboardOpenModal] = useState(false);
 
-    const calculateLifecycleStageLocal = (birthDate: string, sex: 'Hembra' | 'Macho'): string => {
-        if (!birthDate || !sex) return 'Indefinido';
-        const today = new Date();
-        const birth = new Date(birthDate + 'T00:00:00');
-        if (isNaN(birth.getTime())) return 'Indefinido';
-        const ageInDays = (today.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24);
-        if (sex === 'Hembra') {
-            if (ageInDays <= 60) return 'Cabrita';
-            if (ageInDays <= 365) return 'Cabritona';
-            return 'Cabra';
-        } else {
-            if (ageInDays <= 60) return 'Cabrito';
-            if (ageInDays <= 365) return 'Macho de Levante';
-            return 'Reproductor';
-        }
-    };
+    // (Función local eliminada)
 
     useEffect(() => { setBreed(calculateBreedFromComposition(racialComposition)); }, [racialComposition]);
 
@@ -590,7 +561,9 @@ const AddQuickParentModal: React.FC<AddQuickParentModalProps> = ({ type, onClose
         }
 
         const sex = type === 'mother' ? 'Hembra' : 'Macho';
-        // Se define como 'any' para evitar errores de tipo, aunque la interfaz Animal sea la base
+        // (CORREGIDO) Categoría manual por defecto
+        const finalLifecycleStage = sex === 'Hembra' ? 'Cabra' : 'Reproductor';
+
         const newParent: any = {
             id: finalId,
             name: name.toUpperCase() || undefined,
@@ -598,7 +571,7 @@ const AddQuickParentModal: React.FC<AddQuickParentModalProps> = ({ type, onClose
             sex: sex,
             isReference: status === 'Referencia',
             status: 'Activo',
-            lifecycleStage: birthDate ? calculateLifecycleStageLocal(birthDate, sex) as any : (sex === 'Hembra' ? 'Cabra' : 'Reproductor'),
+            lifecycleStage: finalLifecycleStage as any,
             racialComposition: racialComposition || undefined,
             breed: breed || undefined,
             location: 'Referencia',
@@ -608,15 +581,14 @@ const AddQuickParentModal: React.FC<AddQuickParentModalProps> = ({ type, onClose
         };
 
         try {
-            await addAnimal(newParent as Animal); // Se guarda como Animal, pero el objeto 'any' se envía
-            onSave(newParent as Animal); // Llama al handler del formulario principal
+            await addAnimal(newParent as Animal); 
+            onSave(newParent as Animal); 
         } catch (error: any) {
             setMessage(error.message || 'Error al guardar el animal.');
             console.error("Error saving quick parent:", error);
         }
     };
     
-    // (CSS del calendario omitido por brevedad en el diff, pero presente en el archivo)
     const calendarCss = ` .rdp { --rdp-cell-size: 40px; ... } `;
 
     return (

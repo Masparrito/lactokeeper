@@ -1,30 +1,27 @@
-// src/pages/BatchImportPage.tsx (CORREGIDO)
-// (Anteriormente OcrPage.tsx)
+// src/pages/BatchImportPage.tsx 
+// (CORREGIDO: Resuelve TS6133 eliminando 'appConfig' no utilizado)
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { ArrowLeft, Camera, FileImage, Loader, AlertTriangle } from 'lucide-react';
+import { useData } from '../context/DataContext';
+import { Weighing, BodyWeighing } from '../db/local';
 
-// (NUEVO) Esta será la estructura de salida de la IA
 export interface OcrResult {
     id: string;
-    weight: string;
-    // La fecha es opcional; si no se detecta, usaremos la fecha por defecto
+    weight: string; 
     date?: string; 
 }
 
-// --- Función para convertir el archivo a Base64 (SIN CAMBIOS) ---
 const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    reader.onload = () => resolve((reader.result as string).split(',')[1]); // Quitamos el prefijo
+    reader.onload = () => resolve((reader.result as string).split(',')[1]); 
     reader.onerror = error => reject(error);
 });
 
-// (CORREGIDO) La interfaz de props AHORA incluye 'importType'
 interface BatchImportPageProps {
     onBack: () => void;
     onImportSuccess: (results: OcrResult[], defaultDate: string) => void;
-    // (CORREGIDO) Tipos cambiados a español
     importType: 'leche' | 'corporal'; 
 }
 
@@ -63,59 +60,75 @@ const CaptureView = ({ onImageSelect }: { onImageSelect: (file: File) => void })
     );
 };
 
-// --- (NUEVO) Función de llamada a Gemini Vision ---
-async function callGeminiVisionAPI(base64Image: string, defaultDateISO: string): Promise<OcrResult[]> {
+// --- (CORREGIDO) 'appConfig' eliminado de los parámetros de la función ---
+async function callGeminiVisionAPI(
+    base64Image: string, 
+    defaultDateISO: string, 
+    importType: 'leche' | 'corporal',
+    // appConfig: any, // <-- ELIMINADO
+    sirePrefixes: string[],
+    previousSessionData: OcrResult[] 
+): Promise<OcrResult[]> {
     
-    // Convertir la fecha ISO (ej. 2024-12-12) a un formato legible (ej. 12-12-24)
     const [year, month, day] = defaultDateISO.split('-');
-    const defaultDate = `${day}/${month}/${year.slice(2)}`; // ej. "12/12/24"
+    const defaultDate = `${day}/${month}/${year.slice(2)}`; 
+    const apiKey = import.meta.env.VITE_GOOGLE_GEMINI_API_KEY; 
+    if (!apiKey) throw new Error("API Key de Gemini (VITE_GOOGLE_GEMINI_API_KEY) no encontrada.");
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
-    const apiKey = import.meta.env.VITE_GOOGLE_GEMINI_API_KEY; // Necesitarás una API Key de Gemini
-    if (!apiKey) {
-        throw new Error("API Key de Gemini (VITE_GOOGLE_GEMINI_API_KEY) no encontrada.");
+    // --- Lógica de Prompt Dinámico ---
+    let prompt = '';
+    
+    const previousAnimalsList = previousSessionData.map(r => `${r.id} (peso anterior: ${r.weight} Kg)`).join(', ');
+
+    if (importType === 'corporal') {
+        const contextoPrevio = previousSessionData.length > 0 
+            ? `Estás analizando el pesaje de la semana del ${defaultDate}. Los animales de la semana pasada fueron: [${previousAnimalsList}]. Esta página debería tener los mismos.`
+            : `Estás analizando un nuevo pesaje de la semana del ${defaultDate}.`;
+
+        prompt = `
+            Eres un asistente de entrada de datos para GanaderoOS, registrando PESOS CORPORALES.
+            ${contextoPrevio}
+            Tu trabajo es encontrar el ID de cada animal y su NUEVO PESO TOTAL.
+
+            Reglas Importantes:
+            1.  El ID del animal es alfanumérico (ej. "A451", "Q107"). Prefijos comunes: [${sirePrefixes.join(', ')}]. Usa este contexto para corregir IDs mal leídos (ej. "0107" -> "Q107").
+            2.  Al lado del ID, busca el NUEVO PESO TOTAL (un número grande, ej. "23.90", "19.90", "9.60").
+            3.  (REGLA CRÍTICA) IGNORA COMPLETAMENTE los números pequeños con signos + o - que están a la derecha (ej. "-0.9", "-1.7", "+0.2"). Estos son deltas de referencia y NO deben ser capturados.
+            4.  IGNORA CUALQUIER FILA que parezca un total (ej. "TOTAL", "SUMA").
+            5.  IGNORA CUALQUIER TEXTO escrito a mano como "Destete" o "destetada".
+            6.  La fecha global por defecto es ${defaultDate}. Si una fila tiene su propia fecha, úsala.
+            7.  Devuelve SOLAMENTE un array JSON válido, sin markdown, con lo que ves en ESTA PÁGINA:
+                [{ "id": "A451", "weight": "23.90" }, { "id": "A453", "weight": "19.90" }, { "id": "V537", "weight": "9.60" }, ...]
+            
+            Si no puedes extraer nada, devuelve un array vacío [].
+        `;
+    
+    } else {
+        // --- PROMPT INTELIGENTE 3: Leche ---
+        prompt = `
+            Eres un asistente de entrada de datos para GanaderoOS, registrando PESAJES DE LECHE.
+            Extrae todos los registros de ID de animal y su PESO DE LECHE.
+            
+            Reglas Importantes:
+            1.  El ID del animal es alfanumérico (ej. "A303", "Q107"). Limpia espacios. "A 303" debe ser "A303".
+            2.  El PESO DE LECHE es un número decimal PEQUEÑO, usualmente MENOR a 4.0 Kg (ej. "1.00", "0.60", "2.1").
+            3.  IGNORA CUALQUIER NÚMERO GRANDE (ej. "20.5", "30", "41.2") ya que son pesos corporales, NO de leche.
+            4.  La fecha global por defecto es ${defaultDate} (DD/MM/YY).
+            5.  Si una fila tiene su propia fecha (ej. "16/10"), esa fecha ANULA la fecha global.
+            6.  Si una fila no tiene fecha, usa la fecha global por defecto: ${defaultDate}.
+            7.  IGNORA CUALQUIER FILA que parezca un total (ej. "TOTAL", "SUMA").
+            8.  Devuelve SOLAMENTE un array JSON válido, sin markdown:
+                [{ "id": "A303", "weight": "1.00", "date": "16/10" }, { "id": "Q107", "weight": "0.60", "date": "${defaultDate}" }, ...]
+            
+            Si no puedes extraer nada, devuelve un array vacío [].
+        `;
     }
+    
+    // --- Fin de la Lógica de Prompt ---
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${apiKey}`;
-
-    const prompt = `
-        Eres un asistente de entrada de datos para GanaderoOS. Analiza la imagen de esta libreta de pesaje.
-        Extrae todos los registros de ID de animal y su peso.
-        
-        Reglas:
-        1.  El ID del animal es alfanumérico (ej. "A 303", "Q107", "N 312"). Asegúrate de limpiar espacios. "A 303" debe ser "A303".
-        2.  El peso es un número decimal (ej. "1.00", "0.60").
-        3.  La fecha global por defecto para esta imagen es ${defaultDate} (formato DD/MM/YY).
-        4.  Si una fila tiene su propia fecha (ej. "16/10" al lado de "A 303"), esa fecha ANULA la fecha global. Usa esa fecha en su lugar.
-        5.  Si una fila no tiene fecha, usa la fecha global por defecto.
-        6.  Ignora cualquier fila que no tenga un peso numérico (ej. "—").
-        7.  Ignora cualquier texto que no sea un registro (ej. "Servicio", "Total", "Caney 1", "la 1726 se la llevo Jesús").
-        8.  Devuelve SOLAMENTE un array JSON válido, sin markdown \`\`\`json \`\`\`, que siga esta estructura:
-            [{ "id": "A303", "weight": "1.00", "date": "16/10/24" }, { "id": "Q107", "weight": null, "date": "12/12/24" }, ...]
-        
-        Si no puedes extraer nada, devuelve un array vacío [].
-    `;
-
-    const body = {
-        contents: [
-            {
-                parts: [
-                    { "text": prompt },
-                    {
-                        "inlineData": {
-                            "mimeType": "image/jpeg",
-                            "data": base64Image
-                        }
-                    }
-                ]
-            }
-        ]
-    };
-
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-    });
+    const body = { contents: [{ parts: [{ "text": prompt }, { "inlineData": { "mimeType": "image/jpeg", "data": base64Image } }] }] };
+    const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
     if (!response.ok) {
         const errorData = await response.json();
@@ -124,16 +137,11 @@ async function callGeminiVisionAPI(base64Image: string, defaultDateISO: string):
     }
 
     const data = await response.json();
-    
     try {
         const textResponse = data.candidates[0].content.parts[0].text;
-        // Limpiar markdown si la IA lo añade por error
         const cleanJsonText = textResponse.replace(/^```json\n/, '').replace(/\n```$/, '');
         const results: OcrResult[] = JSON.parse(cleanJsonText);
-        
-        // Filtrar pesos nulos (que la IA pudo haber incluido)
-        return results.filter(r => r.weight);
-
+        return results.filter(r => r.id && r.id.trim() !== '' && r.weight && r.weight.trim() !== '');
     } catch (e) {
         console.error("Error al parsear JSON de Gemini:", e, data);
         throw new Error("La IA devolvió una respuesta inesperada. Intenta de nuevo.");
@@ -142,9 +150,45 @@ async function callGeminiVisionAPI(base64Image: string, defaultDateISO: string):
 
 
 export default function BatchImportPage({ onBack, onImportSuccess, importType }: BatchImportPageProps) {
+    // (CORREGIDO) 'appConfig' eliminado de la desestructuración
+    const { /* appConfig, */ animals, fathers, bodyWeighings, weighings } = useData();
+    
     const [status, setStatus] = useState<'capture' | 'loading' | 'error'>('capture');
     const [errorMessage, setErrorMessage] = useState('');
     const [defaultDate, setDefaultDate] = useState(new Date().toISOString().split('T')[0]);
+    
+    const sirePrefixes = useMemo(() => {
+        const activeSires = animals
+            .filter(a => a.sex === 'Macho' && a.status === 'Activo')
+            .map(a => a.name ? a.name.charAt(0).toUpperCase() : a.id.charAt(0).toUpperCase());
+        
+        const fatherRefs = fathers.map(f => f.name.charAt(0).toUpperCase());
+        
+        return [...new Set([...activeSires, ...fatherRefs])];
+    }, [animals, fathers]);
+
+    const previousSessionData = useMemo(() => {
+        const allSessionData = (importType === 'leche' ? weighings : bodyWeighings) as (Weighing[] | BodyWeighing[]);
+        if (!allSessionData || allSessionData.length === 0) return [];
+
+        const allDates = [...new Set(allSessionData.map(w => w.date))];
+        const sortedDates = allDates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+        
+        const selectedTime = new Date(defaultDate + 'T00:00:00Z').getTime();
+        
+        const previousDate = sortedDates.find(d => new Date(d + 'T00:00:00Z').getTime() < selectedTime);
+        
+        if (!previousDate) return []; 
+
+        return allSessionData
+            .filter(w => w.date === previousDate)
+            .map(w => ({
+                id: (w as any).goatId || (w as any).animalId,
+                weight: w.kg.toString(),
+                date: w.date
+            }));
+            
+    }, [defaultDate, bodyWeighings, weighings, importType]);
 
     const handleImageSelect = async (file: File) => {
         setStatus('loading');
@@ -152,12 +196,20 @@ export default function BatchImportPage({ onBack, onImportSuccess, importType }:
 
         try {
             const base64Image = await toBase64(file);
-            const results = await callGeminiVisionAPI(base64Image, defaultDate);
+            // (CORREGIDO) 'appConfig' eliminado de la llamada
+            const newResults = await callGeminiVisionAPI(
+                base64Image, 
+                defaultDate, 
+                importType, 
+                // appConfig, // <-- ELIMINADO
+                sirePrefixes,
+                previousSessionData
+            );
 
-            if (results && results.length > 0) {
-                onImportSuccess(results, defaultDate);
+            if (newResults && newResults.length > 0) {
+                onImportSuccess(newResults, defaultDate);
             } else {
-                throw new Error('La IA no pudo encontrar ningún registro de peso en la imagen.');
+                throw new Error('La IA no pudo encontrar ningún registro de peso en esta página.');
             }
 
         } catch (error: any) {
@@ -174,7 +226,6 @@ export default function BatchImportPage({ onBack, onImportSuccess, importType }:
                 </button>
                 <div className="text-center flex-grow">
                     <h1 className="text-4xl font-bold tracking-tight text-white">Escanear Cuaderno</h1>
-                    {/* (CORREGIDO) Mostrar el tipo en español */}
                     <p className="text-xl text-zinc-400">Digitalización Asistida ({importType === 'leche' ? 'Leche' : 'Corporal'})</p>
                 </div>
                 <div className="w-8"></div>
@@ -183,14 +234,20 @@ export default function BatchImportPage({ onBack, onImportSuccess, importType }:
             {status === 'capture' && (
                 <div className="px-4">
                     <label className="block text-sm font-medium text-zinc-400 mb-1">
-                        Fecha Global (si no está en la hoja)
+                        Fecha Global del Pesaje
                     </label>
                     <input
                       type="date"
                       value={defaultDate}
                       onChange={e => setDefaultDate(e.target.value)}
+                      max={new Date().toISOString().split('T')[0]}
                       className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-white"
                     />
+                     {previousSessionData.length > 0 && (
+                        <p className="text-xs text-zinc-500 mt-1">
+                            Se usará el contexto de la sesión del {previousSessionData[0].date} para mejorar la precisión.
+                        </p>
+                    )}
                 </div>
             )}
 
@@ -199,7 +256,7 @@ export default function BatchImportPage({ onBack, onImportSuccess, importType }:
             {status === 'loading' && (
                 <div className="text-center py-20 animate-fade-in">
                     <Loader className="w-12 h-12 text-amber-400 mx-auto animate-spin" />
-                    <p className="mt-4 text-zinc-400">Analizando imagen con IA...</p>
+                    <p className="mt-4 text-zinc-400">Analizando con contexto...</p>
                     <p className="text-sm text-zinc-500">Esto puede tardar unos segundos...</p>
                 </div>
             )}

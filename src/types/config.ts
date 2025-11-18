@@ -1,4 +1,5 @@
-// types/config.ts (Actualizado)
+// src/types/config.ts 
+// (ACTUALIZADO: Añade 'diasToleranciaDestete' para la Regla #4)
 
 /**
  * Define la estructura de todos los parámetros configurables de la finca.
@@ -11,8 +12,8 @@ export interface AppConfig {
     theme: 'light' | 'dark';
 
     // --- Parámetros de Manejo (Reproductivo) ---
-    pesoPrimerServicioKg: number;
-    edadPrimerServicioMeses: number; 
+    pesoPrimerServicioKg: number; // <-- HITO 1er SERVICIO (EXISTENTE)
+    edadPrimerServicioMeses: number; // <-- HITO 1er SERVICIO (EXISTENTE)
     diasGestacion: number;
     diasConfirmarPrenez: number;
     diasPreParto: number; 
@@ -29,15 +30,30 @@ export interface AppConfig {
     // --- Parámetros de Manejo (Crecimiento y Destete) ---
     diasAlertaPesarDestete: number;
     pesoMinimoPesarDestete: number;
-    diasMetaDesteteFinal: number;
-    pesoMinimoDesteteFinal: number;
+    diasMetaDesteteFinal: number; // <-- HITO DESTETE (EXISTENTE)
+    pesoMinimoDesteteFinal: number; // <-- HITO DESTETE (EXISTENTE)
+    diasToleranciaDestete: number; // <-- (NUEVO) Para la "Ventana de Destete" (Regla #4)
+
+    // --- (CORREGIDO) Hitos de Crecimiento Intermedios ---
+    growthGoalBirthWeight: number; // Peso meta al nacer
+    growthGoal90dWeight: number; // Peso meta 90d (hembra)
+    growthGoal180dWeight: number; // Peso meta 180d (hembra)
+    growthGoal270dWeight: number; // Peso meta 270d (hembra)
+    
+    // (CORREGIDO) Opcional para Machos
+    growthGoalWeaningWeightMale: number; // <-- ESTE CAMPO FALTABA
+    growthGoal90dWeightMale: number;
+    growthGoal180dWeightMale: number;
+    
+    // (NUEVO) % de alerta
+    growthAlertThreshold: number; // p.ej. 0.85 (para 15% por debajo de la meta)
 
     // --- Lógica de Categorías Zootécnicas ---
     categoriaCabritaEdadMaximaDias: number;
     categoriaCabritoEdadMaximaDias: number;
     categoriaCabritonaEdadMinimaDias: number;
-    categoriaCabritonaEdadMaximaMeses: number; // <-- Ajustado
-    categoriaCabraEdadMinimaMeses: number;     // <-- Ajustado
+    categoriaCabritonaEdadMaximaMeses: number;
+    categoriaCabraEdadMinimaMeses: number;
     categoriaCabraRequiereParto: boolean;
     categoriaMachoLevanteEdadMinimaDias: number;
     categoriaMachoLevanteEdadMaximaMeses: number;
@@ -58,7 +74,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     diasGestacion: 150,
     diasConfirmarPrenez: 60,
     diasPreParto: 15,
-    edadParaAlertaVaciasMeses: 19, // (Esto es para ALERTA, no para el icono 'vacía')
+    edadParaAlertaVaciasMeses: 19,
     
     // Lógica de Vientres
     edadMinimaVientreMeses: 10,
@@ -73,13 +89,28 @@ export const DEFAULT_CONFIG: AppConfig = {
     pesoMinimoPesarDestete: 9.0,
     diasMetaDesteteFinal: 52, 
     pesoMinimoDesteteFinal: 9.5, 
+    diasToleranciaDestete: 8, // <-- (NUEVO) Valor por defecto de 8 días
 
-    // Lógica de Categorías (AJUSTADO)
+    // (CORREGIDO) Hitos de Crecimiento Intermedios
+    growthGoalBirthWeight: 3.5,
+    growthGoal90dWeight: 20,
+    growthGoal180dWeight: 28,
+    growthGoal270dWeight: 34,
+    
+    // (CORREGIDO) Metas Machos
+    growthGoalWeaningWeightMale: 16, // <-- ESTE CAMPO FALTABA
+    growthGoal90dWeightMale: 22,
+    growthGoal180dWeightMale: 30,
+    
+    // (NUEVO) Alerta si está por debajo del 85% de la meta
+    growthAlertThreshold: 0.85,
+
+    // Lógica de Categorías
     categoriaCabritaEdadMaximaDias: 90,
     categoriaCabritoEdadMaximaDias: 90,
     categoriaCabritonaEdadMinimaDias: 91,
-    categoriaCabritonaEdadMaximaMeses: 12, // <-- CORREGIDO a 12
-    categoriaCabraEdadMinimaMeses: 12,     // <-- CORREGIDO a 12
+    categoriaCabritonaEdadMaximaMeses: 12,
+    categoriaCabraEdadMinimaMeses: 12,
     categoriaCabraRequiereParto: true,
     categoriaMachoLevanteEdadMinimaDias: 91,
     categoriaMachoLevanteEdadMaximaMeses: 12,

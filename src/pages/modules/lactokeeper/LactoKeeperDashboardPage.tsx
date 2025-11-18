@@ -1,18 +1,15 @@
-// src/pages/modules/lactokeeper/LactoKeeperDashboardPage.tsx (CORREGIDO)
+// src/pages/modules/lactokeeper/LactoKeeperDashboardPage.tsx (CORREGIDO - Flujo de importación ELIMINADO)
 
-import { useState, useMemo } from 'react'; // (CORREGIDO) React eliminado
+import { useState, useMemo } from 'react'; // (CORREGIDO) React sí se usa
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, BarChart, Bar, ReferenceLine, Tooltip, CartesianGrid } from 'recharts';
 import { useData } from '../../../context/DataContext';
 import { calculateDEL } from '../../../utils/calculations';
-import { Droplet, ActivitySquare, BarChart as BarChartIconLucide, Info, Plus, Camera, FilePen } from 'lucide-react';
+// (CORREGIDO) Eliminados Plus, Camera, FilePen
+import { Droplet, ActivitySquare, BarChart as BarChartIconLucide, Info } from 'lucide-react';
 import { CustomTooltip } from '../../../components/ui/CustomTooltip';
 import { Modal } from '../../../components/ui/Modal';
-// (CORREGIDO) Importar 'Animal'
-import { Weighing, Animal } from '../../../db/local';
-import { ActionSheetModal, ActionSheetAction } from '../../../components/ui/ActionSheetModal';
-import BatchImportPage, { OcrResult } from '../../BatchImportPage'; // Esta ruta ahora es correcta
-import { BatchWeighingForm } from '../../../components/forms/BatchWeighingForm'; 
-import { NewWeighingSessionFlow } from '../shared/NewWeighingSessionFlow'; 
+// (CORREGIDO) Eliminadas importaciones de flujo
+import { Weighing } from '../../../db/local';
 
 interface LactoKeeperDashboardProps {
   onNavigateToAnalysis: () => void;
@@ -24,11 +21,7 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
   const [isChartInfoModalOpen, setIsChartInfoModalOpen] = useState(false);
   const [isGaussInfoModalOpen, setIsGaussInfoModalOpen] = useState(false);
 
-  type ActiveModal = 'idle' | 'loadOptions' | 'loadManual' | 'loadOcr' | 'loadOcrResults';
-  const [activeModal, setActiveModal] = useState<ActiveModal>('idle');
-  const [ocrResults, setOcrResults] = useState<OcrResult[]>([]); 
-  const [ocrDefaultDate, setOcrDefaultDate] = useState('');
-  const [manualAnimals, setManualAnimals] = useState<Animal[]>([]); // (CORREGIDO) Tipo 'Animal'
+  // --- (CORREGIDO) Estados del flujo de importación ELIMINADOS ---
 
   const analytics = useMemo(() => {
     // ... (Lógica de 'analytics' sin cambios) ...
@@ -89,32 +82,7 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
     return { herdAverage: totalAverage, activeGoats: animalsInLastWeighing, herdLactationCurve, gaussData };
   }, [animals, weighings, parturitions, isLoading, chartView]);
 
-  // --- Handlers ---
-  const handleCloseModal = () => {
-    setActiveModal('idle');
-    setOcrResults([]);
-    setManualAnimals([]);
-    setOcrDefaultDate('');
-  };
-
-  const handleOcrSuccess = (results: OcrResult[], defaultDate: string) => {
-    setOcrResults(results);
-    setOcrDefaultDate(defaultDate);
-    setActiveModal('loadOcrResults'); 
-  };
-  
-  // (CORREGIDO) Ignorar 'selectedIds'
-  const handleManualSelect = (_selectedIds: string[], selectedAnimals: Animal[]) => {
-      setManualAnimals(selectedAnimals);
-      setActiveModal('loadManual'); 
-  };
-
-  const loadOptionsActions: ActionSheetAction[] = [
-    { label: 'Cargar con Foto (IA)', icon: Camera, onClick: () => setActiveModal('loadOcr') },
-    { label: 'Cargar Manual (Selección)', icon: FilePen, onClick: () => setActiveModal('loadManual') },
-  ];
-  // --- Fin Handlers ---
-
+  // --- (CORREGIDO) Handlers del flujo de importación ELIMINADOS ---
 
   if (isLoading) {
     return <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Cargando datos del rebaño...</h1></div>;
@@ -122,14 +90,10 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
 
   return (
     <>
-        <button
-          onClick={() => setActiveModal('loadOptions')}
-          className="fixed bottom-20 sm:bottom-8 right-8 z-40 bg-brand-orange text-white p-4 rounded-full shadow-lg transform active:scale-95 transition-transform"
-        >
-          <Plus size={28} />
-        </button>
+        {/* --- (CORREGIDO) Botón Flotante ELIMINADO --- */}
 
-        <div className="w-full max-w-2xl mx-auto space-y-4 px-4 pb-24"> 
+        {/* (CORREGIDO) Padding inferior 'pb-24' ELIMINADO */}
+        <div className="w-full max-w-2xl mx-auto space-y-4 px-4"> 
             <header className="text-center pt-4 pb-4">
                 <h1 className="text-2xl font-bold tracking-tight text-white">Dashboard de Producción</h1>
                 <p className="text-md text-zinc-400">Análisis General de LactoKeeper</p>
@@ -152,7 +116,7 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
                 </button>
             </div>
 
-            {/* ... (Gráficos) ... */}
+            {/* ... (Resto de los gráficos de Curva de Lactancia y Distribución SIN CAMBIOS) ... */}
             <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
                 <div className="flex justify-between items-center border-b border-brand-border pb-2 mb-4">
                     <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase tracking-wider">
@@ -207,55 +171,9 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
             </div>
         </div>
 
-        {/* --- Flujo de Modales de Importación --- */}
+        {/* --- (CORREGIDO) Flujo de Modales de Importación ELIMINADO --- */}
 
-        <ActionSheetModal
-          isOpen={activeModal === 'loadOptions'}
-          onClose={handleCloseModal}
-          title="Opciones de Carga de Datos"
-          actions={loadOptionsActions}
-        />
-
-        {activeModal === 'loadManual' && (
-          <NewWeighingSessionFlow
-            weightType="leche" // (CORREGIDO) 'milk' -> 'leche'
-            onBack={handleCloseModal}
-            onAnimalsSelected={handleManualSelect}
-          />
-        )}
-        
-        {activeModal === 'loadOcr' && (
-          <BatchImportPage
-            importType="leche" // (CORREGIDO) 'milk' -> 'leche'
-            onBack={handleCloseModal}
-            onImportSuccess={handleOcrSuccess}
-          />
-        )}
-        
-        {activeModal === 'loadManual' && manualAnimals.length > 0 && (
-          <Modal isOpen={true} onClose={handleCloseModal} title="Carga Manual de Ordeño" size="fullscreen">
-            <BatchWeighingForm
-              weightType="leche" // (CORREGIDO) 'milk' -> 'leche'
-              animalsToWeigh={manualAnimals}
-              onSaveSuccess={handleCloseModal}
-              onCancel={handleCloseModal}
-            />
-          </Modal>
-        )}
-
-        {activeModal === 'loadOcrResults' && (
-          <Modal isOpen={true} onClose={handleCloseModal} title="Verificar Datos de IA (Leche)" size="fullscreen">
-            <BatchWeighingForm
-              weightType="leche" // (CORREGIDO) 'milk' -> 'leche'
-              importedData={ocrResults}
-              defaultDate={ocrDefaultDate}
-              onSaveSuccess={handleCloseModal}
-              onCancel={handleCloseModal}
-            />
-          </Modal>
-        )}
-
-        {/* ... (Modales de Info) ... */}
+        {/* ... (Modales de Info de Gráficos SIN CAMBIOS) ... */}
         <Modal    
             isOpen={isChartInfoModalOpen}    
             onClose={() => setIsChartInfoModalOpen(false)}    

@@ -1,3 +1,5 @@
+// src/pages/modules/LactoKeeperShell.tsx (CORREGIDO)
+
 import { useState, useEffect } from 'react';
 import type { PageState as RebanoPageState, AppModule } from '../../types/navigation';
 // --- (NUEVO) Importar 'Grid' ---
@@ -11,6 +13,7 @@ import { ModuleSwitcher } from '../../components/ui/ModuleSwitcher';
 import LactoKeeperDashboardPage from './lactokeeper/LactoKeeperDashboardPage';
 import LactoKeeperAnalysisPage from './lactokeeper/LactoKeeperAnalysisPage';
 import LactoKeeperHistoryPage from './lactokeeper/LactoKeeperHistoryPage';
+// (CORREGIDO) Eliminada la importación de 'LactoKeeperAddDataPageProps'
 import LactoKeeperAddDataPage from './lactokeeper/LactoKeeperAddDataPage';
 import LactoKeeperDryOffPage from './lactokeeper/LactoKeeperDryOffPage';
 import LactationProfilePage from '../LactationProfilePage';
@@ -89,7 +92,7 @@ export default function LactoKeeperShell({ initialPage, onPageStateChange, navig
             case 'history':
                 return <LactoKeeperHistoryPage navigateToRebano={handleNavigateToRebano} />;
             case 'add-data':
-                return <LactoKeeperAddDataPage onNavigate={(pageName, state) => handleNavigateToRebano({ name: pageName, ...state })} onSaveSuccess={() => navigateTo({ name: 'analysis' })} />;
+                return <LactoKeeperAddDataPage onSaveSuccess={() => navigateTo({ name: 'analysis' })} />;
             case 'drying':
                 return <LactoKeeperDryOffPage navigateToRebano={handleNavigateToRebano} />;
             case 'lactation-profile':

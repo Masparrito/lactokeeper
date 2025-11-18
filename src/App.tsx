@@ -1,22 +1,29 @@
+// src/App.tsx
+// (ACTUALIZADO: El estado de Kilos ahora es un objeto que recuerda la fecha de análisis)
+
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import { useData } from './context/DataContext';
 import { LoginPage } from './pages/LoginPage';
 import RebanoShell from './pages/RebanoShell';
-// --- CORRECCIÓN: Se importa el tipo 'LactoKeeperPage' (el nombre que SÍ se exporta) ---
 import LactoKeeperShell, { type LactoKeeperPage } from './pages/modules/LactoKeeperShell';
-import KilosShell from './pages/modules/KilosShell';
+// (ACTUALIZADO) Importar 'KilosPage'
+import KilosShell, { type KilosPage } from './pages/modules/KilosShell';
 import SaludShell from './pages/modules/salud/SaludShell';
 import CentsShell from './pages/modules/CentsShell';
-// --- CAMBIO: Importar el nuevo Shell de Evolución ---
 import EvolucionShell from './pages/modules/evolucion/EvolucionShell';
 import type { PageState as RebanoPageState, AppModule } from './types/navigation';
 import { LoadingOverlay } from './components/ui/LoadingOverlay';
 
-// --- NUEVO: Se define un tipo para el estado inicial de Rebaño ---
 type InitialRebanoState = {
     page: RebanoPageState | null;
-    sourceModule?: AppModule; // Módulo de origen (ej: 'lactokeeper')
+    sourceModule?: AppModule; 
+}
+
+// (NUEVO) Tipo para el estado del módulo de Kilos
+type KilosState = {
+    activePage: KilosPage;
+    analysisDate: string | null; // <-- Almacena la fecha
 }
 
 export default function App() {
@@ -24,12 +31,15 @@ export default function App() {
     const { isLoading: isDataLoading } = useData();
     
     const [activeModule, setActiveModule] = useState<AppModule>('rebano');
-    // --- CORRECCIÓN: Se cambia 'initialRebanoPage' por 'initialRebanoState' ---
     const [initialRebanoState, setInitialRebanoState] = useState<InitialRebanoState>({ page: null, sourceModule: undefined });
 
     const [moduleStates, setModuleStates] = useState({
-        // El estado inicial debe ser un objeto del tipo 'LactoKeeperPage'
         lactokeeper: { name: 'dashboard' } as LactoKeeperPage,
+        // (ACTUALIZADO) Kilos ahora es un objeto
+        kilos: { 
+            activePage: 'dashboard', 
+            analysisDate: null 
+        } as KilosState,
     });
     
     useEffect(() => {
@@ -42,7 +52,6 @@ export default function App() {
         setActiveModule(module);
     }, []);
 
-    // --- CORRECCIÓN: 'handleNavigateToRebanoPage' ahora acepta 'sourceModule' ---
     const handleNavigateToRebanoPage = useCallback((page: RebanoPageState, sourceModule?: AppModule) => {
         setInitialRebanoState({ page: page, sourceModule: sourceModule });
         setActiveModule('rebano');
@@ -51,6 +60,23 @@ export default function App() {
     const handleLactoKeeperStateChange = useCallback((page: LactoKeeperPage) => {
         setModuleStates(prev => ({ ...prev, lactokeeper: page }));
     }, []);
+
+    // (ACTUALIZADO) Handler para la PÁGINA de Kilos
+    const handleKilosPageChange = useCallback((page: KilosPage) => {
+        setModuleStates(prev => ({ 
+            ...prev, 
+            kilos: { ...prev.kilos, activePage: page } 
+        }));
+    }, []);
+
+    // (NUEVO) Handler para la FECHA de Análisis de Kilos
+    const handleKilosDateChange = useCallback((date: string) => {
+        setModuleStates(prev => ({
+            ...prev,
+            kilos: { ...prev.kilos, analysisDate: date }
+        }));
+    }, []);
+
 
     if (isAuthLoading || (currentUser && isDataLoading)) {
         return <LoadingOverlay />;
@@ -66,7 +92,7 @@ export default function App() {
                 <LactoKeeperShell    
                     initialPage={moduleStates.lactokeeper}
                     onPageStateChange={handleLactoKeeperStateChange}
-                    navigateToRebano={handleNavigateToRebanoPage}
+                    navigateToRebano={(page) => handleNavigateToRebanoPage(page, 'lactokeeper')}
                     onSwitchModule={handleSwitchModule}
                 />
             );
@@ -74,38 +100,28 @@ export default function App() {
         case 'kilos':
             return (
                 <KilosShell    
-                    navigateToRebano={handleNavigateToRebanoPage}
+                    // (ACTUALIZADO) Pasa el estado completo y los dos handlers
+                    initialKilosState={moduleStates.kilos}
+                    onPageChange={handleKilosPageChange}
+                    onAnalysisDateChange={handleKilosDateChange}
+                    navigateToRebano={(page) => handleNavigateToRebanoPage(page, 'kilos')}
                     onSwitchModule={handleSwitchModule}
                 />
             );
         
         case 'salud':
-            return (
-                <SaludShell
-                    onSwitchModule={handleSwitchModule}
-                />
-            );
+            return ( <SaludShell onSwitchModule={handleSwitchModule} /> );
         
         case 'cents':
-return (
-                <CentsShell
-                    onSwitchModule={handleSwitchModule}
-                />
-            );
+            return ( <CentsShell onSwitchModule={handleSwitchModule} /> );
         
-        // --- CAMBIO: Nuevo case para el módulo de Evolución ---
         case 'evolucion':
-            return (
-                <EvolucionShell
-                    onSwitchModule={handleSwitchModule}
-                />
-            );
+            return ( <EvolucionShell onSwitchModule={handleSwitchModule} /> );
 
         case 'rebano':
         default:
             return (
                 <RebanoShell    
-                    // --- CORRECCIÓN: Se cambia 'initialPage' por 'initialState' ---
                     initialState={initialRebanoState}
                     onSwitchModule={handleSwitchModule}
                 />

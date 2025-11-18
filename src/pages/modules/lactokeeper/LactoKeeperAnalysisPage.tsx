@@ -1,9 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useData } from '../../../context/DataContext';
-// --- CORRECCIÓN: Imports limpios ---
-import { Plus, ChevronRight, ArrowUp, ArrowDown, Sparkles, ChevronLeft, FilterX, Info, Sigma, Droplets, TrendingUp, LogIn, LogOut, Target, Search, Trash2, BarChart as BarChartIconLucide, Wind, Archive } from 'lucide-react';
+import { Plus, ChevronRight, ArrowUp, ArrowDown, Sparkles, ChevronLeft, FilterX, Info, Sigma, Droplets, TrendingUp, LogIn, LogOut, Target, Search, Trash2, BarChart as BarChartIconLucide, Wind, Archive, AlertTriangle } from 'lucide-react';
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, LabelList, CartesianGrid, ReferenceLine } from 'recharts';
-// ---
 import { useGaussAnalysis, AnalyzedAnimal } from '../../../hooks/useGaussAnalysis';
 import { WeighingTrendIcon } from '../../../components/ui/WeighingTrendIcon';
 import { Modal } from '../../../components/ui/Modal';
@@ -34,7 +32,6 @@ const KpiCard = ({ title, value, unit, icon: Icon, onClick }: { title: string, v
     </button>
 );
 
-// Este componente wrapper calcula el trend
 const MilkingAnimalRowWrapper = ({ animal, onSelectAnimal, onOpenActions, isNewEntry }: {
     animal: AnalyzedAnimal & Animal & { formattedAge: string; statusObjects: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] },
     onSelectAnimal: (id: string) => void,
@@ -56,7 +53,6 @@ const MilkingAnimalRowWrapper = ({ animal, onSelectAnimal, onOpenActions, isNewE
     );
 };
 
-// Componente para mostrar la fila de un animal en la lista de análisis
 const MilkingAnimalRow = ({ animal, onSelectAnimal, onOpenActions, isNewEntry, trend, isLongTrend }: {
     animal: AnalyzedAnimal & Animal & { formattedAge: string; statusObjects: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] },
     onSelectAnimal: (id: string) => void,
@@ -105,7 +101,16 @@ const MilkingAnimalRow = ({ animal, onSelectAnimal, onOpenActions, isNewEntry, t
                 transition={{ type: "spring", stiffness: 400, damping: 40 }}
                 className="relative w-full z-10 cursor-pointer bg-ios-modal-bg p-3"
             >
-                <div className={`absolute top-3 right-3 w-2.5 h-2.5 rounded-full ${animal.latestWeighing > 0 ? classificationColor[animal.classification] : 'bg-transparent'}`} title={`Rendimiento: ${animal.classification}`}></div>
+                {/* --- INICIO DE LA CORRECCIÓN DE ERROR TS7053 --- */}
+                <div 
+                    className={`absolute top-3 right-3 w-2.5 h-2.5 rounded-full ${
+                        (animal.latestWeighing > 0 && animal.classification !== 'N/A') // <-- Se añade esta condición
+                            ? classificationColor[animal.classification] 
+                            : 'bg-transparent'
+                    }`} 
+                    title={`Rendimiento: ${animal.classification}`}
+                ></div>
+                {/* --- FIN DE LA CORRECCIÓN --- */}
                 
                 <div className="flex justify-between items-center w-full">
                     <div className="min-w-0 pr-3">
@@ -119,15 +124,13 @@ const MilkingAnimalRow = ({ animal, onSelectAnimal, onOpenActions, isNewEntry, t
                             <span>{animal.sex} | {animal.formattedAge} | Lote: {animal.location || 'N/A'}</span>
                         </div>
                     </div>
-                    {/* --- INICIO DE LA CORRECCIÓN DE POSICIÓN --- */}
-                    <div className="flex items-center space-x-2 flex-shrink-0 pl-4"> {/* Ajuste en pl */}
-                        {/* StatusIcons ahora va antes del valor de Kg */}
-                        <div className="flex-shrink-0 pt-0.5"> {/* Añadido pt-0.5 para alinear con el texto */}
+                    <div className="flex items-center space-x-2 flex-shrink-0 pl-4">
+                        <div className="flex-shrink-0 pt-0.5">
                             <StatusIcons
                                 statuses={animal.statusObjects}
                                 sex={animal.sex}
-                                size={14} // Tamaño pequeño
-                                hideLactationStatus={true} // Ocultar iconos de lactancia aquí
+                                size={14} 
+                                hideLactationStatus={true} 
                             />
                         </div>
                         <div className="text-right flex-shrink-0">
@@ -146,7 +149,6 @@ const MilkingAnimalRow = ({ animal, onSelectAnimal, onOpenActions, isNewEntry, t
                        )}
                         <ChevronRight className="text-zinc-600 w-5 h-5" />
                     </div>
-                    {/* --- FIN DE LA CORRECCIÓN DE POSICIÓN --- */}
                 </div>
             </motion.div>
         </div>
@@ -154,13 +156,10 @@ const MilkingAnimalRow = ({ animal, onSelectAnimal, onOpenActions, isNewEntry, t
 };
 
 const TrendModalContent = ({ animalId }: { animalId: string }) => {
+    // ... (componente sin cambios)
     const { weighings } = useData();
     const { lastTwoWeighings, difference } = useWeighingTrend(animalId, weighings);
-    
-    if (lastTwoWeighings.length < 2) {
-        return <p>No hay suficientes datos para comparar.</p>;
-    }
-    
+    if (lastTwoWeighings.length < 2) { return <p>No hay suficientes datos para comparar.</p>; }
     return (
         <div className="text-center text-white space-y-4">
              <div className="grid grid-cols-2 gap-4 text-center">
@@ -175,36 +174,41 @@ const TrendModalContent = ({ animalId }: { animalId: string }) => {
              </div>
              <div>
                  <p className="text-zinc-400 text-base mb-1">Diferencia</p>
-                 <p className={`text-3xl font-bold ${difference > 0.15 ? 'text-brand-green' : difference < -0.15 ? 'text-brand-red' : 'text-zinc-400'}`}>
-                     {difference > 0 ? '+' : ''}{difference.toFixed(2)} Kg
-                 </p>
+                 <p className={`text-3xl font-bold ${difference > 0.15 ? 'text-brand-green' : difference < -0.15 ? 'text-brand-red' : 'text-zinc-400'}`}>{difference > 0 ? '+' : ''}{difference.toFixed(2)} Kg</p>
              </div>
          </div>
     );
 };
 
 const CustomBarLabel = (props: any) => {
+    // ... (componente sin cambios)
     const { x, y, width, height, value, total } = props;
     if (total === 0 || value === 0) return null;
     const percentage = ((value / total) * 100).toFixed(0);
-    
-    return (
-         <text x={x + width / 2} y={y + height / 2} fill="#fff" textAnchor="middle" dominantBaseline="middle" fontSize="14px" fontWeight="bold" opacity={0.8}>{`${percentage}%`}</text>
-    );
+    return (<text x={x + width / 2} y={y + height / 2} fill="#fff" textAnchor="middle" dominantBaseline="middle" fontSize="14px" fontWeight="bold" opacity={0.8}>{`${percentage}%`}</text>);
 };
 
-// Props para la página de análisis
 interface LactoKeeperAnalysisPageProps {
     onSelectAnimal: (animalId: string) => void;
 }
 
-// --- COMPONENTE PRINCIPAL DE LA PÁGINA DE ANÁLISIS ---
 export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperAnalysisPageProps) {
     const { animals, parturitions, weighings, isLoading, serviceRecords, sireLots, breedingSeasons, startDryingProcess, setLactationAsDry, deleteWeighingSession } = useData();
+    
+    const orphanWeighingIds = useMemo(() => {
+        // ... (lógica sin cambios)
+        const activeLactationMap = new Set<string>();
+        parturitions.forEach(p => { if (p.status === 'activa' || p.status === 'en-secado') { activeLactationMap.add(p.goatId); } });
+        const weighingAnimalIds = new Set<string>(weighings.map(w => w.goatId));
+        const orphanIds = new Set<string>();
+        weighingAnimalIds.forEach(goatId => { if (!activeLactationMap.has(goatId)) { orphanIds.add(goatId); } });
+        return orphanIds;
+    }, [parturitions, weighings]);
+    
     const [isWeighted, setIsWeighted] = useState(false);
     const [classificationFilter, setClassificationFilter] = useState<'all' | 'Pobre' | 'Promedio' | 'Sobresaliente'>('all');
     const [trendFilter, setTrendFilter] = useState<'all' | 'up' | 'down' | 'stable' | 'single'>('all');
-    const [specialFilter, setSpecialFilter] = useState<'all' | 'new'>('all');
+    const [specialFilter, setSpecialFilter] = useState<'all' | 'new' | 'orphan'>('all');
     const [lactationPhaseFilter, setLactationPhaseFilter] = useState<'all' | 'first' | 'second' | 'third' | 'drying'>('all');
     const [activeModal, setActiveModal] = useState<string | null>(null);
     const [trendModalAnimal, setTrendModalAnimal] = useState<AnalyzedAnimal | null>(null);
@@ -215,10 +219,10 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
     const [actionSheetAnimal, setActionSheetAnimal] = useState<AnalyzedAnimal | null>(null);
     const [isDeleteSessionModalOpen, setIsDeleteSessionModalOpen] = useState(false);
     const [dateIndex, setDateIndex] = useState(0);
-
     const dryingCandidateIds = useDryingCandidates();
 
     const { weighingsByDate, availableDates } = useMemo(() => {
+        // ... (lógica sin cambios)
         const groups: Record<string, any[]> = {};
         weighings.forEach(w => { if (!groups[w.date]) groups[w.date] = []; groups[w.date].push(w); });
         const dates = Object.keys(groups).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
@@ -228,6 +232,7 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
     const currentDate = availableDates[dateIndex];
 
     const selectedWeighings = useMemo(() => {
+        // ... (lógica sin cambios)
         if (!currentDate) return [];
         const weighingsForDate = weighingsByDate[currentDate] || [];
         const unique = new Map();
@@ -238,6 +243,7 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
     const { classifiedAnimals, distribution, mean, stdDev, weightedMean } = useGaussAnalysis(selectedWeighings, animals, weighings, parturitions, isWeighted);
 
     const classifiedAnimalsWithStatus = useMemo(() => {
+        // ... (lógica sin cambios)
         const animalMap = new Map(animals.map(a => [a.id, a]));
         return classifiedAnimals.map(ca => {
             const originalAnimal = animalMap.get(ca.id);
@@ -251,6 +257,7 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
     }, [classifiedAnimals, animals, parturitions, serviceRecords, sireLots, breedingSeasons]);
 
     const previousDayWeighings = useMemo(() => {
+        // ... (lógica sin cambios)
         if (dateIndex + 1 < availableDates.length) {
             const previousDate = availableDates[dateIndex + 1];
             return weighingsByDate[previousDate] || [];
@@ -261,6 +268,7 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
     const previousDayAnalysis = useGaussAnalysis(previousDayWeighings, animals, weighings, parturitions, false);
 
     const pageData = useMemo(() => {
+        // ... (lógica sin cambios)
         const currentAnalyzedAnimalIds = new Set(classifiedAnimals.map(a => a.id));
         const previousAnalyzedAnimalIds = new Set(previousDayAnalysis.classifiedAnimals.map(a => a.id));
         let newAnimalIds = new Set<string>();
@@ -276,7 +284,6 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
             const total = dateWeighings.reduce((sum, w) => sum + w.kg, 0);
             return { date: new Date(date + 'T00:00:00').toLocaleDateString('es-VE', {month: 'short', day: 'numeric'}), avg: total / dateWeighings.length };
         }).reverse();
-
         let topPerformer: (AnalyzedAnimal & Animal & { formattedAge: string; statusObjects: any[] }) | null = null;
         let bottomPerformer: (AnalyzedAnimal & Animal & { formattedAge: string; statusObjects: any[] }) | null = null;
         let total = 0, max = 0, min = Infinity;
@@ -293,7 +300,6 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
         const upperBound = mean + stdDev;
         const consistentCount = classifiedAnimals.filter(a => a.latestWeighing >= lowerBound && a.latestWeighing <= upperBound).length;
         const consistencyPercentage = classifiedAnimals.length > 0 ? (consistentCount / classifiedAnimals.length) * 100 : 0;
-
         return { trendData, kpi: { total, max, min }, topPerformer, bottomPerformer, consistency: { percentage: consistencyPercentage }, newAnimalIds, exitingAnimalIds };
     }, [classifiedAnimals, classifiedAnimalsWithStatus, previousDayAnalysis.classifiedAnimals, availableDates, dateIndex, weighingsByDate, mean, stdDev]);
 
@@ -308,17 +314,12 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
     };
 
     const finalAnimalList = useMemo(() => {
+        // ... (lógica sin cambios)
         let list = filteredItems; 
-
-        if (classificationFilter !== 'all') { 
-            list = list.filter(a => a.classification === classificationFilter); 
-        }
-        if (specialFilter === 'new') { 
-            list = list.filter(animal => pageData.newAnimalIds.has(animal.id)); 
-        }
-        if (trendFilter !== 'all') { 
-            list = list.filter(animal => animal.trend === trendFilter); 
-        }
+        if (classificationFilter !== 'all') { list = list.filter(a => a.classification === classificationFilter); }
+        if (specialFilter === 'new') { list = list.filter(animal => pageData.newAnimalIds.has(animal.id)); } 
+        else if (specialFilter === 'orphan') { list = list.filter(animal => orphanWeighingIds.has(animal.id)); }
+        if (trendFilter !== 'all') { list = list.filter(animal => animal.trend === trendFilter); }
         if (lactationPhaseFilter !== 'all') {
             list = list.filter(animal => {
                 const del = animal.del;
@@ -331,9 +332,10 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
             });
         }
         return list.sort((a,b) => b.latestWeighing - a.latestWeighing);
-    }, [filteredItems, classificationFilter, trendFilter, lactationPhaseFilter, specialFilter, pageData.newAnimalIds, dryingCandidateIds]); 
+    }, [filteredItems, classificationFilter, trendFilter, lactationPhaseFilter, specialFilter, pageData.newAnimalIds, dryingCandidateIds, orphanWeighingIds]); 
     
     const trendCounts = useMemo(() => {
+        // ... (lógica sin cambios)
         const totalWithHistory = classifiedAnimals.filter(a => !pageData.newAnimalIds.has(a.id)).length;
         if (classifiedAnimals.length === 0) return { up: 0, down: 0, stable: 0, new: 0 };
         if (totalWithHistory === 0 && pageData.newAnimalIds.size > 0) return { up: 0, down: 0, stable: 0, new: 100 };
@@ -354,6 +356,7 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
     const handleOpenActions = (animal: AnalyzedAnimal) => { setActionSheetAnimal(animal); setIsActionSheetOpen(true); };
 
     const getActionsForAnimal = (animal: AnalyzedAnimal | null): ActionSheetAction[] => {
+        // ... (lógica sin cambios)
         if (!animal) return [];
         const actions: ActionSheetAction[] = [];
         const currentParturition = parturitions.find(p => p.goatId === animal.id && (p.status === 'activa' || p.status === 'en-secado'));
@@ -370,8 +373,8 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
     };
 
     const closeModal = () => { setActiveModal(null); setActionSheetAnimal(null); };
-
     const handleDeleteCurrentSession = async () => {
+        // ... (lógica sin cambios)
         if (!currentDate) return;
         try { await deleteWeighingSession(currentDate); setDateIndex(0); setIsDeleteSessionModalOpen(false); }
         catch (error) { console.error("Error deleting session:", error); }
@@ -385,7 +388,7 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
         <>
             <div className="w-full max-w-2xl mx-auto">
                 <div className="p-4 space-y-4">
-                    {/* Controles, KPIs, Gráficos */}
+                    {/* Controles, KPIs, Gráficos (sin cambios) */}
                      <div className="bg-brand-glass rounded-2xl p-3 border border-brand-border flex justify-between items-center">
                         <button onClick={() => setDateIndex(i => Math.min(i + 1, availableDates.length - 1))} disabled={dateIndex >= availableDates.length - 1} className="p-2 rounded-full hover:bg-zinc-700/50 disabled:opacity-30"><ChevronLeft /></button>
                         <div className="text-center">
@@ -457,6 +460,18 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
                                 <button onClick={() => setIsExitingAnimalsModalOpen(true)} disabled={pageData.exitingAnimalIds.size === 0} className={`px-3 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all bg-zinc-800/50 text-zinc-300 ${pageData.exitingAnimalIds.size > 0 && 'animate-pulse'} disabled:opacity-40 disabled:cursor-not-allowed`}><LogOut size={14}/> <span>Salidas ({pageData.exitingAnimalIds.size})</span></button>
                             </div>
                         </div>
+                        {orphanWeighingIds.size > 0 && (
+                            <div className="p-2 border-t border-brand-border">
+                                <button 
+                                    onClick={() => setSpecialFilter(prev => prev === 'orphan' ? 'all' : 'orphan')}
+                                    disabled={orphanWeighingIds.size === 0} 
+                                    className={`w-full px-3 py-2 text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition-all ${specialFilter === 'orphan' ? 'bg-brand-red text-white shadow-lg shadow-red-500/20' : 'bg-red-900/40 text-red-300'} ${specialFilter !== 'orphan' && 'animate-pulse'}`}
+                                >
+                                    <AlertTriangle size={14}/> 
+                                    <span>Alerta: {orphanWeighingIds.size} animal(es) con pesajes sin parto activo.</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                     <div className="relative px-4">
                         <Search className="absolute left-7 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500 pointer-events-none" />
@@ -485,7 +500,7 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
                 </div>
             </div>
 
-            {/* --- Modales (Contenido envuelto en children) --- */}
+            {/* --- Modales (sin cambios) --- */}
             <Modal isOpen={activeModal === 'media'} onClose={() => setActiveModal(null)} title="Análisis de Producción Media">
                 <div className="text-zinc-300 space-y-4 text-base"><p>La **Media de Producción** del día es **{mean.toFixed(2)} Kg**. Representa el promedio simple.</p><p>La **Media Ponderada** ({weightedMean.toFixed(2)} Kg) premia la **persistencia lechera** (más valor a producción tardía).</p></div>
             </Modal>
@@ -493,7 +508,7 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
                 <div className="text-center"><p className="text-zinc-400">La producción total registrada el {currentDate ? new Date(currentDate + 'T00:00:00').toLocaleDateString('es-VE') : '-'} fue:</p><h2 className="text-5xl font-bold text-brand-orange my-2">{pageData.kpi.total.toFixed(2)} Kg</h2></div>
             </Modal>
             <Modal isOpen={activeModal === 'stdDev'} onClose={() => setActiveModal(null)} title="Análisis de Consistencia (σ)">
-                <div className="text-zinc-300 space-y-4 text-base"><p>La Desviación Estándar (σ) de **{stdDev.toFixed(2)}** mide la dispersión. Un valor **bajo** es ideal (rebaño consistente).</p><div className="bg-black/30 p-4 rounded-lg text-center"><p className="text-sm uppercase text-zinc-400">Rebaño dentro de 1σ</p><p className="text-4xl font-bold text-brand-orange my-1">{pageData.consistency.percentage.toFixed(0)}%</p><p className="text-sm text-zinc-400">Cercanía al promedio de <span className="font-bold text-white">{mean.toFixed(2)} Kg</span>.</p></div></div>
+                <div className="text-zinc-300 space-y-4 text-base"><p>La Desviación Estándar (σ) de **{stdDev.toFixed(2)}** mide la dispersión. Un valor **bajo** es ideal (rebaño consistente).</p><div className="bg-black/30 p-4 rounded-lg text-center"><p className="text-sm uppercase text-zinc-40G00">Rebaño dentro de 1σ</p><p className="text-4xl font-bold text-brand-orange my-1">{pageData.consistency.percentage.toFixed(0)}%</p><p className="text-sm text-zinc-400">Cercanía al promedio de <span className="font-bold text-white">{mean.toFixed(2)} Kg</span>.</p></div></div>
             </Modal>
             <Modal isOpen={activeModal === 'rango'} onClose={() => setActiveModal(null)} title="Extremos de Producción del Día">
                  <div className="space-y-4">

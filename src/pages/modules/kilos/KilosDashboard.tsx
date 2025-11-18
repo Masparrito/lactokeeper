@@ -1,49 +1,55 @@
-// src/pages/modules/kilos/KilosDashboard.tsx (CORREGIDO)
+// src/pages/modules/kilos/KilosDashboard.tsx
+// (Limpiado de imports no usados)
 
-import React, { useMemo, useState } from 'react';
-import { useData } from '../../../context/DataContext';
-// Utility functions for calculations and formatting
-import { calculateAgeInDays, calculateGDP, formatAge, getAnimalZootecnicCategory, calculateGrowthScore } from '../../../utils/calculations';
+import React, { useState, useMemo, useRef } from 'react';
+// (NUEVO) Importar el hook de analíticas y sus tipos
+import { 
+    useGrowthAnalytics, 
+    GrowthAnalyzedAnimal, 
+    CategoryPerformance, 
+    TargetClassification, 
+    HerdClassification,
+    GrowthAnalytics
+} from '../../../hooks/useGrowthAnalytics';
 // Icons
-import { ChevronRight, TrendingUp, Minus, Sigma, Plus, Camera, FilePen } from 'lucide-react';
+// --- (CORREGIDO) 'BarChartIcon' y 'Users' eliminados ---
+import { ChevronRight, AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react';
 // Recharts components
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 // UI Components
-import { CustomTooltip } from '../../../components/ui/CustomTooltip';
-// Custom Hooks type definition
-import { GdpAnalyzedAnimal } from '../../../hooks/useGdpAnalysis';
-// Database types
-import { Animal, BodyWeighing } from '../../../db/local'; // Parturition IS needed
+import { GrowthTooltip } from '../../../components/ui/GrowthTooltip';
 
-// (NUEVO) Importar componentes del flujo
-import { Modal } from '../../../components/ui/Modal';
-import { ActionSheetModal, ActionSheetAction } from '../../../components/ui/ActionSheetModal';
-// (CORREGIDO) Ruta de importación y OcrResult
-import BatchImportPage, { OcrResult } from '../../BatchImportPage';
-import { BatchWeighingForm } from '../../../components/forms/BatchWeighingForm';
-import { NewWeighingSessionFlow } from '../shared/NewWeighingSessionFlow';
+// --- SUB-COMPONENTES REUTILIZABLES ---
 
-// --- SUB-COMPONENTES DE LA PÁGINA ---
-// ... (Componentes 'GDPTrendIcon' y 'AnimalRow' SIN CAMBIOS) ...
-type Classification = 'Sobresaliente' | 'Promedio' | 'Pobre';
-const GDPTrendIcon = ({ gdp, averageGdp }: { gdp: number | null, averageGdp: number }) => {
-    if (gdp === null || !averageGdp || averageGdp === 0) return null;
-    const diff = gdp / averageGdp;
-    if (diff > 1.1) return <TrendingUp size={18} className="text-brand-green" />;
-    if (diff < 0.9) return <TrendingUp size={18} className="text-brand-red rotate-180" />;
-    return <Minus size={18} className="text-zinc-500" />;
-};
-const AnimalRow = ({ animal, onSelect, averageGdp }: {
-    animal: GdpAnalyzedAnimal & { formattedAge: string },
+const KpiCard = ({ icon: Icon, label, value, unit, colorClass }: { icon: React.ElementType, label: string, value: string | number, unit?: string, colorClass?: string }) => (
+    <div className={`bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border ${colorClass || ''}`}>
+        <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"><Icon size={14} /><span>{label}</span></div>
+        <p className="text-2xl font-bold text-white mt-1">{value} <span className="text-lg text-zinc-400">{unit}</span></p>
+    </div>
+);
+
+// Fila de Animal (Genérica, muestra la clasificación que se le pase)
+const AnimalRow = ({ animal, onSelect, type }: {
+    animal: GrowthAnalyzedAnimal,
     onSelect: (id: string) => void,
-    averageGdp: number
+    type: 'target' | 'herd'
 }) => {
-    const classificationColor: Record<Classification, string> = {
-        'Sobresaliente': 'text-brand-green',
-        'Promedio': 'text-zinc-400',
-        'Pobre': 'text-brand-red',
+    
+    const classification = type === 'target' ? animal.targetClassification : animal.herdClassification;
+    const deviation = type ==='target' ? animal.targetDeviation : animal.herdDeviation;
+    
+    const classificationColor: Record<TargetClassification | HerdClassification, string> = {
+        'Superior': 'text-brand-green',
+        'En Meta': 'text-zinc-300',
+        'Bajo Meta': 'text-yellow-400',
+        'Alerta': 'text-brand-red',
+        'Promedio': 'text-zinc-300',
+        'Inferior': 'text-brand-red',
+        'N/A': 'text-zinc-500',
     };
+    
     const formattedName = animal.name ? String(animal.name).toUpperCase().trim() : '';
+    
     return (
         <button onClick={() => onSelect(animal.id)} className="w-full text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border flex justify-between items-center hover:border-brand-green transition-colors min-h-[80px]">
             <div className="min-w-0 pr-3">
@@ -52,292 +58,332 @@ const AnimalRow = ({ animal, onSelect, averageGdp }: {
                   <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
                 )}
                 <div className="text-xs text-zinc-500 mt-1 min-h-[1rem] truncate">
-                    <span>{animal.sex} | {animal.formattedAge} | Lote: {animal.location || 'N/A'}</span>
+                    <span>{animal.sex} | {animal.formattedAge} | Cat: {animal.lifecycleStage}</span>
                 </div>
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
                 <div className="text-right">
                     <p className="font-semibold text-white text-base">
-                        {animal.gdp ? `${animal.gdp.toFixed(0)}` : '--'}
-                        <span className="text-sm text-zinc-400"> g/día</span>
+                        <span className={classificationColor[classification]}>
+                            {(deviation * 100).toFixed(0)}%
+                        </span>
+                        <span className="text-sm text-zinc-400"> / {type === 'target' ? 'Meta' : 'Prom.'}</span>
                     </p>
-                    <p className={`font-bold text-xs ${classificationColor[animal.classification]}`}>{animal.classification}</p>
+                    <p className={`font-bold text-xs ${classificationColor[classification]}`}>{classification}</p>
                 </div>
-                <GDPTrendIcon gdp={animal.gdp ? animal.gdp / 1000 : null} averageGdp={averageGdp} />
                 <ChevronRight className="text-zinc-600 w-5 h-5" />
             </div>
         </button>
     );
 };
-// --- FIN AnimalRow ---
 
-// --- COMPONENTE PRINCIPAL DEL DASHBOARD DE KILOS ---
-export default function KilosDashboard({ onSelectAnimal }: { onSelectAnimal: (animalId: string) => void }) {
-    const { animals, bodyWeighings, parturitions, appConfig } = useData();
-    const [filter, setFilter] = useState<Classification | 'all'>('all');
+// Fila de Categoría
+const CategoryPerformanceRow = ({ category, type }: { category: CategoryPerformance, type: 'target' | 'herd' }) => {
+    
+    const deviation = type === 'target' ? category.avgTargetDeviation : category.avgHerdDeviation;
+    const deviationPct = (deviation * 100).toFixed(0);
+    const color = deviation >= 1.0 ? 'text-brand-green' : deviation < 0.85 ? 'text-brand-red' : 'text-yellow-400';
 
-    // --- (NUEVO) Estados para el flujo de importación ---
-    type ActiveModal = 'idle' | 'loadOptions' | 'loadManual' | 'loadOcr' | 'loadOcrResults';
-    const [activeModal, setActiveModal] = useState<ActiveModal>('idle');
-    const [ocrResults, setOcrResults] = useState<OcrResult[]>([]); 
-    const [ocrDefaultDate, setOcrDefaultDate] = useState('');
-    const [manualAnimals, setManualAnimals] = useState<Animal[]>([]);
-    // --- Fin Nuevos Estados ---
+    return (
+        <div className="flex justify-between items-center bg-black/20 p-3 rounded-lg">
+            <div>
+                <p className="font-semibold text-white">{category.categoryName}</p>
+                <p className="text-xs text-zinc-400">{category.animalCount} Animales ({type === 'target' ? `${category.alertCount} en Alerta` : ''})</p>
+            </div>
+            <div className={`text-right ${color}`}>
+                <p className="font-bold text-lg">{deviationPct}%</p>
+                <p className="text-xs">Cumplimiento</p>
+            </div>
+        </div>
+    );
+};
 
-    // Memoized analysis of growth data
-    // ... (Lógica de 'analysis' SIN CAMBIOS) ...
-    const analysis = useMemo(() => {
-        const animalsInGrowth = animals.filter((a: Animal) => {
-            if (a.status !== 'Activo') return false;
-            if (a.isReference) return false;
-            if (a.sireLotId) return false;
-            const category = getAnimalZootecnicCategory(a, parturitions, appConfig);
-            return ['Cabrita', 'Cabritona', 'Cabrito', 'Macho de Levante'].includes(category);
-        });
-        if (animalsInGrowth.length === 0) {
-            return { analyzedAnimals: [], distribution: [], averageGdp: 0, gaussChartData: [], meanGdp: 0, stdDev: 0 };
-        }
-        let totalGdpKgDay = 0;
-        let animalsWithGdpCount = 0;
-        const intermediateAnalyzedData = animalsInGrowth.map((animal: Animal) => {
-            const weighings = bodyWeighings.filter((w: BodyWeighing) => w.animalId === animal.id);
-            const gdpDetails = calculateGDP(animal.birthWeight, weighings);
-            const overallGdpKgDay = gdpDetails.overall ?? 0;
-            const ageInDays = calculateAgeInDays(animal.birthDate);
-            if(overallGdpKgDay > 0) {
-                totalGdpKgDay += overallGdpKgDay;
-                animalsWithGdpCount++;
-            }
-            const averageGdpKgDayForScore = animalsWithGdpCount > 0 ? totalGdpKgDay / animalsWithGdpCount : 0;
-            const score = overallGdpKgDay > 0 ? calculateGrowthScore(overallGdpKgDay, averageGdpKgDayForScore, ageInDays) : 0;
-            return {
-                ...animal,
-                formattedAge: formatAge(animal.birthDate),
-                ageInDays: ageInDays,
-                gdpKgDay: overallGdpKgDay,
-                score: score,
-            };
-        });
-        const averageGdpKgDay = animalsWithGdpCount > 0 ? totalGdpKgDay / animalsWithGdpCount : 0;
-        const meanGdpKgDay = averageGdpKgDay;
-        const validScores = intermediateAnalyzedData.filter(a => a.score > 0).map(a => a.score);
-        const meanScore = validScores.length > 0 ? validScores.reduce((sum, score) => sum + score, 0) / validScores.length : 0;
-        const stdDevScore = validScores.length > 0 ? Math.sqrt(validScores.reduce((sum, score) => sum + Math.pow(score - meanScore, 2), 0) / validScores.length) : 0;
-        const POOR_THRESHOLD_SCORE = meanScore - (0.4 * stdDevScore);
-        const EXCELLENT_THRESHOLD_SCORE = meanScore + (0.4 * stdDevScore);
-        const sortedIntermediate = intermediateAnalyzedData.sort((a, b) => b.score - a.score);
-        const finalAnalyzedAnimals: (GdpAnalyzedAnimal & { formattedAge: string })[] = sortedIntermediate.map(animal => {
-            let classification: Classification = 'Promedio';
-            if (animal.score > 0 && stdDevScore > 1) {
-                if (animal.score < POOR_THRESHOLD_SCORE) classification = 'Pobre';
-                else if (animal.score > EXCELLENT_THRESHOLD_SCORE) classification = 'Sobresaliente';
-            }
-            return {
-                 ...animal,
-                 gdp: animal.gdpKgDay * 1000, // g/día
-                 ageInDays: animal.ageInDays,
-                 classification: classification,
-                 formattedAge: animal.formattedAge,
-            } as GdpAnalyzedAnimal & { formattedAge: string };
-        });
-        const distribution = [
-            { name: 'Pobre', count: finalAnalyzedAnimals.filter(a => a.classification === 'Pobre').length, fill: '#FF3B30' },
-            { name: 'Promedio', count: finalAnalyzedAnimals.filter(a => a.classification === 'Promedio').length, fill: '#6B7280' },
-            { name: 'Sobresaliente', count: finalAnalyzedAnimals.filter(a => a.classification === 'Sobresaliente').length, fill: '#34C759' },
-        ];
-        const gdpValuesGDay = finalAnalyzedAnimals.map(a => a.gdp).filter(gdp => gdp > 0);
-        const gaussChartData = [];
-        let stdDevGDay = 0;
-        if (gdpValuesGDay.length > 0) {
-            const minGdp = Math.min(...gdpValuesGDay);
-            const maxGdp = Math.max(...gdpValuesGDay);
-            const step = Math.max(10, Math.ceil((maxGdp - minGdp) / 15));
-            for (let i = Math.floor(minGdp / step) * step; i < maxGdp; i += step) {
-                const rangeStart = i; const rangeEnd = i + step;
-                const count = finalAnalyzedAnimals.filter(a => a.gdp >= rangeStart && a.gdp < rangeEnd).length;
-                if (count > 0) { gaussChartData.push({ name: `${rangeStart}-${rangeEnd}`, count }); }
-            }
-             const meanGdpGDay = meanGdpKgDay * 1000;
-             stdDevGDay = gdpValuesGDay.length > 0 ? Math.sqrt(gdpValuesGDay.reduce((sum, gdp) => sum + Math.pow(gdp - meanGdpGDay, 2), 0) / gdpValuesGDay.length) : 0;
-        }
-        return {
-            analyzedAnimals: finalAnalyzedAnimals,
-            distribution,
-            averageGdp: averageGdpKgDay, // kg/día
-            gaussChartData,
-            meanGdp: meanGdpKgDay * 1000, // g/día
-            stdDev: stdDevGDay // g/día
-        };
-    }, [animals, bodyWeighings, parturitions, appConfig]);
+// --- PÁGINA 1: DASHBOARD (REALIDAD) ---
+const RealityDashboard = ({ analytics, onSelectAnimal }: {
+    analytics: GrowthAnalytics,
+    onSelectAnimal: (animalId: string) => void
+}) => {
+    const [filter, setFilter] = useState<'all' | 'Superior' | 'Promedio' | 'Inferior'>('all');
 
-    const filteredAnimals = React.useMemo(() => {
-        if (filter === 'all') return analysis.analyzedAnimals;
-        return analysis.analyzedAnimals.filter(a => a.classification === filter);
-    }, [analysis.analyzedAnimals, filter]);
+    const distribution = [
+        { name: 'Inferior', count: analytics.herdKPIs.belowAvgPct, fill: '#FF3B30' },
+        { name: 'Prom./Sup.', count: analytics.herdKPIs.aboveAvgPct, fill: '#34C759' },
+    ];
+
+    const filteredAnimals = useMemo(() => {
+        let list = [...analytics.animals].sort((a,b) => b.herdDeviation - a.herdDeviation);
+        if (filter === 'all') return list;
+        return list.filter(a => a.herdClassification === filter);
+    }, [analytics.animals, filter]);
 
     const handleBarClick = (data: any) => {
         if (data?.payload?.name) {
-            const newFilter = data.payload.name as Classification;
+            const name = data.payload.name;
+            let newFilter: typeof filter = 'all';
+            if (name === 'Inferior') newFilter = 'Inferior';
+            if (name === 'Prom./Sup.') newFilter = 'Superior';
             setFilter(prev => prev === newFilter ? 'all' : newFilter);
         }
     };
 
-    // --- (NUEVO) Handlers para el flujo de importación ---
-    const handleCloseModal = () => {
-      setActiveModal('idle');
-      setOcrResults([]);
-      setManualAnimals([]);
-      setOcrDefaultDate('');
-    };
+    return (
+        <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in px-4 pb-24 pt-4">
+             <header className="text-center">
+                <h1 className="text-xl font-semibold tracking-tight text-white">Dashboard (Realidad)</h1>
+                <p className="text-md text-zinc-400">{analytics.herdKPIs.totalAnimals} Animales vs. Promedio</p>
+            </header>
+            
+            <KpiCard 
+                icon={TrendingUp} 
+                label="Desempeño Gral. Finca" 
+                value={(analytics.herdKPIs.avgDeviation * 100).toFixed(0)} 
+                unit="%"
+                colorClass={analytics.herdKPIs.avgDeviation > 1 ? "border-brand-green/50" : "border-brand-red/50"}
+            />
+            
+            <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
+                <h3 className="text-lg font-semibold text-white mb-4">Rendimiento vs. Promedio</h3>
+                <div className="w-full h-48">
+                    <ResponsiveContainer>
+                        <BarChart data={distribution} margin={{ top: 20, right: 10, left: -20, bottom: 0 }} layout="vertical">
+                            <XAxis type="number" domain={[0, 100]} tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
+                            <YAxis type="category" dataKey="name" width={80} tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
+                            <Tooltip content={<GrowthTooltip />} cursor={{fill: 'rgba(255, 255, 255, 0.05)'}} />
+                            <Bar dataKey="count" name="%" onClick={handleBarClick} cursor="pointer">
+                                {distribution.map(entry => <Cell key={entry.name} fill={entry.fill} />)}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+            
+            {analytics.categoryPerformance.length > 0 && (
+                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
+                    <h3 className="text-lg font-semibold text-white mb-4">Eficiencia por Categoría (vs. Realidad)</h3>
+                    <div className="space-y-2">
+                        {analytics.categoryPerformance.map((category: CategoryPerformance) => (
+                            <CategoryPerformanceRow key={category.categoryName} category={category} type="herd" />
+                        ))}
+                    </div>
+                </div>
+            )}
+            
+            <div className="space-y-4 pt-4">
+                <h3 className="text-lg font-semibold text-zinc-300 ml-1">Animales ({filteredAnimals.length})</h3>
+                {filteredAnimals.length > 0 ? (
+                    filteredAnimals.map((animal: GrowthAnalyzedAnimal) => (
+                        <AnimalRow key={animal.id} animal={animal} onSelect={onSelectAnimal} type="herd" />
+                    ))
+                ) : (
+                    <div className="text-center py-10 bg-brand-glass rounded-2xl">
+                        <p className="text-zinc-500">No hay animales que coincidan con los filtros.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
 
-    const handleOcrSuccess = (results: OcrResult[], defaultDate: string) => {
-      setOcrResults(results);
-      setOcrDefaultDate(defaultDate);
-      setActiveModal('loadOcrResults'); // Mover a la cuadrícula de validación
-    };
-    
-    // (CORREGIDO) Ignorar 'selectedIds'
-    const handleManualSelect = (_selectedIds: string[], selectedAnimals: Animal[]) => {
-        setManualAnimals(selectedAnimals);
-        setActiveModal('loadManual'); // Mover a la cuadrícula de carga
-    };
+// --- PÁGINA 2: DASHBOARD (METAS) ---
+const StrategicDashboard = ({ analytics, onSelectAnimal }: {
+    analytics: GrowthAnalytics,
+    onSelectAnimal: (animalId: string) => void
+}) => {
+    const [filter, setFilter] = useState<'all' | 'alert' | 'below' | 'on_target'>('all');
 
-    const loadOptionsActions: ActionSheetAction[] = [
-      { label: 'Cargar con Foto (IA)', icon: Camera, onClick: () => setActiveModal('loadOcr') },
-      { label: 'Cargar Manual (Selección)', icon: FilePen, onClick: () => setActiveModal('loadManual') },
+    const distribution = [
+        { name: 'Alerta', count: analytics.targetKPIs.alertPct, fill: '#FF3B30' },
+        { name: 'Bajo Meta', count: analytics.targetKPIs.belowTargetPct, fill: '#FF9500' },
+        { name: 'En Meta', count: analytics.targetKPIs.onTargetPct, fill: '#34C759' },
     ];
-    // --- Fin Handlers ---
+
+    const filteredAnimals = React.useMemo(() => {
+        let list = [...analytics.animals].sort((a,b) => a.targetDeviation - b.targetDeviation);
+        if (filter === 'all') return list;
+        if (filter === 'alert') return analytics.alertList;
+        if (filter === 'below') return list.filter(a => a.targetClassification === 'Bajo Meta');
+        if (filter === 'on_target') return list.filter(a => a.targetClassification === 'En Meta' || a.targetClassification === 'Superior');
+        return list;
+    }, [analytics.animals, analytics.alertList, filter]);
+
+    const handleBarClick = (data: any) => {
+        if (data?.payload?.name) {
+            const name = data.payload.name;
+            let newFilter: typeof filter = 'all';
+            if (name === 'Alerta') newFilter = 'alert';
+            if (name === 'Bajo Meta') newFilter = 'below';
+            if (name === 'En Meta') newFilter = 'on_target';
+            setFilter(prev => prev === newFilter ? 'all' : newFilter);
+        }
+    };
 
     return (
-        <> {/* (NUEVO) Añadir Fragment para los modales */}
-            {/* --- (NUEVO) Botón Flotante de Carga --- */}
-            <button
-              onClick={() => setActiveModal('loadOptions')}
-              className="fixed bottom-20 sm:bottom-8 right-8 z-40 bg-brand-orange text-white p-4 rounded-full shadow-lg transform active:scale-95 transition-transform"
+        <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in px-4 pb-24 pt-4">
+             <header className="text-center">
+                <h1 className="text-xl font-semibold tracking-tight text-white">Dashboard (Metas)</h1>
+                <p className="text-md text-zinc-400">{analytics.targetKPIs.totalAnimals} Animales vs. Metas</p>
+            </header>
+
+            <div className="grid grid-cols-2 gap-4">
+                <KpiCard 
+                    icon={CheckCircle} 
+                    label="% En Meta" 
+                    value={analytics.targetKPIs.onTargetPct.toFixed(0)} 
+                    unit="%" 
+                    colorClass={analytics.targetKPIs.onTargetPct > 80 ? "border-brand-green/50" : "border-zinc-500/50"}
+                />
+                <KpiCard 
+                    icon={AlertTriangle} 
+                    label="% En Alerta" 
+                    value={analytics.targetKPIs.alertPct.toFixed(0)} 
+                    unit="%"
+                    colorClass={analytics.targetKPIs.alertPct > 15 ? "border-brand-red/50" : "border-zinc-500/50"}
+                />
+            </div>
+            
+            <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
+                <h3 className="text-lg font-semibold text-white mb-4">Cumplimiento de Meta</h3>
+                <div className="w-full h-48">
+                    <ResponsiveContainer>
+                        <BarChart data={distribution} margin={{ top: 20, right: 10, left: -20, bottom: 0 }} layout="vertical">
+                            <XAxis type="number" domain={[0, 100]} tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
+                            <YAxis type="category" dataKey="name" width={80} tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
+                            <Tooltip content={<GrowthTooltip />} cursor={{fill: 'rgba(255, 255, 255, 0.05)'}} />
+                            <Bar dataKey="count" name="%" onClick={handleBarClick} cursor="pointer">
+                                {distribution.map(entry => {
+                                    let selectedFilter: string = '';
+                                    if (filter === 'alert') selectedFilter = 'Alerta';
+                                    if (filter === 'below') selectedFilter = 'Bajo Meta';
+                                    if (filter === 'on_target') selectedFilter = 'En Meta';
+                                    return <Cell key={entry.name} fill={entry.fill} className={`${filter !== 'all' && selectedFilter !== entry.name ? 'opacity-30' : 'opacity-100'} transition-opacity`} />
+                                })}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+            
+            {analytics.categoryPerformance.length > 0 && (
+                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
+                    <h3 className="text-lg font-semibold text-white mb-4">Eficiencia por Categoría (vs. Metas)</h3>
+                    <div className="space-y-2">
+                        {analytics.categoryPerformance.map((category: CategoryPerformance) => (
+                            <CategoryPerformanceRow key={category.categoryName} category={category} type="target" />
+                        ))}
+                    </div>
+                </div>
+            )}
+            
+            <div className="space-y-4 pt-4">
+                <h3 className="text-lg font-semibold text-zinc-300 ml-1">
+                    {filter === 'all' && 'Todos los Animales'}
+                    {filter === 'alert' && 'Animales en Alerta'}
+                    {filter === 'below' && 'Animales Bajo Meta'}
+                    {filter === 'on_target' && 'Animales En Meta'}
+                    ({filteredAnimals.length})
+                </h3>
+                {filteredAnimals.length > 0 ? (
+                    filteredAnimals.map((animal: GrowthAnalyzedAnimal) => (
+                        <AnimalRow key={animal.id} animal={animal} onSelect={onSelectAnimal} type="target" />
+                    ))
+                ) : (
+                    <div className="text-center py-10 bg-brand-glass rounded-2xl">
+                        <p className="text-zinc-500">No hay animales que coincidan con los filtros.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+
+// --- COMPONENTE PRINCIPAL (SHELL) ---
+export default function KilosDashboard({ onSelectAnimal }: { onSelectAnimal: (animalId: string) => void }) {
+    
+    const strategicAnalytics = useGrowthAnalytics();
+    
+    const [activePage, setActivePage] = useState<0 | 1>(0); // 0 = Realidad, 1 = Metas
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    
+    // El botón flotante se ha ELIMINADO
+
+    const handleScroll = () => {
+        if (scrollContainerRef.current) {
+            const scrollLeft = scrollContainerRef.current.scrollLeft;
+            const pageWidth = scrollContainerRef.current.clientWidth;
+            const threshold = pageWidth / 2;
+            let currentPage: 0 | 1 = 0;
+            
+            if (scrollLeft > threshold) {
+                currentPage = 1;
+            } else {
+                currentPage = 0;
+            }
+            
+            if (currentPage !== activePage) {
+                setActivePage(currentPage);
+            }
+        }
+    };
+    
+    const goToPage = (page: 0 | 1) => {
+        if (scrollContainerRef.current) {
+            const pageWidth = scrollContainerRef.current.clientWidth;
+            scrollContainerRef.current.scrollTo({ 
+                left: pageWidth * page, 
+                behavior: 'smooth' 
+            });
+            setActivePage(page);
+        }
+    };
+
+    return (
+        <>
+            {/* El botón flotante ha sido ELIMINADO */}
+
+            {/* --- Contenedor de Swipe --- */}
+            <div 
+                ref={scrollContainerRef}
+                onScroll={handleScroll}
+                className="w-full h-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              <Plus size={28} />
-            </button>
-            {/* --- Fin Botón Flotante --- */}
+                <div className="flex w-[200vw] h-full"> {/* 200vw = 2 páginas */}
+                    
+                    {/* --- Página 1: DASHBOARD (REALIDAD) --- */}
+                    <div className="w-screen h-full snap-start overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+                        <RealityDashboard 
+                            analytics={strategicAnalytics}
+                            onSelectAnimal={onSelectAnimal} 
+                        />
+                    </div>
 
-            {/* (MODIFICADO) Añadir 'pb-24' para el botón flotante */}
-            <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in px-4 pb-24">
-                <header className="text-center pt-4">
-                    <h1 className="text-3xl font-bold tracking-tight text-white">Análisis de GDP</h1>
-                    <p className="text-lg text-zinc-400">Ganancia Diaria de Peso</p>
-                </header>
+                    {/* --- Página 2: DASHBOARD (METAS) --- */}
+                    <div className="w-screen h-full snap-start overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+                        <StrategicDashboard
+                            analytics={strategicAnalytics}
+                            onSelectAnimal={onSelectAnimal} 
+                        />
+                    </div>
 
-                {/* ... (Resto del dashboard: KPIs, Gráficos y Lista SIN CAMBIOS) ... */}
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border">
-                        <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"><TrendingUp size={14} /><span>GDP Media</span></div>
-                        <p className="text-2xl font-bold text-white">{(analysis.meanGdp).toFixed(0)} <span className="text-lg text-zinc-400">g/día</span></p>
-                    </div>
-                    <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border">
-                        <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase"><Sigma size={14} /><span>Desv. Estándar</span></div>
-                        <p className="text-2xl font-bold text-white">{(analysis.stdDev).toFixed(0)} <span className="text-lg text-zinc-400">g/día</span></p>
-                    </div>
-                </div>
-                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
-                    <h3 className="text-lg font-semibold text-white mb-4">Distribución del Crecimiento</h3>
-                    <div className="w-full h-48">
-                        <ResponsiveContainer>
-                            <BarChart data={analysis.distribution} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                                <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
-                                <YAxis orientation="left" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} allowDecimals={false}/>
-                                <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(255, 255, 255, 0.05)'}} />
-                                <Bar dataKey="count" onClick={handleBarClick} cursor="pointer">
-                                    {analysis.distribution.map(entry => <Cell key={entry.name} fill={entry.fill} className={`${filter !== 'all' && filter !== entry.name ? 'opacity-30' : 'opacity-100'} transition-opacity`} />)}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
-                    <h3 className="text-lg font-semibold text-white mb-4">Campana de Gauss (g/día)</h3>
-                    <div className="w-full h-48">
-                        <ResponsiveContainer>
-                            <BarChart data={analysis.gaussChartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                                <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} interval={0} angle={-30} textAnchor="end" height={40}/>
-                                <YAxis orientation="left" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} allowDecimals={false} />
-                                <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(255, 255, 255, 0.05)'}} />
-                                <Bar dataKey="count" fill="rgba(52, 199, 89, 0.6)" name="Nº Animales"/>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                    <div className="text-center text-xs text-zinc-400 mt-2">
-                        <span>μ = {(analysis.meanGdp).toFixed(0)} g/día</span> | <span>σ = {analysis.stdDev.toFixed(0)} g/día</span>
-                    </div>
-                </div>
-                <div className="space-y-4 pt-4">
-                    <h3 className="text-lg font-semibold text-zinc-300 ml-1">
-                        {filter === 'all' ? 'Animales en Crecimiento' : `Animales (${filter})`} ({filteredAnimals.length})
-                    </h3>
-                    {filteredAnimals.length > 0 ? (
-                        filteredAnimals.map(animal => (
-                            <AnimalRow key={animal.id} animal={animal} onSelect={onSelectAnimal} averageGdp={analysis.averageGdp} />
-                        ))
-                    ) : (
-                        <div className="text-center py-10 bg-brand-glass rounded-2xl">
-                            <p className="text-zinc-500">No hay animales que coincidan con los filtros.</p>
-                        </div>
-                    )}
                 </div>
             </div>
 
-            {/* --- (NUEVO) Flujo de Modales de Importación --- */}
-
-            {/* 1. Opciones de Carga */}
-            <ActionSheetModal
-              isOpen={activeModal === 'loadOptions'}
-              onClose={handleCloseModal}
-              title="Opciones de Carga de Datos"
-              actions={loadOptionsActions}
-            />
-
-            {/* 2. Flujo de Selección Manual (usa el NewWeighingSessionFlow existente) */}
-            {activeModal === 'loadManual' && (
-              <NewWeighingSessionFlow
-                weightType="corporal" // <-- CORREGIDO
-                onBack={handleCloseModal}
-                onAnimalsSelected={handleManualSelect}
-              />
-            )}
-            
-            {/* 3. Flujo de OCR (IA) */}
-            {activeModal === 'loadOcr' && (
-              <BatchImportPage
-                importType="corporal" // <-- CORREGIDO
-                onBack={handleCloseModal}
-                onImportSuccess={handleOcrSuccess}
-              />
-            )}
-            
-            {/* 4. Cuadrícula de Validación (Manual) */}
-            {activeModal === 'loadManual' && manualAnimals.length > 0 && (
-              <Modal isOpen={true} onClose={handleCloseModal} title="Carga Manual Corporal" size="fullscreen">
-                <BatchWeighingForm
-                  weightType="corporal" // <-- CORREGIDO
-                  animalsToWeigh={manualAnimals}
-                  onSaveSuccess={handleCloseModal}
-                  onCancel={handleCloseModal}
+            {/* --- Indicadores de Página (Paginación) --- */}
+            <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-10 flex space-x-2">
+                <button 
+                    onClick={() => goToPage(0)}
+                    className={`w-2.5 h-2.5 rounded-full transition-colors ${activePage === 0 ? 'bg-white scale-110' : 'bg-zinc-600'}`}
+                    aria-label="Ir a Dashboard (Realidad)"
                 />
-              </Modal>
-            )}
-
-            {/* 5. Cuadrícula de Validación (Resultados de IA) */}
-            {activeModal === 'loadOcrResults' && (
-              <Modal isOpen={true} onClose={handleCloseModal} title="Verificar Datos de IA (Corporal)" size="fullscreen">
-                <BatchWeighingForm
-                  weightType="corporal" // <-- CORREGIDO
-                  importedData={ocrResults}
-                  defaultDate={ocrDefaultDate}
-                  onSaveSuccess={handleCloseModal}
-                  onCancel={handleCloseModal}
+                <button 
+                    onClick={() => goToPage(1)}
+                    className={`w-2.5 h-2.5 rounded-full transition-colors ${activePage === 1 ? 'bg-white scale-110' : 'bg-zinc-600'}`}
+                    aria-label="Ir a Dashboard (Metas)"
                 />
-              </Modal>
-            )}
+            </div>
 
-            {/* --- Fin Flujo de Modales --- */}
+            {/* El Modal de Carga se llama desde el menú inferior de la App, no aquí */}
         </>
     );
 }

@@ -1,5 +1,7 @@
-import { useState } from 'react';
-// --- (NUEVO) Importar 'Grid' ---
+// src/pages/modules/KilosShell.tsx
+// (ACTUALIZADO: Recibe y pasa el estado completo de 'Kilos' desde App.tsx)
+
+import { useState } from 'react'; // 'useState' se mantiene para el modal
 import { ArrowLeft, BarChart2, PlusCircle, Scale, Grid } from 'lucide-react';
 import type { PageState as RebanoPageState, AppModule } from '../../types/navigation';
 import { GiChart } from 'react-icons/gi';
@@ -10,18 +12,36 @@ import { useData } from '../../context/DataContext';
 import { SyncStatusIcon } from '../../components/ui/SyncStatusIcon';
 import { ModuleSwitcher } from '../../components/ui/ModuleSwitcher';
 
-type KilosPage = 'dashboard' | 'analysis' | 'add-data';
+// Exportar el tipo de página
+export type KilosPage = 'dashboard' | 'analysis' | 'add-data';
 
+// (NUEVO) Tipo para el estado del módulo de Kilos (importado de App.tsx)
+type KilosState = {
+    activePage: KilosPage;
+    analysisDate: string | null;
+}
+
+// (ACTUALIZADO) Props
 interface KilosShellProps {
+    initialKilosState: KilosState; // <-- NUEVO
+    onPageChange: (page: KilosPage) => void; // <-- NUEVO
+    onAnalysisDateChange: (date: string) => void; // <-- NUEVO
     navigateToRebano: (page: RebanoPageState) => void;
     onSwitchModule: (module: AppModule) => void;
 }
 
-export default function KilosShell({ navigateToRebano, onSwitchModule }: KilosShellProps) {
-    const { syncStatus } = useData();
-    const [page, setPage] = useState<KilosPage>('dashboard');
+export default function KilosShell({ 
+    initialKilosState, 
+    onPageChange,
+    onAnalysisDateChange,
+    navigateToRebano, 
+    onSwitchModule 
+}: KilosShellProps) {
     
-    // --- (NUEVO) Estado para el modal de Módulos ---
+    const { syncStatus } = useData();
+    // 'page' ahora se lee desde la prop
+    const page = initialKilosState.activePage; 
+    
     const [isModuleSwitcherOpen, setIsModuleSwitcherOpen] = useState(false);
 
     const navItems = [
@@ -32,27 +52,43 @@ export default function KilosShell({ navigateToRebano, onSwitchModule }: KilosSh
 
     const handleBackPress = () => {
         if (page !== 'dashboard') {
-            setPage('dashboard');
+            onPageChange('dashboard'); // Llama al handler
         } else {
-            onSwitchModule('rebano');
+            onSwitchModule('rebano'); 
         }
+    };
+    
+    const handleNavClick = (newPage: KilosPage) => {
+        onPageChange(newPage); // Llama al handler
     };
 
     const renderContent = () => {
         switch (page) {
             case 'dashboard': 
-                return <KilosDashboard onSelectAnimal={(animalId) => navigateToRebano({ name: 'growth-profile', animalId })} />;
+                return <KilosDashboard 
+                            onSelectAnimal={(animalId) => navigateToRebano({ name: 'growth-profile', animalId })} 
+                        />;
             case 'analysis': 
-                return <KilosAnalysisPage onSelectAnimal={(animalId) => navigateToRebano({ name: 'growth-profile', animalId })} />;
+                return <KilosAnalysisPage 
+                            // Props de navegación
+                            onSelectAnimal={(animalId) => navigateToRebano({ name: 'growth-profile', animalId })} 
+                            navigateTo={navigateToRebano}
+                            // (NUEVO) Props de estado de fecha
+                            initialDate={initialKilosState.analysisDate}
+                            onDateChange={onAnalysisDateChange}
+                        />;
             case 'add-data': 
-                return <AddWeightPage onNavigate={navigateToRebano} onSaveSuccess={() => setPage('analysis')} />;
+                return <AddWeightPage 
+                            onSaveSuccess={() => onPageChange('analysis')} 
+                        />;
             default: 
-                return <KilosDashboard onSelectAnimal={(animalId) => navigateToRebano({ name: 'growth-profile', animalId })} />;
+                return <KilosDashboard 
+                            onSelectAnimal={(animalId) => navigateToRebano({ name: 'growth-profile', animalId })} 
+                        />;
         }
     };
 
     return (
-        // --- CORRECCIÓN SCROLL: 'h-screen overflow-hidden' ---
         <div className="h-screen overflow-hidden animate-fade-in text-white flex flex-col">
             
             <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border h-16">
@@ -67,10 +103,8 @@ export default function KilosShell({ navigateToRebano, onSwitchModule }: KilosSh
                             <p className="text-xs text-zinc-400 leading-none">Kilos</p>
                         </div>
                     </div>
-                    {/* --- (NUEVO) Contenedor para iconos de header --- */}
                     <div className="flex items-center gap-4">
                         <SyncStatusIcon status={syncStatus} />
-                        {/* --- (NUEVO) Botón de Módulos --- */}
                         <button 
                             onClick={() => setIsModuleSwitcherOpen(true)}
                             className="p-2 text-zinc-400 hover:text-white transition-colors"
@@ -82,12 +116,10 @@ export default function KilosShell({ navigateToRebano, onSwitchModule }: KilosSh
                 </div>
             </header>
             
-            {/* --- CORRECCIÓN SCROLL: 'flex-1 overflow-y-auto' y padding --- */}
             <main className="flex-1 overflow-y-auto pt-16 pb-16">
                 {renderContent()}
             </main>
 
-            {/* --- (NUEVO) ModuleSwitcher actualizado a modal --- */}
             <ModuleSwitcher 
                 isOpen={isModuleSwitcherOpen}
                 onClose={() => setIsModuleSwitcherOpen(false)}
@@ -98,7 +130,7 @@ export default function KilosShell({ navigateToRebano, onSwitchModule }: KilosSh
                 {navItems.map((item) => (
                     <button
                         key={item.id}
-                        onClick={() => setPage(item.id as KilosPage)}
+                        onClick={() => handleNavClick(item.id as KilosPage)}
                         className={`flex flex-col items-center justify-center p-3 w-full transition-colors ${page === item.id ? 'text-brand-green' : 'text-gray-400 hover:text-brand-green'}`}
                     >
                         <item.icon className="w-6 h-6 mb-1" />

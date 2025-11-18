@@ -318,11 +318,8 @@ export const exportDetailedReport = (
       0: { halign: 'left' as HAlignType }, // Periodo
       5: { halign: 'left' as HAlignType }, // Ingresos Leche
     },
-    // V8.0: Hook para añadir cabeceras/pies en CADA página de la tabla
     didDrawPage: (data) => {
-      // Solo añadir si no es la primera página (que ya tiene)
       if (data.pageNumber > 1) {
-        // 'doc' está en modo landscape aquí
         addLandscapeHeader(currentPage + data.pageNumber - 1);
       }
     }
@@ -335,18 +332,13 @@ export const exportDetailedReport = (
 // ---------------------------------------------------------------------------
 // --- (NUEVO) FUNCIÓN DE EXPORTACIÓN DE PEDIGRÍ ---
 // ---------------------------------------------------------------------------
-/**
- * Exporta un gráfico de pedigrí a un PDF A4 horizontal con fondo blanco.
- * @param element El elemento HTML que contiene el gráfico (debe ser el <PedigreeChart />)
- * @param animal El animal raíz para el título del PDF
- */
 export const exportPedigreeToPDF = async (
   element: HTMLElement,
   animal: Animal
 ) => {
   // 1. Crear el Canvas desde el elemento HTML
   const canvas = await html2canvas(element, {
-    scale: 2.5, // Mayor escala para mejor resolución
+    scale: 2.5,
     backgroundColor: '#ffffff', // Fondo Blanco
     useCORS: true,
   });
@@ -400,4 +392,75 @@ export const exportPedigreeToPDF = async (
 
   // 7. Guardar el PDF
   doc.save(`Pedigri_${animal.id}_${new Date().toISOString().split('T')[0]}.pdf`);
+};
+
+// ---------------------------------------------------------------------------
+// --- (NUEVO) FUNCIÓN DE EXPORTACIÓN DE GRÁFICO DE CRECIMIENTO ---
+// ---------------------------------------------------------------------------
+/**
+ * Exporta un gráfico de crecimiento a un PDF A4 vertical.
+ * @param element El elemento HTML que contiene el gráfico (el div del modal)
+ * @param animal El animal raíz para el título del PDF
+ */
+export const exportGrowthChartToPDF = async (
+  element: HTMLElement,
+  animal: Animal
+) => {
+  // 1. Crear el Canvas desde el elemento HTML
+  const canvas = await html2canvas(element, {
+    scale: 2.5, // Mayor escala para mejor resolución
+    // No se define 'backgroundColor' para que respete el fondo oscuro
+    useCORS: true,
+  });
+  const imgData = canvas.toDataURL('image/png');
+
+  // 2. Calcular dimensiones (A4 Portrait: 210 x 297 mm)
+  const pdfWidth = 210;
+  const pdfHeight = 297;
+  const pdfMargin = 10;
+  const contentWidth = pdfWidth - pdfMargin * 2;
+  
+  const imgProps = {
+    width: canvas.width,
+    height: canvas.height
+  };
+  const imgHeight = (imgProps.height * contentWidth) / imgProps.width;
+
+  // 3. Crear el documento PDF en vertical
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  // 4. Añadir Título y Cabecera de GanaderoOS
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(HEADING_COLOR); // Azul
+  doc.text('GanaderoOS - Perfil de Crecimiento', pdfMargin, pdfMargin + 5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(14);
+  doc.setTextColor(TEXT_COLOR_DARK); // Gris oscuro
+  doc.text(`Animal: ${formatAnimalDisplay(animal)}`, pdfMargin, pdfMargin + 15);
+
+  // 5. Añadir la imagen del gráfico
+  let startY = pdfMargin + 25;
+  // Centrar verticalmente si cabe en la página
+  if (imgHeight < (pdfHeight - startY - pdfMargin)) {
+      startY = (pdfHeight - imgHeight) / 2;
+  }
+  
+  doc.addImage(imgData, 'PNG', pdfMargin, startY, contentWidth, imgHeight);
+
+  // 6. Añadir Pie de Página
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor('#9ca3af'); // Gris claro
+  const pageStr = `Página 1 de 1`;
+  doc.text(pageStr, pdfWidth - pdfMargin, pdfHeight - 10, { align: 'right' });
+  doc.text(`Generado: ${new Date().toLocaleString('es-VE')}`, pdfMargin, pdfHeight - 10);
+
+  // 7. Guardar el PDF
+  doc.save(`CurvaCrecimiento_${animal.id}_${new Date().toISOString().split('T')[0]}.pdf`);
 };

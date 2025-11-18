@@ -1,20 +1,19 @@
-// src/pages/modules/lactokeeper/LactoKeeperAddDataPage.tsx
+// src/pages/modules/lactokeeper/LactoKeeperAddDataPage.tsx (CORREGIDO)
 
 import React, { useState, useRef, useMemo } from 'react';
 import { useData } from '../../../context/DataContext';
-import { PlusCircle, Save, CheckCircle, AlertTriangle, X, Calendar, Zap, ScanLine, Loader2 } from 'lucide-react';
-// --- CAMBIO: Eliminadas importaciones no usadas de firebase ---
+import { PlusCircle, Save, CheckCircle, AlertTriangle, X, Calendar, Zap, ScanLine, Loader2, ArrowLeft } from 'lucide-react';
 import { auth } from '../../../firebaseConfig';
-// import { writeBatch, doc, collection } from "firebase/firestore"; // No se usa, se usa addWeighing
 import { Modal } from '../../../components/ui/Modal';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { ParturitionModal } from '../../../components/modals/ParturitionModal';
-import type { PageState as RebanoPageState } from '../../../types/navigation';
-// --- CAMBIO: Eliminada importación no usada ---
-// import { formatAnimalDisplay } from '../../../utils/formatting';
+// (NUEVO) Importar los componentes del flujo
+import BatchImportPage, { OcrResult } from '../../BatchImportPage';
+import { BatchWeighingForm } from '../../../components/forms/BatchWeighingForm';
+// (CORREGIDO) 'Animal' y 'Weighing' eliminados (no se usan)
 
-// --- Sub-componentes ---
+// --- Sub-componente QuickDatePicker (SIN CAMBIOS) ---
 const QuickDatePicker = ({ selectedDate, onDateChange, onOpenCalendar }: { selectedDate: Date, onDateChange: (date: Date) => void, onOpenCalendar: () => void }) => {
     const dates = useMemo(() => {
         const today = new Date();
@@ -38,7 +37,6 @@ const QuickDatePicker = ({ selectedDate, onDateChange, onOpenCalendar }: { selec
         <div className="px-4">
             <label className="flex items-center gap-2 text-sm font-semibold text-zinc-400 mb-2"><Calendar size={16}/>Fecha del Pesaje</label>
             <div className="flex items-center gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                {/* --- CAMBIO: Corregido error de sintaxis "type="button"" --- */}
                 <button type="button" onClick={onOpenCalendar} className="flex flex-col items-center justify-center bg-zinc-800/80 rounded-lg p-2 w-16 h-16 flex-shrink-0 text-zinc-300 hover:bg-zinc-700 transition-colors">
                     <Calendar size={20}/>
                     <span className="text-xs mt-1">Calendario</span>
@@ -59,7 +57,7 @@ const QuickDatePicker = ({ selectedDate, onDateChange, onOpenCalendar }: { selec
     );
 };
 
-// --- EntryRow ACTUALIZADO con estilo estándar ---
+// --- Sub-componente EntryRow (SIN CAMBIOS) ---
 const EntryRow = ({ entry, onDelete, onRegister }: { entry: any, onDelete: (tempId: number) => void, onRegister: (animalId: string) => void }) => {
     const isUnrecognized = !entry.isRecognized;
     
@@ -82,9 +80,9 @@ const EntryRow = ({ entry, onDelete, onRegister }: { entry: any, onDelete: (temp
         </div>
     );
 };
-// --- FIN EntryRow ---
 
-const RapidEntryForm = ({ onSaveSuccess }: { onSaveSuccess: (date: string) => void }) => {
+// --- Sub-componente RapidEntryForm (SIN CAMBIOS) ---
+const RapidEntryForm = ({ onSaveSuccess, onBack }: { onSaveSuccess: (date: string) => void, onBack: () => void }) => {
     const { animals, weighings, fetchData, addWeighing } = useData();
     const [currentId, setCurrentId] = useState('');
     const [currentKg, setCurrentKg] = useState('');
@@ -201,12 +199,16 @@ const RapidEntryForm = ({ onSaveSuccess }: { onSaveSuccess: (date: string) => vo
 
     return (
         <>
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full animate-fade-in">
                 <div className="flex-shrink-0 space-y-4 pt-4">
-                    <div className="text-center px-4">
-                        <h1 className="text-2xl font-bold tracking-tight text-white">Carga Rápida de Leche</h1>
-                        <p className="text-md text-zinc-400">Sesión de Ordeño</p>
-                    </div>
+                    <header className="text-center px-4 flex items-center">
+                        <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
+                        <div className="flex-grow">
+                            <h1 className="text-2xl font-bold tracking-tight text-white">Carga Rápida de Leche</h1>
+                            <p className="text-md text-zinc-400">Sesión de Ordeño</p>
+                        </div>
+                        <div className="w-8"></div>
+                    </header>
                     <div className="space-y-4">
                         <QuickDatePicker selectedDate={sessionDate} onDateChange={setSessionDate} onOpenCalendar={() => setCalendarOpen(true)} />
                         <div className="flex items-center gap-2 px-4">
@@ -250,34 +252,83 @@ const RapidEntryForm = ({ onSaveSuccess }: { onSaveSuccess: (date: string) => vo
     );
 };
 
-// --- Componente Principal (Shell) ---
-interface LactoKeeperAddDataPageProps {
-    onNavigate: (page: RebanoPageState['name'], state?: any) => void;
+// --- Componente de Opciones (El Hub) ---
+const EntryOptions = ({ onSelectMode }: { onSelectMode: (mode: 'rapid' | 'scan') => void }) => {
+  return (
+    <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in px-4 pt-4">
+        <h1 className="text-2xl font-bold tracking-tight text-white text-center">Añadir Datos de Leche</h1>
+        <div className="space-y-4">
+            <button onClick={() => onSelectMode('rapid')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-orange text-white p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
+                <Zap className="w-12 h-12 mb-2 text-brand-orange" />
+                <span className="text-lg font-semibold">Carga Rápida</span>
+                <span className="text-sm font-normal text-zinc-400">Para carga masiva con teclado</span>
+            </button>
+            <button onClick={() => onSelectMode('scan')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-blue text-white p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
+                <ScanLine className="w-12 h-12 mb-2 text-brand-blue" />
+                <span className="text-lg font-semibold">Escanear Cuaderno</span>
+                <span className="text-sm font-normal text-zinc-400">Digitalización asistida por IA</span>
+            </button>
+        </div>
+    </div>
+  );
+};
+
+
+// --- Componente Principal (Shell de la Página) ---
+// (CORREGIDO) Añadir 'export' a la interfaz
+export interface LactoKeeperAddDataPageProps {
     onSaveSuccess: () => void;
 }
 
-export default function LactoKeeperAddDataPage({ onNavigate, onSaveSuccess }: LactoKeeperAddDataPageProps) {
-    const [entryMode, setEntryMode] = useState<'options' | 'rapid'>('options');
+export default function LactoKeeperAddDataPage({ onSaveSuccess }: LactoKeeperAddDataPageProps) {
+    const [mode, setMode] = useState<'options' | 'rapid' | 'scan' | 'validate'>('options');
+    const [ocrResults, setOcrResults] = useState<OcrResult[]>([]);
+    const [ocrDefaultDate, setOcrDefaultDate] = useState('');
+    
+    const handleOcrSuccess = (results: OcrResult[], defaultDate: string) => {
+        setOcrResults(results);
+        setOcrDefaultDate(defaultDate);
+        setMode('validate'); // Mover a la cuadrícula de validación
+    };
 
-    if (entryMode === 'rapid') {
-        return <RapidEntryForm onSaveSuccess={onSaveSuccess} />;
+    const handleBackToOptions = () => {
+        setMode('options');
+        setOcrResults([]);
+        setOcrDefaultDate('');
+    };
+
+    // Renderizado condicional del flujo
+    switch (mode) {
+        case 'rapid':
+            return <RapidEntryForm onSaveSuccess={onSaveSuccess} onBack={handleBackToOptions} />;
+        
+        case 'scan':
+            return (
+                <BatchImportPage
+                    importType="leche" 
+                    onBack={handleBackToOptions}
+                    onImportSuccess={handleOcrSuccess}
+                />
+            );
+            
+        case 'validate':
+            return (
+                <Modal isOpen={true} onClose={handleBackToOptions} title="Verificar Datos de IA (Leche)" size="fullscreen">
+                    <BatchWeighingForm
+                        weightType="leche"
+                        importedData={ocrResults}
+                        defaultDate={ocrDefaultDate}
+                        onSaveSuccess={() => {
+                            handleBackToOptions();
+                            onSaveSuccess(); // Notificar al shell que se guardó
+                        }}
+                        onCancel={handleBackToOptions}
+                    />
+                </Modal>
+            );
+
+        case 'options':
+        default:
+            return <EntryOptions onSelectMode={(selectedMode) => setMode(selectedMode)} />;
     }
-
-    return (
-        <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in px-4 pt-4">
-            <h1 className="text-2xl font-bold tracking-tight text-white text-center">Añadir Datos de Leche</h1>
-            <div className="space-y-4">
-                <button onClick={() => setEntryMode('rapid')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-orange text-white p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
-                    <Zap className="w-12 h-12 mb-2 text-brand-orange" />
-                    <span className="text-lg font-semibold">Carga Rápida</span>
-                    <span className="text-sm font-normal text-zinc-400">Para carga masiva con teclado</span>
-                </button>
-                <button onClick={() => onNavigate('ocr', {})} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-blue text-white p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
-                    <ScanLine className="w-12 h-12 mb-2 text-brand-blue" />
-                    <span className="text-lg font-semibold">Escanear Cuaderno</span>
-                    <span className="text-sm font-normal text-zinc-400">Digitalización asistida por IA</span>
-                </button>
-            </div>
-        </div>
-    );
 }

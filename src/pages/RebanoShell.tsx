@@ -1,4 +1,5 @@
-// src/pages/RebanoShell.tsx (CORREGIDO)
+// src/pages/RebanoShell.tsx
+// (ACTUALIZADO: Pasa 'contextDate' al 'RebanoProfilePage')
 
 import { useState, useEffect, useRef } from 'react';
 import LotsDashboardPage from './LotsDashboardPage';
@@ -14,8 +15,6 @@ import LactationProfilePage from './LactationProfilePage';
 import FeedingPlanPage from './FeedingPlanPage';
 import BatchTreatmentPage from './BatchTreatmentPage';
 import GrowthProfilePage from './modules/kilos/GrowthProfilePage';
-// (CORREGIDO) 'OcrPage' eliminado. Ya no es una página de nivel superior.
-// import OcrPage from './BatchImportPage'; 
 import FarmCalendarPage from './FarmCalendarPage';
 import BirthingSeasonDetailPage from './BirthingSeasonDetailPage';
 import ConfiguracionPage from './ConfiguracionPage'; 
@@ -68,7 +67,6 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
     const navItems = [
         { id: 'lots-dashboard', page: { name: 'lots-dashboard' }, label: 'Lotes', icon: GiBarn, mapsTo: ['lots-dashboard', 'lot-detail', 'breeding-season-detail', 'sire-lot-detail', 'feeding-plan', 'batch-treatment'] },
         { id: 'herd', page: { name: 'herd' }, label: 'Rebaño', icon: FaCow, mapsTo: ['herd', 'rebano-profile', 'manage-lots', 'lactation-profile', 'growth-profile', 'configuracion', 'management'] },
-        // (CORREGIDO) El 'mapsTo' de 'add-animal' ya no incluye 'ocr'
         { id: 'add-animal', page: { name: 'add-animal' }, label: 'Añadir', icon: PlusCircle, mapsTo: ['add-animal'] },
         { id: 'farm-calendar', page: { name: 'farm-calendar' }, label: 'Calendario', icon: CalendarDays, mapsTo: ['farm-calendar', 'birthing-season-detail'] },
         { id: 'modules', label: 'Módulos', icon: Grid, mapsTo: [] }, 
@@ -86,6 +84,7 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
             setHistory([...history]);
             setPage(lastPage);
         } else if (initialState && initialState.sourceModule) {
+            // Esta lógica es correcta, te devuelve al módulo de 'kilos'
             onSwitchModule(initialState.sourceModule);
         } else {
             setPage({ name: 'lots-dashboard' });
@@ -151,13 +150,19 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
             case 'manage-lots': return <ManageLotsPage onBack={() => handleNavClick(navItems.find(i => i.id === 'herd')!)} />;
             case 'management': return <ManagementPage navigateTo={navigateTo} onBack={navigateBack} />; 
             case 'add-animal': return <AddAnimalPage onBack={() => handleNavClick(navItems.find(i => i.id === 'herd')!)} />;
-            case 'rebano-profile': return <RebanoProfilePage animalId={page.animalId} onBack={navigateBack} navigateTo={navigateTo} />;
+            
+            // (AQUÍ ESTÁ LA CORRECCIÓN)
+            case 'rebano-profile': 
+                return <RebanoProfilePage 
+                            animalId={page.animalId} 
+                            onBack={navigateBack} 
+                            navigateTo={navigateTo} 
+                            // (NUEVO) Pasa la fecha de contexto
+                            contextDate={(page as any).contextDate}
+                        />;
+            
             case 'lactation-profile': return <LactationProfilePage animalId={page.animalId} onBack={navigateBack} navigateTo={navigateTo} />;
             case 'growth-profile': return <GrowthProfilePage animalId={page.animalId} onBack={navigateBack} />;
-            
-            // (CORREGIDO) Caso 'ocr' eliminado. TS2739 resuelto.
-            // case 'ocr': return <OcrPage onBack={navigateBack} />;
-
             case 'feeding-plan': return <FeedingPlanPage lotName={page.lotName} onBack={navigateBack} />;
             case 'batch-treatment': return <BatchTreatmentPage lotName={page.lotName} onBack={navigateBack} />;
             case 'farm-calendar': return <FarmCalendarPage navigateTo={navigateTo} />;
