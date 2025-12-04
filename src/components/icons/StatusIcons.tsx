@@ -1,3 +1,5 @@
+// StatusIcons.tsx (ACTUALIZADO)
+
 import React from 'react';
 import { AnimalStatusKey, STATUS_DEFINITIONS } from '../../hooks/useAnimalStatus';
 // import { Tooltip } from '../ui/Tooltip'; // Tooltip eliminado
@@ -20,6 +22,7 @@ const ALL_FEMALE_KEYS: AnimalStatusKey[] = [
     'DRYING_OFF',
     'DRY',
     'PREGNANT',
+    'SERVIDA_CONFIRMED', // <--- NUEVO: ÍCONO PARA ESTADO 'SERVIDA'
     'IN_SERVICE_CONFIRMED',
     'IN_SERVICE',
     'EMPTY'

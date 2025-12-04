@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import type { PageState } from '../types/navigation';
-import { ArrowLeft, Plus, Search, Heart, HeartCrack, DollarSign, Ban, Trash2, MoreHorizontal, HeartHandshake } from 'lucide-react';
-import { Animal, Father } from '../db/local';
+import { ArrowLeft, Plus, Search, Heart, HeartCrack, DollarSign, Ban, Trash2, MoreHorizontal, HeartHandshake, CalendarClock } from 'lucide-react';
+import { Animal, Father, ServiceRecord } from '../db/local';
 import { AdvancedAnimalSelector } from '../components/ui/AdvancedAnimalSelector';
 import { formatAnimalDisplay } from '../utils/formatting';
 import { DeclareServiceModal } from '../components/modals/DeclareServiceModal';
@@ -18,33 +18,73 @@ import { BatchWeighingForm } from '../components/forms/BatchWeighingForm';
 import { NewWeighingSessionFlow } from './modules/shared/NewWeighingSessionFlow';
 
 // --- SUB-COMPONENTE: Tarjeta de Hembra Asignada ---
-const AssignedFemaleCard = ({ animal, onClick, onOpenActions }: any) => {
+interface AssignedFemaleCardProps {
+    animal: Animal;
+    services: ServiceRecord[];
+    onClick: () => void;
+    onOpenActions: (animal: Animal) => void;
+}
+
+const AssignedFemaleCard = ({ animal, services, onClick, onOpenActions }: AssignedFemaleCardProps) => {
     const formattedName = animal.name ? String(animal.name).toUpperCase().trim() : '';
     
+    // --- LÓGICA DE CONTADOR DE SERVICIOS ---
+    const animalServices = useMemo(() => {
+        return services.filter(s => s.femaleId === animal.id)
+            .sort((a, b) => new Date(b.serviceDate).getTime() - new Date(a.serviceDate).getTime());
+    }, [services, animal.id]);
+
+    const serviceCount = animalServices.length;
+    // Asumimos que es "Servida" si tiene servicios pero aún no está diagnosticada preñada
+    // Usamos 'as string' para evitar conflictos si el tipo ReproductiveStatus es estricto
+    const currentStatus = animal.reproductiveStatus as string;
+    const isServed = serviceCount > 0 && currentStatus !== 'Preñada';
+    
+    // Forzamos el tipo 'string' para poder asignar textos personalizados como "SERVIDA x2"
+    let statusLabel: string = currentStatus || 'N/A';
+    
+    // Comparación segura usando el string casteado
+    if (isServed && (currentStatus === 'En Servicio' || currentStatus === 'Servida' || currentStatus === 'Vacía')) {
+        statusLabel = serviceCount > 1 ? `SERVIDA x${serviceCount}` : 'SERVIDA';
+    }
+
     return (
         <div 
             onClick={onClick}
-            className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-3.5 mb-2 flex justify-between items-center hover:border-zinc-600 transition-all active:scale-[0.99] cursor-pointer group"
+            className={`bg-zinc-900/50 border rounded-2xl p-3.5 mb-2 flex justify-between items-center transition-all active:scale-[0.99] cursor-pointer group relative overflow-hidden ${isServed ? 'border-pink-500/30 bg-pink-500/5' : 'border-zinc-800 hover:border-zinc-600'}`}
         >
-            <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-full bg-black border border-zinc-800 flex items-center justify-center text-zinc-400 font-bold text-xs shrink-0 group-hover:border-zinc-600 transition-colors">
-                    {animal.id.substring(0, 2)}
+            {/* Efecto de "Corazón Iluminado" sutil de fondo si está servida */}
+            {isServed && <div className="absolute -left-4 -top-4 w-20 h-20 bg-pink-500/10 blur-2xl rounded-full pointer-events-none"></div>}
+
+            <div className="flex items-center gap-3 min-w-0 relative z-10">
+                <div className={`w-10 h-10 rounded-full border flex items-center justify-center font-bold text-xs shrink-0 transition-colors ${isServed ? 'bg-black border-pink-500/50 text-pink-400' : 'bg-black border-zinc-800 text-zinc-400 group-hover:border-zinc-600'}`}>
+                    {isServed ? <Heart size={16} className="fill-pink-500/20" /> : animal.id.substring(0, 2)}
                 </div>
                 <div className="min-w-0">
-                    <p className="font-mono font-bold text-white text-base truncate leading-tight">{animal.id}</p>
+                    <div className="flex items-center gap-2">
+                        <p className={`font-mono font-bold text-base truncate leading-tight ${isServed ? 'text-white' : 'text-zinc-200'}`}>{animal.id}</p>
+                        {/* Indicador de última fecha de servicio */}
+                        {isServed && animalServices[0] && (
+                             <span className="text-[9px] text-pink-400/80 flex items-center gap-0.5 bg-pink-900/20 px-1.5 py-0.5 rounded">
+                                <CalendarClock size={10} />
+                                {new Date(animalServices[0].serviceDate).toLocaleDateString('es-VE', {day:'2-digit', month:'2-digit'})}
+                             </span>
+                        )}
+                    </div>
                     {formattedName && <p className="text-xs text-zinc-500 truncate mt-0.5 font-medium">{formattedName}</p>}
                 </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 relative z-10">
                 <div className="text-right">
-                    {/* Estado Reproductivo (Badge) */}
+                    {/* Estado Reproductivo (Badge Dinámico) */}
                     <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border tracking-wide ${
-                        animal.reproductiveStatus === 'Preñada' ? 'text-brand-green border-brand-green/30 bg-brand-green/10' :
-                        animal.reproductiveStatus === 'En Servicio' ? 'text-pink-400 border-pink-400/30 bg-pink-400/10' :
+                        currentStatus === 'Preñada' ? 'text-brand-green border-brand-green/30 bg-brand-green/10' :
+                        isServed ? 'text-pink-400 border-pink-500/40 bg-pink-500/10 shadow-[0_0_10px_rgba(236,72,153,0.1)]' :
+                        currentStatus === 'En Servicio' ? 'text-blue-400 border-blue-400/30 bg-blue-400/10' :
                         'text-zinc-500 border-zinc-700 bg-zinc-800'
                     }`}>
-                        {animal.reproductiveStatus || 'N/A'}
+                        {statusLabel}
                     </span>
                 </div>
                 <button 
@@ -231,6 +271,7 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
                             <AssignedFemaleCard 
                                 key={animal.id} 
                                 animal={animal} 
+                                services={serviceRecords} // <-- PASAMOS LOS SERVICIOS AQUÍ
                                 onClick={() => navigateTo({ name: 'rebano-profile', animalId: animal.id })}
                                 onOpenActions={handleOpenActions}
                             />

@@ -1,7 +1,8 @@
 import Dexie, { Table } from 'dexie';
 
 // --- TIPOS DE DATOS ---
-export type ReproductiveStatus = 'Vacía' | 'En Servicio' | 'Preñada' | 'Post-Parto' | 'No Aplica';
+// <--- FIX: Se agrega 'Servida' como estado reproductivo válido --->
+export type ReproductiveStatus = 'Vacía' | 'En Servicio' | 'Preñada' | 'Post-Parto' | 'No Aplica' | 'Servida'; 
 
 export type FemaleLifecycleStage = 'Cabrita' | 'Cabritona' | 'Cabra Primípara' | 'Cabra Multípara' | 'Cabra';
 export type MaleLifecycleStage = 'Cabrito' | 'Macho de Levante' | 'Reproductor';
@@ -90,7 +91,7 @@ export interface Animal extends SyncedRecord {
     breed?: string;
     racialComposition?: string;
     observations?: string;
-    reproductiveStatus: ReproductiveStatus;
+    reproductiveStatus: ReproductiveStatus; // <--- Usa el tipo actualizado
     sireLotId?: string;
     endDate?: string;
     salePrice?: number;

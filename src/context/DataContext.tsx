@@ -757,23 +757,67 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         enqueueSync(sync);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent, cleanForBatch]);
 
+    // --- FUNCIÓN addServiceRecord ACTUALIZADA Y MEJORADA ---
     const addServiceRecord = useCallback(async (recordData: Omit<ServiceRecord, 'id' | 'userId' | '_synced'>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
+        
+        // 1. Crear el registro del servicio
         const newRecord: ServiceRecord = { id: uuidv4(), ...recordData, userId: currentUser.uid, _synced: false };
-        await localDb.serviceRecords.put(newRecord);
+        
+        // 2. Obtener información del Semental para el detalle
         const lot = await localDb.sireLots.get(newRecord.sireLotId);
         const sire = lot ? (await localDb.fathers.get(lot.sireId) || await localDb.animals.get(lot.sireId)) : null;
+        const sireName = sire?.name || sire?.id || lot?.sireId || 'Desconocido';
+
+        // 3. Calcular Fecha Estimada de Parto (+150 días estándar caprino)
+        const serviceDateObj = new Date(newRecord.serviceDate);
+        const estimatedParturitionDate = new Date(serviceDateObj);
+        estimatedParturitionDate.setDate(serviceDateObj.getDate() + 150); 
+        const estimatedDateStr = estimatedParturitionDate.toISOString().split('T')[0];
+
+        // 4. Verificar servicios previos (Para el contador x2, x3 en el ciclo actual)
+        // Buscamos servicios posteriores al último parto registrado
+        const lastParturitions = await localDb.parturitions
+            .where('goatId').equals(newRecord.femaleId)
+            .toArray();
         
-        internalAddEvent({ 
-            animalId: newRecord.femaleId, 
-            date: newRecord.serviceDate, 
-            type: 'Servicio',
-            details: `Servicio registrado con Semental: ${sire?.name || sire?.id || lot?.sireId || 'Desconocido'}`, 
+        // Ordenamos en memoria para obtener el último
+        lastParturitions.sort((a, b) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime());
+        const cutoffDate = lastParturitions.length > 0 ? lastParturitions[0].parturitionDate : '2000-01-01';
+
+        const allServices = await localDb.serviceRecords.where('femaleId').equals(newRecord.femaleId).toArray();
+        const currentCycleServices = allServices.filter(r => r.serviceDate > cutoffDate);
+        
+        const serviceNumber = currentCycleServices.length + 1; // 1er servicio, 2do, etc.
+
+        await localDb.transaction('rw', localDb.serviceRecords, localDb.animals, localDb.events, async () => {
+            // A. Guardar Servicio
+            await localDb.serviceRecords.put(newRecord);
+            
+            // B. Actualizar Animal (Estado a "Servida")
+            await localDb.animals.update(newRecord.femaleId, {
+                reproductiveStatus: 'Servida',
+                _synced: false
+            });
+
+            // C. Registrar Evento Histórico Detallado
+            internalAddEvent({ 
+                animalId: newRecord.femaleId, 
+                date: newRecord.serviceDate, 
+                type: 'Servicio',
+                details: `Servicio #${serviceNumber} (Visto) con ${sireName}. Parto est.: ${estimatedDateStr}`,
+                lotName: `Servicio #${serviceNumber}` 
+            });
         });
         
         fetchDataFromLocalDb();
+        
+        // Sincronizar Registro y Actualización del Animal
         enqueueSync(() => syncToFirestore("serviceRecords", newRecord.id, newRecord));
+        const updatedAnimal = await localDb.animals.get(newRecord.femaleId);
+        if (updatedAnimal) enqueueSync(() => syncToFirestore("animals", newRecord.femaleId, updatedAnimal));
+
     }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
 
     const addBatchEvent = useCallback(async (data: { lotName: string; date: string; type: EventType; details: string; }) => {
