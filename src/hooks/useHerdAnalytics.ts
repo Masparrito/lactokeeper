@@ -1,20 +1,12 @@
-// src/hooks/useHerdAnalytics.ts
-// (CORREGIDO: Eliminada la lógica de 'calculateAgeInMonths' duplicada)
-
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { DEFAULT_CONFIG } from '../types/config'; 
-// (ACTUALIZADO) Importar la lógica centralizada
 import { 
     calculateAgeInDays, 
-    getAnimalZootecnicCategory,
-    // (NUEVO) Importar el cálculo de meses correcto
+    getAnimalZootecnicCategory, // El Juez Biológico
     calculateAgeInMonths 
 } from '../utils/calculations'; 
-// (ACTUALIZADO) Solo se importa 'Animal', que es el único tipo necesario
 import { Animal } from '../db/local'; 
-
-// (ELIMINADO) La función 'calculateAgeInMonths' local y defectuosa ha sido eliminada.
 
 export const useHerdAnalytics = () => {
     const { animals, parturitions, bodyWeighings, sireLots, breedingSeasons, weighings, appConfig } = useData();
@@ -22,11 +14,13 @@ export const useHerdAnalytics = () => {
     const analytics = useMemo(() => {
         const config = { ...DEFAULT_CONFIG, ...appConfig };
         
+        // 1. POBLACIÓN BASE: Solo animales Activos y NO Referencia
         const activeAnimals = animals.filter(a => !a.isReference && a.status === 'Activo');
-
         const allFemales = activeAnimals.filter(a => a.sex === 'Hembra');
+        
         const totalHembras = allFemales.length;
         
+        // 2. CONTENEDORES DE LISTAS (Se llenarán con la lógica nueva)
         const categories = {
             cabras: [] as Animal[],
             cabritonas: [] as Animal[],
@@ -36,63 +30,80 @@ export const useHerdAnalytics = () => {
             reproductores: [] as Animal[],
         };
 
-        // 1. (CORREGIDO) Usar la fuente de verdad centralizada
+        // 3. CLASIFICACIÓN EN VIVO (Cerebro Biológico)
         activeAnimals.forEach(animal => {
-            // Llama a la lógica híbrida (Nativo vs Registrado) de calculations.ts
-            const category = getAnimalZootecnicCategory(animal, parturitions, config);
+            // IMPORTANTE: Pasamos 'animals' (4to argumento) para que la función pueda buscar hijos
+            const realCategory = getAnimalZootecnicCategory(animal, parturitions, config, animals);
 
-            switch(category) {
+            switch(realCategory) {
                 case 'Cabra': categories.cabras.push(animal); break;
                 case 'Cabritona': categories.cabritonas.push(animal); break;
                 case 'Cabrita': categories.cabritas.push(animal); break;
                 case 'Cabrito': categories.cabritos.push(animal); break;
                 case 'Macho de Levante': categories.machosLevante.push(animal); break;
                 case 'Reproductor': categories.reproductores.push(animal); break;
+                default: 
+                    // Fallback de seguridad
+                    if (animal.sex === 'Hembra') categories.cabritas.push(animal);
+                    else categories.cabritos.push(animal);
+                    break;
             }
         });
         
-        // --- Lógica de Vientres Corregida ---
-        const { edadMinimaVientreMeses } = config; // ej: 10 meses
+        // 4. LÓGICA DE VIENTRES
+        const { edadMinimaVientreMeses } = config; 
+        const minAgeMonths = edadMinimaVientreMeses > 0 ? edadMinimaVientreMeses : 6;
 
         const totalVientres = allFemales.filter(hembra => {
-            // (CORREGIDO) Usar la función importada y precisa
+            // A. Si ya cayó en la cubeta de "Cabras" (por parto o edad), es Vientre.
+            const isCabra = categories.cabras.some(c => c.id === hembra.id);
+            if (isCabra) return true;
+            
+            // B. Si es Cabritona, verificamos la edad mínima configurada
             const ageInMonths = calculateAgeInMonths(hembra.birthDate);
-            return ageInMonths >= edadMinimaVientreMeses;
+            return ageInMonths >= minAgeMonths;
         }).length;
-        // --- Fin Lógica de Vientres ---
-
         
-        // --- Analítica de Hembras Adultas ---
+        // --- Analítica de Hembras Adultas (Cabras) ---
         const enProduccion = parturitions.filter(p => p.status === 'activa' && categories.cabras.some(c => c.id === p.goatId)).length;
         const secas = categories.cabras.length - enProduccion;
         const preñadas = categories.cabras.filter(a => a.reproductiveStatus === 'Preñada').length;
-        const vacias = categories.cabras.filter(a => a.reproductiveStatus === 'Vacía' || a.reproductiveStatus === 'Post-Parto').length;
-        const enMonta = categories.cabras.filter(a => a.reproductiveStatus === 'En Servicio').length;
+        
+        // Ajuste Visual: "En Monta" = En Servicio O Asignada a Lote (aunque diga Vacía)
+        const enMontaReal = categories.cabras.filter(a => 
+            a.reproductiveStatus === 'En Servicio' || 
+            (a.sireLotId && a.reproductiveStatus !== 'Preñada')
+        ).length;
+
+        // Ajuste Visual: "Vacías" = Libres de todo compromiso
+        const vaciasReal = categories.cabras.filter(a => 
+            (a.reproductiveStatus === 'Vacía' || a.reproductiveStatus === 'Post-Parto' || a.reproductiveStatus === 'No Aplica' || !a.reproductiveStatus) && 
+            !a.sireLotId
+        ).length;
 
         const cabrasReproductiveStatusData = [
             { name: 'Preñadas', value: preñadas, color: '#34C759' },
-            { name: 'Vacías', value: vacias, color: '#FF9500' },
-            { name: 'En Monta', value: enMonta, color: '#007AFF' },
+            { name: 'Vacías', value: vaciasReal, color: '#FF9500' },
+            { name: 'En Monta', value: enMontaReal, color: '#007AFF' },
         ].filter(item => item.value > 0);
         
+        // KPI Ordeño (Semestral)
         const currentYear = new Date().getFullYear();
         const milkingPercentageData: { name: string; 'En Ordeño (%)': number }[] = [];
-
         for (let i = 0; i < 2; i++) {
             const startDate = new Date(currentYear, i * 6, 1);
             const endDate = new Date(currentYear, (i + 1) * 6, 0);
-            
             const relevantWeighings = weighings.filter(w => {
                 const weighingDate = new Date(w.date + 'T00:00:00');
                 return weighingDate >= startDate && weighingDate <= endDate;
             });
-
             const uniqueMilkingAnimals = new Set(relevantWeighings.map(w => w.goatId));
+            
             const totalCabrasInPeriod = categories.cabras.filter(c => {
                 const lastParturition = parturitions.find(p => p.goatId === c.id && new Date(p.parturitionDate) <= endDate);
                 return !!lastParturition;
             }).length;
-
+            
             const percentage = totalCabrasInPeriod > 0 ? (uniqueMilkingAnimals.size / totalCabrasInPeriod) * 100 : 0;
             milkingPercentageData.push({
                 name: `Semestre ${i + 1}`,
@@ -101,18 +112,24 @@ export const useHerdAnalytics = () => {
         }
 
         // --- Analítica de Cabritonas ---
-        const serviceWeight = config.pesoPrimerServicioKg;
+        const serviceWeight = Number(config.pesoPrimerServicioKg) || 30;
+        // UMBRAL UNIFICADO (95%): Alineado con SwipeableAnimalCard
         const serviceWeightThreshold = serviceWeight * 0.95; 
         
-        const cabritonasEnMonta = categories.cabritonas.filter(c => c.reproductiveStatus === 'En Servicio').length;
+        const cabritonasEnMonta = categories.cabritonas.filter(c => c.reproductiveStatus === 'En Servicio' || c.sireLotId).length;
+        
         const proximasAServicio = categories.cabritonas.filter(c => {
+            // Si ya está comprometida, no es próxima
+            if (c.reproductiveStatus === 'En Servicio' || c.reproductiveStatus === 'Preñada' || c.sireLotId) return false;
+            
             const lastWeight = bodyWeighings.filter(bw => bw.animalId === c.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
             if (!lastWeight) return false;
             
-            return (lastWeight.kg >= serviceWeightThreshold && lastWeight.kg < serviceWeight) || 
-                   (lastWeight.kg >= serviceWeight && c.reproductiveStatus !== 'En Servicio' && c.reproductiveStatus !== 'Preñada');
+            // Usamos el umbral del 95% para contarla como "Lista"
+            return (lastWeight.kg >= serviceWeightThreshold);
         }).length;
-        const cabritonasDisponibles = categories.cabritonas.length - cabritonasEnMonta;
+
+        const cabritonasDisponibles = categories.cabritonas.length - cabritonasEnMonta; 
 
         // --- Analítica para Crías ---
         const criasHembras = categories.cabritas.length;
@@ -124,6 +141,7 @@ export const useHerdAnalytics = () => {
             { name: 'Machos', value: criasMachos, color: '#007AFF' },
         ].filter(item => item.value > 0);
 
+        // Estado de Destete
         const { 
             diasAlertaPesarDestete, 
             pesoMinimoPesarDestete, 
@@ -133,22 +151,21 @@ export const useHerdAnalytics = () => {
 
         const desteteConditions = [...categories.cabritas, ...categories.cabritos].map(cria => {
             const age = calculateAgeInDays(cria.birthDate);
+            
+            // Filtro de edad para destete: Si es muy viejo (>12m), ya no es candidato
+            if (age > 365) return { id: cria.id, status: 'Amamantando' };
+
             const lastWeight = bodyWeighings.filter(bw => bw.animalId === cria.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
             const weight = lastWeight?.kg || 0;
 
             const isReadyByAge = age >= diasMetaDesteteFinal;
             const isReadyByWeight = weight >= pesoMinimoDesteteFinal;
 
-            if (isReadyByAge && isReadyByWeight) {
-                return { id: cria.id, status: 'Listo para Destete' };
-            }
+            if (isReadyByAge && isReadyByWeight) return { id: cria.id, status: 'Listo para Destete' };
 
             const isNearByAge = age >= diasAlertaPesarDestete;
             const isNearByWeight = weight >= pesoMinimoPesarDestete;
-
-            if (isNearByAge || isNearByWeight) {
-                 return { id: cria.id, status: 'Próximo a Destete' };
-            }
+            if (isNearByAge || isNearByWeight) return { id: cria.id, status: 'Próximo a Destete' };
 
             return { id: cria.id, status: 'Amamantando' };
         });
@@ -174,14 +191,26 @@ export const useHerdAnalytics = () => {
                 return { ...sire, lotId: lot.id, assignedFemales };
             });
 
-        // --- Objeto de retorno final ---
         return {
             totalPoblacion: activeAnimals.length,
             totalHembras,
-            totalVientres, // <-- Este número ahora es independiente
+            totalVientres,
+            // EXPORTACIÓN DE LISTAS REALES
+            lists: {
+                cabras: categories.cabras,
+                cabritonas: categories.cabritonas,
+                cabritas: categories.cabritas,
+                cabritos: categories.cabritos,
+                machosLevante: categories.machosLevante,
+                reproductores: categories.reproductores,
+                vaciasReal: vaciasReal 
+            },
+            // ESTADÍSTICAS
             cabras: {
-                total: categories.cabras.length, // <-- Este número depende del toggle
-                enProduccion, secas, preñadas, vacias, enMonta,
+                total: categories.cabras.length,
+                enProduccion, secas, preñadas, 
+                vacias: vaciasReal, 
+                enMonta: enMontaReal,
                 reproductiveStatusData: cabrasReproductiveStatusData,
                 milkingPercentageData: milkingPercentageData,
             },
@@ -193,8 +222,8 @@ export const useHerdAnalytics = () => {
             },
             crias: {
                 total: totalCrias,
-                hembras: criasHembras,
-                machos: criasMachos,
+                hembras: categories.cabritas.length,
+                machos: categories.cabritos.length,
                 criasEnMaternidadData: criasEnMaternidadData,
                 enFaseDestete: 0, 
                 proximasADestete: proximasADesteteCount,

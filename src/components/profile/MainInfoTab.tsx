@@ -1,5 +1,5 @@
 // src/components/profile/MainInfoTab.tsx
-// (ACTUALIZADO: La 'Categoría' ahora es editable para animales NO NATIVOS)
+// (UPDATED: Category is now editable for NON-NATIVE animals)
 
 import React, { useMemo } from 'react';
 import { Info, Network, Search, Plus } from 'lucide-react';
@@ -11,7 +11,7 @@ import { StatusIcons } from '../icons/StatusIcons';
 import { FormGroup, InfoRow } from '../ui/FormGroup';
 import { FormInput, FormSelect, Toggle } from '../ui/FormControls';
 
-// Tipo para los campos manuales
+// Type for manual fields
 type ManualIndicatorFields = {
     priorParturitions?: number;
     manualFirstParturitionDate?: string;
@@ -19,7 +19,7 @@ type ManualIndicatorFields = {
 
 interface MainInfoTabProps {
     animal: Animal;
-    // --- (NUEVO) Prop para determinar si el animal es nativo ---
+    // --- (NEW) Prop to determine if the animal is native ---
     isNativo: boolean; 
     isEditing: boolean;
     editedData: Partial<Animal & ManualIndicatorFields>;
@@ -38,11 +38,12 @@ interface MainInfoTabProps {
     indicatorsLoading: boolean;
     onEditFather: () => void;
     onEditMother: () => void;
+    // Removed 'category' and 'age' props to fix TS2322 error in parent
 }
 
 export const MainInfoTab: React.FC<MainInfoTabProps> = ({
     animal, 
-    isNativo, // --- (NUEVO) ---
+    isNativo, // --- (NEW) ---
     isEditing, 
     editedData, 
     setEditedData, 
@@ -66,6 +67,7 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
         setEditedData(prev => ({ ...prev, [field]: value }));
     };
 
+    // Calculate formatted age internally
     const formattedAge = formatAge(animal.birthDate);
 
     const father = useMemo(() => allFathers.find(f => f.id === animal.fatherId), [allFathers, animal.fatherId]);
@@ -114,10 +116,10 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
                     <InfoRow
                         label="Categoría"
                         value={(animal.lifecycleStage as string) === 'Cabra Adulta' ? 'Cabra' : animal.lifecycleStage}
-                        // --- (ACTUALIZADO) Solo editable si 'isEditing' Y 'NO es Nativo' ---
+                        // --- (UPDATED) Only editable if 'isEditing' AND 'NOT Native' ---
                         isEditing={isEditing && !isNativo}
                     >
-                        {/* --- (NUEVO) Dropdown para editar categoría en animales registrados --- */}
+                        {/* --- (NEW) Dropdown to edit category for registered animals --- */}
                         <FormSelect 
                             value={editedData.lifecycleStage || animal.lifecycleStage} 
                             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange('lifecycleStage', e.target.value)}

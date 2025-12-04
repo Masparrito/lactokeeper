@@ -1,271 +1,259 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
-import { ArrowLeft, Plus, Users, ChevronRight, Edit, Trash2, GripVertical, AlertTriangle, PackageOpen, MoveRight } from 'lucide-react';
+import type { PageState } from '../types/navigation';
+import { 
+    ArrowLeft, Plus, Calendar, Sun, Users, 
+    ChevronRight, Trash2, Dna 
+} from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { SireLotForm } from '../components/forms/SireLotForm';
-import { GiGoat } from 'react-icons/gi';
-import type { PageState } from '../types/navigation';
-import { Reorder, motion, useAnimation, PanInfo, useDragControls } from 'framer-motion';
+import { LightTreatmentActionModal } from '../components/modals/LightTreatmentActionModal';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
-import { TransferFemalesModal } from '../components/modals/TransferFemalesModal';
-import { Animal } from '../db/local';
+import { SireLot } from '../db/local';
 import { formatAnimalDisplay } from '../utils/formatting';
 
-// --- SUB-COMPONENTES (Sin cambios) ---
-
-const SireLotCardContent = ({ sireName, animalCount, dragControls }: { sireName: string, animalCount: number, dragControls: any }) => (
-    <div className="w-full p-4 flex items-center">
-        <div className="pl-2 pr-4 cursor-grab touch-none self-stretch flex items-center" onPointerDown={(e) => dragControls.start(e)}>
-            <GripVertical className="text-zinc-500" />
-        </div>
-        <div className="flex-grow">
-            <p className="font-bold text-lg text-white flex items-center gap-2">
-                <GiGoat /> Lote: {sireName}
-            </p>
-            <p className="text-sm text-zinc-400 mt-1 flex items-center gap-2">
-                <Users size={14} /> {animalCount} {animalCount === 1 ? 'hembra asignada' : 'hembras asignadas'}
-            </p>
-        </div>
-        <ChevronRight className="text-zinc-600" />
-    </div>
-);
-
-const SwipeableSireLotCard = ({ lot, onEdit, onDelete, onClick, dragControls }: { lot: any, onEdit: () => void, onDelete: () => void, onClick: () => void, dragControls: any }) => {
-    const swipeControls = useAnimation();
-    const dragStarted = useRef(false);
-    const buttonsWidth = 160;
-
-    const onDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-        const offset = info.offset.x;
-        const velocity = info.velocity.x;
-        if (Math.abs(offset) < 2 && Math.abs(velocity) < 100) {
-             // Es un clic
-        } else if (offset < -buttonsWidth / 2 || velocity < -500) {
-            swipeControls.start({ x: -buttonsWidth }); // Mostrar botones
-        } else {
-            swipeControls.start({ x: 0 }); // Ocultar
-        }
-        setTimeout(() => { dragStarted.current = false; }, 100);
-    };
-
-    return (
-        <div className="relative w-full overflow-hidden rounded-2xl bg-brand-glass border border-brand-border">
-            <div className="absolute inset-y-0 right-0 flex items-center z-0 h-full">
-                <button onClick={onEdit} onPointerDown={(e) => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-blue text-white">
-                    <Edit size={22} /><span className="text-xs mt-1 font-semibold">Editar</span>
-                </button>
-                <button onClick={onDelete} onPointerDown={(e) => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-red text-white">
-                    <Trash2 size={22} /><span className="text-xs mt-1 font-semibold">Eliminar</span>
-                </button>
-            </div>
-            <motion.div
-                drag="x"
-                dragConstraints={{ left: -buttonsWidth, right: 0 }}
-                dragElastic={0.1}
-                onDragStart={() => { dragStarted.current = true; }}
-                onDragEnd={onDragEnd}
-                onTap={() => { if (!dragStarted.current) { onClick(); } }}
-                animate={swipeControls}
-                transition={{ type: "spring", stiffness: 400, damping: 40 }}
-                className="relative w-full z-10 cursor-pointer bg-ios-modal-bg"
-            >
-                <SireLotCardContent sireName={lot.sireName} animalCount={lot.animalCount} dragControls={dragControls} />
-            </motion.div>
-        </div>
-    );
-};
-
-const ReorderableSireLotItem = ({ lot, navigateTo, onEdit, onDelete }: { lot: any, navigateTo: (page: PageState) => void, onEdit: (lot: any) => void, onDelete: (lot: any) => void }) => {
-    const dragControls = useDragControls();
-    return (
-        <Reorder.Item key={lot.id} value={lot} dragListener={false} dragControls={dragControls}>
-            <SwipeableSireLotCard
-                lot={lot}
-                dragControls={dragControls}
-                onClick={() => navigateTo({ name: 'sire-lot-detail', lotId: lot.id })}
-                onEdit={() => onEdit(lot)}
-                onDelete={() => onDelete(lot)}
-            />
-        </Reorder.Item>
-    );
-};
-
-// --- COMPONENTE PRINCIPAL DE LA PÁGINA ---
-
-// --- INICIO CORRECCIÓN DE ADVERTENCIA ---
-// 1. Eliminar 'scrollContainerRef' de los props
 interface BreedingSeasonDetailPageProps {
     seasonId: string;
-    onBack: () => void;
     navigateTo: (page: PageState) => void;
-    // scrollContainerRef: React.RefObject<HTMLDivElement>; <-- ELIMINADO
+    onBack: () => void;
 }
 
-export default function BreedingSeasonDetailPage({ 
-    seasonId, 
-    onBack, 
-    navigateTo,
-    // scrollContainerRef <-- ELIMINADO
-}: BreedingSeasonDetailPageProps) {
-// --- FIN CORRECCIÓN DE ADVERTENCIA ---
+export default function BreedingSeasonDetailPage({ seasonId, navigateTo, onBack }: BreedingSeasonDetailPageProps) {
+    const { breedingSeasons, sireLots, animals, fathers, addSireLot, deleteSireLot } = useData();
+    
+    // Estados
+    const [isAddLotModalOpen, setAddLotModalOpen] = useState(false);
+    const [isLightModalOpen, setIsLightModalOpen] = useState(false); 
+    const [lotToDelete, setLotToDelete] = useState<SireLot | null>(null);
 
-    const { breedingSeasons, sireLots, fathers, animals, serviceRecords, addSireLot, updateSireLot, deleteSireLot, updateAnimal } = useData();
-    const [isModalOpen, setModalOpen] = useState(false);
-    const [editingLot, setEditingLot] = useState<any | undefined>(undefined);
-    const [deleteConfirmation, setDeleteConfirmation] = useState<any | null>(null);
-    const [deleteError, setDeleteError] = useState<string | null>(null);
-    const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
-    const [transferError, setTransferError] = useState<string | null>(null);
-
-    // (Lógica de Memos y Handlers sin cambios)
+    // 1. Obtener datos de la Temporada
     const season = useMemo(() => breedingSeasons.find(s => s.id === seasonId), [breedingSeasons, seasonId]);
-    
-    const lotsForSeason = useMemo(() => {
-        return sireLots
-            .filter(lot => lot.seasonId === seasonId)
-            .map(lot => {
-                const sire = fathers.find(f => f.id === lot.sireId);
-                const sireName = sire ? formatAnimalDisplay(sire) : 'Desconocido';
-                const animalCount = animals.filter(a => a.sireLotId === lot.id).length;
-                return { ...lot, sireName, animalCount, sireId: lot.sireId };
-            });
-    }, [sireLots, seasonId, fathers, animals]);
 
-    const [orderedLots, setOrderedLots] = useState(lotsForSeason);
-    useEffect(() => { setOrderedLots(lotsForSeason) }, [lotsForSeason]);
+    // 2. Obtener Lotes de esta Temporada
+    const seasonLots = useMemo(() => {
+        if (!season) return [];
+        return sireLots.filter(lot => lot.seasonId === season.id);
+    }, [sireLots, season]);
 
-    const unservicedFemales = useMemo(() => {
-        if (!season || season.status !== 'Cerrado') return [];
+    // 3. Calcular Estadísticas (Hembras totales en la temporada)
+    const stats = useMemo(() => {
+        let totalFemales = 0;
+        const activeLotIds = new Set(seasonLots.map(l => l.id));
         
-        const lotIdsInSeason = new Set(lotsForSeason.map(l => l.id));
-        const femalesInSeason = animals.filter((a: Animal) => a.sireLotId && lotIdsInSeason.has(a.sireLotId));
-        
-        const femalesWithService = new Set(
-            serviceRecords
-                .filter(sr => sr.sireLotId && lotIdsInSeason.has(sr.sireLotId))
-                .map(sr => sr.femaleId)
+        // Contamos animales activos asignados a cualquiera de estos lotes
+        const females = animals.filter(a => 
+            a.status === 'Activo' && 
+            !a.isReference && 
+            a.sireLotId && 
+            activeLotIds.has(a.sireLotId)
         );
-        
-        return femalesInSeason.filter((animal: Animal) => !femalesWithService.has(animal.id));
-    }, [season, lotsForSeason, animals, serviceRecords]);
+        totalFemales = females.length;
 
-    const handleOpenModal = (lot?: any) => { setEditingLot(lot); setModalOpen(true); };
-    const handleSaveSireLot = async (sireId: string) => { 
-        if (editingLot) { 
-            await updateSireLot(editingLot.id, { sireId }); 
-        } else { 
-            await addSireLot({ seasonId, sireId }); 
-        } 
-        setModalOpen(false); setEditingLot(undefined); 
-    };
-    const handleDeleteAttempt = (lot: any) => { if (lot.animalCount > 0) { setDeleteError(`No se puede eliminar. Reasigna las ${lot.animalCount} hembra(s) a otro lote primero.`); } else { setDeleteConfirmation(lot); } };
-    const handleDeleteConfirm = () => { if (deleteConfirmation) { deleteSireLot(deleteConfirmation.id); setDeleteConfirmation(null); } };
-    
-    const handleConfirmTransfer = async (destinationSeasonId: string, femaleIds: string[]) => {
-        setTransferError(null);
-        const firstLotOfDestination = sireLots.find(l => l.seasonId === destinationSeasonId);
-        
-        if (!firstLotOfDestination) {
-            setTransferError("La temporada de destino no tiene lotes de reproductor. Por favor, crea uno primero.");
-            setIsTransferModalOpen(false);
+        return { totalFemales, totalSires: seasonLots.length };
+    }, [animals, seasonLots]);
+
+    // Handlers
+    const handleAddLot = async (sireId: string) => {
+        // Verificar si el macho ya está en esta temporada
+        const exists = seasonLots.some(l => l.sireId === sireId);
+        if (exists) {
+            alert("Este reproductor ya tiene un lote en esta temporada.");
             return;
         }
-
-        const updatePromises = femaleIds.map(id => 
-            updateAnimal(id, { sireLotId: firstLotOfDestination.id, reproductiveStatus: 'En Servicio' })
-        );
-        await Promise.all(updatePromises);
-        setIsTransferModalOpen(false);
+        await addSireLot({ seasonId: seasonId, sireId });
+        setAddLotModalOpen(false);
     };
 
+    const handleDeleteLot = async () => {
+        if (lotToDelete) {
+            await deleteSireLot(lotToDelete.id);
+            setLotToDelete(null);
+        }
+    };
 
-    if (!season) { return ( <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Temporada no encontrada.</h1><button onClick={onBack} className="mt-4 text-brand-orange">Volver</button></div> ); }
+    // Helper para nombre de Semental
+    const getSireName = (sireId: string) => {
+        const father = fathers.find(f => f.id === sireId);
+        if (father) return formatAnimalDisplay(father);
+        const animal = animals.find(a => a.id === sireId);
+        if (animal) return formatAnimalDisplay(animal);
+        return 'Semental Desconocido';
+    };
+
+    if (!season) return <div className="p-10 text-center text-zinc-500">Temporada no encontrada.</div>;
+
+    const startDate = new Date(season.startDate + 'T00:00:00').toLocaleDateString('es-VE', { day: 'numeric', month: 'short' });
+    const endDate = new Date(season.endDate + 'T00:00:00').toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' });
 
     return (
         <>
-            {/* Layout (sin 'scrollContainerRef') */}
-            <div className="w-full max-w-2xl mx-auto animate-fade-in">
+            <div className="w-full max-w-2xl mx-auto pb-20 animate-fade-in">
                 
-                {/* Header (se mantiene 'sticky') */}
-                <header className="flex items-center pt-4 pb-4 px-4 sticky top-0 bg-brand-dark z-10 border-b border-brand-border">
-                    <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
-                    <div className="text-center flex-grow"><h1 className="text-3xl font-bold tracking-tight text-white">{season.name}</h1><p className="text-lg text-zinc-400">Detalle de la Temporada</p></div>
-                    <div className="w-8"></div>
-                </header>
-                
-                {/* Sección Lotes (se mantiene 'sticky') */}
-                <div className="sticky top-[97px] z-10 bg-brand-dark px-4 pt-6 pb-4 border-b border-brand-border/50">
-                     <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-semibold text-zinc-300">Lotes de Reproductor</h2>
-                        <button onClick={() => handleOpenModal()} className="flex items-center gap-2 bg-brand-orange hover:bg-orange-600 text-white font-bold py-2 px-3 rounded-lg transition-colors text-sm">
-                            <Plus size={16} /> Añadir Lote
-                        </button>
-                    </div>
-                </div>
-                
-                <div className="space-y-4 px-4 pt-4">
-                    {orderedLots.length > 0 ? (
-                        <Reorder.Group as="div" axis="y" values={orderedLots} onReorder={setOrderedLots} className="space-y-3">
-                            {orderedLots.map(lot => ( <ReorderableSireLotItem key={lot.id} lot={lot} navigateTo={navigateTo} onEdit={handleOpenModal} onDelete={handleDeleteAttempt} /> ))}
-                        </Reorder.Group>
-                    ) : (
-                        <div className="text-center py-10 bg-brand-glass rounded-2xl"><p className="text-zinc-500">Esta temporada aún no tiene lotes de reproductor.</p></div>
-                    )}
-                </div>
-
-
-                {/* Sección Hembras sin Servicio (se mantiene) */}
-                {season.status === 'Cerrado' && (
-                    <div className="space-y-4 px-4 pt-10">
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-xl font-semibold text-zinc-300">Resultados: Hembras sin Servicio</h2>
-                            {unservicedFemales.length > 0 && (
-                                <button onClick={() => setIsTransferModalOpen(true)} className="flex items-center gap-2 bg-brand-blue hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-sm">
-                                    <MoveRight size={16} /> Transferir
-                                </button>
-                            )}
-                        </div>
-                        <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border space-y-2">
-                            {unservicedFemales.length > 0 ? (
-                                unservicedFemales.map((animal: Animal) => (
-                                    <div key={animal.id} className="flex items-center justify-between p-2 bg-black/20 rounded-md">
-                                        <span className="font-semibold text-white">{formatAnimalDisplay(animal)}</span>
-                                        <span className="text-xs text-zinc-400">Lote Físico: {animal.location || 'N/A'}</span>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-6 flex flex-col items-center gap-2">
-                                    <PackageOpen size={32} className="text-zinc-600" />
-                                    <p className="text-zinc-400 font-semibold">Todas las hembras tuvieron servicio en esta temporada.</p>
+                {/* HEADER */}
+                <header className="pt-8 pb-4 px-4 sticky top-0 bg-brand-dark z-30 border-b border-brand-border">
+                    <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                            <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors">
+                                <ArrowLeft size={24} />
+                            </button>
+                            <div>
+                                <h1 className="text-2xl font-bold text-white leading-none">{season.name}</h1>
+                                <div className="flex items-center gap-2 mt-1 text-zinc-400 text-xs font-medium">
+                                    <Calendar size={12} />
+                                    <span>{startDate} - {endDate}</span>
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${season.status === 'Activo' ? 'bg-green-500/20 text-green-400' : 'bg-zinc-700 text-zinc-400'}`}>
+                                        {season.status}
+                                    </span>
                                 </div>
-                            )}
+                            </div>
+                        </div>
+                        
+                        {season.status === 'Activo' && (
+                            <button 
+                                onClick={() => setAddLotModalOpen(true)}
+                                className="bg-brand-blue hover:bg-blue-600 text-white p-2 rounded-xl transition-colors shadow-lg shadow-blue-900/20"
+                            >
+                                <Plus size={24} />
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Stats Rápidos */}
+                    <div className="flex gap-4 mt-4">
+                        <div className="bg-zinc-800/50 rounded-lg px-3 py-2 flex items-center gap-2 border border-zinc-700/50">
+                            <Dna size={16} className="text-brand-blue" />
+                            <div>
+                                <p className="text-lg font-bold text-white leading-none">{stats.totalSires}</p>
+                                <p className="text-[10px] text-zinc-500 uppercase">Lotes / Machos</p>
+                            </div>
+                        </div>
+                        <div className="bg-zinc-800/50 rounded-lg px-3 py-2 flex items-center gap-2 border border-zinc-700/50">
+                            <Users size={16} className="text-pink-400" />
+                            <div>
+                                <p className="text-lg font-bold text-white leading-none">{stats.totalFemales}</p>
+                                <p className="text-[10px] text-zinc-500 uppercase">Hembras Asig.</p>
+                            </div>
                         </div>
                     </div>
-                )}
+                </header>
+
+                <div className="p-4 space-y-6">
+                    
+                    {/* TARJETA DE TRATAMIENTO DE LUZ (BOTÓN ACTIVO) */}
+                    {season.requiresLightTreatment && (
+                        <div 
+                            onClick={() => setIsLightModalOpen(true)}
+                            className={`rounded-2xl p-4 border flex items-start gap-4 relative overflow-hidden cursor-pointer transition-all hover:shadow-lg active:scale-[0.98] ${
+                                season.lightTreatmentConfirmed 
+                                    ? 'bg-yellow-500/5 border-yellow-500/20 hover:bg-yellow-500/10' 
+                                    : 'bg-zinc-900 border-zinc-800 hover:border-zinc-600'
+                            }`}
+                        >
+                            <div className="bg-yellow-500/10 p-3 rounded-full">
+                                <Sun size={24} className="text-yellow-500" />
+                            </div>
+                            <div className="flex-1 z-10">
+                                <div className="flex justify-between items-start">
+                                    <h3 className="text-sm font-bold text-yellow-500 uppercase tracking-wide">Tratamiento de Luz</h3>
+                                    <ChevronRight size={16} className="text-zinc-600" />
+                                </div>
+                                <p className="text-xs text-zinc-400 mt-1">
+                                    {season.lightTreatmentStartDate 
+                                        ? `Inicio: ${new Date(season.lightTreatmentStartDate + 'T00:00:00').toLocaleDateString()}` 
+                                        : 'Toca para configurar la fecha de inicio'}
+                                </p>
+                                <div className="mt-2 flex items-center gap-2">
+                                    <div className={`h-2 w-2 rounded-full ${season.lightTreatmentConfirmed ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
+                                    <span className="text-xs font-medium text-zinc-300">
+                                        {season.lightTreatmentStatus || 'Pendiente de Inicio'}
+                                    </span>
+                                </div>
+                            </div>
+                            {/* Decoración de fondo */}
+                            <Sun className="absolute -bottom-4 -right-4 text-yellow-500/5 w-32 h-32 pointer-events-none" />
+                        </div>
+                    )}
+
+                    {/* LISTA DE LOTES */}
+                    <div>
+                        <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-3 px-1">Lotes de Reproducción</h3>
+                        
+                        {seasonLots.length > 0 ? (
+                            <div className="space-y-3">
+                                {seasonLots.map((lot) => (
+                                    <div 
+                                        key={lot.id}
+                                        className="group relative w-full bg-brand-glass backdrop-blur-md border border-brand-border hover:border-zinc-600 rounded-2xl transition-all overflow-hidden"
+                                    >
+                                        <div 
+                                            onClick={() => navigateTo({ name: 'sire-lot-detail', lotId: lot.id })}
+                                            className="p-4 flex justify-between items-center cursor-pointer active:bg-zinc-800/50"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-brand-blue font-bold text-xs border border-zinc-700">
+                                                    ID
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-white text-base">{getSireName(lot.sireId)}</p>
+                                                    <p className="text-xs text-zinc-500">
+                                                        Toca para gestionar hembras
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <ChevronRight className="text-zinc-600 group-hover:text-white transition-colors" />
+                                        </div>
+
+                                        {/* Botón Eliminar */}
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); setLotToDelete(lot); }}
+                                            className="absolute top-0 bottom-0 right-0 w-12 flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity border-l border-red-500/20"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-10 bg-zinc-900/30 rounded-2xl border border-zinc-800/50 border-dashed">
+                                <Dna size={32} className="text-zinc-700 mx-auto mb-3" />
+                                <p className="text-sm text-zinc-500">No hay lotes creados en esta temporada.</p>
+                                {season.status === 'Activo' && (
+                                    <button onClick={() => setAddLotModalOpen(true)} className="mt-3 text-brand-blue text-sm font-bold hover:underline">
+                                        + Agregar Primer Macho
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                </div>
             </div>
 
-            {/* --- Modales (Sin cambios) --- */}
-            <Modal isOpen={isModalOpen} onClose={() => { setModalOpen(false); setEditingLot(undefined); }} title={editingLot ? `Editar Lote de ${editingLot.sireName}` : "Añadir Lote de Reproductor"}>
+            {/* MODALES */}
+            <Modal isOpen={isAddLotModalOpen} onClose={() => setAddLotModalOpen(false)} title="Nuevo Lote de Monta">
                 <SireLotForm 
-                    onSave={handleSaveSireLot} 
-                    onCancel={() => { setModalOpen(false); setEditingLot(undefined); }} 
-                    editingLot={editingLot} 
                     seasonId={season.id} 
+                    onSave={handleAddLot}
+                    onCancel={() => setAddLotModalOpen(false)}
                 />
             </Modal>
-            <ConfirmationModal isOpen={!!deleteConfirmation} onClose={() => setDeleteConfirmation(null)} onConfirm={handleDeleteConfirm} title={`Eliminar Lote de ${deleteConfirmation?.sireName}`} message="¿Estás seguro de que quieres eliminar este lote? Esta acción es irreversible." />
-            <Modal isOpen={!!deleteError} onClose={() => setDeleteError(null)} title="Acción no permitida">
-                <div className="space-y-4 text-center"> <AlertTriangle size={40} className="mx-auto text-amber-400" /> <p className="text-zinc-300">{deleteError}</p> <button onClick={() => setDeleteError(null)} className="mt-4 bg-brand-orange text-white font-semibold py-2 px-6 rounded-lg">Entendido</button> </div>
-            </Modal>
-             <Modal isOpen={!!transferError} onClose={() => setTransferError(null)} title="Error de Transferencia">
-                <div className="space-y-4 text-center"> <AlertTriangle size={40} className="mx-auto text-amber-400" /> <p className="text-zinc-300">{transferError}</p> <button onClick={() => setTransferError(null)} className="mt-4 bg-brand-orange text-white font-semibold py-2 px-6 rounded-lg">Entendido</button> </div>
-            </Modal>
-            <TransferFemalesModal
-                isOpen={isTransferModalOpen}
-                onClose={() => setIsTransferModalOpen(false)}
-                femalesToTransfer={unservicedFemales.map(a => a.id)}
-                originSeasonId={season.id}
-                onConfirmTransfer={handleConfirmTransfer}
+
+            {/* --- CORRECCIÓN: Usar los tipos correctos START / END --- */}
+            {isLightModalOpen && (
+                <LightTreatmentActionModal
+                    isOpen={true}
+                    onClose={() => setIsLightModalOpen(false)}
+                    seasonId={season.id}
+                    actionType={season.lightTreatmentConfirmed ? 'END' : 'START'} // <-- CORREGIDO
+                />
+            )}
+
+            <ConfirmationModal 
+                isOpen={!!lotToDelete}
+                onClose={() => setLotToDelete(null)}
+                onConfirm={handleDeleteLot}
+                title="Eliminar Lote"
+                message="¿Estás seguro? Se desvincularán las hembras asignadas a este macho, pero no se borrarán sus registros históricos."
             />
         </>
     );

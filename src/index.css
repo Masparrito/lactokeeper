@@ -1,42 +1,38 @@
-/* src/index.css */
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ---------------------------------- */
-/* --- INICIO: CORRECCIÓN DE SCROLL --- */
-/* ---------------------------------- */
-
-/* Desactiva el scroll en el body y html, PERO SIN ROMPER EL LAYOUT. */
 html, body {
+  /* Mantenemos estas propiedades básicas para App-Like feel */
   height: 100%;
-  overflow: hidden; /* ¡Clave! Desactiva el scroll del navegador */
-  overscroll-behavior-y: none; /* Evita el rebote/recarga elástico en móviles */
-  
-  /* --- ESTO FUE EL ERROR Y SE ELIMINA --- */
-  /* position: fixed; */ 
-  /* width: 100%; */
-  /* left: 0; */
-  /* top: 0; */
+  width: 100%;
+  background-color: #09090b;
+  margin: 0;
+  padding: 0;
+  overscroll-behavior-y: none; /* Evita rebote global */
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* -------------------------------- */
-/* --- FIN: CORRECCIÓN DE SCROLL --- */
-/* -------------------------------- */
+#root { 
+  height: 100%; 
+  width: 100%; 
+}
 
-
-/* --- Estilos Globales para la Nueva Estética --- */
+/* Estilos Globales */
 body {
   font-family: 'Inter', sans-serif;
-  background-color: #1C1C1E; 
   color: rgba(255, 255, 255, 0.85);
-  
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Animaciones (sin cambios) */
+/* Scrollbars ocultas pero funcionales para estética limpia */
+::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+}
+
+/* Animaciones */
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -55,7 +51,6 @@ body {
   animation: slide-up 0.3s ease-out forwards;
 }
 
-/* Layer utilities (sin cambios) */
 @layer utilities {
   .animate-spin-slow {
     animation: spin 3s linear infinite;

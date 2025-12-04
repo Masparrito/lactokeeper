@@ -1,25 +1,27 @@
-// src/hooks/useEvents.ts (Corregido)
-
+// src/hooks/useEvents.ts
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
-import { Animal, Event } from '../db/local';
+import { Animal, EventType, getEventCategory } from '../db/local';
 import { formatAnimalDisplay } from '../utils/formatting';
 
 export interface TimelineEvent {
     id: string;
     animalId: string;
-    date: string; // Fecha del evento (YYYY-MM-DD)
-    type: string; // Tipo de evento (para el icono y título)
-    details: string; // Descripción
-    notes?: string; 
+    date: string;
+    type: EventType;
+    category: 'General' | 'Manejo' | 'Reproductivo' | 'Productivo';
+    details: string;
+    notes?: string;
+    lotName?: string;
+    metaWeight?: number;
+    metaData?: any;
 }
 
 const daysBetween = (dateStr1: string, dateStr2: string): number => {
     if (!dateStr1 || dateStr1 === 'N/A' || !dateStr2 || dateStr2 === 'N/A') return 0;
-    const date1 = new Date(dateStr1 + 'T00:00:00Z');
-    const date2 = new Date(dateStr2 + 'T00:00:00Z');
-    const diffTime = Math.abs(date2.getTime() - date1.getTime());
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const d1 = new Date(dateStr1);
+    const d2 = new Date(dateStr2);
+    return Math.floor(Math.abs(d2.getTime() - d1.getTime()) / (86400000));
 };
 
 export const useEvents = (animalId: string | undefined): TimelineEvent[] => {
@@ -29,10 +31,12 @@ export const useEvents = (animalId: string | undefined): TimelineEvent[] => {
         parturitions, 
         serviceRecords, 
         bodyWeighings, 
+        weighings, 
         fathers,
-        appConfig,
         sireLots,
-        events 
+        events,
+        healthEvents,
+        appConfig 
     } = useData();
 
     const allFathers = useMemo(() => {
@@ -51,161 +55,210 @@ export const useEvents = (animalId: string | undefined): TimelineEvent[] => {
         const animal = animals.find(a => a.id === animalId);
         if (!animal) return [];
 
-        const allEvents: TimelineEvent[] = [];
+        const timeline: TimelineEvent[] = [];
 
-        // --- Evento de Nacimiento o Registro ---
-        if (animal.motherId) {
-            const birthEvent = events.find(e => e.animalId === animal.id && e.type === 'Nacimiento');
-            allEvents.push({
-                id: birthEvent?.id || `${animal.id}_birth`, 
+        // 1. EVENTOS GENERALES
+        const originEvent = events.find(e => e.animalId === animal.id && (e.type === 'Nacimiento' || e.type === 'Registro' || e.type === 'Ingreso'));
+        
+        if (originEvent) {
+            timeline.push({
+                id: originEvent.id,
                 animalId: animal.id,
-                date: animal.birthDate,
-                type: 'Nacimiento',
-                details: birthEvent?.details || `Nacimiento en finca. ${animal.birthWeight ? `Peso: ${animal.birthWeight} Kg.` : ''} Tipo: ${animal.parturitionType || 'Simple'}.`,
-                notes: birthEvent?.notes
+                date: originEvent.date,
+                type: originEvent.type,
+                category: 'General',
+                details: originEvent.details,
+                notes: originEvent.notes
             });
         } else {
-            allEvents.push({
-                id: 'manual-registration-event', 
-                animalId: animal.id,
-                date: new Date(animal.createdAt || Date.now()).toISOString().split('T')[0],
-                type: 'Registro',
-                details: 'Animal registrado en el sistema.'
-            });
+            if (animal.motherId) {
+                timeline.push({
+                    id: `${animal.id}_birth_syn`,
+                    animalId: animal.id,
+                    date: animal.birthDate,
+                    type: 'Nacimiento',
+                    category: 'General',
+                    details: `Nacimiento en finca. ${animal.birthWeight ? `Peso: ${animal.birthWeight} Kg.` : ''} ${animal.parturitionType ? `Tipo: ${animal.parturitionType}.` : ''}`
+                });
+            } else {
+                timeline.push({
+                    id: `${animal.id}_reg_syn`,
+                    animalId: animal.id,
+                    date: new Date(animal.createdAt || Date.now()).toISOString().split('T')[0],
+                    type: 'Registro',
+                    category: 'General',
+                    details: 'Ingreso al sistema (Animal Fundador/Externo).'
+                });
+            }
         }
 
-        // --- Eventos de Parto (Unificando Mortinatos) ---
-        const animalParturitions = parturitions.filter(p => p.goatId === animalId);
-        const animalEventsMap = new Map<string, Event>();
-        events.filter(e => e.animalId === animalId && (e.type === 'Parto' || e.type === 'Aborto'))
-              .forEach(e => {
-                  const key = `${e.date}_${e.type}`;
-                  if (!animalEventsMap.has(key)) {
-                      animalEventsMap.set(key, e);
-                  }
-              });
+        // 2. EVENTOS DE MANEJO
+        bodyWeighings.filter(w => w.animalId === animal.id).forEach(w => {
+            timeline.push({
+                id: w.id,
+                animalId: w.animalId,
+                date: w.date,
+                type: 'Pesaje Corporal',
+                category: 'Manejo',
+                details: `Peso registrado: ${w.kg} Kg.`,
+                metaWeight: w.kg
+            });
+        });
 
-        for (const p of animalParturitions) {
+        weighings.filter(w => w.goatId === animal.id).forEach(w => {
+            timeline.push({
+                id: w.id,
+                animalId: w.goatId,
+                date: w.date,
+                type: 'Pesaje Lechero',
+                category: 'Manejo',
+                details: `Producción: ${w.kg} Kg/L.`
+            });
+        });
+
+        healthEvents.filter(h => h.animalId === animal.id).forEach(h => {
+            timeline.push({
+                id: h.id,
+                animalId: h.animalId,
+                date: h.date,
+                type: 'Tratamiento',
+                category: 'Manejo',
+                details: `${h.type}: ${h.productUsed || 'Producto no esp.'} (${h.doseApplied || ''} ${h.unit || ''}).`,
+                notes: h.notes
+            });
+        });
+
+        const excludedTypes = ['Parto', 'Aborto', 'Servicio', 'Pesaje Corporal', 'Pesaje Lechero', 'Tratamiento', 'Nacimiento', 'Registro', 'Ingreso'];
+        events.filter(e => e.animalId === animal.id && !excludedTypes.includes(e.type)).forEach(e => {
+            timeline.push({
+                id: e.id,
+                animalId: e.animalId,
+                date: e.date,
+                type: e.type,
+                category: getEventCategory(e.type),
+                details: e.details,
+                notes: e.notes,
+                lotName: e.lotName,
+                metaWeight: e.metaWeight
+            });
+        });
+
+        // 3. EVENTOS REPRODUCTIVOS
+        serviceRecords.filter(s => s.femaleId === animal.id).forEach(s => {
+            const lot = sireLots.find(sl => sl.id === s.sireLotId);
+            const sire = lot ? allFathers.get(lot.sireId) : null;
+            const sireName = sire ? formatAnimalDisplay(sire) : 'Desconocido';
+            const probableParturition = new Date(new Date(s.serviceDate).getTime() + (150 * 86400000)).toISOString().split('T')[0];
+
+            timeline.push({
+                id: s.id,
+                animalId: s.femaleId,
+                date: s.serviceDate,
+                type: 'Servicio',
+                category: 'Reproductivo',
+                details: `Servicio con ${sireName}. FPP aprox: ${probableParturition}`
+            });
+        });
+
+        const animalParturitions = parturitions
+            .filter(p => p.goatId === animal.id)
+            .sort((a, b) => new Date(a.parturitionDate).getTime() - new Date(b.parturitionDate).getTime());
+
+        animalParturitions.forEach((p, index) => {
             const sire = allFathers.get(p.sireId);
             const sireName = sire ? formatAnimalDisplay(sire) : 'Padre Desc.';
             const liveCount = p.liveOffspring?.length || 0;
-            const stillCount = p.offspringCount - liveCount;
-
-            let type = 'Parto';
-            let details = `Padre: ${sireName}. Crías: ${p.offspringCount} (${p.parturitionType}).`;
+            const stillCount = p.offspringCount - liveCount; // <--- VARIABLE QUE DABA ADVERTENCIA
+            
+            let type: EventType = 'Parto';
+            let details = '';
 
             if (p.parturitionOutcome === 'Aborto') {
                 type = 'Aborto';
                 details = `Reporte de Aborto. (Padre: ${sireName}).`;
-            } else if (stillCount > 0 && liveCount === 0) {
-                type = 'Aborto / Mortinato';
-                details = `Mortinato completo (${stillCount} crías). Padre: ${sireName}.`;
-            } else if (stillCount > 0) {
-                type = 'Parto con Mortinato';
-                details = `Padre: ${sireName}. Crías: ${liveCount} vivas, ${stillCount} mortinatos.`;
+            } else {
+                const kidDetails = p.liveOffspring?.map(k => `${k.sex} (${k.birthWeight || '?'}Kg)`).join(', ') || 'Sin datos';
+                
+                // --- CORRECCIÓN: Usamos 'stillCount' aquí ---
+                const stillInfo = stillCount > 0 ? ` (+${stillCount} mortinatos)` : '';
+                
+                details = `Parto ${p.parturitionType}. Padre: ${sireName}. Crías: ${kidDetails}${stillInfo}.`;
             }
-            
-            const matchingEvent = animalEventsMap.get(`${p.parturitionDate}_${type}`);
 
-            allEvents.push({ 
-                id: matchingEvent?.id || p.id, 
-                animalId: p.goatId, 
-                type, 
-                date: p.parturitionDate, 
-                details: matchingEvent?.details || details, 
-                notes: matchingEvent?.notes 
+            timeline.push({
+                id: p.id,
+                animalId: p.goatId,
+                date: p.parturitionDate,
+                type: type,
+                category: 'Reproductivo',
+                details: details,
+                metaData: p.liveOffspring
             });
-        }
 
-        // --- Eventos de Servicio Visto ---
-        const animalServices = serviceRecords.filter(s => s.femaleId === animalId);
-        for (const s of animalServices) {
-             const sireLot = sireLots.find(sl => sl.id === s.sireLotId);
-             const sire = sireLot ? allFathers.get(sireLot.sireId) : null;
-             const sireName = sire ? formatAnimalDisplay(sire) : 'Padre Desc.';
-             const matchingEvent = events.find(e => e.animalId === s.femaleId && e.date === s.serviceDate && e.type === 'Servicio');
+            // 4. EVENTOS PRODUCTIVOS DERIVADOS
+            const firstMilkWeighing = weighings
+                .filter(w => w.goatId === animal.id && w.date >= p.parturitionDate)
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
 
-             allEvents.push({
-                id: matchingEvent?.id || s.id,
-                animalId: s.femaleId,
-                type: 'Servicio',
-                date: s.serviceDate, // <-- 'date' está presente
-                details: matchingEvent?.details || `Servicio reportado con ${sireName}.`,
-                notes: matchingEvent?.notes
-             });
-        }
-        
-        // --- Evento de Destete ---
-        if (animal.weaningDate && animal.weaningWeight) {
-             const ageAtWeaning = daysBetween(animal.birthDate, animal.weaningDate);
-             const matchingEvent = events.find(e => e.animalId === animal.id && e.date === animal.weaningDate && e.type === 'Cambio de Estado');
-             
-             allEvents.push({
-                id: matchingEvent?.id || `${animal.id}_wean`,
-                animalId: animal.id,
-                date: animal.weaningDate, // <-- 'date' está presente
-                type: 'Destete',
-                details: matchingEvent?.details || `Destetado con ${animal.weaningWeight} Kg a los ${ageAtWeaning} días.`,
-                notes: matchingEvent?.notes
-             });
-        }
+            if (firstMilkWeighing) {
+                timeline.push({
+                    id: `${p.id}_start_lac`,
+                    animalId: animal.id,
+                    date: firstMilkWeighing.date,
+                    type: 'Inicio Lactancia',
+                    category: 'Productivo',
+                    details: `Inicio control lechero (Lactancia #${index + 1}). Primer pesaje: ${firstMilkWeighing.kg} Kg.`
+                });
+            }
 
-        // --- Hitos de Peso ---
+            if (p.dryingStartDate || p.status === 'seca') {
+                const dryingDate = p.dryingStartDate || new Date().toISOString().split('T')[0];
+                const daysInMilk = daysBetween(p.parturitionDate, dryingDate);
+                
+                timeline.push({
+                    id: `${p.id}_dry`,
+                    animalId: animal.id,
+                    date: dryingDate,
+                    type: 'Secado',
+                    category: 'Productivo',
+                    details: `Fin de Lactancia #${index + 1}. Días en leche: ${daysInMilk}.`
+                });
+            }
+        });
+
+        // 5. Hitos de Crecimiento
         if (animal.sex === 'Hembra' && (animal.lifecycleStage === 'Cabritona' || animal.lifecycleStage === 'Cabra')) {
             const weights = bodyWeighings.filter(bw => bw.animalId === animalId);
             const hitos = [
                 { days: 90, label: '90 días', key: 'p90' },
-                { days: 120, label: '120 días', key: 'p120' },
                 { days: 180, label: '180 días', key: 'p180' },
-                { days: 270, label: '270 días', key: 'p270' },
-                { days: (appConfig.edadPrimerServicioMeses * 30.44), label: '1er Servicio', key: 'pserv'}
+                { days: (Number(appConfig.edadPrimerServicioMeses) * 30.44), label: '1er Servicio', key: 'pserv'}
             ];
-            const foundHitos = new Set<string>();
-            const bwEventsMap = new Map<string, Event>();
-            events.filter(e => e.animalId === animal.id && e.type === 'Pesaje Corporal')
-                  .forEach(e => bwEventsMap.set(e.date, e));
+            
+            const usedDates = new Set();
 
             for (const w of weights) {
+                if (usedDates.has(w.date)) continue;
                 const ageAtWeighing = daysBetween(animal.birthDate, w.date);
                 
                 for (const hito of hitos) {
-                    if (foundHitos.has(hito.key)) continue;
-                    
-                    if (Math.abs(ageAtWeighing - hito.days) <= 15) {
-                        const matchingEvent = bwEventsMap.get(w.date);
-                        allEvents.push({
-                            id: matchingEvent?.id || w.id,
+                    if (Math.abs(ageAtWeighing - hito.days) <= 10) {
+                        timeline.push({
+                            id: `${w.id}_hito`,
                             animalId: w.animalId,
-                            type: 'Hito de Peso',
-                            date: w.date, // <-- 'date' está presente
-                            details: matchingEvent?.details || `Peso (${hito.label}): ${w.kg} Kg a los ${ageAtWeighing} días.`,
-                            notes: matchingEvent?.notes
+                            date: w.date,
+                            type: 'Hito de Crecimiento',
+                            category: 'Manejo',
+                            details: `Hito ${hito.label} alcanzado: ${w.kg} Kg.`
                         });
-                        foundHitos.add(hito.key);
+                        usedDates.add(w.date);
                         break;
                     }
                 }
             }
         }
-        
-        // --- Evento de Dar de Baja (AQUÍ ESTABA EL ERROR) ---
-        if (animal.status !== 'Activo') {
-             const matchingEvent = events.find(e => e.animalId === animal.id && e.date === animal.endDate && e.type === 'Cambio de Estado');
-             allEvents.push({
-                id: matchingEvent?.id || `${animal.id}_decom`,
-                animalId: animal.id,
-                // --- CORRECCIÓN: La propiedad 'date' faltaba ---
-                date: animal.endDate || new Date().toISOString().split('T')[0],
-                type: 'Baja de Rebaño',
-                details: matchingEvent?.details || `Dado de baja por: ${animal.status}. ${animal.cullReason || animal.deathReason || animal.saleBuyer || ''}`,
-                notes: matchingEvent?.notes
-             });
-        }
-        
-        // (Lógica de Plan Sanitario bloqueada)
 
-        // 4. Ordenar todos los eventos
-        return allEvents.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        return timeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     }, [
         animalId, 
@@ -213,10 +266,12 @@ export const useEvents = (animalId: string | undefined): TimelineEvent[] => {
         parturitions, 
         serviceRecords, 
         bodyWeighings, 
+        weighings,
         fathers, 
         appConfig,
         sireLots,
-        events 
+        events,
+        healthEvents
     ]);
 
     return animalEvents;

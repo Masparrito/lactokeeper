@@ -1,5 +1,5 @@
 // src/pages/ConfiguracionPage.tsx
-// (ACTUALIZADO: Se elimina 'handleToggleChange' y toda la lógica de categoría basada en edad)
+// (ACTUALIZADO: Incluye DataHealer para saneamiento de BD)
 
 import React, { useState, useEffect } from 'react';
 import { useData } from '../context/DataContext';
@@ -15,6 +15,9 @@ import {
 import type { PageState } from '../types/navigation';
 import { AppConfig, DEFAULT_CONFIG } from '../types/config';
 import { auth } from '../firebaseConfig';
+
+// --- IMPORTACIÓN DEL SANEADOR ---
+import { DataHealer } from '../components/DataHealer';
 
 // --- (Helpers: configToFormState, formStateToConfig - Sin cambios) ---
 const configToFormState = (config: AppConfig): Record<string, string | boolean> => {
@@ -185,14 +188,6 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
         }));
     };
 
-    // (ELIMINADO) 'handleToggleChange' ya no se usa
-    // const handleToggleChange = (name: string, checked: boolean) => {
-    //     setFormState(prev => ({
-    //         ...prev,
-    //         [name]: checked
-    //     }));
-    // };
-    
     const handleThemeChange = (isDark: boolean) => {
         setFormState(prev => ({ ...prev, theme: isDark ? 'dark' : 'light' }));
     };
@@ -292,12 +287,10 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
                     />
                 </SettingsGroup>
 
-                {/* --- (ACTUALIZADO) Sección de Categorías Limpiada --- */}
                 <SettingsGroup title="Lógica de Categorías Zootécnicas" icon={Users}>
                     <p className="text-sm text-zinc-400 px-3 pb-2 text-center">
                         La categoría de un animal se define por su registro (si es importado) o por sus eventos (si es nativo).
                     </p>
-                    {/* (ELIMINADO) Todos los campos de edad de categoría se han ido */}
                 </SettingsGroup>
 
                 <SettingsGroup title="Manejo Productivo (Leche)" icon={Milk}>
@@ -324,7 +317,12 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
                     <SettingsInput label="Umbral de Alerta" type="number" name="growthAlertThreshold" value={String(formState.growthAlertThreshold)} onChange={handleChange} unit="0.0 - 1.0" sublabel="Ej: 0.85 = Alerta si está 15% bajo meta" />
                 </SettingsGroup>
 
-                <div className="mt-8">
+                {/* SANEAMIENTO DE BASE DE DATOS */}
+                <div className="my-8">
+                    <DataHealer />
+                </div>
+
+                <div className="mt-4">
                      <button 
                         onClick={handleSignOut}
                         className="w-full flex items-center justify-center gap-2 bg-red-600/20 text-brand-red font-semibold py-3 px-4 rounded-xl transition-colors hover:bg-red-600/40"

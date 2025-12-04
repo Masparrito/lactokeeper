@@ -1,10 +1,9 @@
-// src/hooks/useManagementAlerts.ts (CORREGIDO)
-
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { 
     calculateAgeInDays, 
-    getAnimalZootecnicCategory 
+    getAnimalZootecnicCategory,
+    calculateAgeInMonths 
 } from '../utils/calculations';
 import { 
     Wind, // Secado
@@ -12,22 +11,26 @@ import {
     Heart, // Para servicio no visto
     ClipboardCheck, // Confirmar
     MoveRight, // Mover Lote
-    Scale // Pesar
+    Scale, // Pesar
+    Sun, // Tratamiento Luz
+    Calendar // Calendario
 } from 'lucide-react';
 import { formatAnimalDisplay } from '../utils/formatting';
-import { DEFAULT_CONFIG } from '../types/config'; // Importar defaults para fallback
+import { DEFAULT_CONFIG } from '../types/config'; 
 
 // Definimos la estructura de una Alerta
 export interface ManagementAlert {
     id: string;
-    animalId: string;
-    animalDisplay: string;
-    type: 'SECADO' | 'REPRODUCTIVO' | 'DESTETE';
+    animalId: string; // Puede ser ID de animal o ID de Temporada
+    animalDisplay: string; // Nombre animal o Nombre Temporada
+    type: 'SECADO' | 'REPRODUCTIVO' | 'DESTETE' | 'MANEJO';
+    subType?: 'WEANING' | 'SERVICE_WEIGHT' | 'LIGHT_START' | 'LIGHT_END'; 
     icon: React.ElementType;
-    color: 'text-blue-400' | 'text-pink-400' | 'text-green-400' | 'text-yellow-400' | 'text-red-500';
+    color: 'text-blue-400' | 'text-pink-400' | 'text-green-400' | 'text-yellow-400' | 'text-red-500' | 'text-orange-400';
     title: string;
     message: string;
-    sortDate: Date; // Para ordenar por urgencia
+    sortDate: Date; 
+    data?: any; // Para pasar datos extra como seasonId
 }
 
 // Helper para calcular Fechas
@@ -42,53 +45,138 @@ const getDaysBetween = (date1: Date, date2: Date): number => {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 
-// Helper para calcular edad en meses
-const calculateAgeInMonths = (birthDate: string): number => {
-    if (!birthDate || birthDate === 'N/A') return 0;
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let months = (today.getFullYear() - birth.getFullYear()) * 12;
-    months -= birth.getMonth();
-    months += today.getMonth();
-    return months <= 0 ? 0 : months;
-};
-
-
 export const useManagementAlerts = () => {
     const { 
         animals, 
         parturitions, 
         serviceRecords, 
         bodyWeighings, 
+        events, 
+        breedingSeasons, // <--- NUEVO: Escuchamos temporadas
         appConfig 
     } = useData();
 
     const alerts = useMemo(() => {
-        // Usar config con fallback
         const config = { ...DEFAULT_CONFIG, ...appConfig };
 
         const activeAnimals = animals.filter(a => !a.isReference && a.status === 'Activo');
         const today = new Date();
         today.setHours(0, 0, 0, 0); 
+        const todayTime = today.getTime();
         
         const generatedAlerts: ManagementAlert[] = [];
 
-        // --- (INICIO CORRECCIÓN REGRESIÓN PUNTO 7) ---
-        // Crear un Set con todos los IDs de animales "Nativos"
-        // (animales que existen como cría viva en un parto registrado en la app)
-        const nativoIds = new Set<string>();
-        parturitions.forEach(p => {
-            if (p.liveOffspring && p.liveOffspring.length > 0) {
-                p.liveOffspring.forEach(kid => {
-                    // El ID de la cría (ej. "A001") se guarda en kid.id
-                    nativoIds.add(kid.id); 
-                });
+        // ---------------------------------------------------------
+        // 1. ALERTAS DE TEMPORADA (TRATAMIENTO DE LUZ)
+        // ---------------------------------------------------------
+        breedingSeasons.forEach(season => {
+            // Solo procesar si requiere luz, tiene fecha y no está cerrada/archivada
+            if (!season.requiresLightTreatment || !season.lightTreatmentStartDate || season.status === 'Cerrado') return;
+
+            const startDateStr = season.lightTreatmentStartDate;
+            const start = new Date(startDateStr + 'T00:00:00');
+            const startTime = start.getTime();
+            
+            // Días faltantes (Negativo = Ya pasó)
+            // (Target - Hoy)
+            const daysToStart = Math.ceil((startTime - todayTime) / (1000 * 60 * 60 * 24));
+
+            // CASO A: Aún no se ha confirmado el inicio
+            if (!season.lightTreatmentConfirmed) {
+                
+                // Alerta 7 días antes (Recordatorio)
+                if (daysToStart === 7) {
+                    generatedAlerts.push({
+                        id: `light_pre_7_${season.id}`,
+                        animalId: season.id,
+                        animalDisplay: season.name,
+                        type: 'MANEJO',
+                        icon: Calendar,
+                        color: 'text-yellow-400',
+                        title: 'Prep. Tratamiento Luz',
+                        message: 'Falta 1 semana para iniciar. Verifica bombillos e instalaciones.',
+                        sortDate: today
+                    });
+                }
+
+                // Alerta 1 día antes (Urgente)
+                if (daysToStart === 1) {
+                    generatedAlerts.push({
+                        id: `light_pre_1_${season.id}`,
+                        animalId: season.id,
+                        animalDisplay: season.name,
+                        type: 'MANEJO',
+                        icon: Sun,
+                        color: 'text-orange-400',
+                        title: 'Luz Mañana 17:30h',
+                        message: 'El tratamiento comienza mañana. Ten todo listo.',
+                        sortDate: today
+                    });
+                }
+
+                // Alerta Día D (PERSISTENTE hasta confirmar)
+                // Si hoy es el día o ya pasó, y no se ha confirmado...
+                if (daysToStart <= 0) {
+                    const daysLate = Math.abs(daysToStart);
+                    const lateMsg = daysLate > 0 ? ` (Atrasado ${daysLate} días)` : '';
+                    
+                    generatedAlerts.push({
+                        id: `light_start_action_${season.id}`,
+                        animalId: season.id,
+                        animalDisplay: season.name,
+                        type: 'MANEJO',
+                        subType: 'LIGHT_START', // <--- Acción especial en UI
+                        icon: Sun,
+                        color: 'text-red-500', // Rojo para llamar atención
+                        title: 'INICIAR LUZ',
+                        message: `Encender luces hoy a las 17:30h.${lateMsg} Toca para confirmar inicio.`,
+                        sortDate: today,
+                        data: { seasonId: season.id }
+                    });
+                }
+
+            } else {
+                // CASO B: Ya se confirmó inicio, monitorear FIN
+                // Solo si el estado interno dice que está en curso (o pendiente de fin)
+                if (season.lightTreatmentDuration) {
+                    const end = new Date(start);
+                    end.setDate(start.getDate() + season.lightTreatmentDuration);
+                    const endTime = end.getTime();
+                    const daysToEnd = Math.ceil((endTime - todayTime) / (1000 * 60 * 60 * 24));
+
+                    // Alerta de Fin (Solo el día exacto)
+                    if (daysToEnd === 0) {
+                        generatedAlerts.push({
+                            id: `light_end_action_${season.id}`,
+                            animalId: season.id,
+                            animalDisplay: season.name,
+                            type: 'MANEJO',
+                            subType: 'LIGHT_END',
+                            icon: Sun,
+                            color: 'text-blue-400',
+                            title: 'Finalizar Luz',
+                            message: `Hoy se cumplen los ${season.lightTreatmentDuration} días. Apagar sistema y retirar luz extra.`,
+                            sortDate: today,
+                            data: { seasonId: season.id }
+                        });
+                    }
+                }
             }
         });
-        // --- (FIN CORRECCIÓN REGRESIÓN PUNTO 7) ---
 
+        // ---------------------------------------------------------
+        // 2. ALERTAS DE ANIMALES (Lógica existente)
+        // ---------------------------------------------------------
+        
+        // Crear Set de animales que YA tienen el evento de "Peso de Monta"
+        const animalsWithServiceWeightEvent = new Set<string>();
+        events.forEach(e => {
+            if (e.type === 'Peso de Monta') {
+                animalsWithServiceWeightEvent.add(e.animalId);
+            }
+        });
 
-        // 1. OBTENER DATOS DE CONFIGURACIÓN
+        // Config Vars
         const {
             diasGestacion,
             diasConfirmarPrenez,
@@ -100,15 +188,13 @@ export const useManagementAlerts = () => {
             pesoMinimoPesarDestete,
             diasMetaDesteteFinal,
             pesoMinimoDesteteFinal,
-            // Tarea 2.3: Configuración de Alerta de Vacías
             edadParaAlertaVaciasMeses,
             pesoPrimerServicioKg
         } = config;
 
-        // 2. PROCESAR CADA ANIMAL ACTIVO
         for (const animal of activeAnimals) {
             
-            // --- LÓGICA DE HEMBRAS (REPRODUCTIVO Y SECADO) ---
+            // --- LÓGICA DE HEMBRAS ---
             if (animal.sex === 'Hembra') {
                 const animalServices = serviceRecords
                     .filter(s => s.femaleId === animal.id)
@@ -121,7 +207,7 @@ export const useManagementAlerts = () => {
                     .sort((a, b) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime());
                 const lastParturition = animalParturitions[0];
 
-                // --- ALERTA: Confirmar Preñez ---
+                // Confirmar Preñez
                 if (animal.reproductiveStatus === 'En Servicio' && lastService && hasServiceRecord) {
                     const serviceDate = new Date(lastService.serviceDate + 'T00:00:00Z');
                     const daysSinceService = getDaysBetween(serviceDate, today);
@@ -141,7 +227,7 @@ export const useManagementAlerts = () => {
                     }
                 }
 
-                // --- Tarea 2.3 / Punto 7: Alerta 1 (Servicio no visto) ---
+                // Servicio No Visto
                 if (animal.reproductiveStatus === 'En Servicio' && !hasServiceRecord) {
                     generatedAlerts.push({
                         id: `${animal.id}_servicio_no_visto`,
@@ -156,45 +242,47 @@ export const useManagementAlerts = () => {
                     });
                 }
                 
-                // --- (INICIO CORRECCIÓN) Tarea 2.3 / Punto 7: Alerta 2 (Madura sin peso) ---
+                // Sin Peso de Monta
                 const ageInMonths = calculateAgeInMonths(animal.birthDate);
-                
-                // Definir si es "Nativo" usando el Set
-                const isNativo = nativoIds.has(animal.id); 
-                
+                const hasClosedCycle = animalsWithServiceWeightEvent.has(animal.id);
+                const isInBreedingLot = !!animal.sireLotId; 
+                const isReproductiveActive = ['En Servicio', 'Preñada'].includes(animal.reproductiveStatus || '');
+                const isAdult = animal.lifecycleStage === 'Cabra';
+
                 if (
-                    isNativo && // <-- CORRECCIÓN: Solo aplicar a animales nativos
-                    (animal.reproductiveStatus === 'Vacía' || animal.reproductiveStatus === 'Post-Parto') &&
+                    !hasClosedCycle &&       
+                    !isInBreedingLot &&      
+                    !isReproductiveActive && 
+                    !isAdult &&              
+                    (animal.lifecycleStage === 'Cabritona' || animal.lifecycleStage === 'Cabrita') && 
+                    (animal.reproductiveStatus === 'Vacía' || animal.reproductiveStatus === 'No Aplica' || animal.reproductiveStatus === 'Post-Parto' || !animal.reproductiveStatus) &&
                     ageInMonths >= edadParaAlertaVaciasMeses
                 ) {
                     const lastWeight = bodyWeighings
                         .filter(bw => bw.animalId === animal.id)
                         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
                     
-                    if (!lastWeight || lastWeight.kg < pesoPrimerServicioKg) {
+                    if (lastWeight && lastWeight.kg >= pesoPrimerServicioKg) {
                          generatedAlerts.push({
-                            id: `${animal.id}_sin_peso_monta`,
+                            id: `${animal.id}_peso_monta_ready`,
                             animalId: animal.id,
                             animalDisplay: formatAnimalDisplay(animal),
                             type: 'REPRODUCTIVO',
+                            subType: 'SERVICE_WEIGHT',
                             icon: Scale,
-                            color: 'text-yellow-400',
-                            title: 'Sin Peso de Monta',
-                            // (CORRECCIÓN) Mensaje limpiado, ya no incluye "(Nativa)"
-                            message: `Edad: ${ageInMonths} meses. Peso actual: ${lastWeight?.kg || 'N/A'} Kg (Meta: ${pesoPrimerServicioKg} Kg).`,
-                            sortDate: new Date(animal.birthDate) // Ordenar por edad
+                            color: 'text-pink-400', 
+                            title: 'Peso de Monta Alcanzado',
+                            message: `Peso actual: ${lastWeight.kg} Kg. Toca para registrar y habilitar servicio.`,
+                            sortDate: new Date(lastWeight.date)
                         });
                     }
                 }
-                // --- (FIN CORRECCIÓN) ---
 
-
-                // --- ALERTAS DE PREÑEZ (SECADO Y PRE-PARTO) ---
+                // Secado y Pre-parto
                 if (animal.reproductiveStatus === 'Preñada' && lastService) {
                     const serviceDate = new Date(lastService.serviceDate + 'T00:00:00Z');
-                    const fpp = addDays(serviceDate, diasGestacion); // Fecha Probable de Parto
+                    const fpp = addDays(serviceDate, diasGestacion); 
                     const daysToParto = getDaysBetween(today, fpp);
-
                     const isActiveLactation = lastParturition && lastParturition.status === 'activa';
 
                     if (isActiveLactation && daysToParto <= diasAlertaInicioSecado && daysToParto > diasMetaSecadoCompleto) {
@@ -240,11 +328,10 @@ export const useManagementAlerts = () => {
                     }
                 }
                 
-                // --- ALERTA: Secado (Lactancia Larga / Vacía) ---
+                // Lactancia Larga
                 if (lastParturition && lastParturition.status === 'activa' && animal.reproductiveStatus !== 'Preñada') {
                     const parturitionDate = new Date(lastParturition.parturitionDate + 'T00:00:00Z');
-                    const del = getDaysBetween(parturitionDate, today); // Días en Leche
-
+                    const del = getDaysBetween(parturitionDate, today);
                     if (del >= diasLactanciaObjetivo) {
                         generatedAlerts.push({
                             id: `${animal.id}_lactancia_larga`,
@@ -262,71 +349,48 @@ export const useManagementAlerts = () => {
             }
 
             // --- LÓGICA DE CRÍAS (DESTETE) ---
-            // (CORREGIDO) Pasar 'appConfig'
-            const category = getAnimalZootecnicCategory(animal, parturitions, appConfig);
-            if (category === 'Cabrita' || category === 'Cabrito') {
+            const category = getAnimalZootecnicCategory(animal, parturitions);
+            
+            if ((category === 'Cabrita' || category === 'Cabrito') && !animal.weaningDate) {
                 const ageInDays = calculateAgeInDays(animal.birthDate);
-                const birthDate = new Date(animal.birthDate + 'T00:00:00Z');
+                const birthDate = new Date((animal.birthDate || today.toISOString()) + 'T00:00:00Z');
 
-                const lastWeight = bodyWeighings
-                    .filter(bw => bw.animalId === animal.id)
-                    .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-                
-                // --- ALERTA: Pesar para Destete (Revisión 1) ---
-                if (ageInDays >= diasAlertaPesarDestete && ageInDays < diasMetaDesteteFinal) {
-                    const title = 'Pesar (Revisión 1)';
-                    let message = `Edad: ${ageInDays} días. Pesar para revisión (Meta: ${pesoMinimoPesarDestete} Kg).`;
-                    if (lastWeight && new Date(lastWeight.date) > addDays(birthDate, diasAlertaPesarDestete - 7)) {
-                        message = `Edad: ${ageInDays} días. Peso actual: ${lastWeight.kg} Kg (Meta: ${pesoMinimoPesarDestete} Kg).`
+                if (ageInDays <= 365) {
+                    const lastWeight = bodyWeighings
+                        .filter(bw => bw.animalId === animal.id)
+                        .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+                    
+                    if (ageInDays >= diasMetaDesteteFinal && lastWeight && lastWeight.kg >= pesoMinimoDesteteFinal) {
+                        generatedAlerts.push({
+                            id: `${animal.id}_destete_final_ready`,
+                            animalId: animal.id,
+                            animalDisplay: formatAnimalDisplay(animal),
+                            type: 'DESTETE',
+                            subType: 'WEANING', 
+                            icon: Baby,
+                            color: 'text-green-400',
+                            title: 'LISTO PARA DESTETE',
+                            message: `Edad: ${ageInDays}d. Peso: ${lastWeight.kg} Kg. Toca para confirmar.`,
+                            sortDate: birthDate
+                        });
                     }
-
-                    generatedAlerts.push({
-                        id: `${animal.id}_pesar_destete_1`,
-                        animalId: animal.id,
-                        animalDisplay: formatAnimalDisplay(animal),
-                        type: 'DESTETE',
-                        icon: Scale,
-                        color: 'text-yellow-400',
-                        title: title,
-                        message: message,
-                        sortDate: birthDate
-                    });
-                }
-
-                // --- ALERTA: Destete Final (Revisión 2) ---
-                if (ageInDays >= diasMetaDesteteFinal) {
-                    let title = 'Pesar (Destete Final)';
-                    let message = `Edad: ${ageInDays} días. Pesar para destete final (Meta: ${pesoMinimoDesteteFinal} Kg).`;
-                    let color: ManagementAlert['color'] = 'text-yellow-400';
-
-                    if (lastWeight && new Date(lastWeight.date) > addDays(birthDate, diasAlertaPesarDestete - 7)) {
-                        if (lastWeight.kg >= pesoMinimoDesteteFinal) {
-                            title = 'LISTO PARA DESTETE';
-                            message = `Edad: ${ageInDays} días. Peso: ${lastWeight.kg} Kg (Meta: ${pesoMinimoDesteteFinal} Kg).`;
-                            color = 'text-green-400';
-                        } else {
-                            title = 'Bajo Peso (Destete Final)';
-                            message = `Edad: ${ageInDays} días. Peso: ${lastWeight.kg} Kg (Meta: ${pesoMinimoDesteteFinal} Kg).`;
-                            color = 'text-red-500';
-                        }
+                    else if (ageInDays >= diasAlertaPesarDestete) {
+                        generatedAlerts.push({
+                            id: `${animal.id}_pesar_destete`,
+                            animalId: animal.id,
+                            animalDisplay: formatAnimalDisplay(animal),
+                            type: 'DESTETE',
+                            icon: Scale,
+                            color: 'text-yellow-400',
+                            title: 'Pesar para Destete',
+                            message: `Edad: ${ageInDays} días. Verificar peso (Meta: ${pesoMinimoPesarDestete} Kg).`,
+                            sortDate: birthDate
+                        });
                     }
-
-                    generatedAlerts.push({
-                        id: `${animal.id}_destete_final`,
-                        animalId: animal.id,
-                        animalDisplay: formatAnimalDisplay(animal),
-                        type: 'DESTETE',
-                        icon: Baby,
-                        color: color,
-                        title: title,
-                        message: message,
-                        sortDate: birthDate
-                    });
                 }
             }
         }
 
-        // 3. ORDENAR Y DEVOLVER
         return generatedAlerts.sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime());
 
     }, [
@@ -334,6 +398,8 @@ export const useManagementAlerts = () => {
         parturitions, 
         serviceRecords, 
         bodyWeighings, 
+        events, 
+        breedingSeasons, // Añadido a dependencias
         appConfig 
     ]);
 

@@ -1,303 +1,145 @@
-// src/utils/calculations.ts
-// (CORREGIDO: Arregla el bug de '168 años' (Date.UTC) y aplica la lógica 'Nativo vs. Registrado')
-// (CORREGIDO: Error de lógica en 'calculateGDP' (Overall))
-
-import { BodyWeighing, Animal, Parturition, ServiceRecord, SireLot, BreedingSeason } from '../db/local';
+import { BodyWeighing, Animal, Parturition, ServiceRecord, SireLot, BreedingSeason, Event as AppEvent } from '../db/local';
 import { STATUS_DEFINITIONS, AnimalStatusKey } from '../hooks/useAnimalStatus';
-import { AppConfig, DEFAULT_CONFIG } from '../types/config';
+import { AppConfig } from '../types/config'; 
 
-/**
- * Calcula la edad de un animal en días completados.
- */
-export const calculateAgeInDays = (birthDate: string, comparisonDateStr?: string): number => {
-    if (!birthDate || birthDate === 'N/A') return -1;
-    
+// -------------------------------------------------------------------------
+// --- CÁLCULOS DE TIEMPO Y EDAD ---
+// -------------------------------------------------------------------------
+
+export const calculateAgeInDays = (birthDate: string | undefined | null, comparisonDateStr?: string): number => {
+    if (!birthDate || birthDate === 'N/A' || birthDate === '') return -1;
     const birth = new Date(birthDate + 'T00:00:00Z');
-    
     let today: Date;
     if (comparisonDateStr) {
-        // Usar la fecha de comparación (ej. para un pesaje)
         today = new Date(comparisonDateStr + 'T00:00:00Z');
     } else {
-        // (ESTA ES LA CORRECCIÓN DEL BUG DE 168 AÑOS)
-        // Usar la fecha de "hoy"
         const now = new Date();
         today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     }
-
     if (isNaN(birth.getTime()) || isNaN(today.getTime())) return -1;
-
     const diffTime = today.getTime() - birth.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    return Math.max(0, diffDays);
+    return Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
 };
 
-/**
- * Calcula la edad de un animal en MESES completados, usando la edad en días.
- */
-export const calculateAgeInMonths = (birthDate: string): number => {
+export const calculateAgeInMonths = (birthDate: string | undefined | null): number => {
     const ageInDays = calculateAgeInDays(birthDate);
     if (ageInDays < 0) return 0;
-    const avgDaysInMonth = 30.4375; 
-    return Math.floor(ageInDays / avgDaysInMonth);
+    return Math.floor(ageInDays / 30.4375);
 };
 
-
-/**
- * Formatea la edad de un animal según las reglas especificadas.
- */
-export const formatAge = (birthDate: string): string => {
+export const formatAge = (birthDate: string | undefined | null): string => {
     const totalDays = calculateAgeInDays(birthDate);
     if (totalDays < 0) return 'N/A';
-    if (totalDays <= 60) {
-        return `${totalDays} día${totalDays !== 1 ? 's' : ''}`;
-    }
-    const avgDaysInMonth = 30.4375;
-    const totalMonths = Math.floor(totalDays / avgDaysInMonth);
+    if (totalDays <= 60) return `${totalDays} día${totalDays !== 1 ? 's' : ''}`;
+    const totalMonths = Math.floor(totalDays / 30.4375);
     if (totalMonths < 12) {
-        const remainingDays = Math.round(totalDays % avgDaysInMonth);
-        return `${totalMonths} mes${totalMonths !== 1 ? 'es' : ''}${remainingDays > 0 ? ` y ${remainingDays} día${remainingDays !== 1 ? 's' : ''}` : ''}`;
+        const remDays = Math.round(totalDays % 30.4375);
+        return `${totalMonths} mes${totalMonths !== 1 ? 'es' : ''}${remDays > 0 ? ` y ${remDays} d` : ''}`;
     }
-    const totalYears = Math.floor(totalMonths / 12);
-    const remainingMonths = Math.round(totalMonths % 12);
-    return `${totalYears} año${totalYears !== 1 ? 's' : ''}${remainingMonths > 0 ? ` y ${remainingMonths} mes${remainingMonths !== 1 ? 'es' : ''}` : ''}`;
+    const years = Math.floor(totalMonths / 12);
+    const months = Math.round(totalMonths % 12);
+    return `${years} año${years !== 1 ? 's' : ''}${months > 0 ? ` y ${months} m` : ''}`;
 };
 
-/**
- * Determina el estado fisiológico (categoría zootécnica) de un animal.
- */
+// -------------------------------------------------------------------------
+// --- LÓGICA ZOOTÉCNICA (JUEZ SUPREMO) ---
+// -------------------------------------------------------------------------
+
 export const getAnimalZootecnicCategory = (
     animal: Animal, 
     parturitions: Parturition[],
-    appConfig: AppConfig // Mantenido para la lógica de Macho
+    _appConfig?: AppConfig,
+    allAnimals: Animal[] = [] 
 ): string => {
     
-    const config = { ...DEFAULT_CONFIG, ...appConfig };
+    const ageInMonths = calculateAgeInMonths(animal.birthDate);
+    const animalId = animal.id.toUpperCase().trim();
 
-    // 1. Determinar si el animal es "Nativo" (nacido dentro de la app)
-    // Un animal es nativo si su ID aparece en la lista de 'liveOffspring' de un parto
-    const isNativo = parturitions.some(p => 
-        p.liveOffspring && p.liveOffspring.some(kid => kid.id === animal.id)
-    );
+    // Normalización de etiquetas
+    const currentStageLabel = (animal.lifecycleStage || '').toString();
+    const reproStatus = (animal.reproductiveStatus || '').toString();
+    const location = (animal.location || '').toString().toLowerCase();
+
+    // Detectar si está registrada como adulta manualmente (Cabra, Primípara, Multípara)
+    // y asegurarnos de que NO sea "Cabrita" o "Cabritona"
+    const isRegisteredAsAdultGoat = currentStageLabel.includes('Cabra') && 
+                                   !currentStageLabel.includes('Cabrit') && 
+                                   !currentStageLabel.includes('cabrit');
 
     if (animal.sex === 'Hembra') {
-        const hasCalved = parturitions.some(p => p.goatId === animal.id);
-
-        // --- (NUEVA LÓGICA HÍBRIDA: NATIVO vs. REGISTRADO) ---
-
-        // REGLA A: Lógica para ANIMALES NATIVOS (basada en eventos)
-        if (isNativo) {
-            // A.1. Si ha parido -> Cabra
-            if (hasCalved) {
-                return 'Cabra';
-            }
-            // A.2. Si no ha parido, pero está destetada -> Cabritona
-            if (animal.weaningDate) {
-                return 'Cabritona';
-            }
-            // A.3. Si no ha parido y no está destetada -> Cabrita
-            return 'Cabrita';
         
-        } else {
-        // REGLA B: Lógica para ANIMALES REGISTRADOS (importados)
-            
-            // B.1. Excepción: Si el usuario la registró como "Cabritona" pero
-            // luego le registró un parto manual, se actualiza a "Cabra".
-            if (hasCalved) {
-                return 'Cabra';
-            }
-            
-            // B.2. Devolver la categoría asignada al momento del registro.
-            // (Soluciona "A451" y el bug de "65 Crías")
-            return animal.lifecycleStage || 'Indefinido';
+        // 1. EVIDENCIA PRODUCTIVA (PRIORIDAD ABSOLUTA)
+        // Si está produciendo leche, ES UNA CABRA.
+        if (
+            reproStatus === 'En Ordeño' || 
+            reproStatus === 'Lactante' || 
+            reproStatus === 'Seca' || 
+            location.includes('ordeño')
+        ) {
+            return 'Cabra';
         }
+
+        // 2. EVIDENCIA DE MATERNIDAD
+        // A. Partos registrados
+        const hasParturitionRecord = parturitions.some(p => 
+            p.goatId.toUpperCase().trim() === animalId && 
+            ['Normal', 'Con Mortinatos', 'Aborto'].includes(p.parturitionOutcome || '')
+        );
+        // B. Hijos registrados (Madre biológica)
+        const hasProgeny = allAnimals.some(kid => kid.motherId?.toUpperCase().trim() === animalId);
+
+        if (hasParturitionRecord || hasProgeny) return 'Cabra';
+
+        // 3. RESPETO A LA CARGA MANUAL
+        if (isRegisteredAsAdultGoat) return 'Cabra';
+
+        // 4. EVIDENCIA CRONOLÓGICA (EDAD)
+        
+        // A. Umbral de Adultez (> 20 meses) -> Cabra
+        if (ageInMonths >= 20) return 'Cabra';
+
+        // B. Umbral de Desarrollo (> 8 meses) -> Cabritona
+        if (ageInMonths >= 8) {
+            return 'Cabritona';
+        }
+
+        // 5. EVIDENCIA DE MANEJO (DESTETE)
+        if (animal.weaningDate || animal.weaningWeight || currentStageLabel === 'Cabritona') {
+            return 'Cabritona';
+        }
+
+        // 6. DEFECTO
+        return 'Cabrita';
 
     } else { 
-        // Lógica de Macho (sigue basándose en edad, lo cual es correcto)
-        
-        const ageInDays = calculateAgeInDays(animal.birthDate);
-        if (ageInDays < 0) {
-             // Si no hay fecha, respetar la categoría manual
-             return animal.lifecycleStage || 'Indefinido';
-        }
-        const ageInMonths = calculateAgeInMonths(animal.birthDate);
+        // MACHOS
+        const hasOffspring = allAnimals.some(kid => kid.fatherId?.toUpperCase().trim() === animalId);
+        if (hasOffspring) return 'Reproductor';
 
-        // 1. Regla CABRITO: (0d a ej: 90d)
-        if (ageInDays <= config.categoriaCabritoEdadMaximaDias) {
-            return 'Cabrito';
-        }
-        // 2. Regla MACHO LEVANTE: (ej: 91d a 12m)
-        if (ageInMonths <= config.categoriaMachoLevanteEdadMaximaMeses) {
+        if (ageInMonths > 12) return 'Reproductor';
+        if (currentStageLabel === 'Reproductor') return 'Reproductor';
+        
+        if (animal.weaningDate || currentStageLabel === 'Macho de Levante' || ageInMonths >= 8) {
             return 'Macho de Levante';
         }
-        // 3. Regla REPRODUCTOR: (ej: > 12m)
-        else { 
-            return 'Reproductor';
-        }
+
+        return 'Cabrito';
     }
 };
 
+export const isEligibleForBreeding = (animal: Animal, minAgeConfigMonths: number = 0): boolean => {
+    if (animal.sex !== 'Hembra' || animal.status !== 'Activo') return false;
+    const ageInMonths = calculateAgeInMonths(animal.birthDate);
+    const effectiveMinAge = minAgeConfigMonths > 0 ? minAgeConfigMonths : 6;
+    
+    const currentStageLabel = (animal.lifecycleStage || '').toString();
+    const isAdult = currentStageLabel.includes('Cabra') && !currentStageLabel.includes('Cabrit');
 
-// ... (Resto de las funciones 'calculateDEL', 'calculateWeightedScore', etc., sin cambios) ...
-/**
- * Calcula los "Días en Leche" (DEL) para un pesaje específico.
- */
-export const calculateDEL = (parturitionDate: string, weighDate: string): number => {
-    const pDate = new Date(parturitionDate + 'T00:00:00Z');
-    const wDate = new Date(weighDate + 'T00:00:00Z');
-    if (isNaN(pDate.getTime()) || isNaN(wDate.getTime())) return 0;
-    const diffTime = wDate.getTime() - pDate.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(0, diffDays);
+    if (ageInMonths === 0 && (isAdult || currentStageLabel === 'Cabritona')) return true;
+    
+    return ageInMonths >= effectiveMinAge;
 };
 
-/**
- * Calcula un puntaje ponderado para la producción de leche.
- */
-export const calculateWeightedScore = (kg: number, del: number): number => {
- const idealPeakDay = 50; 
- const weightFactor = 1 + ((del - idealPeakDay) / (del + idealPeakDay));
- const weightedScore = kg * Math.max(0.5, weightFactor); 
- return parseFloat(weightedScore.toFixed(2));
-};
-
-/**
- * Calcula la Ganancia Diaria de Peso (GDP) de un animal.
- * (CORREGIDO: Ahora acepta 'birthDate' y calcula 'overall' correctamente)
- */
-export const calculateGDP = (
-    birthDate: string | undefined,
-    birthWeight: number | undefined, 
-    weighings: BodyWeighing[]
-): { overall: number | null, recent: number | null } => {
-    
-    // --- GDP Reciente (entre los dos últimos pesajes) ---
-    let recent: number | null = null;
-    if (weighings.length >= 2) {
-        // Asegurarse de que están ordenados por fecha
-        const sortedWeighings = [...weighings].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        const last = sortedWeighings[sortedWeighings.length - 1];
-        const secondLast = sortedWeighings[sortedWeighings.length - 2];
-        
-        const daysBetween = (new Date(last.date).getTime() - new Date(secondLast.date).getTime()) / (1000 * 60 * 60 * 24);
-        
-        if (daysBetween > 0) {
-            recent = (last.kg - secondLast.kg) / daysBetween;
-        }
-    }
-    
-    // --- GDP General (Desde el nacimiento hasta el último pesaje) ---
-    let overall: number | null = null;
-    
-    // Se necesita fecha de nacimiento, peso al nacer y al menos un pesaje
-    if (birthDate && birthDate !== 'N/A' && birthWeight && birthWeight > 0 && weighings.length > 0) {
-        
-        // Encontrar el último pesaje (el array puede no venir ordenado)
-        const latestWeighing = [...weighings].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-
-        // Calcular la edad del animal *en el día de ese último pesaje*
-        const ageAtLastWeighing = calculateAgeInDays(birthDate, latestWeighing.date);
-        
-        if (ageAtLastWeighing > 0) {
-            const totalGain = latestWeighing.kg - birthWeight;
-            overall = totalGain / ageAtLastWeighing;
-        }
-    }
-    
-    // Devolver ambos valores (Nota: 'recent' se calcula en kg/día, 'overall' también)
-    return { overall, recent };
-};
-
-
-/**
- * Estima el peso de un animal en una edad objetivo usando interpolación lineal.
- */
-export const getInterpolatedWeight = (weighings: BodyWeighing[], birthDate: string, targetAgeInDays: number): number | null => {
-    // (CORRECCIÓN IMPORTANTE) La función de interpolación debe incluir el peso al nacer como el punto '0'.
-    
-    const weighingsWithAge = weighings
-        .map(w => ({
-            age: (new Date(w.date).getTime() - new Date(birthDate + 'T00:00:00Z').getTime()) / (1000 * 60 * 60 * 24),
-            kg: w.kg,
-        }))
-        .sort((a, b) => a.age - b.age);
-    
-    // El 'weighings' que entra aquí YA DEBE contener el peso al nacer.
-    // La lógica en 'GrowthProfilePage.tsx' se asegura de esto.
-    
-    if (weighingsWithAge.length < 1) return null;
-
-    // Buscar el punto exacto, anterior y siguiente
-    const exactMatch = weighingsWithAge.find(w => w.age === targetAgeInDays);
-    if (exactMatch) return exactMatch.kg;
-    
-    const before = weighingsWithAge.filter(w => w.age < targetAgeInDays).pop();
-    const after = weighingsWithAge.find(w => w.age > targetAgeInDays);
-
-    // Si tenemos un punto antes y uno después, interpolamos
-    if (before && after) {
-        if (before.age === after.age) return before.kg; // Evitar división por cero
-
-        const ageRange = after.age - before.age;
-        if (ageRange === 0) return before.kg;
-
-        const weightRange = after.kg - before.kg;
-        const ageOffset = targetAgeInDays - before.age;
-        
-        const interpolatedWeight = before.kg + (ageOffset / ageRange) * weightRange;
-        
-        return parseFloat(interpolatedWeight.toFixed(2));
-    }
-    
-    // Si no hay un punto "después" (ej. 90 días, pero el animal tiene 80)
-    // Devolvemos null porque no podemos predecir el futuro.
-    return null;
-};
-
-/**
- * Calcula un índice de crecimiento ponderado que premia la precocidad.
- */
-export const calculateGrowthScore = (individualGdp: number, averageGdp: number, ageInDays: number): number => {
-    if (averageGdp === 0) return 100;
-    const baseScore = (individualGdp / averageGdp) * 100;
-    const ageFactor = 1 + ((180 - Math.min(ageInDays, 180)) / 180) * 0.1;
-    return Math.round(baseScore * ageFactor);
-};
-
-// --- ÍNDICE DE DESTETE ---
-export const calculateWeaningIndex = (animal: Animal): number | null => {
-    if (!animal.weaningWeight || !animal.weaningDate || !animal.birthWeight || !animal.birthDate) {
-        return null;
-    }
-    const ageAtWeaning = (new Date(animal.weaningDate).getTime() - new Date(animal.birthDate).getTime()) / (1000 * 60 * 60 * 24);
-    if (ageAtWeaning <= 0) return null;
-
-    const gdpToWeaning = (animal.weaningWeight - animal.birthWeight) / ageAtWeaning;
-    const adjustedWeight = animal.birthWeight + (gdpToWeaning * 60); // Ajustado a 60 días
-    return parseFloat(adjustedWeight.toFixed(2));
-};
-
-// --- ÍNDICE DE PRECOCIDAD ---
-export const calculatePrecocityIndex = (animal: Animal, allWeighings: BodyWeighing[]): number | null => {
-    const animalWeighings = allWeighings.filter(w => w.animalId === animal.id);
-    
-    // (CORRECCIÓN) Asegurarse de que el peso al nacer se incluya para la interpolación
-    if (animal.birthWeight && animal.birthDate) {
-        animalWeighings.unshift({
-            id: 'birth_weight_temp',
-            animalId: animal.id,
-            date: animal.birthDate,
-            kg: animal.birthWeight,
-            userId: animal.userId,
-            _synced: true
-        });
-    }
-    
-    return getInterpolatedWeight(animalWeighings, animal.birthDate, 210); // 7 meses = 210 días
-};
-
-// --- FUNCIÓN EXISTENTE ---
 export const getAnimalStatusObjects = (
     animal: Animal | undefined | null,
     allParturitions: Parturition[],
@@ -305,7 +147,6 @@ export const getAnimalStatusObjects = (
     allSireLots: SireLot[],
     allBreedingSeasons: BreedingSeason[]
 ): (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] => {
-    
     const activeStatuses: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] = [];
     if (!animal) return [];
 
@@ -338,92 +179,373 @@ export const getAnimalStatusObjects = (
         if(isActiveSire) activeStatuses.push(STATUS_DEFINITIONS.SIRE_IN_SERVICE);
     }
     
-    const uniqueKeys = Array.from(new Set(activeStatuses.map(s => s.key)));
-    return uniqueKeys.map(key => STATUS_DEFINITIONS[key as AnimalStatusKey]);
+    return Array.from(new Set(activeStatuses.map(s => s.key))).map(key => STATUS_DEFINITIONS[key as AnimalStatusKey]);
 };
 
+// --- HELPERS DE PESO Y PRODUCCIÓN ---
 
-// --- Lógica de Composición Racial RESTAURADA ---
-const RAZAS_BASE = {
-    'A': 'Alpina',
-    'S': 'Saanen',
-    'AN': 'Anglo Nubian', 
-    'AGC': 'Canaria',
-    'T': 'Toggenburger',
-    'C': 'Criolla',     
+export const calculateDEL = (parturitionDate: string, weighDate: string): number => {
+    const pDate = new Date(parturitionDate + 'T00:00:00Z');
+    const wDate = new Date(weighDate + 'T00:00:00Z');
+    if (isNaN(pDate.getTime()) || isNaN(wDate.getTime())) return 0;
+    const diffTime = wDate.getTime() - pDate.getTime();
+    return Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
 };
 
-type BreedCode = keyof typeof RAZAS_BASE;
+export const calculateWeightedScore = (kg: number, del: number): number => {
+ const idealPeakDay = 50; 
+ const weightFactor = 1 + ((del - idealPeakDay) / (del + idealPeakDay));
+ const weightedScore = kg * Math.max(0.5, weightFactor); 
+ return parseFloat(weightedScore.toFixed(2));
+};
 
-const parseComposition = (composition: string | undefined): Map<string, number> => {
+export const calculateGDP = (
+    birthDate: string | undefined,
+    birthWeight: number | undefined, 
+    weighings: BodyWeighing[]
+): { overall: number | null, recent: number | null } => {
+    let recent: number | null = null;
+    if (weighings.length >= 2) {
+        const sortedWeighings = [...weighings].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const last = sortedWeighings[sortedWeighings.length - 1];
+        const secondLast = sortedWeighings[sortedWeighings.length - 2];
+        const daysBetween = (new Date(last.date).getTime() - new Date(secondLast.date).getTime()) / (1000 * 60 * 60 * 24);
+        if (daysBetween > 0) {
+            recent = (last.kg - secondLast.kg) / daysBetween;
+        }
+    }
+    let overall: number | null = null;
+    if (birthDate && birthDate !== 'N/A' && birthWeight && birthWeight > 0 && weighings.length > 0) {
+        const sorted = [...weighings].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const latestWeighing = sorted[0];
+        const ageAtLastWeighing = calculateAgeInDays(birthDate, latestWeighing.date);
+        if (ageAtLastWeighing > 0) {
+            overall = (latestWeighing.kg - birthWeight) / ageAtLastWeighing;
+        }
+    }
+    return { overall, recent };
+};
+
+export const getInterpolatedWeight = (weighings: BodyWeighing[], birthDate: string, targetAgeInDays: number): number | null => {
+    const weighingsWithAge = weighings.map(w => ({
+        age: (new Date(w.date).getTime() - new Date(birthDate).getTime()) / (1000 * 60 * 60 * 24),
+        kg: w.kg,
+    })).sort((a, b) => a.age - b.age);
+
+    if (weighingsWithAge.length < 1) return null;
+
+    const closeMatch = weighingsWithAge.find(w => Math.abs(w.age - targetAgeInDays) <= 5);
+    if (closeMatch) return closeMatch.kg;
+
+    const before = weighingsWithAge.filter(w => w.age < targetAgeInDays).pop();
+    const after = weighingsWithAge.find(w => w.age > targetAgeInDays);
+
+    if (before && after) {
+        const ageRange = after.age - before.age;
+        if (ageRange === 0) return before.kg;
+        const weightRange = after.kg - before.kg;
+        const ageOffset = targetAgeInDays - before.age;
+        const interpolatedWeight = before.kg + (ageOffset / ageRange) * weightRange;
+        return parseFloat(interpolatedWeight.toFixed(2));
+    }
+
+    return null;
+};
+
+export const calculateGrowthScore = (
+    currentWeight: number, 
+    targetWeight: number,
+    milestoneStatus?: { d90: string, d180: string, d270: string, service: string }
+): number => {
+    if (!targetWeight || targetWeight === 0) return 0;
+    const ratio = currentWeight / targetWeight;
+    let baseScore = Math.min(ratio * 100, 100);
+    if (milestoneStatus) {
+        if (milestoneStatus.d90 === 'missed') baseScore -= 10;
+        if (milestoneStatus.d180 === 'missed') baseScore -= 10;
+        if (milestoneStatus.d270 === 'missed') baseScore -= 10;
+        if (milestoneStatus.service === 'missed') baseScore -= 20;
+    }
+    const finalScore = Math.max(baseScore, 0) / 10;
+    return parseFloat(finalScore.toFixed(1));
+};
+
+export const calculateWeaningIndex = (animal: Animal): number | null => {
+    if (!animal.weaningWeight || !animal.weaningDate || !animal.birthWeight || !animal.birthDate) return null;
+    const ageAtWeaning = (new Date(animal.weaningDate).getTime() - new Date(animal.birthDate).getTime()) / (1000 * 60 * 60 * 24);
+    if (ageAtWeaning <= 0) return null;
+    const gdpToWeaning = (animal.weaningWeight - animal.birthWeight) / ageAtWeaning;
+    const adjustedWeight = animal.birthWeight + (gdpToWeaning * 60); 
+    return parseFloat(adjustedWeight.toFixed(2));
+};
+
+export const calculatePrecocityIndex = (animal: Animal, allWeighings: BodyWeighing[]): number | null => {
+    const animalWeighings = allWeighings.filter(w => w.animalId === animal.id);
+    if (animal.birthWeight && animal.birthDate) {
+        const birthRecord: any = { date: animal.birthDate, kg: animal.birthWeight };
+        animalWeighings.push(birthRecord);
+    }
+    return getInterpolatedWeight(animalWeighings, animal.birthDate, 210); 
+};
+
+export const calculateTargetWeightAtAge = (ageInDays: number, sex: 'Hembra' | 'Macho', appConfig: AppConfig): number => {
+    const getNum = (key: keyof AppConfig, defaultVal: number): number => {
+        const val = Number(appConfig[key]);
+        return (isNaN(val) || val === 0) ? defaultVal : val;
+    };
+
+    const birthWeight = getNum('growthGoalBirthWeight', 3.5);
+    const weaningWeight = (sex === 'Macho') ? getNum('growthGoalWeaningWeightMale', 16) : getNum('pesoMinimoDesteteFinal', 15);
+    const d90Weight = (sex === 'Macho') ? getNum('growthGoal90dWeightMale', 22) : getNum('growthGoal90dWeight', 20);
+    const d180Weight = (sex === 'Macho') ? getNum('growthGoal180dWeightMale', 30) : getNum('growthGoal180dWeight', 28);
+    const d270Weight = getNum('growthGoal270dWeight', 34);
+    const serviceWeight = getNum('pesoPrimerServicioKg', 38);
+    
+    const weaningDays = getNum('diasMetaDesteteFinal', 60);
+    const serviceDays = Math.floor(getNum('edadPrimerServicioMeses', 10) * 30.44);
+
+    const targetCurve = [
+        { age: 0, weight: birthWeight },
+        { age: weaningDays, weight: weaningWeight },
+        { age: 90, weight: d90Weight },
+        { age: 180, weight: d180Weight },
+        { age: 270, weight: d270Weight },
+        { age: serviceDays, weight: serviceWeight },
+    ].sort((a, b) => a.age - b.age); 
+
+    for (let i = 0; i < targetCurve.length - 1; i++) {
+        const p1 = targetCurve[i];
+        const p2 = targetCurve[i+1];
+        if (ageInDays >= p1.age && ageInDays <= p2.age) {
+            const range = p2.age - p1.age;
+            const weightDiff = p2.weight - p1.weight;
+            if (range === 0) return p2.weight;
+            const progress = (ageInDays - p1.age) / range;
+            return p1.weight + (progress * weightDiff);
+        }
+    }
+    const lastPoint = targetCurve[targetCurve.length - 1];
+    if (ageInDays > lastPoint.age) return lastPoint.weight;
+    return birthWeight; 
+};
+
+// -------------------------------------------------------------------------
+// --- HELPERS DE RAZAS ---
+// -------------------------------------------------------------------------
+
+const RAZAS_BASE = { 'A': 'Alpina', 'S': 'Saanen', 'AN': 'Anglo Nubian', 'AGC': 'Canaria', 'T': 'Toggenburger', 'C': 'Criolla' };
+
+// Función exportada para uso en otros módulos
+export const parseComposition = (composition: string | undefined): Map<string, number> => {
     const map = new Map<string, number>();
     if (!composition) return map;
-
     const regex = /(\d+(\.\d+)?)%?([A-Z]+)/g;
     let match;
-    
     while ((match = regex.exec(composition.toUpperCase())) !== null) {
         const percentage = parseFloat(match[1]);
         const code = match[3];
-        const isValidCode = Object.keys(RAZAS_BASE).includes(code);
-
-        if (!isNaN(percentage) && isValidCode) {
+        if (!isNaN(percentage) && Object.keys(RAZAS_BASE).includes(code)) {
             map.set(code, (map.get(code) || 0) + percentage);
         }
     }
     return map;
 };
 
-const formatComposition = (compositionMap: Map<string, number>): string => {
+// Función exportada
+export const formatComposition = (compositionMap: Map<string, number>): string => {
     if (compositionMap.size === 0) return '';
-    
-    const sorted = Array.from(compositionMap.entries())
-        .filter(([, perc]) => perc > 0)
-        .sort((a, b) => b[1] - a[1]);
-
+    const sorted = Array.from(compositionMap.entries()).filter(([, perc]) => perc > 0).sort((a, b) => b[1] - a[1]);
     return sorted.map(([code, perc]) => `${parseFloat(perc.toFixed(2))}%${code}`).join(' ');
 };
 
 export const calculateChildComposition = (motherComp: string | undefined, fatherComp: string | undefined): string => {
     const motherMap = parseComposition(motherComp);
     const fatherMap = parseComposition(fatherComp);
-
     const childMap = new Map<string, number>();
     const allCodes = new Set([...motherMap.keys(), ...fatherMap.keys()]);
-
     allCodes.forEach(code => {
         const motherPerc = motherMap.get(code) || 0;
         const fatherPerc = fatherMap.get(code) || 0;
         childMap.set(code, (motherPerc / 2) + (fatherPerc / 2));
     });
-
     return formatComposition(childMap);
 };
 
 export const calculateBreedFromComposition = (composition: string | undefined): string => {
     const map = parseComposition(composition);
     if (map.size === 0) return '';
-
-    const sorted = Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+    
+    // Fix TS18046
+    const sorted = Array.from(map.entries()).sort((a: [string, number], b: [string, number]) => b[1] - a[1]);
     
     if(sorted.length === 0) return '';
     
-    const [primaryCode, primaryPerc] = sorted[0];
+    // Fix TS2488
+    const firstEntry = sorted[0];
+    const primaryCode = firstEntry[0];
+    const primaryPerc = firstEntry[1];
 
     const PURE_THRESHOLD = 96.9; 
-
-    const razaBase = RAZAS_BASE[primaryCode as BreedCode] || 'Mestiza';
-
+    
+    // @ts-ignore
+    const razaBase = RAZAS_BASE[primaryCode] || 'Mestiza';
+    
     for (const [code, perc] of sorted) {
         if (perc >= PURE_THRESHOLD) {
-            const razaPura = RAZAS_BASE[code as BreedCode];
+            // @ts-ignore
+            const razaPura = RAZAS_BASE[code];
             if (razaPura) return `${razaPura} Pura`;
         }
     }
+    if (primaryPerc > 0 && razaBase !== 'Mestiza') return `Mestiza ${razaBase}`;
+    return 'Mestiza'; 
+};
+
+// -------------------------------------------------------------------------
+// --- ESTADOS DE CRECIMIENTO ---
+// -------------------------------------------------------------------------
+
+export interface GrowthStatus {
+    isReadyForWeaning: boolean;
+    isReadyForService: boolean;
+    currentWeight: number;
+    currentWeightDate: string;
     
-    if (primaryPerc > 0 && razaBase !== 'Mestiza') {
-        return `Mestiza ${razaBase}`;
+    milestoneStatus: {
+        weaning: 'met' | 'missed' | 'close' | 'pending';
+        d90: 'met' | 'missed' | 'close' | 'pending';
+        d180: 'met' | 'missed' | 'close' | 'pending';
+        d270: 'met' | 'missed' | 'close' | 'pending';
+        service: 'met' | 'missed' | 'close' | 'pending';
+    };
+}
+
+const evaluateServiceTiming = (ageAtEvent: number, targetAge: number): 'met' | 'close' | 'missed' => {
+    const diff = ageAtEvent - targetAge;
+    if (diff <= 0) return 'met'; 
+    if (diff <= -30) return 'met'; 
+    if (diff > 0 && diff <= 30) return 'close'; 
+    return 'missed'; 
+};
+
+const getMilestoneStatus = (
+    actual: number | null, 
+    target: number, 
+    ageInDays: number, 
+    targetDay: number, 
+    toleranceGreen: number, 
+    toleranceYellow: number 
+): 'met' | 'missed' | 'close' | 'pending' => {
+    
+    if (actual === null) {
+        if (ageInDays > targetDay + 30) return 'missed'; 
+        return 'pending';
+    }
+    
+    if (actual >= target - toleranceGreen) return 'met';
+    if (actual >= target - toleranceYellow) return 'close';
+    return 'missed';
+};
+
+export const getGrowthStatus = (
+    animal: Animal, 
+    weighings: BodyWeighing[], 
+    appConfig: AppConfig,
+    events: AppEvent[] = [] 
+): GrowthStatus => {
+    
+    const ageInDays = calculateAgeInDays(animal.birthDate);
+    if (ageInDays < 0) return { 
+        isReadyForWeaning: false, 
+        isReadyForService: false, 
+        currentWeight: 0, 
+        currentWeightDate: new Date().toISOString().split('T')[0],
+        milestoneStatus: { weaning: 'pending', d90: 'pending', d180: 'pending', d270: 'pending', service: 'pending' }
+    };
+
+    const animalWeighings = weighings
+        .filter(w => w.animalId === animal.id)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    const allPointsForInterpolation = [...animalWeighings];
+    if (animal.birthWeight && animal.birthDate && animal.birthDate !== 'N/A') {
+        const hasBirthRecord = animalWeighings.some(w => w.date === animal.birthDate);
+        if (!hasBirthRecord) {
+            allPointsForInterpolation.unshift({
+                id: 'birth',
+                animalId: animal.id,
+                date: animal.birthDate,
+                kg: animal.birthWeight,
+                userId: animal.userId || '',
+                _synced: true
+            });
+        }
+    }
+    allPointsForInterpolation.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    let currentWeight = animal.birthWeight || 0;
+    let currentWeightDate = new Date().toISOString().split('T')[0];
+
+    if (animalWeighings.length > 0) {
+        const latest = animalWeighings[animalWeighings.length - 1]; 
+        currentWeight = latest.kg;
+        currentWeightDate = latest.date;
     }
 
-    return 'Mestiza'; // Fallback
+    const getVal = (key: keyof AppConfig, def: number) => Number(appConfig[key]) || def;
+
+    const weaningDays = getVal('diasMetaDesteteFinal', 60);
+    const weaningKg = (animal.sex === 'Macho') ? getVal('growthGoalWeaningWeightMale', 16) : getVal('pesoMinimoDesteteFinal', 15);
+    const isWeaningLate = ageInDays > (weaningDays + 10);
+    const isHistoricalEntry = animalWeighings.length > 0 && animalWeighings[0].kg > 14;
+    const isReadyForWeaning = !animal.weaningDate && animal.status === 'Activo' && !isHistoricalEntry && ageInDays >= weaningDays && currentWeight >= 9.5;
+
+    const serviceTargetDays = Math.floor(getVal('edadPrimerServicioMeses', 11) * 30.44);
+    const serviceTargetKg = getVal('pesoPrimerServicioKg', 30);
+    const serviceEvent = events.find(e => e.animalId === animal.id && e.type === 'Peso de Monta');
+    
+    let serviceHitoStatus: 'met' | 'missed' | 'close' | 'pending' = 'pending';
+
+    if (serviceEvent) {
+        const ageAtEvent = calculateAgeInDays(animal.birthDate, serviceEvent.date);
+        serviceHitoStatus = evaluateServiceTiming(ageAtEvent, serviceTargetDays);
+    } else {
+        const qualifierWeight = animalWeighings.find(w => w.kg >= serviceTargetKg);
+        if (qualifierWeight) {
+             const ageAtQualifier = calculateAgeInDays(animal.birthDate, qualifierWeight.date);
+             serviceHitoStatus = evaluateServiceTiming(ageAtQualifier, serviceTargetDays);
+             currentWeightDate = qualifierWeight.date; 
+        } else {
+            if (ageInDays > serviceTargetDays + 60) serviceHitoStatus = 'missed';
+        }
+    }
+
+    const w90Target = (animal.sex === 'Macho') ? getVal('growthGoal90dWeightMale', 20) : getVal('growthGoal90dWeight', 20);
+    const w180Target = (animal.sex === 'Macho') ? getVal('growthGoal180dWeightMale', 28) : getVal('growthGoal180dWeight', 28);
+    const w270Target = getVal('growthGoal270dWeight', 34);
+
+    const getWeightAt = (days: number) => getInterpolatedWeight(allPointsForInterpolation, animal.birthDate, days);
+
+    const milestoneStatus = {
+        weaning: animal.weaningWeight ? 'met' : (isWeaningLate ? 'close' : getMilestoneStatus(getWeightAt(weaningDays), weaningKg, ageInDays, weaningDays, 2.0, 3.0)),
+        d90: getMilestoneStatus(getWeightAt(90), w90Target, ageInDays, 90, 0.5, 0.9),
+        d180: getMilestoneStatus(getWeightAt(180), w180Target, ageInDays, 180, 0.5, 1.0),
+        d270: getMilestoneStatus(getWeightAt(270), w270Target, ageInDays, 270, 0.5, 1.5),
+        service: serviceHitoStatus 
+    };
+
+    const isReadyForService = 
+        !serviceEvent &&
+        animal.sex === 'Hembra' &&
+        (animal.reproductiveStatus === 'Vacía' || animal.reproductiveStatus === 'No Aplica' || !animal.reproductiveStatus) &&
+        ageInDays >= 300 &&    
+        currentWeight >= serviceTargetKg;  
+
+    return {
+        isReadyForWeaning,
+        isReadyForService,
+        currentWeight,
+        currentWeightDate,
+        milestoneStatus
+    };
 };

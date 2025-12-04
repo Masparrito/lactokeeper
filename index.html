@@ -2,20 +2,34 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-    <title>LactoKeeper</title>
-    
-    <meta name="theme-color" content="#1C1C1E">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>GanaderoOS</title>
+    <meta name="theme-color" content="#09090b">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+      html, body {
+        height: 100%;
+        width: 100%;
+        background-color: #09090b;
+        margin: 0;
+        padding: 0;
+        overscroll-behavior-y: none; 
+        overflow: hidden;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #root { height: 100%; width: 100%; isolation: isolate; }
+      input, textarea { -webkit-user-select: text; user-select: text; }
+    </style>
   </head>
-  <body class="bg-[#1C1C1E]">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

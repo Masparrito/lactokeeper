@@ -1,16 +1,11 @@
-// src/pages/SireLotDetailPage.tsx (CORREGIDO - TS2440 y TS2741)
-
 import { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import type { PageState } from '../types/navigation';
-import { ArrowLeft, Plus, Search, Heart, Baby, Droplets, Scale, Archive, HeartCrack, DollarSign, Ban } from 'lucide-react';
-import { Animal, ServiceRecord, Parturition, BreedingSeason, SireLot, Father } from '../db/local';
+import { ArrowLeft, Plus, Search, Heart, HeartCrack, DollarSign, Ban, Trash2, MoreHorizontal, HeartHandshake } from 'lucide-react';
+import { Animal, Father } from '../db/local';
 import { AdvancedAnimalSelector } from '../components/ui/AdvancedAnimalSelector';
-// (CORREGIDO) Eliminar la importación conflictiva de 'getAnimalStatusObjects'
-import { formatAge } from '../utils/calculations';
 import { formatAnimalDisplay } from '../utils/formatting';
 import { DeclareServiceModal } from '../components/modals/DeclareServiceModal';
-import { SwipeableAnimalCard } from '../components/ui/SwipeableAnimalCard';
 import { ActionSheetModal, ActionSheetAction } from '../components/ui/ActionSheetModal';
 import { ParturitionModal } from '../components/modals/ParturitionModal';
 import { MilkWeighingActionModal } from '../components/modals/MilkWeighingActionModal';
@@ -21,39 +16,46 @@ import { Modal } from '../components/ui/Modal';
 import { LogWeightForm } from '../components/forms/LogWeightForm';
 import { BatchWeighingForm } from '../components/forms/BatchWeighingForm';
 import { NewWeighingSessionFlow } from './modules/shared/NewWeighingSessionFlow';
-import { STATUS_DEFINITIONS, AnimalStatusKey } from '../hooks/useAnimalStatus';
 
+// --- SUB-COMPONENTE: Tarjeta de Hembra Asignada ---
+const AssignedFemaleCard = ({ animal, onClick, onOpenActions }: any) => {
+    const formattedName = animal.name ? String(animal.name).toUpperCase().trim() : '';
+    
+    return (
+        <div 
+            onClick={onClick}
+            className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-3.5 mb-2 flex justify-between items-center hover:border-zinc-600 transition-all active:scale-[0.99] cursor-pointer group"
+        >
+            <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-black border border-zinc-800 flex items-center justify-center text-zinc-400 font-bold text-xs shrink-0 group-hover:border-zinc-600 transition-colors">
+                    {animal.id.substring(0, 2)}
+                </div>
+                <div className="min-w-0">
+                    <p className="font-mono font-bold text-white text-base truncate leading-tight">{animal.id}</p>
+                    {formattedName && <p className="text-xs text-zinc-500 truncate mt-0.5 font-medium">{formattedName}</p>}
+                </div>
+            </div>
 
-// --- Lógica de cálculo de estado (REUTILIZADA - Sin cambios) ---
-// Esta es la función local que usa la página. Ahora no hay conflicto.
-const getAnimalStatusObjects = (animal: Animal, allParturitions: Parturition[], allServiceRecords: ServiceRecord[], allSireLots: SireLot[], allBreedingSeasons: BreedingSeason[]): (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] => {
-    if (!animal || animal.status !== 'Activo' || animal.isReference) {
-        return [];
-    }
-    const activeStatuses: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] = [];
-    if (animal.sex === 'Hembra') {
-        const lastParturition = allParturitions.filter(p => p.goatId === animal.id && p.status !== 'finalizada').sort((a, b) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime())[0];
-        if (lastParturition) {
-            if (lastParturition.status === 'activa') activeStatuses.push(STATUS_DEFINITIONS.MILKING);
-            else if (lastParturition.status === 'en-secado') activeStatuses.push(STATUS_DEFINITIONS.DRYING_OFF);
-            else if (lastParturition.status === 'seca') activeStatuses.push(STATUS_DEFINITIONS.DRY);
-        }
-    }
-    if (animal.reproductiveStatus === 'Preñada') activeStatuses.push(STATUS_DEFINITIONS.PREGNANT);
-    else if (animal.reproductiveStatus === 'En Servicio') {
-        const hasServiceRecord = allServiceRecords.some(sr => sr.femaleId === animal.id && sr.sireLotId === animal.sireLotId);
-        if (hasServiceRecord) activeStatuses.push(STATUS_DEFINITIONS.IN_SERVICE_CONFIRMED);
-        else activeStatuses.push(STATUS_DEFINITIONS.IN_SERVICE);
-    }
-    else if (animal.reproductiveStatus === 'Vacía' || animal.reproductiveStatus === 'Post-Parto') { activeStatuses.push(STATUS_DEFINITIONS.EMPTY); }
-    if (animal.sex === 'Macho') {
-        const activeSeasons = allBreedingSeasons.filter(bs => bs.status === 'Activo');
-        const activeSeasonIds = new Set(activeSeasons.map(s => s.id));
-        const isActiveSire = allSireLots.some(sl => sl.sireId === animal.id && activeSeasonIds.has(sl.seasonId));
-        if(isActiveSire) activeStatuses.push(STATUS_DEFINITIONS.SIRE_IN_SERVICE);
-    }
-    const uniqueKeys = Array.from(new Set(activeStatuses.map(s => s.key)));
-    return uniqueKeys.map(key => STATUS_DEFINITIONS[key as AnimalStatusKey]).filter(Boolean);
+            <div className="flex items-center gap-3">
+                <div className="text-right">
+                    {/* Estado Reproductivo (Badge) */}
+                    <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border tracking-wide ${
+                        animal.reproductiveStatus === 'Preñada' ? 'text-brand-green border-brand-green/30 bg-brand-green/10' :
+                        animal.reproductiveStatus === 'En Servicio' ? 'text-pink-400 border-pink-400/30 bg-pink-400/10' :
+                        'text-zinc-500 border-zinc-700 bg-zinc-800'
+                    }`}>
+                        {animal.reproductiveStatus || 'N/A'}
+                    </span>
+                </div>
+                <button 
+                    onClick={(e) => { e.stopPropagation(); onOpenActions(animal); }}
+                    className="p-2 text-zinc-500 hover:text-white bg-zinc-800/50 hover:bg-zinc-700 rounded-xl transition-colors"
+                >
+                    <MoreHorizontal size={18} />
+                </button>
+            </div>
+        </div>
+    );
 };
 
 
@@ -64,8 +66,8 @@ interface SireLotDetailPageProps {
 }
 
 export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLotDetailPageProps) {
-    // (CORREGIDO) Añadir 'appConfig'
-    const { sireLots, fathers, animals, parturitions, serviceRecords, breedingSeasons, updateAnimal, addServiceRecord, startDryingProcess, setLactationAsDry, appConfig } = useData();
+    // Importamos fetchData para forzar recarga
+    const { sireLots, fathers, animals, parturitions, serviceRecords, breedingSeasons, updateAnimal, addServiceRecord, startDryingProcess, setLactationAsDry, appConfig, fetchData } = useData();
     const [isSelectorOpen, setSelectorOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -78,8 +80,7 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
     const [bulkAnimals, setBulkAnimals] = useState<Animal[]>([]);
     const [bulkWeightType, setBulkWeightType] = useState<'leche' | 'corporal'>('corporal');
 
-
-    // (Toda la lógica de Memos y Handlers permanece SIN CAMBIOS)
+    // Lógica de datos
     const lot = useMemo(() => sireLots.find(l => l.id === lotId), [sireLots, lotId]);
     const sire = useMemo(() => {
         if (!lot) return undefined;
@@ -93,21 +94,14 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
         if (!lot) return [];
         return animals
             .filter((animal: Animal) => animal.sireLotId === lot.id && !animal.isReference)
-            .sort((a: Animal, b: Animal) => a.id.localeCompare(b.id))
-            .map((animal: Animal) => {
-                 return {
-                    ...animal,
-                    formattedAge: formatAge(animal.birthDate),
-                    statusObjects: getAnimalStatusObjects(animal, parturitions, serviceRecords, sireLots, breedingSeasons),
-                 };
-            });
-    }, [animals, lot, parturitions, serviceRecords, sireLots, breedingSeasons]);
+            .sort((a: Animal, b: Animal) => a.id.localeCompare(b.id));
+    }, [animals, lot]);
 
     const filteredFemales = useMemo(() => {
         if (!searchTerm) return assignedFemales;
         const term = searchTerm.toLowerCase();
         return assignedFemales.filter(animal =>
-            formatAnimalDisplay(animal).toLowerCase().includes(term)
+            animal.id.toLowerCase().includes(term) || (animal.name && animal.name.toLowerCase().includes(term))
         );
     }, [assignedFemales, searchTerm]);
 
@@ -120,47 +114,54 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
         setSelectorOpen(false);
     };
 
-    const handleDeclareService = async (date: Date) => {
-        if (!lot || !actionSheetAnimal) return;
-        await addServiceRecord({
-            sireLotId: lot.id,
-            femaleId: actionSheetAnimal.id,
-            serviceDate: date.toISOString().split('T')[0]
-        });
+    // --- CORRECCIÓN CRÍTICA: Desasignación y Recarga ---
+    const handleRemoveFromLot = async () => {
+        if (!actionSheetAnimal) return;
+        
+        // Lógica de estado: Si estaba 'En Servicio' -> 'Vacía'. Si no, se mantiene su estado (ej: Preñada).
+        const newStatus = actionSheetAnimal.reproductiveStatus === 'En Servicio' ? 'Vacía' : actionSheetAnimal.reproductiveStatus;
+        
+        try {
+            // 1. Actualizamos la base de datos local
+            // Importante: Pasamos 'undefined' casteado o null para borrar el campo
+            await updateAnimal(actionSheetAnimal.id, { 
+                sireLotId: undefined as any, // Dexie interpreta undefined como "borrar esta clave"
+                reproductiveStatus: newStatus 
+            });
+            
+            // 2. Forzamos la recarga de datos desde la DB para que la UI se actualice con la verdad
+            // Esto previene que la caché de React muestre datos viejos
+            await fetchData(); 
+            
+            console.log(`Hembra ${actionSheetAnimal.id} removida exitosamente.`);
+        } catch (e) {
+            console.error("Error al remover hembra:", e);
+            alert("Error al eliminar. Por favor intente de nuevo.");
+        }
+
         closeModal();
     };
 
+    // --- ACCIONES DE HOJA ---
     const getActionsForAnimal = (animal: Animal | null): ActionSheetAction[] => {
         if (!animal) return [];
-        const actions: ActionSheetAction[] = [];
-        actions.push({ label: 'Registrar Servicio', icon: Heart, onClick: () => { setIsActionSheetOpen(false); setActiveModal('service'); }, color: 'text-pink-400' });
-        actions.push({ label: 'Declarar Parto', icon: Baby, onClick: () => { setIsActionSheetOpen(false); setActiveModal('parturition'); }});
-        actions.push({ label: 'Declarar Aborto', icon: HeartCrack, onClick: () => { setIsActionSheetOpen(false); setActiveModal('abortion'); }, color: 'text-yellow-400'});
-        actions.push({ label: 'Acciones de Leche', icon: Droplets, onClick: () => { setIsActionSheetOpen(false); setActiveModal('milkWeighingAction'); }});
-        actions.push({ label: 'Acciones de Peso', icon: Scale, onClick: () => { setIsActionSheetOpen(false); setActiveModal('bodyWeighingAction'); }});
-        actions.push({ label: 'Dar de Baja', icon: Archive, onClick: () => { setIsActionSheetOpen(false); setActiveModal('decommissionSheet'); }, color: 'text-brand-red' });
+        const actions: ActionSheetAction[] = [
+            { label: 'Registrar Servicio', icon: Heart, onClick: () => { setIsActionSheetOpen(false); setActiveModal('service'); }, color: 'text-pink-400' },
+            { label: 'Quitar del Lote', icon: Trash2, onClick: handleRemoveFromLot, color: 'text-brand-red' },
+            { label: 'Ver Perfil', icon: Search, onClick: () => navigateTo({ name: 'rebano-profile', animalId: animal.id }) }
+        ];
         return actions;
     };
 
-    const decommissionActions: ActionSheetAction[] = [
-        { label: "Por Venta", icon: DollarSign, onClick: () => { setDecommissionReason('Venta'); setActiveModal('decommission'); } },
-        { label: "Por Muerte", icon: HeartCrack, onClick: () => { setDecommissionReason('Muerte'); setActiveModal('decommission'); }, color: 'text-brand-red' },
-        { label: "Por Descarte", icon: Ban, onClick: () => { setDecommissionReason('Descarte'); setActiveModal('decommission'); }, color: 'text-brand-red' },
-    ];
-
-    const handleOpenActions = (animal: Animal) => {
-        setActionSheetAnimal(animal);
-        setIsActionSheetOpen(true);
+    const handleDeclareService = async (date: Date) => {
+        if (!lot || !actionSheetAnimal) return;
+        await addServiceRecord({ sireLotId: lot.id, femaleId: actionSheetAnimal.id, serviceDate: date.toISOString().split('T')[0] });
+        closeModal();
     };
-
-    const closeModal = () => {
-        setActiveModal(null);
-        setActionSheetAnimal(null);
-        setSessionDate(null);
-        setBulkAnimals([]);
-        setDecommissionReason(null);
-        setIsActionSheetOpen(false);
-    };
+    
+    const closeModal = () => { setActiveModal(null); setActionSheetAnimal(null); setSessionDate(null); setBulkAnimals([]); setDecommissionReason(null); setIsActionSheetOpen(false); };
+    const handleDecommissionSelect = (reason: any) => { setDecommissionReason(reason); setActiveModal('decommission'); };
+    
     const handleDecommissionConfirm = async (details: DecommissionDetails) => {
         if (!actionSheetAnimal) return;
         const dataToUpdate: Partial<Animal> = { status: details.reason, isReference: true, endDate: details.date };
@@ -170,80 +171,84 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
         await updateAnimal(actionSheetAnimal.id, dataToUpdate);
         closeModal();
     };
+
+    const decommissionActions: ActionSheetAction[] = [
+        { label: "Por Venta", icon: DollarSign, onClick: () => handleDecommissionSelect('Venta') },
+        { label: "Por Muerte", icon: HeartCrack, onClick: () => handleDecommissionSelect('Muerte'), color: 'text-brand-red' },
+        { label: "Por Descarte", icon: Ban, onClick: () => handleDecommissionSelect('Descarte'), color: 'text-brand-red' },
+    ];
+
+    const handleOpenActions = (animal: Animal) => { setActionSheetAnimal(animal); setIsActionSheetOpen(true); };
     const handleLogToSession = (date: string, type: 'leche' | 'corporal') => { setSessionDate(date); setActiveModal(type === 'leche' ? 'logSimpleMilk' : 'logSimpleBody'); };
     const handleStartNewSession = (type: 'leche' | 'corporal') => { setBulkWeightType(type); setActiveModal(type === 'leche' ? 'newMilkSession' : 'newBodySession'); };
     const handleSetReadyForMating = async () => { if (actionSheetAnimal) { await updateAnimal(actionSheetAnimal.id, { reproductiveStatus: 'En Servicio' }); closeModal(); } };
     const handleAnimalsSelectedForBulk = (_selectedIds: string[], selectedAnimals: Animal[]) => { setBulkAnimals(selectedAnimals); setActiveModal('bulkWeighing'); };
     const handleBulkSaveSuccess = () => { closeModal(); };
-    const handleStartDrying = (parturitionId: string) => { 
-        startDryingProcess(parturitionId); 
-        closeModal(); 
-    };
-    const handleSetDry = (parturitionId: string) => { 
-        setLactationAsDry(parturitionId); 
-        closeModal(); 
-    };
+    const handleStartDrying = (parturitionId: string) => { startDryingProcess(parturitionId); closeModal(); };
+    const handleSetDry = (parturitionId: string) => { setLactationAsDry(parturitionId); closeModal(); };
 
 
-    if (!lot) { return ( <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Lote de Reproductor no encontrado.</h1><button onClick={onBack} className="mt-4 text-brand-orange">Volver</button></div> ); }
+    if (!lot) return null;
 
-    // --- RENDERIZADO DE LA PÁGINA ---
     return (
         <>
-            <div className="w-full max-w-2xl mx-auto space-y-4 pb-12">
+            <div className="w-full max-w-2xl mx-auto h-screen flex flex-col bg-black">
                 
-                <header className="flex items-center justify-between pt-8 pb-4 px-4 sticky top-0 bg-brand-dark z-30 border-b border-brand-border">
-                    <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
-                    <div className="text-center flex-grow min-w-0">
-                        <h1 className="text-xl font-bold tracking-tight text-white truncate">
-                            Lote: <span className="font-mono">{sireName}</span>
-                        </h1>
-                        <p className="text-xs text-zinc-400 truncate">Reproductor: {sire ? formatAnimalDisplay(sire) : 'Desconocido'}</p>
+                {/* Header */}
+                <header className="flex-shrink-0 pt-8 pb-4 px-4 bg-black border-b border-zinc-800 z-20">
+                    <div className="flex items-center justify-between mb-4">
+                        <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
+                        <div className="text-center">
+                            <p className="text-[10px] text-brand-blue font-bold uppercase tracking-wider mb-0.5">Lote de Monta</p>
+                            <h1 className="text-lg font-bold text-white truncate max-w-[200px] leading-tight">{sireName}</h1>
+                        </div>
+                        <button 
+                            onClick={() => setSelectorOpen(true)} 
+                            className="p-2 -mr-2 bg-brand-blue text-white rounded-lg shadow-lg shadow-blue-900/20 active:scale-90 transition-transform"
+                            title="Añadir Hembras"
+                        >
+                            <Plus size={24} />
+                        </button>
                     </div>
-                    <button onClick={() => setSelectorOpen(true)} className="p-2 -mr-2 bg-brand-orange hover:bg-orange-600 text-white rounded-full transition-colors">
-                        <Plus size={24} />
-                    </button>
+
+                    {/* Buscador Integrado */}
+                    <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            placeholder={`Buscar entre ${assignedFemales.length} hembras...`}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:border-brand-blue outline-none transition-all placeholder-zinc-600"
+                        />
+                    </div>
                 </header>
 
-                {/* Contenido (lista de hembras) */}
-                <div className="space-y-4 pt-4 px-4">
-                    <div className="flex justify-between items-center">
-                        <h3 className="text-lg font-semibold text-zinc-300">Hembras Asignadas ({filteredFemales.length})</h3>
-                        <div className="relative w-40">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                            <input
-                                type="search"
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                                placeholder="Buscar ID o Nombre..."
-                                className="w-full bg-zinc-800/80 rounded-lg pl-8 pr-2 py-1 text-white border-transparent focus:border-brand-amber focus:ring-0 text-sm"
+                {/* Lista de Hembras */}
+                <div className="flex-1 overflow-y-auto px-4 pt-4 pb-24 custom-scrollbar">
+                    {filteredFemales.length > 0 ? (
+                        filteredFemales.map(animal => (
+                            <AssignedFemaleCard 
+                                key={animal.id} 
+                                animal={animal} 
+                                onClick={() => navigateTo({ name: 'rebano-profile', animalId: animal.id })}
+                                onOpenActions={handleOpenActions}
                             />
+                        ))
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
+                            <HeartHandshake size={48} className="opacity-20 mb-4" />
+                            <p className="text-sm font-medium">No hay hembras asignadas.</p>
+                            <button onClick={() => setSelectorOpen(true)} className="mt-3 text-brand-blue font-bold text-xs uppercase tracking-wide hover:underline">
+                                + Asignar ahora
+                            </button>
                         </div>
-                    </div>
-                    <div className="space-y-4">
-                        {filteredFemales.length > 0 ? (
-                            filteredFemales.map(animal => (
-                                // --- INICIO CORRECCIÓN (TS2739) ---
-                                <SwipeableAnimalCard
-                                    key={animal.id}
-                                    animal={animal}
-                                    onSelect={(id) => navigateTo({ name: 'rebano-profile', animalId: id })}
-                                    onOpenActions={handleOpenActions}
-                                    isSelectionMode={false} // Esta página no usa modo de selección
-                                    isSelected={false}      // Esta página no usa modo de selección
-                                />
-                                // --- FIN CORRECCIÓN ---
-                            ))
-                        ) : (
-                            <div className="text-center py-10 bg-brand-glass rounded-2xl">
-                                <p className="text-zinc-500">{searchTerm ? 'No se encontraron coincidencias.' : 'Aún no has asignado hembras a este lote.'}</p>
-                            </div>
-                        )}
-                    </div>
+                    )}
                 </div>
             </div>
 
-            {/* --- Modales (Sin cambios) --- */}
+            {/* --- MODALES --- */}
+            
             <AdvancedAnimalSelector
                 isOpen={isSelectorOpen}
                 onClose={() => setSelectorOpen(false)}
@@ -253,16 +258,15 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
                 serviceRecords={serviceRecords}
                 breedingSeasons={breedingSeasons}
                 sireLots={sireLots}
-                // (CORREGIDO) Pasar 'appConfig'
                 appConfig={appConfig}
-                title={`Asignar Hembras al Lote de ${sireName}`}
+                title={`Asignar a ${sireName}`}
                 sireIdForInbreedingCheck={lot.sireId}
             />
 
             <ActionSheetModal
                 isOpen={isActionSheetOpen}
                 onClose={() => setIsActionSheetOpen(false)}
-                title={`Acciones para ${formatAnimalDisplay(actionSheetAnimal)}`}
+                title={`Opciones: ${formatAnimalDisplay(actionSheetAnimal)}`}
                 actions={getActionsForAnimal(actionSheetAnimal)}
             />
             

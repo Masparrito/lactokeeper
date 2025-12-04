@@ -1,121 +1,128 @@
-// src/components/modals/AddQuickParentModal.tsx
-// Modal con formulario para agregar un padre (Madre/Padre) rápidamente
-// CORREGIDO
-
-import React, { useState, useEffect } from 'react';
-import { X, Calendar } from 'lucide-react'; // 'Delete' eliminado (no se usaba)
-import { useData } from '../../context/DataContext';
+import { useState } from 'react';
+import { X, Save, UserPlus, Dna, Hash, Type } from 'lucide-react';
 import { Animal } from '../../db/local';
-import { calculateBreedFromComposition } from '../../utils/calculations';
-import { FormInput, Toggle } from '../ui/FormControls'; // 'Toggle' movido aquí
-import { FormGroup } from '../ui/FormGroup';
-import { CustomAlphanumericKeyboard } from '../input/CustomAlphanumericKeyboard';
-import { BottomSheetDatePicker } from '../input/BottomSheetDatePicker';
-import { RacialCompositionKeyboard } from '../input/RacialCompositionKeyboard';
 
 interface AddQuickParentModalProps {
     type: 'mother' | 'father';
     onClose: () => void;
-    onSave: (animal: Animal) => void;
+    onSave: (newParent: Animal) => void;
 }
 
-export const AddQuickParentModal: React.FC<AddQuickParentModalProps> = ({ type, onClose, onSave }) => {
-    // 'appConfig' eliminado (no se usaba)
-    const { addAnimal, animals, fathers } = useData(); 
-    const [status, setStatus] = useState<'Activo' | 'Referencia'>('Referencia');
-    const [animalId, setAnimalId] = useState('');
+export const AddQuickParentModal = ({ type, onClose, onSave }: AddQuickParentModalProps) => {
+    const [id, setId] = useState('');
     const [name, setName] = useState('');
-    const [birthDate, setBirthDate] = useState('');
-    const [racialComposition, setRacialComposition] = useState('');
-    const [breed, setBreed] = useState('');
-    const [message, setMessage] = useState<string | null>(null);
-    const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
-    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-    const [isRacialKeyboardOpenModal, setIsRacialKeyboardOpenModal] = useState(false);
+    
+    // Configuración dinámica según el tipo (Padre/Madre)
+    const isFather = type === 'father';
+    const title = isFather ? 'Nuevo Padre' : 'Nueva Madre';
+    const role = isFather ? 'Semental' : 'Matriz';
+    const sex = isFather ? 'Macho' : 'Hembra';
+    
+    // Estilos dinámicos
+    const theme = isFather 
+        ? { text: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20', ring: 'focus:ring-blue-500', borderFocus: 'focus:border-blue-500', btn: 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700 shadow-[0_4px_20px_rgba(37,99,235,0.3)]' }
+        : { text: 'text-pink-500', bg: 'bg-pink-500/10', border: 'border-pink-500/20', ring: 'focus:ring-pink-500', borderFocus: 'focus:border-pink-500', btn: 'bg-pink-600 hover:bg-pink-500 active:bg-pink-700 shadow-[0_4px_20px_rgba(219,39,119,0.3)]' };
 
-    // Esta función es local y no depende de appConfig, por lo que está bien.
-    const calculateLifecycleStageLocal = (birthDate: string, sex: 'Hembra' | 'Macho'): string => {
-        if (!birthDate || !sex) return 'Indefinido';
-        const today = new Date();
-        const birth = new Date(birthDate + 'T00:00:00');
-        if (isNaN(birth.getTime())) return 'Indefinido';
-        const ageInDays = (today.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24);
-        if (sex === 'Hembra') {
-            if (ageInDays <= 60) return 'Cabrita';
-            if (ageInDays <= 365) return 'Cabritona';
-            return 'Cabra';
-        } else {
-            if (ageInDays <= 60) return 'Cabrito';
-            if (ageInDays <= 365) return 'Macho de Levante';
-            return 'Reproductor';
+    const handleSave = () => {
+        if (!id.trim()) {
+            // Idealmente usar una notificación toast, aquí un alert simple por ahora
+            alert('El ID es obligatorio');
+            return;
         }
-    };
-
-    useEffect(() => { setBreed(calculateBreedFromComposition(racialComposition)); }, [racialComposition]);
-
-    const handleSubmit = async () => {
-        setMessage(null);
-        if (status === 'Activo' && !animalId) { setMessage('El ID es obligatorio si el estado es Activo.'); return; }
-        const finalId = animalId.toUpperCase() || `REF-${Date.now()}`;
-        const allAnimalIds = new Set([...animals.map(a => a.id.toLowerCase()), ...fathers.map(f => f.id.toLowerCase())]);
-        if (animalId && allAnimalIds.has(finalId.toLowerCase())) { setMessage('Este ID ya existe en la base de datos (rebaño o referencias).'); return; }
-        
-        const sex = type === 'mother' ? 'Hembra' : 'Macho';
-        const lifecycleStage = birthDate ? calculateLifecycleStageLocal(birthDate, sex) : (sex === 'Hembra' ? 'Cabra' : 'Reproductor');
 
         const newParent: Animal = {
-            id: finalId,
-            name: name.toUpperCase() || undefined,
-            birthDate: birthDate || 'N/A',
+            id: id.trim().toUpperCase(),
+            name: name.trim().toUpperCase(),
             sex: sex,
-            isReference: status === 'Referencia',
+            birthDate: 'N/A', // Fecha desconocida para padres rápidos
             status: 'Activo',
-            lifecycleStage: lifecycleStage as any, // Se usa 'as any' para cumplir con el tipo estricto
-            racialComposition: racialComposition || undefined,
-            breed: breed || undefined,
+            isReference: true, // CRÍTICO: Es solo referencia genética
+            lifecycleStage: 'Reproductor', 
             location: 'Referencia',
-            reproductiveStatus: sex === 'Hembra' ? 'Vacía' : 'No Aplica',
-            createdAt: new Date().getTime(),
+            reproductiveStatus: 'No Aplica',
+            createdAt: Date.now(),
             lastWeighing: null,
+            _synced: false
         };
-        try {
-            await addAnimal(newParent);
-            onSave(newParent);
-        }
-        catch (error: any) { setMessage(error.message || 'Error al preparar datos del animal.'); console.error("Error creating quick parent object:", error); }
+
+        onSave(newParent);
     };
 
-    const calendarCss = ` .rdp { --rdp-cell-size: 40px; --rdp-accent-color: #FF9500; --rdp-background-color: transparent; --rdp-accent-color-dark: #FF9500; --rdp-background-color-dark: transparent; --rdp-outline: 2px solid var(--rdp-accent-color); --rdp-border-radius: 12px; color: #FFF; margin: 1em auto; } .rdp-caption_label { color: #FFF; font-weight: bold;} .rdp-nav_button { color: #FF9500; } .rdp-head_cell { color: #8e8e93; font-size: 0.8em; } .rdp-day { color: #FFF;} .rdp-day_selected { background-color: var(--rdp-accent-color); color: #000; font-weight: bold; } .rdp-day_today { font-weight: bold; color: #FF9500; } .rdp-day_disabled { color: #505054; } .rdp-day_outside { color: #505054; } .rdp-caption_dropdowns { display: flex; gap: 10px; } .rdp-dropdown { background-color: #333; border: 1px solid #555; color: #FFF; padding: 4px 8px; border-radius: 6px; } `;
-
     return (
-        <>
-            <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm animate-fade-in flex items-center justify-center p-4" onClick={onClose}>
-                <div className="w-full max-w-md bg-ios-modal-bg rounded-2xl shadow-lg animate-slide-up flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
-                    <header className="flex-shrink-0 flex items-center justify-between p-4 border-b border-brand-border"><div className="w-10"></div><h2 className="text-lg font-semibold text-white">Agregar {type === 'mother' ? 'Madre' : 'Padre'} Rápido</h2><button onClick={onClose} className="p-2 -mr-2 text-zinc-400 hover:text-white rounded-full hover:bg-zinc-700/50"><X size={20} /></button></header>
-                    <div className="p-4 space-y-4 overflow-y-auto">
-                        <FormGroup title="Categoría"><Toggle labelOn="Activo" labelOff="Referencia" value={status === 'Activo'} onChange={(isActive: boolean) => setStatus(isActive ? 'Activo' : 'Referencia')} /></FormGroup>
-                        <FormGroup title="Identificación">
-                            <input type="text" value={animalId} onClick={() => setIsKeyboardOpen(true)} readOnly placeholder={status === 'Activo' ? "ID (Obligatorio)" : "ID (Opcional)"} className={`w-full bg-brand-glass border rounded-xl p-3 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 cursor-pointer font-mono ${message && message.includes('ID ya existe') ? 'border-brand-red ring-brand-red' : 'border-brand-border focus:ring-brand-orange'}`} />
-                            {/* 'e' tipado para corregir TS7006 */}
-                            <FormInput value={name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value.toUpperCase())} placeholder="Nombre (Opcional)" />
-                            <button type="button" onClick={() => setIsDatePickerOpen(true)} className="w-full bg-brand-glass border border-brand-border rounded-xl p-3 text-left flex justify-between items-center">
-                                <span className={birthDate ? 'text-white' : 'text-zinc-500'}>{birthDate ? new Date(birthDate + 'T00:00:00Z').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : 'Fecha Nacimiento (Opcional)'}</span>
-                                <Calendar className="text-zinc-400" size={20} />
-                            </button>
-                        </FormGroup>
-                        <FormGroup title="Raza">
-                            <input type="text" value={racialComposition} onClick={() => setIsRacialKeyboardOpenModal(true)} readOnly placeholder="Composición Racial (Opcional)" className="w-full bg-brand-glass border border-brand-border rounded-xl p-3 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-brand-orange cursor-pointer" />
-                            <FormInput value={breed} disabled readOnly placeholder="Raza (Auto-calculada)" />
-                        </FormGroup>
-                        {message && <p className="text-sm text-brand-red text-center">{message}</p>}
+        // 1. OVERLAY (Estructura Base)
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-0 sm:p-4">
+            
+            {/* 2. TARJETA MODAL */}
+            <div className="bg-[#121214] border-t sm:border border-zinc-800 w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-6 space-y-6 shadow-2xl transform transition-all pb-10 sm:pb-6">
+                
+                {/* Header */}
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            <UserPlus className={theme.text} />
+                            {title}
+                        </h2>
+                        <p className="text-sm text-zinc-400 mt-1">
+                            Crea una referencia rápida para el linaje.
+                        </p>
                     </div>
-                    <footer className="p-4 border-t border-brand-border flex-shrink-0"><button onClick={handleSubmit} className="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-lg transition-colors">Guardar</button></footer>
+                    <button onClick={onClose} className="p-2 bg-zinc-800 rounded-full text-zinc-400 hover:text-white transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                {/* Info Box */}
+                <div className={`${theme.bg} border ${theme.border} p-4 rounded-xl flex gap-3 items-start`}>
+                    <Dna className={`${theme.text} shrink-0 mt-0.5`} size={18} />
+                    <p className={`text-xs ${isFather ? 'text-blue-200/80' : 'text-pink-200/80'} leading-relaxed`}>
+                        Se guardará como <strong>Referencia Externa</strong>. No afectará tus inventarios activos, pero permitirá completar el árbol genealógico.
+                    </p>
+                </div>
+
+                <div className="space-y-5">
+                    {/* Input ID */}
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">ID del {role}</label>
+                        <div className="relative">
+                            <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                            <input 
+                                type="text" 
+                                value={id}
+                                onChange={(e) => setId(e.target.value)}
+                                placeholder="Ej: P001"
+                                autoFocus
+                                className={`w-full bg-black border border-zinc-800 rounded-xl py-4 pl-12 pr-4 text-white ${theme.borderFocus} ${theme.ring} focus:ring-1 outline-none transition-all text-lg font-mono uppercase placeholder:text-zinc-700`}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Input Nombre */}
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Nombre (Opcional)</label>
+                        <div className="relative">
+                            <Type className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                            <input 
+                                type="text" 
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="Ej: Sansón"
+                                className={`w-full bg-black border border-zinc-800 rounded-xl py-4 pl-12 pr-4 text-white ${theme.borderFocus} ${theme.ring} focus:ring-1 outline-none transition-all text-lg placeholder:text-zinc-700 capitalize`}
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Botón de Acción */}
+                <div className="pt-2">
+                    <button 
+                        onClick={handleSave}
+                        className={`w-full ${theme.btn} text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-base`}
+                    >
+                        <Save size={20} />
+                        Guardar {role}
+                    </button>
                 </div>
             </div>
-            {isKeyboardOpen && <CustomAlphanumericKeyboard onClose={() => setIsKeyboardOpen(false)} onInput={(val: string) => setAnimalId(val.toUpperCase())} currentValue={animalId} />}
-            {isDatePickerOpen && <BottomSheetDatePicker onClose={() => setIsDatePickerOpen(false)} onSelectDate={(d: Date | undefined) => { if (d) setBirthDate(d.toISOString().split('T')[0]); setIsDatePickerOpen(false); }} currentValue={birthDate ? new Date(birthDate + 'T00:00:00Z') : new Date()} />}
-            {isRacialKeyboardOpenModal && <RacialCompositionKeyboard onClose={() => setIsRacialKeyboardOpenModal(false)} onInput={setRacialComposition} currentValue={racialComposition} />}
-            <style>{calendarCss}</style>
-        </>
+        </div>
     );
 };

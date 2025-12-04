@@ -1,9 +1,8 @@
-// src/components/forms/BatchWeighingForm.tsx 
-// (ACTUALIZADO: Toda la lógica de destete ha sido eliminada)
+// src/components/forms/BatchWeighingForm.tsx
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Animal, BodyWeighing, Weighing } from '../../db/local'; 
-import { AlertTriangle, CheckCircle, Save, Loader2, CircleX, Info, Trash2, Undo2 } from 'lucide-react'; 
+import { AlertTriangle, CheckCircle, Save, Loader2, Info, Trash2, Undo2, Lightbulb } from 'lucide-react'; 
 import { useData } from '../../context/DataContext';
 import { getAnimalZootecnicCategory } from '../../utils/calculations';
 import { formatAnimalDisplay } from '../../utils/formatting';
@@ -16,18 +15,17 @@ type FilterStatus = 'all' | 'valid' | 'warning' | 'error' | 'unrecognized';
 interface ValidatedRow {
   key: string; 
   animalId: string;
-  weight: string; // El input del usuario (ej. "23.90")
-  calculatedWeight: number | null; // El peso total calculado (ej. 23.90)
+  weight: string; 
+  calculatedWeight: number | null; 
   date: string; 
   status: RowStatus;
   message: string[];
   animalRef: Animal | null; 
-  // isWeaningCandidate: boolean; // <-- ELIMINADO
-  // isMarkedForWeaning: boolean; // <-- ELIMINADO
+  suggestedId?: string; // ID sugerido por la lógica inteligente
 }
 // --- Fin Tipos ---
 
-// --- Helper 'calculateDaysBetween' usa Math.floor ---
+// --- Helper de Fechas ---
 const localCalculateDaysBetween = (dateStr1: string, dateStr2: string): number => {
     if (!dateStr1 || dateStr1 === 'N/A' || !dateStr2 || dateStr2 === 'N/A') return 0;
     const date1 = new Date(dateStr1 + 'T00:00:00Z');
@@ -37,8 +35,6 @@ const localCalculateDaysBetween = (dateStr1: string, dateStr2: string): number =
     const diffTime = utc1 - utc2;
     return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 };
-// --- FIN Helper ---
-
 
 interface BatchWeighingFormProps {
   weightType: 'leche' | 'corporal';
@@ -63,23 +59,25 @@ export const BatchWeighingForm: React.FC<BatchWeighingFormProps> = ({
     bodyWeighings,
     addWeighing,
     addBodyWeighing,
-    // updateAnimal, // <-- ELIMINADO
     parturitions,
     appConfig
   } = useData();
 
+  // Estados
   const [date, setDate] = useState(externalDefaultDate || new Date().toISOString().split('T')[0]);
   const [rows, setRows] = useState<ValidatedRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  
   const [filter, setFilter] = useState<FilterStatus>('all');
+  
+  // Aquí definimos ocrTotal correctamente para evitar el error
   const [ocrTotal, setOcrTotal] = useState<number | null>(null);
+  
   const didInit = useRef(false);
-
   const [lastDeletedRow, setLastDeletedRow] = useState<ValidatedRow | null>(null);
   const undoTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // 1. MAPA DE SESIÓN ANTERIOR (Para Deltas y Contexto)
   const previousSessionMap = useMemo(() => {
       const allSessionData = (weightType === 'leche' ? weighings : bodyWeighings) as (Weighing[] | BodyWeighing[]);
       if (!allSessionData || allSessionData.length === 0) return new Map<string, number>();
@@ -89,7 +87,6 @@ export const BatchWeighingForm: React.FC<BatchWeighingFormProps> = ({
       
       const referenceDate = externalDefaultDate || date;
       const selectedTime = new Date(referenceDate + 'T00:00:00Z').getTime();
-      
       const previousDate = sortedDates.find(d => new Date(d + 'T00:00:00Z').getTime() < selectedTime);
       
       if (!previousDate) return new Map<string, number>(); 
@@ -102,38 +99,30 @@ export const BatchWeighingForm: React.FC<BatchWeighingFormProps> = ({
               weightMap.set(id, w.kg);
           });
       return weightMap;
-          
   }, [date, externalDefaultDate, bodyWeighings, weighings, weightType]);
 
-  const validateId = useCallback((animalId: string): { status: RowStatus, message: string | null, animalRef: Animal | null } => {
-    if (!animalId) return { status: 'error', message: 'ID no puede estar vacío.', animalRef: null };
-    
-    const animal = animals.find(a => a.id.toLowerCase() === animalId.toLowerCase());
-    if (!animal) return { status: 'unrecognized', message: 'ID no reconocido.', animalRef: null };
-    
-    if (animal.isReference || animal.status !== 'Activo') {
-        return { status: 'warning', message: `Animal de Referencia/Inactivo.`, animalRef: animal };
-    }
+  // 2. CONJUNTO DE IDs RECIENTES (Para Ranking de Probabilidad)
+  const previousSessionSet = useMemo(() => {
+      const set = new Set<string>();
+      previousSessionMap.forEach((_, key) => set.add(key));
+      return set;
+  }, [previousSessionMap]);
 
-    if (weightType === 'leche') {
-      const category = getAnimalZootecnicCategory(animal, parturitions, appConfig);
-      if (category !== 'Cabra') {
-        return { status: 'warning', message: `Pesaje en ${category} (sin parto activo).`, animalRef: animal };
-      }
-    }
-    
-    return { status: 'valid', message: formatAnimalDisplay(animal), animalRef: animal };
-  }, [animals, parturitions, appConfig, weightType]);
-
+  // 3. ESTADÍSTICAS HISTÓRICAS (Para detectar Primer Pesaje y Desviaciones)
   const historicalStats = useMemo(() => {
     const statsMap = new Map<string, { avg: number; count: number }>();
     const sourceData = (weightType === 'leche' ? weighings : bodyWeighings) as (Weighing[] | BodyWeighing[]);
+    
+    // Obtenemos lista única de animales en la data histórica
     const animalIds = new Set(sourceData.map(w => (weightType === 'leche' ? (w as Weighing).goatId : (w as BodyWeighing).animalId)));
+    
     for (const animalId of animalIds) {
+      // Tomamos los últimos 5 pesajes
       const animalWeighings = sourceData
         .filter(w => (weightType === 'leche' ? (w as Weighing).goatId : (w as BodyWeighing).animalId) === animalId)
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 5); 
+      
       if (animalWeighings.length > 0) {
         const totalKg = animalWeighings.reduce((sum, w) => sum + w.kg, 0);
         statsMap.set(animalId, {
@@ -145,110 +134,173 @@ export const BatchWeighingForm: React.FC<BatchWeighingFormProps> = ({
     return statsMap;
   }, [weighings, bodyWeighings, weightType]);
 
+
+  // --- VALIDACIÓN DE ID INTELIGENTE (RANKING) ---
+  const validateId = useCallback((scannedId: string): { status: RowStatus, message: string | null, animalRef: Animal | null, suggestedId?: string } => {
+    if (!scannedId) return { status: 'error', message: 'ID vacío.', animalRef: null };
+    
+    const normalizedId = scannedId.toUpperCase().trim();
+    
+    // A. Búsqueda Exacta
+    const exactMatch = animals.find(a => a.id === normalizedId);
+    if (exactMatch) {
+        if (exactMatch.isReference || exactMatch.status !== 'Activo') {
+            return { status: 'warning', message: `Animal Inactivo/Ref.`, animalRef: exactMatch };
+        }
+        if (weightType === 'leche') {
+            const category = getAnimalZootecnicCategory(exactMatch, parturitions, appConfig);
+            if (category !== 'Cabra') {
+                return { status: 'warning', message: `No es Cabra (${category}).`, animalRef: exactMatch };
+            }
+        }
+        return { status: 'valid', message: formatAnimalDisplay(exactMatch), animalRef: exactMatch };
+    }
+
+    // B. Búsqueda Inteligente por Correlativo + Ranking
+    const numbersOnly = normalizedId.replace(/[^0-9]/g, '');
+    
+    if (numbersOnly.length > 0) {
+        const candidates = animals.filter(a => 
+            a.status === 'Activo' && 
+            a.id.endsWith(numbersOnly) &&
+            a.id.length >= numbersOnly.length
+        );
+
+        if (candidates.length > 0) {
+            // RANKING: 
+            // 1. Estuvo en sesión anterior (Alta probabilidad)
+            // 2. Similitud de longitud (0016 se parece más a Q016 que a A1016)
+            
+            const rankedCandidates = candidates.sort((a, b) => {
+                const aRecent = previousSessionSet.has(a.id);
+                const bRecent = previousSessionSet.has(b.id);
+                
+                if (aRecent && !bRecent) return -1; // a gana
+                if (!aRecent && bRecent) return 1;  // b gana
+                
+                const diffA = Math.abs(a.id.length - normalizedId.length);
+                const diffB = Math.abs(b.id.length - normalizedId.length);
+                return diffA - diffB;
+            });
+
+            const bestMatch = rankedCandidates[0];
+            const isRecent = previousSessionSet.has(bestMatch.id);
+
+            let msg = `No existe ${normalizedId}. ¿Es ${bestMatch.id}?`;
+            if (isRecent) msg = `¿Quisiste decir ${bestMatch.id}? (Reciente)`;
+
+            return { 
+                status: 'warning', 
+                message: msg, 
+                animalRef: null,
+                suggestedId: bestMatch.id 
+            };
+        }
+    }
+    
+    return { status: 'unrecognized', message: 'ID no encontrado.', animalRef: null };
+  }, [animals, parturitions, appConfig, weightType, previousSessionSet]);
+
+
+  // --- VALIDACIÓN DE PESO (CON ALERTA DE NUEVO INGRESO) ---
   const validateWeight = useCallback((weightKg: number, animalId: string, idStatus: RowStatus): { status: RowStatus, message: string | null } => {
     if (isNaN(weightKg)) return { status: 'valid', message: null }; 
     
-    if (weightType === 'leche' && (weightKg <= 0 || weightKg > 5)) {
-        return { status: 'error', message: 'Valor imposible (0 - 5 kg)' };
+    // Validaciones de Rango Físico
+    if (weightType === 'leche' && (weightKg <= 0 || weightKg > 8)) { 
+        return { status: 'error', message: 'Rango imposible (0 - 8 kg)' };
     }
     if (weightType === 'corporal' && (weightKg < 1 || weightKg > 150)) {
-        return { status: 'error', message: 'Valor imposible (1 - 150 kg)' };
+        return { status: 'error', message: 'Rango imposible (1 - 150 kg)' };
     }
     
+    // Validación Histórica
     if (idStatus !== 'error' && idStatus !== 'unrecognized' && animalId) {
       const stats = historicalStats.get(animalId);
-      if (!stats) return { status: 'warning', message: 'Primer pesaje registrado' };
+      
+      // >>> LÓGICA DE PRIMER PESAJE <<<
+      if (!stats) {
+          // No hay historial previo -> Es Nuevo Ingreso
+          return { status: 'warning', message: '⚠️ Primer pesaje registrado' };
+      }
+
+      // Si tiene historial, validamos consistencia
       if (stats.count >= 2) {
         const avg = stats.avg;
-        const threshold = Math.max(avg * 0.7, 1.0);
+        const threshold = Math.max(avg * 0.6, 1.0); // Tolerancia del 60%
         const diff = Math.abs(weightKg - avg);
-        if (diff > threshold) return { status: 'warning', message: `Valor atípico. Promedio: ${avg.toFixed(2)} kg` };
+        if (diff > threshold) {
+            return { status: 'warning', message: `Atípico. Prom: ${avg.toFixed(2)} kg` };
+        }
       }
     }
     return { status: 'valid', message: null };
   }, [weightType, historicalStats]);
   
+  // --- Validación de Fecha ---
   const validateDate = useCallback((dateStr: string, animalRef: Animal | null): { status: RowStatus, message: string | null } => {
-    if (!animalRef || !animalRef.birthDate || animalRef.birthDate === 'N/A') {
-        return { status: 'valid', message: null };
-    }
-    
+    if (!animalRef || !animalRef.birthDate || animalRef.birthDate === 'N/A') return { status: 'valid', message: null };
     const daysSinceBirth = localCalculateDaysBetween(dateStr, animalRef.birthDate);
-    
-    if (daysSinceBirth < 0) {
-        return { status: 'error', message: `Fecha (${dateStr}) anterior al nacimiento (${animalRef.birthDate}).` };
-    }
-    
-    if (weightType === 'corporal') {
-        const category = getAnimalZootecnicCategory(animalRef, parturitions, appConfig);
-        if (['Cabra', 'Reproductor'].includes(category)) {
-             const daysAgo = localCalculateDaysBetween(new Date().toISOString().split('T')[0], dateStr);
-             if (daysAgo <= 30) {
-                 return { status: 'warning', message: `Pesaje en animal adulto (${category}).` };
-             }
-        }
-    }
-    
+    if (daysSinceBirth < 0) return { status: 'error', message: `Anterior al nacimiento.` };
     return { status: 'valid', message: null };
-  }, [appConfig, parturitions, weightType]);
+  }, []);
 
 
+  // --- ORQUESTADOR DE VALIDACIÓN ---
   const runFullValidation = useCallback((animalId: string, weightStr: string, dateStr: string): Omit<ValidatedRow, 'key'> => {
       
+      // 1. Validar ID
       const idValidation = validateId(animalId);
       
       let calculatedWeight: number | null = null;
       let finalWeightStr = weightStr.trim();
       let deltaMessage: string | null = null;
 
-      // 1. Detectar y procesar Deltas (si el usuario los escribe)
+      // 2. Calcular Peso (Deltas)
       if (finalWeightStr.startsWith('+') || finalWeightStr.startsWith('-')) {
           const delta = parseFloat(finalWeightStr);
           if (!isNaN(delta)) {
-              if (idValidation.animalRef) {
-                  const previousWeight = previousSessionMap.get(idValidation.animalRef.id);
+              const targetId = idValidation.animalRef?.id || idValidation.suggestedId;
+              
+              if (targetId) {
+                  const previousWeight = previousSessionMap.get(targetId);
                   if (previousWeight !== undefined) {
                       calculatedWeight = previousWeight + delta;
-                      deltaMessage = `Peso calc. (Base ${previousWeight.toFixed(1)}kg, Delta ${finalWeightStr}kg)`;
+                      deltaMessage = `(Base ${previousWeight.toFixed(1)} ${finalWeightStr})`;
                   } else {
-                      deltaMessage = `Delta (${finalWeightStr}) sin peso anterior.`;
-                      calculatedWeight = -1; // Forzar error
+                      deltaMessage = `Delta sin peso previo.`;
                   }
-              } else {
-                  deltaMessage = `Delta (${finalWeightStr}) en ID no reconocido.`;
-                  calculatedWeight = -1; // Forzar error
               }
           }
       } else if (finalWeightStr !== '') {
           calculatedWeight = parseFloat(finalWeightStr);
       }
       
-      // 2. Validar el peso
-      const weightValidation = validateWeight(calculatedWeight ?? NaN, animalId, idValidation.status);
+      // 3. Validar Peso (Usando el ID sugerido si no hay animalRef)
+      const targetIdForStats = idValidation.animalRef?.id || idValidation.suggestedId || animalId;
+      const weightValidation = validateWeight(calculatedWeight ?? NaN, targetIdForStats, idValidation.status);
       
-      // 3. Validar la fecha
+      // 4. Validar Fecha
       const dateValidation = validateDate(dateStr, idValidation.animalRef);
 
-      // 4. (LÓGICA DE DESTETE ELIMINADA)
-      
-      // 5. Compilar mensajes y estado
+      // 5. Compilar Estado Final
       const messages: string[] = [];
       if (idValidation.message) messages.push(idValidation.message);
       if (deltaMessage) messages.push(deltaMessage);
       if (weightValidation.message) messages.push(weightValidation.message);
       if (dateValidation.message) messages.push(dateValidation.message);
 
-      let finalStatus: RowStatus = 'valid';
-      if (idValidation.status === 'warning' || weightValidation.status === 'warning' || dateValidation.status === 'warning') {
-          finalStatus = 'warning';
-      }
-      if (idValidation.status === 'error' || weightValidation.status === 'error' || dateValidation.status === 'error' || deltaMessage?.includes('sin peso anterior') || deltaMessage?.includes('no reconocido')) {
-          finalStatus = 'error';
-      }
-      if (idValidation.status === 'unrecognized') {
-          finalStatus = 'unrecognized';
-      }
+      let finalStatus: RowStatus = idValidation.status;
       
+      if (finalStatus !== 'unrecognized') {
+         if (weightValidation.status === 'error' || dateValidation.status === 'error' || (deltaMessage && !calculatedWeight)) {
+             finalStatus = 'error';
+         } 
+         else if (weightValidation.status === 'warning' || dateValidation.status === 'warning') {
+             if (finalStatus !== 'error') finalStatus = 'warning';
+         }
+      }
+
       return { 
           animalId, 
           weight: weightStr, 
@@ -257,309 +309,194 @@ export const BatchWeighingForm: React.FC<BatchWeighingFormProps> = ({
           status: finalStatus, 
           message: messages, 
           animalRef: idValidation.animalRef,
+          suggestedId: idValidation.suggestedId
       };
-  }, [validateId, validateWeight, validateDate, previousSessionMap, weightType, appConfig]);
+  }, [validateId, validateWeight, validateDate, previousSessionMap]);
 
 
-  // --- Efecto de Inicialización ---
+  // --- Inicialización y Handlers ---
   useEffect(() => {
     if (didInit.current) return;
     const dataToInitialize = importedData && importedData.length > 0 ? importedData : animalsToWeigh;
     if (dataToInitialize.length === 0) return;
 
-    const rowItems: (OcrResult | Animal)[] = [];
-    let foundTotal: number | null = null;
-
     if (importedData && importedData.length > 0) {
-      for (const item of importedData) {
-        const itemAsAny = item as any;
-        const id = (itemAsAny.id || '').toLowerCase();
-        const weight = itemAsAny.weight || itemAsAny.kg?.toString() || '';
-        if ((id === 'total' || id === 'suma' || id === 'totales') && weight) {
-          const parsedTotal = parseFloat(weight);
-          if (!isNaN(parsedTotal) && parsedTotal > 0) foundTotal = parsedTotal;
-        } else {
-          rowItems.push(item);
-        }
-      }
-      if (foundTotal) setOcrTotal(foundTotal);
-    } else {
-      rowItems.push(...animalsToWeigh);
+      // Buscar la fila de totales en la data importada
+      const totalRow = importedData.find((item: any) => ['total','suma'].includes((item.id||'').toLowerCase()));
+      if (totalRow) setOcrTotal(parseFloat((totalRow as any).weight));
     }
     
     didInit.current = true;
-    const newRows = rowItems.map((item, index) => {
+    const newRows = dataToInitialize.map((item, index) => {
         const itemAsAny = item as any; 
-        const id = itemAsAny.id; 
+        const id = (itemAsAny.id || '').replace(/\s/g, ''); 
         const weight = itemAsAny.weight || itemAsAny.kg?.toString() || '';
-        
-        let rowDate = date; // Usa la fecha global por defecto
-        
-        if (itemAsAny.date) {
-            try {
-                const parts = itemAsAny.date!.split('/'); 
-                const day = parts[0].padStart(2, '0'); 
-                const month = parts[1].padStart(2, '0'); 
-                
-                let year = parts[2];
-                if (year && year.length === 2) { 
-                    year = `20${year}`; 
-                } else {
-                    year = new Date(date).getFullYear().toString();
-                }
-                
-                rowDate = `${year}-${month}-${day}`; 
-            } catch (e) { /* se queda con la 'date' por defecto */ }
-        }
-        
-        const validation = runFullValidation(id, weight, rowDate);
+        const rowDate = itemAsAny.date ? date : date; 
         
         return { 
             key: `row-${index}-${id}-${Date.now()}`, 
-            ...validation
+            ...runFullValidation(id, weight, rowDate)
         };
       });
       setRows(newRows);
   }, [animalsToWeigh, importedData, date, runFullValidation]);
 
-
-  // --- Handlers de la Cuadrícula ---
   const handleIdChange = (key: string, newId: string) => {
-    setRows(prevRows =>
-      prevRows.map(row => {
-        if (row.key !== key) return row;
-        const validation = runFullValidation(newId, row.weight, row.date);
-        return { ...row, ...validation };
-      })
-    );
+    setRows(prevRows => prevRows.map(row => 
+        row.key === key ? { ...row, ...runFullValidation(newId, row.weight, row.date) } : row
+    ));
   };
   const handleWeightChange = (key: string, newWeight: string) => {
-    setRows(prevRows =>
-      prevRows.map(row => {
-        if (row.key !== key) return row;
-        const validation = runFullValidation(row.animalId, newWeight, row.date);
-        return { ...row, ...validation, weight: newWeight };
-      })
-    );
+    setRows(prevRows => prevRows.map(row => 
+        row.key === key ? { ...row, ...runFullValidation(row.animalId, newWeight, row.date), weight: newWeight } : row
+    ));
   };
   const handleDateChange = (key: string, newDate: string) => {
-    setRows(prevRows => 
-        prevRows.map(row => {
-            if (row.key !== key) return row;
-            const validation = runFullValidation(row.animalId, row.weight, newDate);
-            return { ...row, ...validation };
-        })
-    );
+    setRows(prevRows => prevRows.map(row => 
+        row.key === key ? { ...row, ...runFullValidation(row.animalId, row.weight, newDate) } : row
+    ));
   };
-  
   const handleDeleteRow = (key: string) => {
     const rowToDelete = rows.find(row => row.key === key);
     if (rowToDelete) {
         setLastDeletedRow(rowToDelete);
         if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-        undoTimerRef.current = setTimeout(() => {
-            setLastDeletedRow(null);
-        }, 5000); 
+        undoTimerRef.current = setTimeout(() => setLastDeletedRow(null), 5000); 
     }
-    setRows(prevRows => prevRows.filter(row => row.key !== key));
+    setRows(prev => prev.filter(r => r.key !== key));
   };
-  
   const handleUndoDelete = () => {
     if (lastDeletedRow) {
-        setRows(prevRows => [lastDeletedRow, ...prevRows]); 
+        setRows(prev => [lastDeletedRow, ...prev]); 
         setLastDeletedRow(null);
-        if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     }
   };
 
-  // const handleToggleWean = (key: string) => {}; // <-- ELIMINADO
-  // --- Fin Handlers ---
+  const validCount = rows.filter(r => r.status === 'valid').length;
+  const warningCount = rows.filter(r => r.status === 'warning').length;
+  const errorCount = rows.filter(r => r.status === 'error').length;
+  const unrecognizedCount = rows.filter(r => r.status === 'unrecognized').length;
 
-  const validCount = useMemo(() => rows.filter(r => r.status === 'valid').length, [rows]);
-  const warningCount = useMemo(() => rows.filter(r => r.status === 'warning').length, [rows]);
-  const errorCount = useMemo(() => rows.filter(r => r.status === 'error').length, [rows]);
-  const unrecognizedCount = useMemo(() => rows.filter(r => r.status === 'unrecognized').length, [rows]);
-  const weighedCount = useMemo(() => validCount + warningCount, [validCount, warningCount]);
-  // const weanCount = useMemo(() => 0, []); // <-- ELIMINADO
-
-  // --- (CORREGIDO) handleSubmit ahora guarda SÓLO Pesajes ---
+  // --- SUBMIT ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage(null);
     setIsLoading(true);
     
-    const weighingPromises: Promise<void>[] = [];
-    // const weaningPromises: Promise<void>[] = []; // <-- ELIMINADO
-
-    // 1. Identificar filas válidas para *PESAJE*
     const validRowsToSave = rows.filter(row =>
-      (row.status === 'valid' || row.status === 'warning') &&
-      row.animalRef?.id &&
-      row.calculatedWeight !== null &&
-      !isNaN(row.calculatedWeight) &&
-      row.calculatedWeight > 0
+      (row.status === 'valid' || (row.status === 'warning' && row.animalRef)) && 
+      row.calculatedWeight !== null && !isNaN(row.calculatedWeight) && row.calculatedWeight > 0
     );
 
-    // 2. (LÓGICA DE DESTETE ELIMINADA)
-
     if (validRowsToSave.length === 0) {
-      setMessage({ type: 'error', text: 'No se han introducido pesos válidos.' });
+      setMessage({ type: 'error', text: 'No hay registros válidos para guardar.' });
       setIsLoading(false);
       return;
     }
 
     try {
-      // 3. Crear promesas de Pesaje
-      for (const row of validRowsToSave) {
-        const entry = {
-          animalId: row.animalRef!.id,
-          kg: row.calculatedWeight!,
-          date: row.date,
-        };
-        if (weightType === 'leche') {
-          weighingPromises.push(addWeighing({ goatId: entry.animalId, kg: entry.kg, date: entry.date }));
-        } else {
-          weighingPromises.push(addBodyWeighing({ animalId: entry.animalId, kg: entry.kg, date: entry.date }));
-        }
-      }
+      const promises = validRowsToSave.map(row => {
+        const payload = { kg: row.calculatedWeight!, date: row.date };
+        return weightType === 'leche' 
+            ? addWeighing({ goatId: row.animalRef!.id, ...payload })
+            : addBodyWeighing({ animalId: row.animalRef!.id, ...payload });
+      });
       
-      // 4. (LÓGICA DE DESTETE ELIMINADA)
-      
-      // 5. Ejecutar todo en paralelo
-      await Promise.all(weighingPromises);
-      
-      // 6. Mensaje de éxito
-      const successMsg = `${weighingPromises.length} pesajes guardados con éxito.`;
-
-      setMessage({ type: 'success', text: successMsg });
+      await Promise.all(promises);
+      setMessage({ type: 'success', text: `${promises.length} pesajes guardados.` });
       setTimeout(() => { setIsLoading(false); onSaveSuccess(); }, 1500);
 
-    } catch (error: any) {
-      setMessage({ type: 'error', text: 'Ocurrió un error al guardar los datos.' });
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error al guardar.' });
       setIsLoading(false);
     }
   };
   
   const isImportMode = !!importedData;
-
-  const calculatedTotal = useMemo(() => {
-    return rows.filter(row => row.status !== 'error' && row.status !== 'unrecognized').reduce((sum, row) => {
-        const weight = row.calculatedWeight;
-        return sum + (weight === null || isNaN(weight) ? 0 : weight);
-      }, 0);
-  }, [rows]);
-
-  const filteredRows = useMemo(() => {
-    if (filter === 'all') return rows;
-    return rows.filter(row => row.status === filter);
-  }, [rows, filter]);
-
+  const filteredRows = filter === 'all' ? rows : rows.filter(r => r.status === filter);
+  const calculatedTotal = rows.reduce((acc, r) => acc + (r.calculatedWeight || 0), 0);
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col h-full">
-      {/* --- Cabecera --- */}
+      {/* Header */}
       <div className="flex-shrink-0 space-y-3 p-4 border-b border-brand-border">
-        <p className="text-sm text-zinc-400">
-            {isImportMode 
-                ? `Validando ${rows.length} registros. ${weighedCount} listos, ${errorCount + unrecognizedCount} ignorados.`
-                : `Registrando ${weighedCount} / ${animalsToWeigh.length} animales.`
-            }
-        </p>
+        <div className="flex justify-between items-start">
+             <div className="space-y-1">
+                <p className="text-sm text-zinc-400">
+                    {isImportMode ? `Procesando ${rows.length} registros.` : `Registro manual.`}
+                </p>
+                {/* Indicador de Filtros */}
+                <p className="text-xs text-zinc-500">
+                    {filter !== 'all' ? `Filtrando por: ${filter}` : 'Mostrando todos'}
+                </p>
+             </div>
+
+             {/* Total Calculado y Validación vs Papel (OCR) */}
+             <div className="flex flex-col items-end">
+                 <div className="text-sm font-mono text-white font-bold">
+                    Suma: {calculatedTotal.toFixed(2)} kg
+                 </div>
+                 
+                 {/* Aquí usamos ocrTotal, resolviendo el warning de variable no usada */}
+                 {ocrTotal !== null && (
+                    <div className={`text-xs font-mono flex items-center gap-1 mt-1 px-2 py-0.5 rounded ${
+                        Math.abs(calculatedTotal - ocrTotal) < 0.1 
+                        ? 'bg-green-500/20 text-green-400' 
+                        : 'bg-yellow-500/20 text-yellow-400'
+                    }`}>
+                        {Math.abs(calculatedTotal - ocrTotal) < 0.1 ? <CheckCircle size={10}/> : <AlertTriangle size={10}/>}
+                        Papel: {ocrTotal.toFixed(2)}
+                    </div>
+                 )}
+             </div>
+        </div>
 
         {!isImportMode && (
-            <input 
-                type="date" 
-                value={date} 
-                onChange={(e) => setDate(e.target.value)} 
-                className="w-full bg-zinc-800 text-white p-2 rounded-lg text-sm"
-            />
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-zinc-800 text-white p-2 rounded-lg text-sm" />
         )}
-
-        {isImportMode && ocrTotal !== null && (
-          <div className="p-3 bg-zinc-800/50 rounded-lg border border-brand-border">
-            <h4 className="text-sm font-semibold text-white mb-2">Verificación de Total</h4>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-zinc-400">Total (Papel):</span>
-              <span className="font-mono text-white text-base">{ocrTotal.toFixed(2)} Kg</span>
-            </div>
-            <div className="flex justify-between items-center text-sm mt-1">
-              <span className="text-zinc-400">Total (Sistema):</span>
-              <span className="font-mono text-white text-base">{calculatedTotal.toFixed(2)} Kg</span>
-            </div>
-            {Math.abs(ocrTotal - calculatedTotal) < 0.01 ? (
-              <div className="text-xs text-brand-green flex items-center gap-1.5 mt-2 pt-2 border-t border-zinc-700">
-                <CheckCircle size={14} /> Totales Coinciden
-              </div>
-            ) : (
-              <div className="text-xs text-yellow-400 flex items-center gap-1.5 mt-2 pt-2 border-t border-zinc-700">
-                <AlertTriangle size={14} /> Los totales no coinciden.
-              </div>
-            )}
-          </div>
-        )}
-
+        
+        {/* Filtros */}
         <div className="flex gap-2 overflow-x-auto pb-1">
-          <FilterButton label="Todos" count={rows.length} isActive={filter === 'all'} onClick={() => setFilter('all')} />
-          <FilterButton label="Válidos" count={validCount} isActive={filter === 'valid'} onClick={() => setFilter('valid')} color="green" />
-          <FilterButton label="Advertencias" count={warningCount} isActive={filter === 'warning'} onClick={() => setFilter('warning')} color="yellow" />
-          <FilterButton label="Errores" count={errorCount} isActive={filter === 'error'} onClick={() => setFilter('error')} color="red" />
-          <FilterButton label="No Reconocidos" count={unrecognizedCount} isActive={filter === 'unrecognized'} onClick={() => setFilter('unrecognized')} color="purple" />
+             <FilterButton label="Todos" count={rows.length} isActive={filter === 'all'} onClick={() => setFilter('all')} />
+             <FilterButton label="Válidos" count={validCount} isActive={filter === 'valid'} onClick={() => setFilter('valid')} color="green" />
+             <FilterButton label="Alertas" count={warningCount} isActive={filter === 'warning'} onClick={() => setFilter('warning')} color="yellow" />
+             <FilterButton label="Errores" count={errorCount} isActive={filter === 'error'} onClick={() => setFilter('error')} color="red" />
+             <FilterButton label="?" count={unrecognizedCount} isActive={filter === 'unrecognized'} onClick={() => setFilter('unrecognized')} color="blue" />
         </div>
       </div>
       
-      {/* --- Cuadrícula de Validación --- */}
+      {/* Grid */}
       <div className="flex-grow overflow-y-auto p-4 space-y-2">
-        {rows.length === 0 && (<div className="text-center py-10 text-zinc-500 text-sm">{isImportMode ? "La IA no detectó registros." : "No hay animales seleccionados."}</div>)}
-        {rows.length > 0 && filteredRows.length === 0 && (<div className="text-center py-10 text-zinc-500 text-sm">No hay registros que coincidan con este filtro.</div>)}
-        
         {filteredRows.map(row => (
           <ValidatedRowComponent
             key={row.key}
             row={row}
             isImportMode={isImportMode}
-            isLoading={isLoading}
             onIdChange={handleIdChange}
             onWeightChange={handleWeightChange}
             onDateChange={handleDateChange}
             onDeleteRow={handleDeleteRow} 
-            // onToggleWean={handleToggleWean} // <-- ELIMINADO
           />
         ))}
       </div>
 
-      {/* --- Pie de Página --- */}
+      {/* Footer */}
       <div className="flex-shrink-0 p-4 border-t border-brand-border bg-ios-modal-bg">
         {lastDeletedRow && (
-            <div className="mb-3 flex items-center justify-between space-x-2 p-3 rounded-lg text-sm bg-zinc-700 text-white">
-                <p>Se eliminó <span className="font-mono font-bold">{lastDeletedRow.animalId}</span>.</p>
-                <button 
-                    type="button" 
-                    onClick={handleUndoDelete}
-                    className="flex items-center gap-1.5 font-semibold text-blue-400 hover:text-blue-300"
-                >
-                    <Undo2 size={16} />
-                    Deshacer
-                </button>
+            <div className="mb-3 flex justify-between p-3 rounded-lg text-sm bg-zinc-700 text-white">
+                <span>Eliminado: {lastDeletedRow.animalId}</span>
+                <button type="button" onClick={handleUndoDelete} className="text-blue-300 flex items-center gap-1"><Undo2 size={14}/> Deshacer</button>
             </div>
         )}
-        
         {message && (
-          <div className={`mb-3 flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-brand-green' : 'bg-red-500/20 text-brand-red'}`}>
-            {message.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
-            <span>{message.text}</span>
+          <div className={`mb-3 p-3 rounded-lg text-sm flex items-center gap-2 ${message.type === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+            {message.type === 'success' ? <CheckCircle size={16}/> : <AlertTriangle size={16}/>}
+            {message.text}
           </div>
         )}
         <div className="flex justify-end gap-3">
-            <button type="button" onClick={onCancel} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg">
-            Cancelar
-            </button>
-            <button 
-                type="submit" 
-                disabled={isLoading || (weighedCount === 0)} 
-                className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg disabled:opacity-50 flex items-center gap-2"
-            >
-                {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-                Guardar {weighedCount > 0 ? `(${weighedCount})` : ''}
+            <button type="button" onClick={onCancel} className="px-5 py-2 bg-zinc-600 rounded-lg font-semibold">Cancelar</button>
+            <button type="submit" disabled={isLoading} className="px-5 py-2 bg-brand-green text-white font-bold rounded-lg flex items-center gap-2 disabled:opacity-50">
+                {isLoading ? <Loader2 className="animate-spin"/> : <Save size={18}/>} Guardar
             </button>
         </div>
       </div>
@@ -567,134 +504,96 @@ export const BatchWeighingForm: React.FC<BatchWeighingFormProps> = ({
   );
 };
 
-
-// --- Componente de Fila Validada ---
-interface ValidatedRowProps {
-  row: ValidatedRow;
-  isImportMode: boolean;
-  isLoading: boolean;
-  onIdChange: (key: string, value: string) => void;
-  onWeightChange: (key: string, value: string) => void;
-  onDateChange: (key: string, value: string) => void;
-  onDeleteRow: (key: string) => void; 
-  // onToggleWean: (key: string) => void; // <-- ELIMINADO
-}
-
-const ValidatedRowComponent: React.FC<ValidatedRowProps> = ({
-  row, isImportMode, isLoading,
-  onIdChange, onWeightChange, onDateChange, onDeleteRow,
-  // onToggleWean // <-- ELIMINADO
+// --- Componente de Fila ---
+const ValidatedRowComponent: React.FC<{ row: ValidatedRow, onIdChange: any, onWeightChange: any, onDeleteRow: any, isImportMode: boolean, onDateChange: any }> = ({
+  row, onIdChange, onWeightChange, onDeleteRow, isImportMode, onDateChange
 }) => {
   
-  const getStatusColorClasses = () => {
-    switch (row.status) {
-      case 'valid': return 'border-green-500/30 bg-green-900/10';
-      case 'warning': return 'border-yellow-500/30 bg-yellow-900/10';
-      case 'error': return 'border-red-500/30 bg-red-900/10';
-      case 'unrecognized': return 'border-purple-500/30 bg-purple-900/10';
-      default: return 'border-brand-border bg-black/20';
-    }
+  const applySuggestion = () => {
+      if (row.suggestedId) onIdChange(row.key, row.suggestedId);
   };
 
-  const statusIcon = useMemo(() => {
-    switch (row.status) {
-      case 'valid': return <CheckCircle size={16} className="text-green-500" />;
-      case 'warning': return <AlertTriangle size={16} className="text-yellow-500" />;
-      case 'error': return <CircleX size={16} className="text-red-500" />; 
-      case 'unrecognized': return <Info size={16} className="text-purple-400" />;
-      default: return <Info size={16} className="text-zinc-600" />;
-    }
-  }, [row.status]);
-
-  // const weanButtonClasses = ''; // <-- ELIMINADO
+  const getBorderColor = () => {
+      if (row.status === 'valid') return 'border-green-500/30 bg-green-900/10';
+      if (row.status === 'warning') return 'border-yellow-500/30 bg-yellow-900/10';
+      if (row.status === 'error') return 'border-red-500/30 bg-red-900/10';
+      return 'border-purple-500/30 bg-purple-900/10';
+  };
 
   return (
-    <div className={`p-3 rounded-lg flex flex-col border ${getStatusColorClasses()}`}>
+    <div className={`p-3 rounded-lg flex flex-col border transition-all ${getBorderColor()}`}>
         <div className="flex items-center gap-3">
-            {/* (BOTÓN DE DESTETE ELIMINADO) */}
-            
+            <div className="relative w-3/5">
+                <input 
+                    value={row.animalId}
+                    onChange={(e) => onIdChange(row.key, e.target.value.toUpperCase())}
+                    className={`w-full bg-zinc-800/80 p-3 rounded-xl text-lg text-center font-mono text-white 
+                        ${row.suggestedId ? 'border border-yellow-500/50' : ''}`}
+                    placeholder="ID"
+                />
+                {row.suggestedId && (
+                    <button type="button" onClick={applySuggestion} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-yellow-500/20 text-yellow-400 rounded-lg hover:bg-yellow-500/40 animate-pulse" title="Corregir ID">
+                        <Lightbulb size={16} />
+                    </button>
+                )}
+            </div>
             <input 
-                id={`id-${row.key}`}
-                type="text"
-                value={row.animalId}
-                onChange={(e) => onIdChange(row.key, e.target.value.toUpperCase())}
-                placeholder="ID"
-                disabled={isLoading} 
-                className="w-3/5 bg-zinc-800/80 p-3 rounded-xl text-lg text-center font-mono text-white disabled:opacity-50"
-            />
-            
-            <input 
-              id={`weight-${row.key}`}
-              type="text"
-              value={row.weight || ''}
+              value={row.weight}
               onChange={(e) => onWeightChange(row.key, e.target.value)}
-              placeholder="Kg"
-              disabled={isLoading}
-              className="w-2/5 bg-zinc-800/80 p-3 rounded-xl text-lg text-center font-mono disabled:opacity-50"
+              className="w-2/5 bg-zinc-800/80 p-3 rounded-xl text-lg text-center font-mono text-white"
+              placeholder="0.00"
             />
-
-            <button
-                type="button"
-                onClick={() => onDeleteRow(row.key)}
-                title="Eliminar fila"
-                disabled={isLoading}
-                className="p-3 ml-1 flex-shrink-0 bg-red-600/20 text-red-300 rounded-lg hover:bg-red-600/40 disabled:opacity-50"
-            >
+            <button type="button" onClick={() => onDeleteRow(row.key)} className="p-3 bg-red-600/20 text-red-400 rounded-lg">
                 <Trash2 size={18} />
             </button>
         </div>
         
-        <div className="flex items-center gap-2 pt-2 mt-2 border-t border-zinc-700/50">
+        <div className="flex items-center gap-2 pt-2 mt-2 border-t border-zinc-700/50 min-h-[24px]">
             {row.message.length > 0 && (
-                <div className="flex items-center gap-2 flex-grow min-w-0">
-                    {statusIcon}
-                    <p className="text-xs text-zinc-400 truncate">{row.message.join(', ')}</p>
+                <div className="flex-grow flex flex-wrap gap-2 text-xs">
+                     {row.message.map((msg, idx) => (
+                         <span key={idx} className={`flex items-center gap-1 ${msg.includes('Primer') ? 'text-yellow-400 font-bold' : 'text-zinc-400'}`}>
+                            {msg.includes('Primer') ? <AlertTriangle size={12}/> : <Info size={12}/>}
+                            {msg}
+                         </span>
+                     ))}
+                     {row.suggestedId && <span onClick={applySuggestion} className="text-yellow-400 underline cursor-pointer font-bold ml-1">Usar {row.suggestedId}</span>}
                 </div>
             )}
-            
             {isImportMode && (
-                <input 
-                  type="date" 
-                  value={row.date} 
-                  onChange={(e) => onDateChange(row.key, e.target.value)}
-                  disabled={isLoading}
-                  className="bg-zinc-800 text-white p-2 rounded-lg text-xs w-full max-w-[140px] disabled:opacity-50 ml-auto flex-shrink-0"
-                />
+                <input type="date" value={row.date} onChange={(e) => onDateChange(row.key, e.target.value)} className="bg-zinc-800 text-white p-1 rounded text-xs w-[110px]" />
             )}
         </div>
     </div>
   );
 };
 
-
-// --- Componente de Botón de Filtro ---
+// Componente FilterButton
 interface FilterButtonProps {
-  label: string;
-  count: number;
-  isActive: boolean;
-  onClick: () => void;
-  color?: 'green' | 'yellow' | 'red' | 'purple';
+    label: string;
+    count: number;
+    isActive: boolean;
+    onClick: () => void;
+    color?: 'green' | 'yellow' | 'red' | 'blue';
 }
-const FilterButton: React.FC<FilterButtonProps> = ({ label, count, isActive, onClick, color }) => {
-  const baseClasses = 'px-4 py-2 rounded-full text-sm font-semibold flex-shrink-0 transition-all duration-150';
-  const activeClasses = { 
-      all: 'bg-blue-500 text-white', 
-      green: 'bg-brand-green text-white', 
-      yellow: 'bg-yellow-400 text-black', 
-      red: 'bg-red-500 text-white',
-      purple: 'bg-purple-500 text-white'
-  };
-  const inactiveClasses = 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600';
-  
-  let activeClass = activeClasses.all;
-  if (color === 'green') activeClass = activeClasses.green;
-  if (color === 'yellow') activeClass = activeClasses.yellow;
-  if (color === 'red') activeClass = activeClasses.red;
-  if (color === 'purple') activeClass = activeClasses.purple;
-  
-  return (
-    <button type="button" onClick={onClick} className={`${baseClasses} ${isActive ? activeClass : inactiveClasses}`}>
-      {label} <span className={`ml-1.5 px-2 py-0.5 rounded-full text-xs ${isActive ? 'bg-black/20' : 'bg-zinc-800'}`}>{count}</span>
-    </button>
-  );
+
+const FilterButton: React.FC<FilterButtonProps> = ({ label, count, isActive, onClick, color = 'blue' }) => {
+    const activeClasses = {
+        green: 'bg-green-600 text-white',
+        yellow: 'bg-yellow-500 text-black',
+        red: 'bg-red-600 text-white',
+        blue: 'bg-blue-600 text-white'
+    };
+
+    const activeClass = activeClasses[color];
+
+    return (
+        <button 
+            type="button" 
+            onClick={onClick} 
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors flex-shrink-0 ${isActive ? activeClass : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}
+        >
+            {label} ({count})
+        </button>
+    );
 };

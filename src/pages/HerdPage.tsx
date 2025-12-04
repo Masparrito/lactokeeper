@@ -1,19 +1,18 @@
-// src/pages/HerdPage.tsx (CORREGIDO - V3 - Discrepancia KPI)
-
 import React, { useState, useMemo, useRef } from 'react';
 import { useData } from '../context/DataContext';
 import { useSearch } from '../hooks/useSearch';
+import { useHerdAnalytics } from '../hooks/useHerdAnalytics'; 
 import { SearchHeader } from '../components/ui/SearchHeader';
 import { 
-    Settings, History, FilterX, ChevronDown, Users, FileArchive, Baby, Scale, Move, Archive, 
-    Droplets, HeartCrack, Heart, RefreshCw, Trash2, DollarSign, Ban, 
-    ListChecks, X, Edit
+    Edit, X, Droplets, Scale, 
+    Baby, Archive,
+    DollarSign, HeartCrack, Ban, RefreshCw, Trash2, 
+    AlertCircle, History, Settings, ListChecks, ChevronDown,
+    Heart, Move, Users, FileArchive, FilterX 
 } from 'lucide-react';
 import type { PageState } from '../types/navigation';
-// (CORREGIDO) Tipos no usados eliminados (Soluciona TS6133)
-import { Animal, Lot } from '../db/local'; 
-// (CORREGIDO) 'calculateAgeInMonths' eliminado de la importación (Soluciona TS2724)
-import { formatAge, getAnimalZootecnicCategory, calculateAgeInDays } from '../utils/calculations'; 
+import { Animal, Lot, BreedingSeason } from '../db/local'; 
+import { formatAge, getAnimalZootecnicCategory, getAnimalStatusObjects } from '../utils/calculations'; 
 import { formatAnimalDisplay } from '../utils/formatting';
 import { STATUS_DEFINITIONS, AnimalStatusKey } from '../hooks/useAnimalStatus';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -30,29 +29,12 @@ import { BatchWeighingForm } from '../components/forms/BatchWeighingForm';
 import { Modal } from '../components/ui/Modal';
 import { DeclareServiceModal } from '../components/modals/DeclareServiceModal';
 import { SwipeableAnimalCard } from '../components/ui/SwipeableAnimalCard';
-import { DEFAULT_CONFIG } from '../types/config'; 
+import { AddLotModal } from '../components/modals/AddLotModal'; 
+import { BreedingSeasonForm } from '../components/forms/BreedingSeasonForm';
 
-
-// (NUEVO) Helper local para 'calculateAgeInMonths' (Soluciona TS2724)
-const calculateAgeInMonths = (birthDate: string): number => {
-    if (!birthDate || birthDate === 'N/A') return 0;
-    const today = new Date();
-    const birth = new Date(birthDate);
-    if (isNaN(birth.getTime())) return 0;
-    let months = (today.getFullYear() - birth.getFullYear()) * 12;
-    months -= birth.getMonth();
-    months += today.getMonth();
-    return months <= 0 ? 0 : months;
-};
-
-
-// --- (CORREGIDO) ELIMINAR TODA LA FUNCIÓN LOCAL 'getAnimalStatusObjects' ---
-// La función obsoleta que estaba aquí ha sido eliminada.
-
-
-// --- Lógica de Filtro (SIN CAMBIOS) ---
+// --- Lógica de Filtro ---
 const ZOOTECNIC_CATEGORIES = ['Cabrita', 'Cabritona', 'Cabra', 'Cabrito', 'Macho de Levante', 'Reproductor'];
-// ... (El resto de 'FilterBar' y 'BatchMoveModal' no cambian) ...
+
 type FilterItem = { key: string, label: string, Icon?: React.ElementType };
 
 const FilterBar = ({ title, filters, activeFilter, onFilterChange }: {
@@ -69,6 +51,7 @@ const FilterBar = ({ title, filters, activeFilter, onFilterChange }: {
         </div>
     </div>
 );
+
 const BatchMoveModal = ({ isOpen, onClose, onConfirm, lots }: {
     isOpen: boolean,
     onClose: () => void,
@@ -108,13 +91,12 @@ const BatchMoveModal = ({ isOpen, onClose, onConfirm, lots }: {
     );
 };
 
-
 // --- COMPONENTE PRINCIPAL ---
 interface HerdPageProps {
     navigateTo: (page: PageState) => void;
     onBack: () => void;
     locationFilter?: string;
-    kpiFilter?: 'all' | 'females' | 'vientres' | 'Cabra' | 'Cabritona' | 'Crias' | 'Reproductor';
+    kpiFilter?: string;
     scrollContainerRef: React.RefObject<HTMLDivElement>;
     
     filterStates: {
@@ -141,31 +123,30 @@ export default function HerdPage({
     filterStates,
     filterSetters
 }: HerdPageProps) {
-    const { animals, lots, parturitions, serviceRecords, breedingSeasons, sireLots, isLoading, updateAnimal, startDryingProcess, setLactationAsDry, addServiceRecord, fathers, deleteAnimalPermanently, appConfig, bodyWeighings } = useData();
+    const { 
+        animals, lots, parturitions, serviceRecords, breedingSeasons, sireLots, 
+        isLoading, updateAnimal, startDryingProcess, setLactationAsDry, 
+        addServiceRecord, fathers, deleteAnimalPermanently, appConfig, 
+        bodyWeighings, addBreedingSeason, updateBreedingSeason 
+    } = useData();
     
-    // ... (Estados de Modales, Flujo, Filtro, UI y Selección Múltiple SIN CAMBIOS) ...
+    const analytics = useHerdAnalytics(); 
+
+    // --- ESTADOS ---
     const [actionSheetAnimal, setActionSheetAnimal] = useState<Animal | null>(null);
     const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
+    
     type ModalType = | 'parturition' | 'abortion' | 'decommission' | 'milkWeighingAction' | 'bodyWeighingAction' | 'logSimpleMilk' | 'logSimpleBody' | 'newMilkSession' | 'newBodySession' | 'bulkWeighing' | 'service' | 'decommissionSheet';
     const [activeModal, setActiveModal] = useState<ModalType | null>(null);
+    
     const [decommissionReason, setDecommissionReason] = useState<'Venta' | 'Muerte' | 'Descarte' | null>(null);
     const [sessionDate, setSessionDate] = useState<string | null>(null);
     const [bulkAnimals, setBulkAnimals] = useState<Animal[]>([]);
     const [bulkWeightType, setBulkWeightType] = useState<'leche' | 'corporal'>('corporal');
-    const { 
-        viewMode, 
-        categoryFilter, 
-        productiveFilter, 
-        reproductiveFilter, 
-        decommissionFilter 
-    } = filterStates;
-    const {
-        setViewMode,
-        setCategoryFilter,
-        setProductiveFilter,
-        setReproductiveFilter,
-        setDecommissionFilter
-    } = filterSetters;
+    
+    const { viewMode, categoryFilter, productiveFilter, reproductiveFilter, decommissionFilter } = filterStates;
+    const { setViewMode, setCategoryFilter, setProductiveFilter, setReproductiveFilter, setDecommissionFilter } = filterSetters;
+    
     const [isLatestFilterActive, setIsLatestFilterActive] = useState(false);
     const [productiveFiltersVisible, setProductiveFiltersVisible] = useState(false);
     const [reproductiveFiltersVisible, setReproductiveFiltersVisible] = useState(false);
@@ -177,26 +158,20 @@ export default function HerdPage({
     const [batchDecommissionReason, setBatchDecommissionReason] = useState<'Venta' | 'Muerte' | 'Descarte' | null>(null);
     const [isBatchMoveModalOpen, setIsBatchMoveModalOpen] = useState(false);
     
+    // --- Estados adicionales ---
+    const [isAddLotModalOpen, setAddLotModalOpen] = useState(false);
+    const [isAddSeasonModalOpen, setAddSeasonModalOpen] = useState(false);
+    const [editingSeason, setEditingSeason] = useState<BreedingSeason | undefined>(undefined);
+    const [isLotChangeModalOpen, setLotChangeModalOpen] = useState(false);
+    const [selectedNewLot, setSelectedNewLot] = useState('');
+
     const isKpiView = useMemo(() => !!kpiFilter && kpiFilter !== 'all', [kpiFilter]);
-    
     const pageContentRef = useRef<HTMLDivElement>(null);
 
-    // --- (SIN CAMBIOS) ---
-    // Este 'useMemo' ahora calcula TANTO la categoría zootécnica COMO
-    // los objetos de estado, usando la lógica centralizada y el 'appConfig'.
-    // Esto soluciona todos los bugs de filtros e íconos.
-    const animalsWithAllData = useMemo(() => {
+    // --- ENRIQUECIMIENTO DE DATOS ---
+    const animalsWithUIProperties = useMemo(() => {
         const sireLotMap = new Map(sireLots.map(lot => [lot.id, lot]));
         const fatherMap = new Map(fathers.map(father => [father.id, father]));
-        
-        // Configuración para la lógica de estado
-        const config = appConfig || DEFAULT_CONFIG;
-        let minVientreAge = config.edadMinimaVientreMeses;
-        if (!minVientreAge || minVientreAge < 6) {
-            minVientreAge = DEFAULT_CONFIG.edadMinimaVientreMeses; // 10
-        }
-        const activeSeasons = breedingSeasons.filter(s => s.status === 'Activo');
-        const activeSeasonIds = new Set(activeSeasons.map(s => s.id));
 
         return animals.map(animal => {
             let sireName: string | undefined = undefined;
@@ -208,153 +183,99 @@ export default function HerdPage({
                 }
             }
             
-            // --- Lógica de StatusObjects (copiada de useAnimalStatus) ---
-            const activeStatuses: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] = [];
-            if (animal.sex === 'Macho') {
-                const isActiveSire = sireLots.some(sl => sl.sireId === animal.id && activeSeasonIds.has(sl.seasonId));
-                if (isActiveSire) activeStatuses.push(STATUS_DEFINITIONS.SIRE_IN_SERVICE);
-            } 
-            else if (animal.sex === 'Hembra') {
-                const animalParturitions = parturitions
-                    .filter(p => p.goatId === animal.id)
-                    .sort((a, b) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime());
-                const lastParturition = animalParturitions[0];
-                const hasCalved = animalParturitions.length > 0;
-
-                // 1. Estado Lactancia
-                if (lastParturition) {
-                    if (lastParturition.status === 'activa') activeStatuses.push(STATUS_DEFINITIONS.MILKING);
-                    else if (lastParturition.status === 'en-secado') activeStatuses.push(STATUS_DEFINITIONS.DRYING_OFF);
-                    else if (lastParturition.status === 'seca') activeStatuses.push(STATUS_DEFINITIONS.DRY);
-                }
-
-                // 2. Lógica de "Vientre"
-                // (CORREGIDO) 'calculateAgeInMonths' ahora usa la función local
-                const ageInMonths = calculateAgeInMonths(animal.birthDate);
-                const isVientre = hasCalved || (ageInMonths >= minVientreAge);
-
-                // 3. Estado Reproductivo
-                let isPregnantOrConfirmed = false;
-                let isJustInService = false;
-
-                if (animal.reproductiveStatus === 'Preñada') {
-                    activeStatuses.push(STATUS_DEFINITIONS.PREGNANT);
-                    isPregnantOrConfirmed = true;
-                } else if (animal.reproductiveStatus === 'En Servicio') {
-                    const hasServiceRecord = serviceRecords.some(sr => sr.femaleId === animal.id && sr.sireLotId === animal.sireLotId);
-                    if (hasServiceRecord) {
-                        activeStatuses.push(STATUS_DEFINITIONS.IN_SERVICE_CONFIRMED);
-                        isPregnantOrConfirmed = true;
-                    } else {
-                        activeStatuses.push(STATUS_DEFINITIONS.IN_SERVICE);
-                        isJustInService = true;
-                    }
-                }
-                
-                // 4. Lógica de "Vacía"
-                if (isVientre && !isPregnantOrConfirmed && !isJustInService) {
-                    activeStatuses.push(STATUS_DEFINITIONS.EMPTY);
-                }
-            }
-            // --- Fin Lógica de StatusObjects ---
+            const zootecnicCategory = getAnimalZootecnicCategory(animal, parturitions, appConfig);
 
             return {
                 ...animal,
-                // 'statusObjects' ahora se calcula con la lógica correcta
-                statusObjects: Array.from(new Set(activeStatuses.map(s => s.key)))
-                                  .map(key => STATUS_DEFINITIONS[key as AnimalStatusKey])
-                                  .filter(Boolean),
-                
+                statusObjects: getAnimalStatusObjects(animal, parturitions, serviceRecords, sireLots, breedingSeasons),
                 formattedAge: formatAge(animal.birthDate),
-                
-                // 'zootecnicCategory' ahora usa appConfig (Soluciona bug de filtro)
-                zootecnicCategory: getAnimalZootecnicCategory(animal, parturitions, appConfig),
-                
+                zootecnicCategory,
                 sireName
             };
         });
-    // (SIN CAMBIOS) Dependencias
     }, [animals, parturitions, sireLots, breedingSeasons, fathers, appConfig, serviceRecords]);
 
-
-    // --- (INICIO CORRECCIÓN DISCREPANCIA KPI) ---
+    // --- FILTRADO PRINCIPAL ---
     const filteredByUI = useMemo(() => {
-        // (CORREGIDO) La 'baseList' para 'Activos' ahora también filtra por 'status === "Activo"',
-        // igualando la lógica del KPI en 'useHerdAnalytics.ts'.
-        let baseList = viewMode === 'Activos'
-            ? animalsWithAllData.filter(a => !a.isReference && a.status === 'Activo') 
-            : animalsWithAllData.filter(a => a.isReference);
-    // --- (FIN CORRECCIÓN DISCREPANCIA KPI) ---
-        
+        let list = animalsWithUIProperties;
+
+        // 1. FILTRO BASE OBLIGATORIO: Activos vs Referencia
+        // Si hay un KPI activo, asumimos que buscamos en Activos (a menos que el KPI diga lo contrario)
+        // Si no hay KPI, obedecemos estrictamente al selector de VISTA (viewMode).
         if (kpiFilter) {
-            // Cuando 'kpiFilter' está activo, 'viewMode' es 'Activos' por defecto.
-            // 'baseList' ya está filtrada por 'status === "Activo"',
-            // por lo que los siguientes filtros darán el conteo correcto.
-            if (kpiFilter === 'females') {
-                baseList = baseList.filter(a => a.sex === 'Hembra');
-            
-            } else if (kpiFilter === 'vientres') {
-                const edadVientreMeses = appConfig.edadPrimerServicioMeses > 0 ? appConfig.edadPrimerServicioMeses : 11;
-                const pesoVientreKg = appConfig.pesoPrimerServicioKg > 0 ? appConfig.pesoPrimerServicioKg : 30;
-                const edadVientreDias = edadVientreMeses * 30.44;
-
-                baseList = baseList.filter(hembra => {
-                    if (hembra.sex !== 'Hembra') return false;
-                    const category = hembra.zootecnicCategory; 
-                    if (category === 'Cabra') return true;
-                    if (category === 'Cabrita') return false;
-                    if (category === 'Cabritona') {
-                        const ageInDays = calculateAgeInDays(hembra.birthDate);
-                        if (ageInDays < edadVientreDias) return false;
-                        if (pesoVientreKg > 0) {
-                            const lastWeight = bodyWeighings
-                                .filter(bw => bw.animalId === hembra.id)
-                                .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-                            if (!lastWeight || lastWeight.kg < pesoVientreKg) return false;
-                        }
-                        return true;
-                    }
-                    return false;
-                });
-
-            } else if (kpiFilter === 'Cabra') {
-                baseList = baseList.filter(a => a.zootecnicCategory === 'Cabra');
-            } else if (kpiFilter === 'Cabritona') {
-                baseList = baseList.filter(a => a.zootecnicCategory === 'Cabritona');
-            } else if (kpiFilter === 'Crias') {
-                baseList = baseList.filter(a => a.zootecnicCategory === 'Cabrita' || a.zootecnicCategory === 'Cabrito');
-            } else if (kpiFilter === 'Reproductor') {
-                baseList = baseList.filter(a => a.zootecnicCategory === 'Reproductor');
-            }
-        }
-
-        if (!isKpiView) {
-            if (locationFilter) { baseList = baseList.filter(animal => (animal.location || 'Sin Asignar') === locationFilter); }
-            if (isLatestFilterActive) { return baseList.sort((a, b) => (b.endDate ? new Date(b.endDate).getTime() : b.createdAt || 0) - (a.endDate ? new Date(a.endDate).getTime() : a.createdAt || 0)).slice(0, 25); }
-            
+            // Por defecto, los KPIs son sobre animales activos
+            list = list.filter(a => !a.isReference && a.status === 'Activo');
+        } else {
             if (viewMode === 'Activos') {
-                if (productiveFilter !== 'ALL') { baseList = baseList.filter(animal => animal.statusObjects.some(s => s.key === productiveFilter)); }
-                if (reproductiveFilter !== 'ALL') { baseList = baseList.filter(animal => animal.statusObjects.some(s => s.key === reproductiveFilter)); }
-            } else { 
-                if (decommissionFilter !== 'all') { baseList = baseList.filter(animal => animal.status === decommissionFilter); } 
-            }
-            if (categoryFilter !== 'Todos') { 
-                baseList = baseList.filter(animal => animal.zootecnicCategory === categoryFilter); 
+                list = list.filter(a => !a.isReference && a.status === 'Activo');
+            } else if (viewMode === 'Referencia') {
+                list = list.filter(a => a.isReference);
             }
         }
-        return baseList;
-    }, [
-        animalsWithAllData, viewMode, isLatestFilterActive, locationFilter, categoryFilter, 
-        productiveFilter, reproductiveFilter, decommissionFilter, 
-        kpiFilter, appConfig, bodyWeighings, parturitions, isKpiView
-    ]);
+
+        // 2. Lógica de KPI (Refinamiento sobre la lista ya filtrada)
+        if (kpiFilter) {
+            if (kpiFilter === 'females') list = list.filter(a => a.sex === 'Hembra');
+            else if (kpiFilter === 'vientres') {
+                 const cabrasIds = new Set(analytics.lists.cabras.map(a => a.id));
+                 const cabritonasIds = new Set(analytics.lists.cabritonas.map(a => a.id));
+                 list = list.filter(a => cabrasIds.has(a.id) || cabritonasIds.has(a.id));
+            }
+            else if (kpiFilter === 'Cabra') list = list.filter(a => analytics.lists.cabras.some(c => c.id === a.id));
+            else if (kpiFilter === 'Cabritona') list = list.filter(a => analytics.lists.cabritonas.some(c => c.id === a.id));
+            else if (kpiFilter === 'Crias') list = list.filter(a => [...analytics.lists.cabritas, ...analytics.lists.cabritos].some(c => c.id === a.id));
+            else if (kpiFilter === 'Reproductor') list = list.filter(a => analytics.lists.reproductores.some(c => c.id === a.id));
+            
+            else if (kpiFilter === 'readyForService') {
+                const serviceWeightTarget = Number(appConfig.pesoPrimerServicioKg) || 30;
+                const serviceThreshold = serviceWeightTarget * 0.95; 
+
+                list = list.filter(a => {
+                    const isCabritona = analytics.lists.cabritonas.some(c => c.id === a.id);
+                    if (!isCabritona) return false;
+
+                    if (a.sireLotId) return false;
+                    if (['En Servicio', 'Preñada'].includes(a.reproductiveStatus || '')) return false;
+
+                    const lastWeight = bodyWeighings
+                        .filter(w => w.animalId === a.id)
+                        .sort((x,y) => new Date(y.date).getTime() - new Date(x.date).getTime())[0];
+
+                    return lastWeight && lastWeight.kg >= serviceThreshold;
+                });
+            }
+        }
+
+        // 3. Filtro de Ubicación
+        if (locationFilter) list = list.filter(animal => (animal.location || 'Sin Asignar') === locationFilter);
+        
+        // 4. Filtros específicos de la vista Activos (Productivo/Reproductivo/Última Carga)
+        if (viewMode === 'Activos' && !isKpiView) {
+             if (isLatestFilterActive) {
+                // Si "Última Carga" está activo, ordenamos y cortamos, ignorando otros filtros de estado
+                return list.sort((a, b) => (b.endDate ? new Date(b.endDate).getTime() : b.createdAt || 0) - (a.endDate ? new Date(a.endDate).getTime() : a.createdAt || 0)).slice(0, 25);
+             }
+             
+             if (productiveFilter !== 'ALL') list = list.filter(animal => animal.statusObjects.some(s => s.key === productiveFilter));
+             if (reproductiveFilter !== 'ALL') list = list.filter(animal => animal.statusObjects.some(s => s.key === reproductiveFilter));
+        } 
+        
+        // 5. Filtros específicos de la vista Referencia (Causa de baja)
+        else if (viewMode === 'Referencia') {
+            if (decommissionFilter !== 'all') list = list.filter(animal => animal.status === decommissionFilter);
+        }
+        
+        // 6. Filtro de Categoría (Solo si no es vista KPI)
+        if (!isKpiView && categoryFilter !== 'Todos') {
+             list = list.filter(animal => animal.zootecnicCategory === categoryFilter);
+        }
+
+        return list;
+    }, [animalsWithUIProperties, kpiFilter, isKpiView, locationFilter, viewMode, productiveFilter, reproductiveFilter, decommissionFilter, analytics.lists, isLatestFilterActive, bodyWeighings, appConfig, categoryFilter]);
 
     const { searchTerm, setSearchTerm, filteredItems } = useSearch(filteredByUI, ['id', 'name']);
-    
-    // ... (El resto del componente, 'resetAllFilters', 'getActionsForAnimal',
-    // 'handleOpenActions', 'closeModal', 'handleDecommissionConfirm', etc.
-    // y TODO EL JSX no necesita cambios) ...
-    
+
+    // --- HANDLERS ---
     const resetAllFilters = () => { 
         setCategoryFilter('Todos'); 
         setIsLatestFilterActive(false); 
@@ -366,7 +287,27 @@ export default function HerdPage({
         setReproductiveFiltersVisible(false); 
     };
 
-    // --- (Lógica de Acciones Individuales - SIN CAMBIOS) ---
+    const handleOpenActions = (animal: Animal) => { setActionSheetAnimal(animal); setIsActionSheetOpen(true); };
+
+    const closeModal = () => { 
+        setActiveModal(null); 
+        setActionSheetAnimal(null); 
+        setSessionDate(null); 
+        setBulkAnimals([]); 
+        setDecommissionReason(null); 
+        setIsActionSheetOpen(false); 
+        setIsBatchActionSheetOpen(false);
+        setIsBatchConfirmOpen(false);
+        setBatchDecommissionReason(null);
+        setIsBatchMoveModalOpen(false);
+        
+        // Limpieza de estados extra
+        setLotChangeModalOpen(false);
+        setAddLotModalOpen(false);
+        setAddSeasonModalOpen(false);
+        setEditingSeason(undefined);
+    };
+
     const getActionsForAnimal = (animal: Animal | null): ActionSheetAction[] => {
         if (!animal) return [];
         if (animal.isReference) {
@@ -395,24 +336,13 @@ export default function HerdPage({
         actions.push({ label: 'Dar de Baja', icon: Archive, onClick: () => { setIsActionSheetOpen(false); setActiveModal('decommissionSheet'); }, color: 'text-brand-red' });
         return actions;
     };
+
     const decommissionActions: ActionSheetAction[] = [
         { label: "Por Venta", icon: DollarSign, onClick: () => { setDecommissionReason('Venta'); setActiveModal('decommission'); } },
         { label: "Por Muerte", icon: HeartCrack, onClick: () => { setDecommissionReason('Muerte'); setActiveModal('decommission'); }, color: 'text-brand-red' },
         { label: "Por Descarte", icon: Ban, onClick: () => { setDecommissionReason('Descarte'); setActiveModal('decommission'); }, color: 'text-brand-red' },
     ];
-    const handleOpenActions = (animal: Animal) => { setActionSheetAnimal(animal); setIsActionSheetOpen(true); };
-    const closeModal = () => { 
-        setActiveModal(null); 
-        setActionSheetAnimal(null); 
-        setSessionDate(null); 
-        setBulkAnimals([]); 
-        setDecommissionReason(null); 
-        setIsActionSheetOpen(false); 
-        setIsBatchActionSheetOpen(false);
-        setIsBatchConfirmOpen(false);
-        setBatchDecommissionReason(null);
-        setIsBatchMoveModalOpen(false);
-    };
+
     const handleDecommissionConfirm = async (details: DecommissionDetails) => { 
         if (!actionSheetAnimal) return; 
         const dataToUpdate: Partial<Animal> = { status: details.reason, isReference: true, endDate: details.date }; 
@@ -422,6 +352,7 @@ export default function HerdPage({
         try { await updateAnimal(actionSheetAnimal.id, dataToUpdate); closeModal(); navigateTo({name: 'lots-dashboard'}); } 
         catch (error) { console.error("Error al dar de baja:", error); closeModal(); }
     };
+
     const handleLogToSession = (date: string, type: 'leche' | 'corporal') => { setSessionDate(date); setActiveModal(type === 'leche' ? 'logSimpleMilk' : 'logSimpleBody'); };
     const handleStartNewSession = (type: 'leche' | 'corporal') => { setBulkWeightType(type); setActiveModal(type === 'leche' ? 'newMilkSession' : 'newBodySession'); };
     const handleSetReadyForMating = async () => { if (actionSheetAnimal) { await updateAnimal(actionSheetAnimal.id, { reproductiveStatus: 'En Servicio' }); closeModal(); } };
@@ -433,108 +364,74 @@ export default function HerdPage({
     const handleReintegrate = async () => { if (!actionSheetAnimal || !actionSheetAnimal.isReference) return; await updateAnimal(actionSheetAnimal.id, { isReference: false, status: 'Activo', endDate: undefined, reproductiveStatus: 'Vacía' }); setIsActionSheetOpen(false); setActionSheetAnimal(null); };
     const handlePermanentDelete = async () => { if (!actionSheetAnimal || !actionSheetAnimal.isReference) return; await deleteAnimalPermanently(actionSheetAnimal.id); setIsDeleteConfirmationOpen(false); setIsActionSheetOpen(false); setActionSheetAnimal(null); };
 
-
-    // --- (Lógica de Selección Múltiple - SIN CAMBIOS) ---
+    // Selección Múltiple y Batch Actions
     const handleCardClick = (animalId: string) => {
-        if (isSelectionMode) {
-            handleToggleSelect(animalId);
-        } else {
-            navigateTo({ name: 'rebano-profile', animalId: animalId });
-        }
+        if (isSelectionMode) { handleToggleSelect(animalId); } 
+        else { navigateTo({ name: 'rebano-profile', animalId: animalId }); }
     };
     const handleToggleSelect = (animalId: string) => {
         setSelectedAnimals(prev => {
             const newSet = new Set(prev);
-            if (newSet.has(animalId)) {
-                newSet.delete(animalId);
-            } else {
-                newSet.add(animalId);
-            }
+            if (newSet.has(animalId)) { newSet.delete(animalId); } 
+            else { newSet.add(animalId); }
             return newSet;
         });
     };
-    const handleCancelSelection = () => {
-        setIsSelectionMode(false);
-        setSelectedAnimals(new Set());
-    };
-    const animalsInSelection = useMemo(() => {
-        return animalsWithAllData.filter(a => selectedAnimals.has(a.id));
-    }, [selectedAnimals, animalsWithAllData]);
+    const handleCancelSelection = () => { setIsSelectionMode(false); setSelectedAnimals(new Set()); };
+    
+    const animalsInSelection = useMemo(() => animalsWithUIProperties.filter(a => selectedAnimals.has(a.id)), [selectedAnimals, animalsWithUIProperties]);
+    
     const availableBatchActions = useMemo((): ActionSheetAction[] => {
         const actions: ActionSheetAction[] = [];
         if (animalsInSelection.length === 0) return actions;
-        actions.push({ label: 'Mover a Lote', icon: Move, onClick: () => {
-            setIsBatchActionSheetOpen(false);
-            setIsBatchMoveModalOpen(true);
-        }});
-        actions.push({ 
-            label: 'Dar de Baja', 
-            icon: Archive, 
-            onClick: () => {
-                setIsBatchActionSheetOpen(false);
-                setActiveModal('decommissionSheet');
-            }, 
-            color: 'text-brand-red' 
-        });
+        actions.push({ label: 'Mover a Lote', icon: Move, onClick: () => { setIsBatchActionSheetOpen(false); setIsBatchMoveModalOpen(true); }});
+        actions.push({ label: 'Dar de Baja', icon: Archive, onClick: () => { setIsBatchActionSheetOpen(false); setActiveModal('decommissionSheet'); }, color: 'text-brand-red' });
         return actions;
     }, [animalsInSelection]);
+
     const handleBatchDecommissionConfirm = async () => { 
         if (selectedAnimals.size === 0 || !batchDecommissionReason) return;
         const date = new Date().toISOString().split('T')[0];
-        const dataToUpdate: Partial<Animal> = { 
-            status: batchDecommissionReason, 
-            isReference: true, 
-            endDate: date 
-        };
+        const dataToUpdate: Partial<Animal> = { status: batchDecommissionReason, isReference: true, endDate: date };
         try {
-            const updatePromises = Array.from(selectedAnimals).map(animalId => {
-                return updateAnimal(animalId, dataToUpdate);
-            });
+            const updatePromises = Array.from(selectedAnimals).map(animalId => updateAnimal(animalId, dataToUpdate));
             await Promise.all(updatePromises);
             closeModal();
             handleCancelSelection();
-        } catch (error) {
-            console.error("Error al dar de baja en lote:", error);
-            closeModal();
-        }
+        } catch (error) { console.error("Error al dar de baja en lote:", error); closeModal(); }
     };
+
     const handleBatchMoveConfirm = async (destinationLot: string) => {
         if (selectedAnimals.size === 0) return;
         try {
-            const updatePromises = Array.from(selectedAnimals).map(animalId => {
-                return updateAnimal(animalId, { location: destinationLot });
-            });
+            const updatePromises = Array.from(selectedAnimals).map(animalId => updateAnimal(animalId, { location: destinationLot }));
             await Promise.all(updatePromises);
             closeModal();
             handleCancelSelection();
-        } catch (error) {
-            console.error("Error al mover en lote:", error);
-            closeModal();
-        }
+        } catch (error) { console.error("Error al mover en lote:", error); closeModal(); }
     };
+
     const batchDecommissionActions: ActionSheetAction[] = [
         { label: "Por Venta", icon: DollarSign, onClick: () => { setBatchDecommissionReason('Venta'); setActiveModal(null); setIsBatchConfirmOpen(true); } },
         { label: "Por Muerte", icon: HeartCrack, onClick: () => { setBatchDecommissionReason('Muerte'); setActiveModal(null); setIsBatchConfirmOpen(true); }, color: 'text-brand-red' },
         { label: "Por Descarte", icon: Ban, onClick: () => { setBatchDecommissionReason('Descarte'); setActiveModal(null); setIsBatchConfirmOpen(true); }, color: 'text-brand-red' },
     ];
+    
+    const handleUpdateLocation = async () => { if (!actionSheetAnimal) return; await updateAnimal(actionSheetAnimal.id, { location: selectedNewLot }); setLotChangeModalOpen(false); };
 
-    // --- (Lógica de Virtualización - SIN CAMBIOS) ---
+
     const rowVirtualizer = useVirtualizer({
         count: filteredItems.length,
         getScrollElement: () => scrollContainerRef.current,
-        estimateSize: () => 112, // 96px de tarjeta + 16px (1rem) de padding-bottom
+        estimateSize: () => 112,
         overscan: 5
     });
 
     if (isLoading) { return <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Cargando rebaño...</h1></div>; }
 
-    // --- (TODO EL JSX - SIN CAMBIOS) ---
     return (
         <>
-            <div 
-                ref={pageContentRef} 
-                className="w-full max-w-2xl mx-auto"
-            >
+            <div ref={pageContentRef} className="w-full max-w-2xl mx-auto">
                 <SearchHeader 
                     title={locationFilter || (kpiFilter ? `Filtro: ${kpiFilter.charAt(0).toUpperCase() + kpiFilter.slice(1)}` : "Mi Rebaño")}
                     subtitle={isSelectionMode ? `${selectedAnimals.size} seleccionados` : `${filteredItems.length} animales en la vista`} 
@@ -566,7 +463,6 @@ export default function HerdPage({
                         )}
 
                         <div className="flex flex-wrap items-center justify-between gap-y-2">
-                            
                             {isSelectionMode ? (
                                 <button onClick={handleCancelSelection} className="flex items-center gap-2 py-1 px-3 text-sm font-semibold rounded-lg text-brand-red hover:bg-brand-red/10">
                                     <X size={16} /> Cancelar
@@ -613,7 +509,6 @@ export default function HerdPage({
                 )}
 
 
-                {/* Lista virtualizada */}
                 <div className="pt-4" style={{ height: 'auto', position: 'relative' }}>
                     {filteredItems.length > 0 ? (
                         <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
@@ -646,14 +541,23 @@ export default function HerdPage({
                         </div>
                     ) : (
                         <div className="text-center py-10 bg-brand-glass rounded-2xl mx-4">
+                            <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <AlertCircle size={32} className="text-zinc-600" />
+                            </div>
                             <p className="text-zinc-400">{searchTerm ? `No se encontraron resultados para "${searchTerm}"` : "No hay animales que coincidan con los filtros."}</p>
-
+                            {categoryFilter !== 'Todos' && (
+                                <button 
+                                    onClick={() => setCategoryFilter('Todos')}
+                                    className="mt-4 text-brand-blue text-sm font-bold hover:underline"
+                                >
+                                    Ver todos los animales
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* --- Modales de Acción Individual (SIN CAMBIOS) --- */}
             <ActionSheetModal isOpen={isActionSheetOpen} onClose={closeModal} title={`Acciones para ${formatAnimalDisplay(actionSheetAnimal)}`} actions={getActionsForAnimal(actionSheetAnimal)} />
             <ActionSheetModal
                 isOpen={activeModal === 'decommissionSheet' && !isSelectionMode} 
@@ -704,10 +608,20 @@ export default function HerdPage({
                         title={`Eliminar ${formatAnimalDisplay(actionSheetAnimal)} Permanentemente`} 
                         message="Esta acción borrará el registro del animal de la base de datos para siempre y no se puede deshacer. ¿Continuar?"
                     />
+                    {isLotChangeModalOpen && (
+                         <Modal isOpen={true} onClose={closeModal} title="Mover a Lote">
+                             <div className="space-y-4 p-4">
+                                 <select value={selectedNewLot} onChange={(e) => setSelectedNewLot(e.target.value)} className="w-full bg-zinc-800 p-2 rounded text-white">
+                                     <option value="">Sin Asignar</option>
+                                     {lots.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
+                                 </select>
+                                 <button onClick={handleUpdateLocation} className="w-full bg-brand-blue py-2 rounded text-white font-bold">Guardar</button>
+                             </div>
+                         </Modal>
+                    )}
                 </>
             )}
 
-            {/* --- Modales de Lote (SIN CAMBIOS) --- */}
             <ActionSheetModal 
                 isOpen={isBatchActionSheetOpen} 
                 onClose={() => setIsBatchActionSheetOpen(false)} 
@@ -733,6 +647,22 @@ export default function HerdPage({
                 onConfirm={handleBatchMoveConfirm}
                 lots={lots.filter(l => l.name !== 'Sin Asignar')}
             />
+            
+            <AddLotModal isOpen={isAddLotModalOpen} onClose={() => setAddLotModalOpen(false)} />
+            
+            {isAddSeasonModalOpen && (
+                <Modal isOpen={true} onClose={() => { setAddSeasonModalOpen(false); setEditingSeason(undefined); }} title={editingSeason ? "Editar Temporada" : "Nueva Temporada"}>
+                    <BreedingSeasonForm 
+                        onSave={async (data) => { 
+                            if(editingSeason) await updateBreedingSeason(editingSeason.id, data); 
+                            else await addBreedingSeason({...data, status: 'Activo'}); 
+                            setAddSeasonModalOpen(false); 
+                        }} 
+                        onCancel={() => setAddSeasonModalOpen(false)} 
+                        existingSeason={editingSeason} 
+                    />
+                </Modal>
+            )}
         </>
     );
 }

@@ -1,128 +1,113 @@
-import { useRef } from 'react';
-import { motion, useAnimation, PanInfo } from 'framer-motion';
-// --- INICIO TAREA 6.3: Imports añadidos ---
-import { Plus, ChevronRight, Square, CheckSquare } from 'lucide-react';
-// --- FIN TAREA 6.3 ---
+import React from 'react';
 import { Animal } from '../../db/local';
+import { MoreHorizontal, MapPin, CheckCircle2 } from 'lucide-react';
+import { formatAge } from '../../utils/calculations';
 import { StatusIcons } from '../icons/StatusIcons';
-import { AnimalStatusKey, STATUS_DEFINITIONS } from '../../hooks/useAnimalStatus';
+import { useAnimalStatus } from '../../hooks/useAnimalStatus';
 
-/**
- * Propiedades para la tarjeta de animal deslizable.
- * @param animal - El objeto animal con datos calculados (edad formateada, objetos de estado).
- * @param onSelect - Función que se ejecuta al tocar la tarjeta (navega o selecciona).
- * @param onOpenActions - Función que se ejecuta al deslizar la tarjeta hacia la izquierda.
- */
-// --- INICIO TAREA 6.3: Props actualizados ---
 interface SwipeableAnimalCardProps {
-  animal: Animal & { formattedAge: string; statusObjects: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[], sireName?: string };
-  onSelect: (id: string) => void;
-  onOpenActions: (animal: Animal) => void;
-  isSelectionMode: boolean; // Indica si el modo de selección está activo
-  isSelected: boolean;      // Indica si esta tarjeta específica está seleccionada
+    animal: Animal;
+    onSelect: (animalId: string) => void;
+    onOpenActions: (animal: Animal) => void;
+    isSelectionMode: boolean;
+    isSelected: boolean;
 }
-// --- FIN TAREA 6.3 ---
 
-/**
- * Un componente de tarjeta universal para mostrar un animal.
- * Cambia su comportamiento basado en 'isSelectionMode'.
- */
-export const SwipeableAnimalCard = ({ 
+export const SwipeableAnimalCard: React.FC<SwipeableAnimalCardProps> = ({ 
     animal, 
     onSelect, 
-    onOpenActions, 
-    isSelectionMode, 
-    isSelected 
-}: SwipeableAnimalCardProps) => {
-    
-    const swipeControls = useAnimation();
-    const dragStarted = useRef(false);
-    const buttonsWidth = 80;
-
-    const onDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-        const offset = info.offset.x;
-        const velocity = info.velocity.x;
-
-        if (offset < -buttonsWidth / 2 || velocity < -500) {
-            onOpenActions(animal);
-        }
-
-        swipeControls.start({ x: 0 });
-        setTimeout(() => { dragStarted.current = false; }, 50);
-    };
-
-    const genderDotColor = animal.isReference ? (animal.sex === 'Macho' ? 'bg-blue-400' : 'bg-pink-400') : null;
-    const formattedName = animal.name ? String(animal.name).toUpperCase().trim() : '';
+    onOpenActions,
+    isSelectionMode,
+    isSelected
+}) => {
+    // Obtenemos los iconos de estado (Preñada, Seca, etc.) para mostrarlos limpios
+    const statuses = useAnimalStatus(animal);
 
     return (
-        // --- INICIO TAREA 6.3: Borde condicional ---
-        <div className={`relative w-full overflow-hidden rounded-2xl bg-brand-glass border min-h-[80px] transition-all ${
-            isSelected ? 'border-brand-orange ring-2 ring-brand-orange/50' : 'border-brand-border'
-        }`}>
-        {/* --- FIN TAREA 6.3 --- */}
-
-            {/* Botón de acción oculto (solo activo si no estamos en modo selección) */}
-            {!isSelectionMode && (
-                <div className="absolute inset-y-0 right-0 flex items-center z-0 h-full">
-                    <div className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-blue text-white">
-                        <Plus size={20} />
-                        <span className="text-[10px] mt-0.5 font-semibold">Acciones</span>
-                    </div>
-                </div>
-            )}
-
-            {genderDotColor && (
-                <div className={`absolute top-2 right-2 w-2 h-2 rounded-full ${genderDotColor} z-20`} title={animal.sex}></div>
-            )}
-
-            <div className="absolute top-3 right-10 z-20 pointer-events-none">
-                <StatusIcons
-                    statuses={animal.statusObjects}
-                    sex={animal.sex}
-                    size={14}
-                />
-            </div>
-
-            <motion.div
-                // --- INICIO TAREA 6.3: Desactivar drag en modo selección ---
-                drag={isSelectionMode ? undefined : "x"}
-                // --- FIN TAREA 6.3 ---
-                dragConstraints={{ left: -buttonsWidth, right: 0 }}
-                dragElastic={0.1}
-                onDragStart={() => { dragStarted.current = true; }}
-                onDragEnd={onDragEnd}
-                onTap={() => { if (!dragStarted.current) { onSelect(animal.id); } }} // 'onSelect' ahora maneja tanto el clic como la selección
-                animate={swipeControls}
-                transition={{ type: "spring", stiffness: 400, damping: 40 }}
-                className="relative w-full z-10 cursor-pointer bg-ios-modal-bg p-3 flex items-center min-h-[96px]" // min-h-[96px] para consistencia
+        <div className="relative mb-3 group">
+            <div 
+                onClick={() => onSelect(animal.id)}
+                className={`
+                    relative w-full rounded-2xl p-4 transition-all duration-200 border
+                    ${isSelected 
+                        ? 'bg-brand-blue/10 border-brand-blue' 
+                        : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700 active:scale-[0.99]'
+                    }
+                `}
             >
-                 <div className="flex justify-between items-center w-full">
-                    <div className="min-w-0 pr-3">
-                        <p className="font-mono font-semibold text-base text-white truncate">{animal.id.toUpperCase()}</p>
-                        <p className="text-sm font-normal text-zinc-300 truncate h-5">
-                            {formattedName || <>&nbsp;</>}
-                        </p>
-                        <div className="text-xs text-zinc-500 mt-1 min-h-[1rem] truncate">
-                            <span>{animal.sex} | {animal.formattedAge} | Lote: {animal.location || 'N/A'}</span>
-                            {animal.sireName && <span className="block sm:inline sm:ml-2">(Rep: {animal.sireName})</span>}
+                <div className="flex items-start justify-between">
+                    
+                    {/* --- IZQUIERDA: Checkbox (Modo Selección) o Info --- */}
+                    <div className="flex items-start gap-3 overflow-hidden">
+                        
+                        {/* Checkbox animado para modo selección */}
+                        {isSelectionMode && (
+                            <div className={`
+                                mt-1 w-5 h-5 rounded-full border flex items-center justify-center transition-all
+                                ${isSelected 
+                                    ? 'bg-brand-blue border-brand-blue' 
+                                    : 'border-zinc-600 bg-transparent'
+                                }
+                            `}>
+                                {isSelected && <CheckCircle2 size={14} className="text-white" />}
+                            </div>
+                        )}
+
+                        <div className="flex flex-col min-w-0">
+                            {/* Línea 1: ID y Nombre */}
+                            <div className="flex items-baseline gap-2">
+                                <span className={`text-lg font-bold font-mono tracking-tight ${isSelected ? 'text-brand-blue' : 'text-white'}`}>
+                                    {animal.id}
+                                </span>
+                                {animal.name && (
+                                    <span className="text-sm text-zinc-400 truncate max-w-[120px]">
+                                        {animal.name}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Línea 2: Categoría y Edad */}
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-xs font-semibold text-zinc-300 bg-zinc-800 px-2 py-0.5 rounded-md">
+                                    {animal.lifecycleStage || 'Sin Categoría'}
+                                </span>
+                                <span className="text-xs text-zinc-500">
+                                    • {formatAge(animal.birthDate)}
+                                </span>
+                            </div>
+
+                            {/* Línea 3: Ubicación */}
+                            <div className="flex items-center gap-1 mt-2 text-zinc-500">
+                                <MapPin size={12} />
+                                <span className="text-xs">
+                                    {animal.location || 'Sin Ubicación'}
+                                </span>
+                            </div>
                         </div>
                     </div>
-                    
-                    {/* --- INICIO TAREA 6.3: Icono condicional (Flecha o Checkbox) --- */}
-                    <div className="flex items-center gap-2 flex-shrink-0 pl-12">
-                        {isSelectionMode ? (
-                            isSelected ? (
-                                <CheckSquare className="text-brand-orange w-5 h-5" />
-                            ) : (
-                                <Square className="text-zinc-600 w-5 h-5" />
-                            )
-                        ) : (
-                            <ChevronRight className="text-zinc-600 w-5 h-5" />
+
+                    {/* --- DERECHA: Iconos de Estado y Botón de Acción --- */}
+                    <div className="flex flex-col items-end gap-2">
+                        
+                        {!isSelectionMode && (
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onOpenActions(animal);
+                                }}
+                                className="p-2 -mr-2 -mt-2 text-zinc-500 hover:text-white transition-colors"
+                            >
+                                <MoreHorizontal size={20} />
+                            </button>
                         )}
+
+                        {/* Iconos de estado (Preñada, Ordeño, etc.) */}
+                        <div className="mt-1">
+                            <StatusIcons statuses={statuses} sex={animal.sex} size={16} />
+                        </div>
                     </div>
-                    {/* --- FIN TAREA 6.3 --- */}
                 </div>
-            </motion.div>
+            </div>
         </div>
     );
 };

@@ -1,47 +1,56 @@
-// src/App.tsx
-// (ACTUALIZADO: El estado de Kilos ahora es un objeto que recuerda la fecha de análisis)
-
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import { useData } from './context/DataContext';
 import { LoginPage } from './pages/LoginPage';
 import RebanoShell from './pages/RebanoShell';
 import LactoKeeperShell, { type LactoKeeperPage } from './pages/modules/LactoKeeperShell';
-// (ACTUALIZADO) Importar 'KilosPage'
 import KilosShell, { type KilosPage } from './pages/modules/KilosShell';
 import SaludShell from './pages/modules/salud/SaludShell';
 import CentsShell from './pages/modules/CentsShell';
 import EvolucionShell from './pages/modules/evolucion/EvolucionShell';
 import type { PageState as RebanoPageState, AppModule } from './types/navigation';
 import { LoadingOverlay } from './components/ui/LoadingOverlay';
+import { checkDailyNotifications, requestNotificationPermission } from './utils/notificationService';
 
 type InitialRebanoState = {
     page: RebanoPageState | null;
     sourceModule?: AppModule; 
 }
 
-// (NUEVO) Tipo para el estado del módulo de Kilos
+// Estado específico para Kilos que incluye la fecha de análisis
 type KilosState = {
     activePage: KilosPage;
-    analysisDate: string | null; // <-- Almacena la fecha
+    analysisDate: string | null; 
 }
 
 export default function App() {
     const { currentUser, isLoading: isAuthLoading } = useAuth();
-    const { isLoading: isDataLoading } = useData();
+    // Extraemos breedingSeasons para chequear alertas
+    const { isLoading: isDataLoading, breedingSeasons } = useData();
     
     const [activeModule, setActiveModule] = useState<AppModule>('rebano');
     const [initialRebanoState, setInitialRebanoState] = useState<InitialRebanoState>({ page: null, sourceModule: undefined });
 
     const [moduleStates, setModuleStates] = useState({
         lactokeeper: { name: 'dashboard' } as LactoKeeperPage,
-        // (ACTUALIZADO) Kilos ahora es un objeto
+        // Estado inicial de Kilos
         kilos: { 
             activePage: 'dashboard', 
             analysisDate: null 
         } as KilosState,
     });
     
+    // --- EFECTO: Chequeo de Notificaciones Diarias ---
+    useEffect(() => {
+        if (currentUser && !isDataLoading && breedingSeasons.length > 0) {
+            // 1. Solicitar permiso al navegador/sistema (si no se ha hecho)
+            requestNotificationPermission();
+            
+            // 2. Verificar si hay alertas de luz para hoy
+            checkDailyNotifications(breedingSeasons);
+        }
+    }, [currentUser, isDataLoading, breedingSeasons]);
+
     useEffect(() => {
         if (activeModule !== 'rebano') {
             setInitialRebanoState({ page: null, sourceModule: undefined });
@@ -61,7 +70,7 @@ export default function App() {
         setModuleStates(prev => ({ ...prev, lactokeeper: page }));
     }, []);
 
-    // (ACTUALIZADO) Handler para la PÁGINA de Kilos
+    // Handler para cambiar la PÁGINA de Kilos (Dashboard/Análisis/Añadir)
     const handleKilosPageChange = useCallback((page: KilosPage) => {
         setModuleStates(prev => ({ 
             ...prev, 
@@ -69,7 +78,7 @@ export default function App() {
         }));
     }, []);
 
-    // (NUEVO) Handler para la FECHA de Análisis de Kilos
+    // Handler para persistir la FECHA seleccionada en Análisis
     const handleKilosDateChange = useCallback((date: string) => {
         setModuleStates(prev => ({
             ...prev,
@@ -100,7 +109,7 @@ export default function App() {
         case 'kilos':
             return (
                 <KilosShell    
-                    // (ACTUALIZADO) Pasa el estado completo y los dos handlers
+                    // Pasamos el estado completo y los handlers
                     initialKilosState={moduleStates.kilos}
                     onPageChange={handleKilosPageChange}
                     onAnalysisDateChange={handleKilosDateChange}
