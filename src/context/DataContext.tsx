@@ -38,6 +38,7 @@ interface IDataContext {
   syncStatus: SyncStatus;
   addAnimal: (animalData: Omit<Animal, 'id' | '_synced' | 'userId' | 'createdAt'> & { id?: string }) => Promise<void>;
   updateAnimal: (animalId: string, dataToUpdate: Partial<Animal>) => Promise<void>;
+  bulkUpdateAnimals: (updates: { id: string; changes: Partial<Animal> }[]) => Promise<void>;
   deleteAnimalPermanently: (animalId: string) => Promise<void>;
   startDryingProcess: (parturitionId: string) => Promise<void>;
   setLactationAsDry: (parturitionId: string) => Promise<void>;
@@ -550,6 +551,36 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const updatedAnimal = await localDb.animals.get(upperId);
         if (updatedAnimal) enqueueSync(() => syncToFirestore("animals", upperId, updatedAnimal));
     }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
+
+    // Actualización MASIVA y eficiente de animales (p. ej. saneamiento de categorías).
+    // A diferencia de llamar updateAnimal N veces, hace UNA sola transacción local,
+    // UN solo refresco y encola la sincronización en lote. Evita la "tormenta" de
+    // recargas/escrituras que satura la app con rebaños grandes.
+    const bulkUpdateAnimals = useCallback(async (updates: { id: string; changes: Partial<Animal> }[]) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        if (!updates || updates.length === 0) return;
+        const localDb = getDB();
+        const updatedIds: string[] = [];
+
+        await localDb.transaction('rw', localDb.animals, async () => {
+            for (const u of updates) {
+                const upperId = u.id.toUpperCase();
+                const existing = await localDb.animals.get(upperId);
+                if (!existing) continue; // nunca se borra ni se crea, solo se actualiza lo existente
+                await localDb.animals.update(upperId, { ...u.changes, _synced: false });
+                updatedIds.push(upperId);
+            }
+        });
+
+        // UN solo refresco de la UI tras aplicar todo
+        await fetchDataFromLocalDb();
+
+        // Sincronización en lote (la cola + el barrido garantizan la subida durable)
+        const updatedAnimals = await localDb.animals.bulkGet(updatedIds);
+        for (const animal of updatedAnimals) {
+            if (animal) enqueueSync(() => syncToFirestore("animals", animal.id, animal));
+        }
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
     const deleteAnimalPermanently = useCallback(async (animalId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -1272,7 +1303,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoadingConfig,
         isLoading, syncStatus,
         fetchData: fetchDataFromLocalDb,
-        addAnimal, updateAnimal, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot, 
+        addAnimal, updateAnimal, bulkUpdateAnimals, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot,
         updateLot,
         deleteLot, 
         addOrigin, deleteOrigin,
@@ -1295,7 +1326,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         products, healthPlans, planActivities, healthEvents,
         appConfig, isLoadingConfig, isLoading, syncStatus,
         fetchDataFromLocalDb,
-        addAnimal, updateAnimal, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot, 
+        addAnimal, updateAnimal, bulkUpdateAnimals, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot,
         updateLot,
         deleteLot, 
         addOrigin, deleteOrigin,

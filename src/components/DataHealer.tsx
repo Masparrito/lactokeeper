@@ -4,7 +4,7 @@ import { getAnimalZootecnicCategory } from '../utils/calculations';
 import { RefreshCcw } from 'lucide-react';
 
 export const DataHealer = () => {
-    const { animals, parturitions, updateAnimal, appConfig } = useData();
+    const { animals, parturitions, bulkUpdateAnimals, appConfig } = useData();
     const [isHealing, setIsHealing] = useState(false);
     const [report, setReport] = useState<string[]>([]);
 
@@ -13,17 +13,17 @@ export const DataHealer = () => {
             "¿Ejecutar saneamiento EXCLUSIVAMENTE en animales ACTIVOS?\n\nEsto corregirá categorías (Cabra/Cabritona) basándose en edad, partos y producción actual."
         );
         if (!confirm) return;
-        
+
         setIsHealing(true);
         setReport([]);
         const logs: string[] = [];
-        let fixedCount = 0;
         let skippedCount = 0;
 
         try {
-            // Recorremos TODOS los animales
+            // 1. FASE DE ANÁLISIS (sin escribir nada): se calculan todas las correcciones.
+            const updates: { id: string; changes: { lifecycleStage: any } }[] = [];
+
             for (const animal of animals) {
-                
                 // --- FILTRO DE SEGURIDAD ESTRICTO ---
                 // Ignorar si no es Activo O si es Referencia (Muerto/Vendido/Histórico)
                 if (animal.status !== 'Activo' || animal.isReference) {
@@ -31,37 +31,35 @@ export const DataHealer = () => {
                     continue;
                 }
 
-                // 1. Calculamos la categoría biológica real
-                // Pasamos 'animals' para que detecte hijos (Progenie)
+                // Categoría biológica real (se pasa 'animals' para detectar progenie)
                 const correctCategory = getAnimalZootecnicCategory(animal, parturitions, appConfig, animals);
-
-                // 2. Detectamos discrepancias
                 const currentCategory = animal.lifecycleStage;
-                
+
                 // Lógica extra: Si es Cabrita pero ya tiene datos de destete -> Cabritona
                 const hasWeaningData = animal.weaningDate || animal.weaningWeight;
                 const needsUpgradeToCabritona = currentCategory === 'Cabrita' && hasWeaningData;
-                
+
                 const needsUpdate = (currentCategory !== correctCategory) || needsUpgradeToCabritona;
 
                 if (needsUpdate) {
                     const newStage = needsUpgradeToCabritona && correctCategory === 'Cabrita' ? 'Cabritona' : correctCategory;
-                    
-                    // 3. Actualizamos SOLO si es necesario
-                    await updateAnimal(animal.id, { 
-                        lifecycleStage: newStage as any 
-                    });
-                    
+                    updates.push({ id: animal.id, changes: { lifecycleStage: newStage } });
                     logs.push(`✅ ${animal.id}: ${currentCategory} -> ${newStage}`);
-                    fixedCount++;
                 }
             }
 
-            if (fixedCount === 0) {
+            // 2. FASE DE ESCRITURA: UNA sola actualización en lote (una transacción,
+            //    un refresco, sincronización en cola). No satura la app aunque el
+            //    rebaño sea grande.
+            if (updates.length > 0) {
+                await bulkUpdateAnimals(updates);
+            }
+
+            if (updates.length === 0) {
                 logs.push("✨ El rebaño activo está perfectamente sincronizado.");
             } else {
                 logs.push(`🎉 SANEAMIENTO COMPLETADO.`);
-                logs.push(`- Corregidos: ${fixedCount}`);
+                logs.push(`- Corregidos: ${updates.length}`);
                 logs.push(`- Omitidos (Referencia/Bajas): ${skippedCount}`);
             }
 
@@ -69,7 +67,7 @@ export const DataHealer = () => {
             console.error("Error en saneamiento:", error);
             logs.push(`❌ Error crítico: ${error.message}`);
         }
-        
+
         setReport(logs);
         setIsHealing(false);
     };
