@@ -349,7 +349,9 @@ export const useManagementAlerts = () => {
             }
 
             // --- LÓGICA DE CRÍAS (DESTETE) ---
-            const category = getAnimalZootecnicCategory(animal, parturitions);
+            // Se pasa 'animals' para detectar maternidad por progenie (evita
+            // categorizar mal a madres sin parto registrado y disparar alertas erróneas).
+            const category = getAnimalZootecnicCategory(animal, parturitions, appConfig, animals);
             
             if ((category === 'Cabrita' || category === 'Cabrito') && !animal.weaningDate) {
                 const ageInDays = calculateAgeInDays(animal.birthDate);

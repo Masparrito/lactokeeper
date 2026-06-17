@@ -3,7 +3,7 @@ import { Table } from 'dexie';
 import { Animal, Weighing, Parturition, Father, Lot, Origin, BreedingSeason, SireLot, ServiceRecord, Event, EventType, BodyWeighing, Product, HealthPlan, PlanActivity, HealthEvent, FeedingPlan, initDB, getDB, GanaderoOSTables } from '../db/local';
 import { db as firestoreDb } from '../firebaseConfig';
 import { useAuth } from './AuthContext';
-import { collection, query, where, onSnapshot, deleteDoc, doc, setDoc, writeBatch, Timestamp, serverTimestamp, deleteField } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, setDoc, writeBatch, Timestamp, serverTimestamp, deleteField } from "firebase/firestore";
 import { v4 as uuidv4 } from 'uuid';
 import { calculateAgeInMonths } from '../utils/calculations';
 
@@ -269,14 +269,52 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, [currentUser, enqueueSync]);
 
+    // --- BORRADOS DURABLES (tombstones) ---
+    // Propaga a Firestore los borrados registrados en la tabla 'pendingDeletions'.
+    // Garantiza que un borrado hecho offline no se pierda al recargar la app
+    // (de lo contrario el documento "reviviría" desde la nube en el próximo snapshot).
+    const syncPendingDeletions = useCallback(async () => {
+        if (!currentUser || !navigator.onLine) return;
+        try {
+            const localDb = getDB();
+            const tombstones = await localDb.pendingDeletions.toArray();
+            if (tombstones.length === 0) return;
+            const CHUNK = 400; // Firestore admite hasta 500 operaciones por batch
+            for (let i = 0; i < tombstones.length; i += CHUNK) {
+                const slice = tombstones.slice(i, i + CHUNK);
+                const batch = writeBatch(firestoreDb);
+                slice.forEach(t => batch.delete(doc(firestoreDb, t.collection, t.docId)));
+                await batch.commit();
+                await localDb.pendingDeletions.bulkDelete(slice.map(t => t.key));
+            }
+        } catch (error) {
+            console.error("[Sync] Error al sincronizar borrados pendientes:", error);
+        }
+    }, [currentUser]);
+
+    // Registra borrados como tombstones (durables en Dexie) e intenta propagarlos ya.
+    const recordDeletions = useCallback(async (deletions: { collection: string; id: string }[]) => {
+        if (deletions.length === 0) return;
+        const localDb = getDB();
+        const tombstones = deletions.map(d => ({
+            key: `${d.collection}:${d.id}`,
+            collection: d.collection,
+            docId: d.id,
+            deletedAt: Date.now(),
+            userId: currentUser?.uid,
+        }));
+        await localDb.pendingDeletions.bulkPut(tombstones);
+        syncPendingDeletions(); // intento inmediato (no-op si está offline)
+    }, [currentUser, syncPendingDeletions]);
+
     // --- useEffect (Hook de Sincronización Principal) ---
     useEffect(() => {
         let unsubscribers: (() => void)[] = [];
-        // Al reconectar: barrer pendientes (lo cargado offline) + drenar la cola en memoria.
-        const handleOnline = () => { setSyncStatus('idle'); syncPendingRecords(); processSyncQueue(); };
+        // Al reconectar: barrer pendientes (lo cargado offline) + borrados + cola en memoria.
+        const handleOnline = () => { setSyncStatus('idle'); syncPendingRecords(); syncPendingDeletions(); processSyncQueue(); };
         const handleOffline = () => setSyncStatus('offline');
         // Al volver la app al primer plano (móvil de campo): reintentar si hay conexión.
-        const handleVisibility = () => { if (document.visibilityState === 'visible' && navigator.onLine) syncPendingRecords(); };
+        const handleVisibility = () => { if (document.visibilityState === 'visible' && navigator.onLine) { syncPendingRecords(); syncPendingDeletions(); } };
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
         document.addEventListener('visibilitychange', handleVisibility);
@@ -297,9 +335,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const localDb = await initDB();
                 await fetchDataFromLocalDb();
 
-                // Barrido inicial: sube cualquier registro que quedó pendiente de una
-                // sesión anterior (la app pudo cerrarse offline antes de subir).
+                // Barrido inicial: sube cualquier registro/borrado que quedó pendiente de
+                // una sesión anterior (la app pudo cerrarse offline antes de propagar).
                 syncPendingRecords();
+                syncPendingDeletions();
 
                 const configRef = doc(firestoreDb, 'configuracion', currentUser.uid);
                 const unsubConfig = onSnapshot(configRef, (docSnap) => {
@@ -373,7 +412,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setupSync();
         return () => { unsubscribers.forEach(unsub => unsub()); window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); document.removeEventListener('visibilitychange', handleVisibility); if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current); };
-    }, [currentUser?.uid, fetchDataFromLocalDb, processSyncQueue, syncPendingRecords]);
+    }, [currentUser?.uid, fetchDataFromLocalDb, processSyncQueue, syncPendingRecords, syncPendingDeletions]);
 
     // --- FUNCIONES DE ESCRITURA ---
 
@@ -518,7 +557,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const upperId = animalId.toUpperCase();
         await localDb.animals.delete(upperId);
         fetchDataFromLocalDb();
-        enqueueSync(() => deleteDoc(doc(firestoreDb, "animals", upperId)).catch(error => console.error("Firestore delete sync failed:", error)));
+        await recordDeletions([{ collection: "animals", id: upperId }]);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
     const startDryingProcess = useCallback(async (parturitionId: string) => {
@@ -618,7 +657,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         await localDb.lots.delete(lotId);
         fetchDataFromLocalDb();
-        enqueueSync(() => deleteDoc(doc(firestoreDb, "lots", lotId)).catch(error => console.error("Firestore delete sync failed:", error)));
+        await recordDeletions([{ collection: "lots", id: lotId }]);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
     const addOrigin = useCallback(async (originName: string) => {
@@ -637,7 +676,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const localDb = getDB();
         await localDb.origins.delete(originId);
         fetchDataFromLocalDb();
-        enqueueSync(() => deleteDoc(doc(firestoreDb, "origins", originId)).catch(error => console.error("Firestore delete sync failed:", error)));
+        await recordDeletions([{ collection: "origins", id: originId }]);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
     const addWeighing = useCallback(async (weighing: Omit<Weighing, 'id' | 'userId' | '_synced'>) => {
@@ -671,9 +710,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const eventIdsToDelete = eventsToDelete.map(e => e.id);
         await localDb.transaction('rw', localDb.weighings, localDb.events, async () => { await localDb.weighings.bulkDelete(idsToDelete); await localDb.events.bulkDelete(eventIdsToDelete); });
         await fetchDataFromLocalDb();
-        const syncDeletion = async () => { const batch = writeBatch(firestoreDb); idsToDelete.forEach(id => batch.delete(doc(firestoreDb, "weighings", id))); eventIdsToDelete.forEach(id => batch.delete(doc(firestoreDb, "events", id))); await batch.commit(); };
-        enqueueSync(syncDeletion);
-    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+        await recordDeletions([
+            ...idsToDelete.map(id => ({ collection: "weighings", id })),
+            ...eventIdsToDelete.map(id => ({ collection: "events", id })),
+        ]);
+    }, [currentUser, recordDeletions, fetchDataFromLocalDb]);
 
     const deleteBodyWeighingSession = useCallback(async (date: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -692,14 +733,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await localDb.events.bulkDelete(eventIdsToDelete);
         });
         await fetchDataFromLocalDb();
-        const syncDeletion = async () => {
-            const batch = writeBatch(firestoreDb);
-            idsToDelete.forEach(id => batch.delete(doc(firestoreDb, "bodyWeighings", id)));
-            eventIdsToDelete.forEach(id => batch.delete(doc(firestoreDb, "events", id)));
-            await batch.commit();
-        };
-        enqueueSync(syncDeletion);
-    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+        await recordDeletions([
+            ...idsToDelete.map(id => ({ collection: "bodyWeighings", id })),
+            ...eventIdsToDelete.map(id => ({ collection: "events", id })),
+        ]);
+    }, [currentUser, recordDeletions, fetchDataFromLocalDb]);
 
     const addFather = useCallback(async (father: { id: string, name: string }) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -953,11 +991,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         fetchDataFromLocalDb();
 
-        enqueueSync(() => deleteDoc(doc(firestoreDb, "breedingSeasons", seasonId)));
-        
-        lotIdsToDelete.forEach(lotId => {
-            enqueueSync(() => deleteDoc(doc(firestoreDb, "sireLots", lotId)));
-        });
+        await recordDeletions([
+            { collection: "breedingSeasons", id: seasonId },
+            ...lotIdsToDelete.map(lotId => ({ collection: "sireLots", id: lotId })),
+        ]);
 
         if (animalIdsToUpdate.length > 0) {
             const updatedAnimals = await localDb.animals.bulkGet(animalIdsToUpdate);
@@ -996,7 +1033,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const localDb = getDB();
         await localDb.sireLots.delete(lotId);
         fetchDataFromLocalDb();
-        enqueueSync(() => deleteDoc(doc(firestoreDb, "sireLots", lotId)).catch(error => console.error("Firestore delete sync failed:", error)));
+        await recordDeletions([{ collection: "sireLots", id: lotId }]);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
     const addProduct = useCallback(async (productData: Omit<Product, 'id' | 'userId' | '_synced'>) => {
@@ -1023,7 +1060,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const localDb = getDB();
         await localDb.products.delete(productId);
         fetchDataFromLocalDb();
-        enqueueSync(() => deleteDoc(doc(firestoreDb, "products", productId)).catch(error => console.error("Firestore delete sync failed:", error)));
+        await recordDeletions([{ collection: "products", id: productId }]);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
     const addHealthPlanWithActivities = useCallback(async (planData: Omit<HealthPlan, 'id' | 'userId' | '_synced'>, activities: Omit<PlanActivity, 'id' | 'healthPlanId' | 'userId' | '_synced'>[]) => {
@@ -1060,9 +1097,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const activityIdsToDelete = activitiesToDelete.map(act => act.id);
         await localDb.transaction('rw', localDb.healthPlans, localDb.planActivities, async () => { await localDb.planActivities.bulkDelete(activityIdsToDelete); await localDb.healthPlans.delete(planId); });
         fetchDataFromLocalDb();
-        const sync = async () => { const batch = writeBatch(firestoreDb); activityIdsToDelete.forEach(id => batch.delete(doc(firestoreDb, "planActivities", id))); batch.delete(doc(firestoreDb, "healthPlans", planId)); await batch.commit(); };
-        enqueueSync(sync);
-    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+        await recordDeletions([
+            ...activityIdsToDelete.map(id => ({ collection: "planActivities", id })),
+            { collection: "healthPlans", id: planId },
+        ]);
+    }, [currentUser, recordDeletions, fetchDataFromLocalDb]);
 
     const addPlanActivity = useCallback(async (activityData: Omit<PlanActivity, 'id' | 'userId' | '_synced'>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -1088,7 +1127,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const localDb = getDB();
         await localDb.planActivities.delete(activityId);
         fetchDataFromLocalDb();
-        enqueueSync(() => deleteDoc(doc(firestoreDb, "planActivities", activityId)).catch(error => console.error("Firestore delete sync failed:", error)));
+        await recordDeletions([{ collection: "planActivities", id: activityId }]);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
     const addHealthEvent = useCallback(async (eventData: Omit<HealthEvent, 'id' | 'userId' | '_synced'>) => {
@@ -1170,24 +1209,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             await fetchDataFromLocalDb();
 
-            enqueueSync(async () => {
-                const batch = writeBatch(firestoreDb);
-                if (eventIdToDelete) {
-                    batch.delete(doc(firestoreDb, "events", eventIdToDelete));
-                }
-                if (parturitionIdToDelete) {
-                    batch.delete(doc(firestoreDb, "parturitions", parturitionIdToDelete));
-                }
-                if (eventIdToDelete || parturitionIdToDelete) {
-                    await batch.commit();
-                }
-            });
+            const deletions: { collection: string; id: string }[] = [];
+            if (eventIdToDelete) deletions.push({ collection: "events", id: eventIdToDelete });
+            if (parturitionIdToDelete) deletions.push({ collection: "parturitions", id: parturitionIdToDelete });
+            await recordDeletions(deletions);
 
         } catch (error: any) {
             console.error("Error al eliminar el evento y/o sus asociados:", error);
             throw new Error(`Error al eliminar evento: ${error.message}`);
         }
-    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+    }, [currentUser, recordDeletions, fetchDataFromLocalDb]);
 
     const updateEventNotes = useCallback(async (eventId: string, notes: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");

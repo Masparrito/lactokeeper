@@ -106,8 +106,10 @@ export const useKilosAnalytics = () => {
             }
 
         } else {
-            // Histórico
-            filteredAnimals = animals; 
+            // Histórico: se excluyen animales de referencia (no son sujetos reales de
+            // crecimiento). Vendidos/muertos SÍ se incluyen: son miembros válidos de la
+            // cohorte histórica y excluirlos introduciría sesgo de supervivencia.
+            filteredAnimals = animals.filter(a => !a.isReference);
             if (filterType === 'ANUAL' || filterType === 'COHORTE') {
                 filteredAnimals = filteredAnimals.filter(a => {
                     if (!a.birthDate || a.birthDate === 'N/A') return false;
