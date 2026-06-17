@@ -87,6 +87,23 @@ export const getSimulationAgeCategory = (
     return 'Cabras'; // >18m
 };
 
+// Cohorte de edad para CÁLCULO DE MORTALIDAD / población a riesgo.
+// A diferencia de getSimulationAgeCategory, NO descarta animales por status
+// (un animal muerto tiene status 'Muerte') e incluye AMBOS sexos: la muerte
+// por enfermedad de una cría macho también es mortalidad biológica real.
+// (El descarte/sacrificio y la venta NO son mortalidad y se filtran aparte.)
+export type MortalityCohort = 'Cria' | 'Levante' | 'Cabras';
+export const getAgeCohort = (
+    animal: Pick<Animal, 'birthDate'>,
+    referenceDate: string
+): MortalityCohort => {
+    if (!animal.birthDate || animal.birthDate === 'N/A') return 'Cabras';
+    const ageInDays = getDaysBetweenDates(animal.birthDate, referenceDate);
+    if (ageInDays <= CAT_CRIA_H_DIAS) return 'Cria';     // 0-3m (ambos sexos)
+    if (ageInDays <= CAT_L_TARDIO_DIAS) return 'Levante'; // 3-18m
+    return 'Cabras';                                      // >18m (adultas + reproductores)
+};
+
 /**
  * Encuentra la lactancia (parto) activa para un registro de pesaje.
  * @param weighDateStr (YYYY-MM-DD)

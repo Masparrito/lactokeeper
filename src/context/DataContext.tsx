@@ -128,6 +128,14 @@ const syncToFirestore = async (collectionName: string, id: string, data: any) =>
     }
 };
 
+// Colecciones sincronizables (la clave de tabla en Dexie = nombre de colección en Firestore).
+// Se usa para el "barrido" de registros pendientes (offline-first durable).
+const SYNCABLE_COLLECTIONS: (keyof GanaderoOSTables)[] = [
+    'animals', 'fathers', 'parturitions', 'weighings', 'lots', 'origins',
+    'breedingSeasons', 'sireLots', 'serviceRecords', 'events', 'feedingPlans',
+    'bodyWeighings', 'products', 'healthPlans', 'planActivities', 'healthEvents',
+];
+
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { currentUser } = useAuth();
     // Estados de Datos
@@ -232,13 +240,46 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, []);
 
+    // --- BARRIDO DE PENDIENTES (Cola persistente offline-first) ---
+    // El flag '_synced: false' en Dexie ES la cola durable: sobrevive recargas y cierres.
+    // Esta función re-encola TODO lo que se cargó offline para subirlo al recuperar conexión.
+    const syncPendingRecords = useCallback(async () => {
+        if (!currentUser || !navigator.onLine) return;
+        try {
+            const localDb = getDB();
+            let totalPending = 0;
+            for (const collectionName of SYNCABLE_COLLECTIONS) {
+                const table = localDb[collectionName] as Table<any, any>;
+                // Nota: '_synced' es booleano (no indexable de forma fiable en IndexedDB),
+                // por eso se usa filter() en lugar de where().equals().
+                const pending = await table.filter(r => r._synced === false).toArray();
+                if (pending.length === 0) continue;
+                totalPending += pending.length;
+                for (const record of pending) {
+                    if (record && record.id) {
+                        enqueueSync(() => syncToFirestore(collectionName as string, record.id, record));
+                    }
+                }
+            }
+            if (totalPending > 0) {
+                console.log(`[Sync] Re-encolados ${totalPending} registro(s) pendiente(s) de subida (cargados offline).`);
+            }
+        } catch (error) {
+            console.error("[Sync] Error en el barrido de registros pendientes:", error);
+        }
+    }, [currentUser, enqueueSync]);
+
     // --- useEffect (Hook de Sincronización Principal) ---
     useEffect(() => {
         let unsubscribers: (() => void)[] = [];
-        const handleOnline = () => { setSyncStatus('idle'); processSyncQueue(); };
+        // Al reconectar: barrer pendientes (lo cargado offline) + drenar la cola en memoria.
+        const handleOnline = () => { setSyncStatus('idle'); syncPendingRecords(); processSyncQueue(); };
         const handleOffline = () => setSyncStatus('offline');
+        // Al volver la app al primer plano (móvil de campo): reintentar si hay conexión.
+        const handleVisibility = () => { if (document.visibilityState === 'visible' && navigator.onLine) syncPendingRecords(); };
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
+        document.addEventListener('visibilitychange', handleVisibility);
 
         const setupSync = async () => {
             if (!currentUser) {
@@ -255,6 +296,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             try {
                 const localDb = await initDB();
                 await fetchDataFromLocalDb();
+
+                // Barrido inicial: sube cualquier registro que quedó pendiente de una
+                // sesión anterior (la app pudo cerrarse offline antes de subir).
+                syncPendingRecords();
 
                 const configRef = doc(firestoreDb, 'configuracion', currentUser.uid);
                 const unsubConfig = onSnapshot(configRef, (docSnap) => {
@@ -327,8 +372,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         };
         setupSync();
-        return () => { unsubscribers.forEach(unsub => unsub()); window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current); };
-    }, [currentUser?.uid, fetchDataFromLocalDb, processSyncQueue]);
+        return () => { unsubscribers.forEach(unsub => unsub()); window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); document.removeEventListener('visibilitychange', handleVisibility); if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current); };
+    }, [currentUser?.uid, fetchDataFromLocalDb, processSyncQueue, syncPendingRecords]);
 
     // --- FUNCIONES DE ESCRITURA ---
 
