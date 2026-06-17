@@ -110,10 +110,12 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
       initialCriaM: 0,
       initialPadres: 1,
       ...(appConfig || {}),
-      monedaSimbolo: defaultSimulationParams.monedaSimbolo,
-      precioLecheLitro: defaultSimulationParams.precioLecheLitro,
-      precioVentaCabritoKg: defaultSimulationParams.precioVentaCabritoKg,
-      precioVentaDescarteAdulto: defaultSimulationParams.precioVentaDescarteAdulto,
+      // Liberado: la simulación arranca con los precios económicos globales de la finca.
+      monedaSimbolo: appConfig?.monedaSimbolo ?? defaultSimulationParams.monedaSimbolo,
+      precioLecheLitro: appConfig?.precioLecheKg ?? defaultSimulationParams.precioLecheLitro,
+      precioVentaCabritoKg: appConfig?.precioVentaCabritoKg ?? defaultSimulationParams.precioVentaCabritoKg,
+      precioVentaDescarteAdulto: appConfig?.precioVentaDescarteAdulto ?? defaultSimulationParams.precioVentaDescarteAdulto,
+      pesoVentaCabritoKg: appConfig?.pesoVentaCabritoKg ?? 10,
    };
 
   useEffect(() => {

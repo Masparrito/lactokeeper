@@ -74,7 +74,7 @@ export const useKilosAnalytics = () => {
             weaningDays: getVal('diasMetaDesteteFinal', 60),
             serviceDays: Math.floor(getVal('edadPrimerServicioMeses', 10) * 30.44), 
             serviceWeight: getVal('pesoPrimerServicioKg', 30),
-            gdp: 150, 
+            gdp: getVal('metaGdpDiaria', 150),
             w90: getVal('growthGoal90dWeight', 20),
             w180: getVal('growthGoal180dWeight', 28),
             w270: getVal('growthGoal270dWeight', 34),

@@ -233,12 +233,14 @@ export const useRealtimeKpiCalculator = (): { realConfig: SimulationConfig | nul
             litrosPromedioPorAnimal: parseFloat(realLitrosPromedio.toFixed(2)),
             litrosPicoPorAnimal: parseFloat(realLitrosPico.toFixed(2)),
             
-            // --- (INICIO) CORRECCIÓN DE ERROR ---
-            // 'monedaSimbolo' ya no está en appConfig, usamos el default local.
-            monedaSimbolo: defaultSimulationParams.monedaSimbolo,
-            // --- (FIN) CORRECCIÓN DE ERROR ---
-            
-            comprasVientresAnual: 0, 
+            // --- Económico (liberado a la configuración global de la finca) ---
+            monedaSimbolo: appConfig?.monedaSimbolo ?? defaultSimulationParams.monedaSimbolo,
+            precioLecheLitro: appConfig?.precioLecheKg ?? defaultSimulationParams.precioLecheLitro,
+            precioVentaCabritoKg: appConfig?.precioVentaCabritoKg ?? defaultSimulationParams.precioVentaCabritoKg,
+            precioVentaDescarteAdulto: appConfig?.precioVentaDescarteAdulto ?? defaultSimulationParams.precioVentaDescarteAdulto,
+            pesoVentaCabritoKg: appConfig?.pesoVentaCabritoKg ?? 10,
+
+            comprasVientresAnual: 0,
         };
 
         if ((config.litrosPicoPorAnimal ?? 0) <= (config.litrosPromedioPorAnimal ?? 0)) {

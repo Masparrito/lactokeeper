@@ -4,8 +4,6 @@ import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { Animal } from '../db/local';
 
-const GESTATION_DAYS = 152;
-
 export interface BirthingForecastEvent {
     animal: Animal;
     dueDate: Date;
@@ -28,7 +26,10 @@ export interface BirthingSeasonForecast {
 
 export const useBirthingForecast = () => {
     // --- Se añade 'fathers' a la desestructuración ---
-    const { animals, breedingSeasons, sireLots, serviceRecords, fathers } = useData(); 
+    const { animals, breedingSeasons, sireLots, serviceRecords, fathers, appConfig } = useData();
+
+    // Liberado: la gestación proviene de la configuración global (antes hardcodeado en 152).
+    const GESTATION_DAYS = appConfig?.diasGestacion ?? 150;
 
     const forecastBySeason = useMemo(() => {
         const allForecastEvents: (BirthingForecastEvent & { seasonId: string })[] = [];
@@ -112,7 +113,7 @@ export const useBirthingForecast = () => {
             }
         }
         return seasonForecasts;
-    }, [animals, breedingSeasons, sireLots, serviceRecords, fathers]); // 'fathers' es ahora una dependencia
+    }, [animals, breedingSeasons, sireLots, serviceRecords, fathers, GESTATION_DAYS]); // 'fathers' es ahora una dependencia
 
     return {
         forecastBySeason,

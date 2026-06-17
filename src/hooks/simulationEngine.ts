@@ -46,7 +46,7 @@ export const runSimulationEngine = (
                            ((params.diasLactanciaObjetivo ?? 305) >= 305 ? 
                            (params.litrosPromedioPorAnimal ?? 1.8) * 1.4 : 
                            (params.litrosPromedioPorAnimal ?? 1.8) * 1.5), 
-      porcentajePrenez: params.porcentajePrenez ?? 85, porcentajeProlificidad: params.porcentajeProlificidad ?? 120, mortalidadCrias: params.mortalidadCrias ?? 5, mortalidadLevante: params.mortalidadLevante ?? 3, mortalidadCabras: params.mortalidadCabras ?? 3, tasaReemplazo: params.tasaReemplazo ?? 20, eliminacionCabritos: params.eliminacionCabritos ?? 100, precioLecheLitro: params.precioLecheLitro ?? 0.5, precioVentaCabritoKg: params.precioVentaCabritoKg ?? 3, precioVentaDescarteAdulto: params.precioVentaDescarteAdulto ?? 50, monedaSimbolo: params.monedaSimbolo ?? "$",
+      porcentajePrenez: params.porcentajePrenez ?? 85, porcentajeProlificidad: params.porcentajeProlificidad ?? 120, mortalidadCrias: params.mortalidadCrias ?? 5, mortalidadLevante: params.mortalidadLevante ?? 3, mortalidadCabras: params.mortalidadCabras ?? 3, tasaReemplazo: params.tasaReemplazo ?? 20, eliminacionCabritos: params.eliminacionCabritos ?? 100, precioLecheLitro: params.precioLecheLitro ?? 0.5, precioVentaCabritoKg: params.precioVentaCabritoKg ?? 3, precioVentaDescarteAdulto: params.precioVentaDescarteAdulto ?? 50, pesoVentaCabritoKg: params.pesoVentaCabritoKg ?? 10, monedaSimbolo: params.monedaSimbolo ?? "$",
       
       // V8.2: 'matingDistribution' AHORA son NÚMEROS ABSOLUTOS (ej. [125, 125, 125, 125])
       matingDistribution: params.matingDistribution, 
@@ -233,7 +233,7 @@ export const runSimulationEngine = (
       // CORRECCIÓN: Revertido a la lógica V6.2 de precio fijo
       const ingresosLeche = litrosLeche * safeParams.precioLecheLitro; 
       
-      const ingresosVentaCabritos = ventasCabritos * 10 * safeParams.precioVentaCabritoKg;
+      const ingresosVentaCabritos = ventasCabritos * safeParams.pesoVentaCabritoKg * safeParams.precioVentaCabritoKg;
       const ingresosVentaDescartes = ventasDescartes * safeParams.precioVentaDescarteAdulto; 
       const ingresosTotales = ingresosLeche + ingresosVentaCabritos + ingresosVentaDescartes;
 

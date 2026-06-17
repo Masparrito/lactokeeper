@@ -94,7 +94,10 @@ export const useData = () => useContext(DataContext);
 const syncToFirestore = async (collectionName: string, id: string, data: any) => {
     try {
         const cleanData = Object.entries(data).reduce((acc, [key, value]) => {
-            if (value !== undefined && key !== '_synced') {
+            // Se descartan undefined, _synced y números no finitos (NaN/Infinity),
+            // que Firestore rechazaría abortando toda la escritura.
+            const isInvalidNumber = typeof value === 'number' && !Number.isFinite(value);
+            if (value !== undefined && key !== '_synced' && !isInvalidNumber) {
                 (acc as any)[key] = value;
             }
             return acc;
@@ -159,7 +162,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const cleanForBatch = (data: any) => {
         const cleanData = Object.entries(data).reduce((acc, [key, value]) => {
-            if (value !== undefined && key !== '_synced') {
+            // Se descartan undefined, _synced y números no finitos (NaN/Infinity),
+            // que Firestore rechazaría abortando todo el batch.
+            const isInvalidNumber = typeof value === 'number' && !Number.isFinite(value);
+            if (value !== undefined && key !== '_synced' && !isInvalidNumber) {
                 (acc as any)[key] = value;
             }
             return acc;
@@ -770,10 +776,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const sire = lot ? (await localDb.fathers.get(lot.sireId) || await localDb.animals.get(lot.sireId)) : null;
         const sireName = sire?.name || sire?.id || lot?.sireId || 'Desconocido';
 
-        // 3. Calcular Fecha Estimada de Parto (+150 días estándar caprino)
+        // 3. Calcular Fecha Estimada de Parto (gestación configurable; default 150 días caprino)
+        const gestationDays = appConfig?.diasGestacion ?? 150;
         const serviceDateObj = new Date(newRecord.serviceDate);
         const estimatedParturitionDate = new Date(serviceDateObj);
-        estimatedParturitionDate.setDate(serviceDateObj.getDate() + 150); 
+        estimatedParturitionDate.setDate(serviceDateObj.getDate() + gestationDays);
         const estimatedDateStr = estimatedParturitionDate.toISOString().split('T')[0];
 
         // 4. Verificar servicios previos (Para el contador x2, x3 en el ciclo actual)
@@ -818,7 +825,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const updatedAnimal = await localDb.animals.get(newRecord.femaleId);
         if (updatedAnimal) enqueueSync(() => syncToFirestore("animals", newRecord.femaleId, updatedAnimal));
 
-    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent, appConfig?.diasGestacion]);
 
     const addBatchEvent = useCallback(async (data: { lotName: string; date: string; type: EventType; details: string; }) => {
         if (!currentUser) throw new Error("Usuario no autenticado");

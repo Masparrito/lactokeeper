@@ -5,9 +5,7 @@ import { useData } from '../context/DataContext';
 // --- CAMBIO CLAVE 1: Se importa 'BreedingSeason' y 'SireLot' ---
 import { BreedingSeason } from '../db/local';
 
-const GESTATION_DAYS = 152;
 const CYCLE_MARGIN_DAYS = 21;
-const ALERT_THRESHOLD_DAYS = GESTATION_DAYS + CYCLE_MARGIN_DAYS;
 
 /**
  * Hook que analiza el estado de las temporadas de monta para detectar alertas
@@ -15,7 +13,10 @@ const ALERT_THRESHOLD_DAYS = GESTATION_DAYS + CYCLE_MARGIN_DAYS;
  */
 export const useBreedingAnalysis = () => {
     // --- CAMBIO CLAVE 2: Se obtienen las nuevas entidades del contexto ---
-    const { breedingSeasons, sireLots, serviceRecords, parturitions, animals, updateAnimal } = useData();
+    const { breedingSeasons, sireLots, serviceRecords, parturitions, animals, updateAnimal, appConfig } = useData();
+
+    // Liberado: la gestación proviene de la configuración global (antes hardcodeado en 152).
+    const ALERT_THRESHOLD_DAYS = (appConfig?.diasGestacion ?? 150) + CYCLE_MARGIN_DAYS;
 
     const analysisResult = useMemo(() => {
         const today = new Date();
@@ -78,7 +79,7 @@ export const useBreedingAnalysis = () => {
 
         return { concludedSeasons, seasonsWithAlerts, femalesToFlag };
 
-    }, [breedingSeasons, sireLots, serviceRecords, parturitions]);
+    }, [breedingSeasons, sireLots, serviceRecords, parturitions, ALERT_THRESHOLD_DAYS]);
 
     useEffect(() => {
         if (analysisResult.femalesToFlag.length > 0) {

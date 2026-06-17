@@ -1,10 +1,6 @@
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
 
-// --- CONFIGURACIÓN INICIAL ---
-// TODO: Mover esto a una configuración de la app en el futuro.
-const PRICE_PER_KG_MILK = 0.50; // Precio de venta por Kg de leche en USD
-
 export interface AnimalProfitability {
     animalId: string;
     totalRevenue: number;
@@ -16,7 +12,11 @@ export interface AnimalProfitability {
 }
 
 export const useEconomicAnalysis = () => {
-    const { animals, healthEvents, weighings, parturitions } = useData();
+    const { animals, healthEvents, weighings, parturitions, appConfig } = useData();
+
+    // Precio liberado a la configuración global de la finca.
+    const PRICE_PER_KG_MILK = appConfig?.precioLecheKg ?? 0.50;
+    const monedaSimbolo = appConfig?.monedaSimbolo ?? '$';
 
     const analysis = useMemo(() => {
         const activeAnimals = animals.filter(a => a.status === 'Activo' && a.sex === 'Hembra');
@@ -85,9 +85,10 @@ export const useEconomicAnalysis = () => {
             totalFarmNetProfit,
             averageCostPerLiter,
             assumedMilkPrice: PRICE_PER_KG_MILK,
+            monedaSimbolo,
         };
 
-    }, [animals, healthEvents, weighings, parturitions]);
+    }, [animals, healthEvents, weighings, parturitions, PRICE_PER_KG_MILK, monedaSimbolo]);
 
     return analysis;
 };

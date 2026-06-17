@@ -11,6 +11,14 @@ export interface AppConfig {
     nombreFinca: string;
     theme: 'light' | 'dark';
 
+    // --- Configuración Económica ---
+    // (Liberado de valores hardcodeados: precio leche, símbolo de moneda y precios de venta)
+    monedaSimbolo: string;
+    precioLecheKg: number;              // Precio de venta por Kg/L de leche
+    precioVentaCabritoKg: number;       // Precio de venta por Kg de cabrito
+    precioVentaDescarteAdulto: number;  // Precio de venta de adulto de descarte
+    pesoVentaCabritoKg: number;         // Peso estimado de venta del cabrito (Kg)
+
     // --- Parámetros de Manejo (Reproductivo) ---
     pesoPrimerServicioKg: number; // <-- HITO 1er SERVICIO (EXISTENTE)
     edadPrimerServicioMeses: number; // <-- HITO 1er SERVICIO (EXISTENTE)
@@ -48,6 +56,9 @@ export interface AppConfig {
     // (NUEVO) % de alerta
     growthAlertThreshold: number; // p.ej. 0.85 (para 15% por debajo de la meta)
 
+    // Meta de Ganancia Diaria de Peso (g/día) — antes hardcodeada en 150
+    metaGdpDiaria: number;
+
     // --- Lógica de Categorías Zootécnicas ---
     categoriaCabritaEdadMaximaDias: number;
     categoriaCabritoEdadMaximaDias: number;
@@ -67,6 +78,13 @@ export const DEFAULT_CONFIG: AppConfig = {
     // General
     nombreFinca: "Mi Finca",
     theme: 'dark',
+
+    // Económico (defaults = valores previamente hardcodeados, no cambia el comportamiento actual)
+    monedaSimbolo: "$",
+    precioLecheKg: 0.50,
+    precioVentaCabritoKg: 3,
+    precioVentaDescarteAdulto: 50,
+    pesoVentaCabritoKg: 10,
 
     // Reproductivo
     pesoPrimerServicioKg: 30,
@@ -104,6 +122,9 @@ export const DEFAULT_CONFIG: AppConfig = {
     
     // (NUEVO) Alerta si está por debajo del 85% de la meta
     growthAlertThreshold: 0.85,
+
+    // Meta GDP por defecto (g/día)
+    metaGdpDiaria: 150,
 
     // Lógica de Categorías
     categoriaCabritaEdadMaximaDias: 90,
