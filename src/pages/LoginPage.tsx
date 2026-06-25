@@ -51,9 +51,7 @@ export const LoginPage: React.FC = () => {
                 return 'La contraseña debe tener al menos 6 caracteres.';
             default:
                 console.error("Firebase Auth Error:", err);
-                // DIAGNÓSTICO TEMPORAL: mostrar el código/mensaje real de Firebase
-                // para identificar la causa del fallo de login (se revierte luego).
-                return `Diagnóstico — código: ${err.code || 'sin-código'} · ${err.message || 'sin mensaje'}`;
+                return 'Ocurrió un error inesperado. Por favor, intenta de nuevo.';
         }
     };
 

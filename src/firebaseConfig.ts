@@ -6,12 +6,12 @@ import { initializeFirestore } from "firebase/firestore";
 import { initializeAuth, browserLocalPersistence } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_API_KEY,
-  authDomain: import.meta.env.VITE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_APP_ID,
+  apiKey: "AIzaSyCq3M2URc1tNUbpK7BDzKZKQoh8C3twzmA",
+  authDomain: "lactokeeper.firebaseapp.com",
+  projectId: "lactokeeper",
+  storageBucket: "lactokeeper.firebasestorage.app",
+  messagingSenderId: "437430613715",
+  appId: "1:437430613715:web:b4e56c7a0698c719ae8626",
 };
 
 const app = initializeApp(firebaseConfig);
