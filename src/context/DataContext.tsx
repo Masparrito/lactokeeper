@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Table } from 'dexie';
-import { Animal, Weighing, Parturition, Father, Lot, Origin, BreedingSeason, SireLot, ServiceRecord, Event, EventType, BodyWeighing, Product, HealthPlan, PlanActivity, HealthEvent, FeedingPlan, initDB, getDB, GanaderoOSTables } from '../db/local';
+import { Animal, Weighing, Parturition, Father, Lot, Origin, BreedingSeason, SireLot, ServiceRecord, Event, EventType, BodyWeighing, Product, HealthPlan, PlanActivity, HealthEvent, FeedingPlan, FamachaRev, initDB, getDB, GanaderoOSTables } from '../db/local';
 import { db as firestoreDb } from '../firebaseConfig';
 import { useAuth } from './AuthContext';
 import { collection, query, where, onSnapshot, doc, setDoc, writeBatch, Timestamp, serverTimestamp, deleteField } from "firebase/firestore";
@@ -29,7 +29,8 @@ interface IDataContext {
   healthPlans: HealthPlan[];
   planActivities: PlanActivity[];
   healthEvents: HealthEvent[];
-  
+  famachaRevs: FamachaRev[];
+
   appConfig: AppConfig;
   isLoadingConfig: boolean;
 
@@ -80,7 +81,8 @@ interface IDataContext {
   updatePlanActivity: (activityId: string, dataToUpdate: Partial<PlanActivity>) => Promise<void>;
   deletePlanActivity: (activityId: string) => Promise<void>;
   addHealthEvent: (eventData: Omit<HealthEvent, 'id' | 'userId' | '_synced'>) => Promise<void>;
-  
+  addFamachaRev: (revData: Omit<FamachaRev, 'id' | 'userId' | '_synced'>) => Promise<{ revId: string }>;
+
   deleteEvent: (eventId: string) => Promise<void>;
   updateEventNotes: (eventId: string, notes: string) => Promise<void>;
 
@@ -134,7 +136,7 @@ const syncToFirestore = async (collectionName: string, id: string, data: any) =>
 const SYNCABLE_COLLECTIONS: (keyof GanaderoOSTables)[] = [
     'animals', 'fathers', 'parturitions', 'weighings', 'lots', 'origins',
     'breedingSeasons', 'sireLots', 'serviceRecords', 'events', 'feedingPlans',
-    'bodyWeighings', 'products', 'healthPlans', 'planActivities', 'healthEvents',
+    'bodyWeighings', 'products', 'healthPlans', 'planActivities', 'healthEvents', 'famachaRevs',
 ];
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -156,7 +158,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
     const [planActivities, setPlanActivities] = useState<PlanActivity[]>([]);
     const [healthEvents, setHealthEvents] = useState<HealthEvent[]>([]);
-    
+    const [famachaRevs, setFamachaRevs] = useState<FamachaRev[]>([]);
+
     // Estados de Control
     const [isLoading, setIsLoading] = useState(true);
     const [syncStatus, setSyncStatus] = useState<SyncStatus>(navigator.onLine ? 'idle' : 'offline');
@@ -221,13 +224,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchDataFromLocalDb = useCallback(async () => {
         try {
             const localDb = getDB();
-            const [animalsData, fathersData, weighingsData, partData, lotsData, originsData, breedingSeasonsData, sireLotsData, serviceRecordsData, eventsData, feedingPlansData, bodyWeighingsData, productsData, healthPlansData, planActivitiesData, healthEventsData] = await Promise.all([
+            const [animalsData, fathersData, weighingsData, partData, lotsData, originsData, breedingSeasonsData, sireLotsData, serviceRecordsData, eventsData, feedingPlansData, bodyWeighingsData, productsData, healthPlansData, planActivitiesData, healthEventsData, famachaRevsData] = await Promise.all([
                 localDb.animals.toArray(), localDb.fathers.toArray(), localDb.weighings.toArray(),
                 localDb.parturitions.toArray(), localDb.lots.toArray(), localDb.origins.toArray(),
                 localDb.breedingSeasons.toArray(), localDb.sireLots.toArray(), localDb.serviceRecords.toArray(),
                 localDb.events.toArray(), localDb.feedingPlans.toArray(), localDb.bodyWeighings.toArray(),
                 localDb.products.toArray(), localDb.healthPlans.toArray(), localDb.planActivities.toArray(),
-                localDb.healthEvents.toArray(),
+                localDb.healthEvents.toArray(), localDb.famachaRevs.toArray(),
             ]);
             setAnimals(animalsData); setFathers(fathersData); setWeighings(weighingsData); setParturitions(partData);
             setLots(lotsData); setOrigins(originsData); setBreedingSeasons(breedingSeasonsData); setSireLots(sireLotsData);
@@ -235,6 +238,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setBodyWeighings(bodyWeighingsData);
             setProducts(productsData); setHealthPlans(healthPlansData);
             setPlanActivities(planActivitiesData); setHealthEvents(healthEventsData);
+            setFamachaRevs(famachaRevsData);
         } catch (error) { console.error("Error al cargar datos locales:", error); }
         finally {
             setIsLoading(false);
@@ -327,6 +331,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setAnimals([]); setFathers([]); setWeighings([]); setParturitions([]); setLots([]); setOrigins([]);
                 setBreedingSeasons([]); setSireLots([]); setServiceRecords([]); setEvents([]); setFeedingPlans([]);
                 setBodyWeighings([]); setProducts([]); setHealthPlans([]); setPlanActivities([]); setHealthEvents([]);
+                setFamachaRevs([]);
                 setAppConfig(DEFAULT_CONFIG);
                 return;
             }
@@ -404,8 +409,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 syncCollection('healthPlans', localDb.healthPlans);
                 syncCollection('planActivities', localDb.planActivities);
                 syncCollection('healthEvents', localDb.healthEvents);
+                syncCollection('famachaRevs', localDb.famachaRevs);
 
-            } catch (error) { 
+            } catch (error) {
                 console.error("Fallo crítico en la inicialización:", error); 
                 setIsLoading(false); 
                 setIsLoadingConfig(false);
@@ -1171,6 +1177,29 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         enqueueSync(() => syncToFirestore("healthEvents", newEvent.id, newEvent));
     }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent, products]);
 
+    // Registrar revisión Famacha. NÚCLEO ANTI-PÉRDIDA: el id es DETERMINISTA
+    // (`animalId_fecha`), así que put() actúa como upsert: re-revisar el mismo
+    // animal el mismo día (incluso desde otro teléfono) actualiza la misma
+    // revisión en vez de duplicarla. La acción sugerida la calcula el llamador
+    // (función pura sobre las revisiones en memoria) y se guarda como registro.
+    const addFamachaRev = useCallback(async (revData: Omit<FamachaRev, 'id' | 'userId' | '_synced'>): Promise<{ revId: string }> => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        const revId = `${revData.animalId}_${revData.fecha}`;
+        const newRev: FamachaRev = {
+            ...revData,
+            id: revId,
+            producto: revData.dosis ? (revData.producto || '') : '',
+            userId: currentUser.uid,
+            createdAt: Date.now(),
+            _synced: false,
+        };
+        await localDb.famachaRevs.put(newRev);
+        fetchDataFromLocalDb();
+        enqueueSync(() => syncToFirestore("famachaRevs", revId, newRev));
+        return { revId };
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+
     const deleteEvent = useCallback(async (eventId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
 
@@ -1298,7 +1327,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const contextValue = useMemo(() => ({
         animals, fathers, weighings, parturitions, lots, origins, breedingSeasons, sireLots, serviceRecords, events, feedingPlans, bodyWeighings,
-        products, healthPlans, planActivities, healthEvents,
+        products, healthPlans, planActivities, healthEvents, famachaRevs,
         appConfig,
         isLoadingConfig,
         isLoading, syncStatus,
@@ -1315,7 +1344,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addParturition, addFather,
         addProduct, updateProduct, deleteProduct, addHealthPlanWithActivities, updateHealthPlan, deleteHealthPlan,
         addPlanActivity, updatePlanActivity, deletePlanActivity, addHealthEvent,
-        
+        addFamachaRev,
+
         deleteEvent,
         updateEventNotes,
         addEvent: internalAddEvent,
@@ -1323,7 +1353,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateAppConfig
     }), [
         animals, fathers, weighings, parturitions, lots, origins, breedingSeasons, sireLots, serviceRecords, events, feedingPlans, bodyWeighings,
-        products, healthPlans, planActivities, healthEvents,
+        products, healthPlans, planActivities, healthEvents, famachaRevs,
         appConfig, isLoadingConfig, isLoading, syncStatus,
         fetchDataFromLocalDb,
         addAnimal, updateAnimal, bulkUpdateAnimals, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot,
@@ -1338,7 +1368,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addParturition, addFather,
         addProduct, updateProduct, deleteProduct, addHealthPlanWithActivities, updateHealthPlan, deleteHealthPlan,
         addPlanActivity, updatePlanActivity, deletePlanActivity, addHealthEvent,
-        
+        addFamachaRev,
+
         deleteEvent,
         updateEventNotes,
         internalAddEvent,

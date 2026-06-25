@@ -2,7 +2,7 @@
 
 // El tipo para los módulos de la aplicación, ahora en un solo lugar.
 // --- CAMBIO: Añadido 'evolucion' ---
-export type AppModule = 'rebano' | 'lactokeeper' | 'kilos' | 'salud' | 'cents' | 'evolucion';
+export type AppModule = 'rebano' | 'lactokeeper' | 'kilos' | 'salud' | 'cents' | 'evolucion' | 'famacha';
 
 // El tipo para la navegación interna del módulo Rebaño
 export type PageState = 
