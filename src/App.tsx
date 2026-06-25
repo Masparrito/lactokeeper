@@ -8,6 +8,7 @@ import KilosShell, { type KilosPage } from './pages/modules/KilosShell';
 import SaludShell from './pages/modules/salud/SaludShell';
 import CentsShell from './pages/modules/CentsShell';
 import EvolucionShell from './pages/modules/evolucion/EvolucionShell';
+import FamachaShell from './pages/modules/famacha/FamachaShell';
 import type { PageState as RebanoPageState, AppModule } from './types/navigation';
 import { LoadingOverlay } from './components/ui/LoadingOverlay';
 import { checkDailyNotifications, requestNotificationPermission } from './utils/notificationService';
@@ -126,6 +127,9 @@ export default function App() {
         
         case 'evolucion':
             return ( <EvolucionShell onSwitchModule={handleSwitchModule} /> );
+
+        case 'famacha':
+            return ( <FamachaShell onSwitchModule={handleSwitchModule} /> );
 
         case 'rebano':
         default:

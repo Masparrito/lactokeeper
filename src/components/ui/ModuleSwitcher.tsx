@@ -1,6 +1,6 @@
 import React from 'react';
 // --- (CAMBIO) 'Layers' ya no se usa, 'X' se usa para cerrar ---
-import { Droplets, Scale, HeartPulse, X, DollarSign, TrendingUp } from 'lucide-react';
+import { Droplets, Scale, HeartPulse, X, DollarSign, TrendingUp, Eye } from 'lucide-react';
 import { GiGoat } from 'react-icons/gi';
 import { AppModule } from '../../types/navigation';
 
@@ -9,6 +9,7 @@ const modules = [
     { id: 'lactokeeper', name: 'LactoKeeper', icon: Droplets, color: 'text-brand-blue' },
     { id: 'kilos', name: 'Kilos', icon: Scale, color: 'text-brand-green' },
     { id: 'salud', name: 'StockCare', icon: HeartPulse, color: 'text-teal-500' },
+    { id: 'famacha', name: 'Famacha', icon: Eye, color: 'text-rose-500' },
     { id: 'cents', name: 'Cents', icon: DollarSign, color: 'text-yellow-500' },
     { id: 'evolucion', name: 'Evolución', icon: TrendingUp, color: 'text-indigo-500' }
 ];
