@@ -10,7 +10,8 @@ import {
     LogOut,
     Users,
     Heart,
-    Target 
+    Target,
+    DollarSign
 } from 'lucide-react';
 import type { PageState } from '../types/navigation';
 import { AppConfig, DEFAULT_CONFIG } from '../types/config';
@@ -52,9 +53,11 @@ const formStateToConfig = (formState: Record<string, string | boolean>): AppConf
 
             let parsedValue = parseFloat(stringValue);
             if (isNaN(parsedValue)) {
-                newConfig[key] = DEFAULT_CONFIG[key as keyof AppConfig] as number; 
+                // Campo vacío o inválido: se conserva el valor por defecto (evita guardar NaN).
+                newConfig[key] = DEFAULT_CONFIG[key as keyof AppConfig] as number;
+            } else {
+                newConfig[key] = parsedValue;
             }
-            newConfig[key] = parsedValue;
         } else if (typeof defaultValue === 'boolean') {
              newConfig[key] = !!formState[key];
         }
@@ -304,6 +307,15 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
                     <SettingsInput label="Peso Mín. Pesar Destete" type="number" name="pesoMinimoPesarDestete" value={String(formState.pesoMinimoPesarDestete)} onChange={handleChange} unit="Kg" sublabel="Peso para 1ra revisión" />
                     <SettingsInput label="Meta Edad Destete Final" type="number" name="diasMetaDesteteFinal" value={String(formState.diasMetaDesteteFinal)} onChange={handleChange} unit="días" sublabel="Edad para destete definitivo" />
                     <SettingsInput label="Peso Mín. Destete Final" type="number" name="pesoMinimoDesteteFinal" value={String(formState.pesoMinimoDesteteFinal)} onChange={handleChange} unit="Kg" sublabel="Peso para destete definitivo" />
+                    <SettingsInput label="Meta GDP Diaria" type="number" name="metaGdpDiaria" value={String(formState.metaGdpDiaria)} onChange={handleChange} unit="g/día" sublabel="Meta de ganancia diaria de peso" />
+                </SettingsGroup>
+
+                <SettingsGroup title="Economía" icon={DollarSign}>
+                    <SettingsInput label="Símbolo de Moneda" type="text" name="monedaSimbolo" value={String(formState.monedaSimbolo)} onChange={handleChange} sublabel="Ej: $, Bs, €" />
+                    <SettingsInput label="Precio Leche" type="number" name="precioLecheKg" value={String(formState.precioLecheKg)} onChange={handleChange} unit="/Kg" sublabel="Usado en el análisis económico real" />
+                    <SettingsInput label="Precio Venta Cabrito" type="number" name="precioVentaCabritoKg" value={String(formState.precioVentaCabritoKg)} onChange={handleChange} unit="/Kg" sublabel="Usado en proyecciones" />
+                    <SettingsInput label="Peso Venta Cabrito" type="number" name="pesoVentaCabritoKg" value={String(formState.pesoVentaCabritoKg)} onChange={handleChange} unit="Kg" sublabel="Peso estimado de venta" />
+                    <SettingsInput label="Precio Venta Descarte" type="number" name="precioVentaDescarteAdulto" value={String(formState.precioVentaDescarteAdulto)} onChange={handleChange} sublabel="Precio de venta de adulto de descarte" />
                 </SettingsGroup>
                 
                 <SettingsGroup title="Metas de Crecimiento (Curva)" icon={Target}>

@@ -35,6 +35,7 @@ export interface SimulationConfig {
   precioLecheLitro?: number;
   precioVentaCabritoKg?: number;
   precioVentaDescarteAdulto?: number;
+  pesoVentaCabritoKg?: number;
   monedaSimbolo?: string;
   
   // --- V8.0: Añadido para GanaGenius Optimizer ---

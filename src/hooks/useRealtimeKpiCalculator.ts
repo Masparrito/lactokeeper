@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext'; // Ajusta la ruta
 import { SimulationConfig } from './useHerdEvolution'; // Ajusta la ruta
-import { 
-    getSimulationAgeCategory, 
+import {
+    getSimulationAgeCategory,
     getDaysBetweenDates,
-    getActiveLactationForWeighing
+    getActiveLactationForWeighing,
+    getAgeCohort
 } from '../utils/analyticsHelpers'; // Ajusta la ruta
 import { Parturition } from '../db/local'; // Ajusta la ruta (CORREGIDO: Imports no usados eliminados)
 
@@ -124,30 +125,33 @@ export const useRealtimeKpiCalculator = (): { realConfig: SimulationConfig | nul
         const animalsAtStartOfYear = animals.filter(a => (a.createdAt || 0) <= new Date(oneYearAgo).getTime());
 
         const nacimientosLastYear = events.filter(e => e.type === 'Nacimiento' && e.date >= oneYearAgo).length;
+        // Mortalidad por EDAD A LA FECHA DE MUERTE y AMBOS SEXOS (la cría macho que
+        // muere por enfermedad también es mortalidad real). El descarte/sacrificio y la
+        // venta NO se cuentan: 'deathEventsLastYear' solo incluye eventos con 'Muerte'.
         const muertesCrias = deathEventsLastYear.filter(e => {
             const animal = animals.find(a => a.id === e.animalId);
-            return animal && getSimulationAgeCategory(animal, e.date) === 'CriaH';
+            return animal && getAgeCohort(animal, e.date) === 'Cria';
         }).length;
         let realMortalidadCrias = defaultSimulationParams.mortalidadCrias!;
-        if (nacimientosLastYear > 5) { 
+        if (nacimientosLastYear > 5) {
             realMortalidadCrias = (muertesCrias / nacimientosLastYear) * 100;
         }
 
         const muertesLevante = deathEventsLastYear.filter(e => {
             const animal = animals.find(a => a.id === e.animalId);
-            return animal && ['L.Temprano', 'L.Medio', 'L.Tardío'].includes(getSimulationAgeCategory(animal, e.date));
+            return animal && getAgeCohort(animal, e.date) === 'Levante';
         }).length;
-        const avgPobLevante = animalsAtStartOfYear.filter(a => ['L.Temprano', 'L.Medio', 'L.Tardío'].includes(getSimulationAgeCategory(a, oneYearAgo))).length;
+        const avgPobLevante = animalsAtStartOfYear.filter(a => getAgeCohort(a, oneYearAgo) === 'Levante').length;
         let realMortalidadLevante = defaultSimulationParams.mortalidadLevante!;
         if (avgPobLevante > 0) {
             realMortalidadLevante = (muertesLevante / avgPobLevante) * 100;
         }
-        
+
         const muertesCabras = deathEventsLastYear.filter(e => {
             const animal = animals.find(a => a.id === e.animalId);
-            return animal && getSimulationAgeCategory(animal, e.date) === 'Cabras';
+            return animal && getAgeCohort(animal, e.date) === 'Cabras';
         }).length;
-        const avgPobCabras = animalsAtStartOfYear.filter(a => getSimulationAgeCategory(a, oneYearAgo) === 'Cabras').length;
+        const avgPobCabras = animalsAtStartOfYear.filter(a => getAgeCohort(a, oneYearAgo) === 'Cabras').length;
         let realMortalidadCabras = defaultSimulationParams.mortalidadCabras!;
         if (avgPobCabras > 0) {
             realMortalidadCabras = (muertesCabras / avgPobCabras) * 100;
@@ -233,12 +237,14 @@ export const useRealtimeKpiCalculator = (): { realConfig: SimulationConfig | nul
             litrosPromedioPorAnimal: parseFloat(realLitrosPromedio.toFixed(2)),
             litrosPicoPorAnimal: parseFloat(realLitrosPico.toFixed(2)),
             
-            // --- (INICIO) CORRECCIÓN DE ERROR ---
-            // 'monedaSimbolo' ya no está en appConfig, usamos el default local.
-            monedaSimbolo: defaultSimulationParams.monedaSimbolo,
-            // --- (FIN) CORRECCIÓN DE ERROR ---
-            
-            comprasVientresAnual: 0, 
+            // --- Económico (liberado a la configuración global de la finca) ---
+            monedaSimbolo: appConfig?.monedaSimbolo ?? defaultSimulationParams.monedaSimbolo,
+            precioLecheLitro: appConfig?.precioLecheKg ?? defaultSimulationParams.precioLecheLitro,
+            precioVentaCabritoKg: appConfig?.precioVentaCabritoKg ?? defaultSimulationParams.precioVentaCabritoKg,
+            precioVentaDescarteAdulto: appConfig?.precioVentaDescarteAdulto ?? defaultSimulationParams.precioVentaDescarteAdulto,
+            pesoVentaCabritoKg: appConfig?.pesoVentaCabritoKg ?? 10,
+
+            comprasVientresAnual: 0,
         };
 
         if ((config.litrosPicoPorAnimal ?? 0) <= (config.litrosPromedioPorAnimal ?? 0)) {

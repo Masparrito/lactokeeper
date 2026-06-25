@@ -57,8 +57,8 @@ export const useAnimalIndicators = (
     allParturitions: Parturition[]
 ): UseAnimalIndicatorsResult => {
 
-    // (NUEVO) Obtener appConfig
-    const { appConfig } = useData();
+    // (NUEVO) Obtener appConfig + lista de animales (para detección de maternidad por progenie)
+    const { appConfig, animals } = useData();
 
     const indicators = useMemo((): AnimalIndicators => {
         if (!animal || animal.sex !== 'Hembra') {
@@ -85,7 +85,7 @@ export const useAnimalIndicators = (
         // 3. Determinar si se necesita input manual
         
         // (CORREGIDO) Llamar a la función centralizada pasando appConfig
-        const zootecnicCategory = getAnimalZootecnicCategory(animal, allParturitions, appConfig);
+        const zootecnicCategory = getAnimalZootecnicCategory(animal, allParturitions, appConfig, animals);
         
         // La lógica 'needsManualData' (Punto 4) sigue siendo la misma:
         // Se necesita data manual si es "Cabra" (según la lógica unificada),
@@ -170,7 +170,7 @@ export const useAnimalIndicators = (
             needsManualData,
         };
 
-    }, [animal, allParturitions, appConfig]); // (NUEVO) appConfig es una dependencia
+    }, [animal, allParturitions, appConfig, animals]); // appConfig y animals son dependencias
 
     return {
         indicators,

@@ -74,7 +74,7 @@ export const useKilosAnalytics = () => {
             weaningDays: getVal('diasMetaDesteteFinal', 60),
             serviceDays: Math.floor(getVal('edadPrimerServicioMeses', 10) * 30.44), 
             serviceWeight: getVal('pesoPrimerServicioKg', 30),
-            gdp: 150, 
+            gdp: getVal('metaGdpDiaria', 150),
             w90: getVal('growthGoal90dWeight', 20),
             w180: getVal('growthGoal180dWeight', 28),
             w270: getVal('growthGoal270dWeight', 34),
@@ -106,8 +106,10 @@ export const useKilosAnalytics = () => {
             }
 
         } else {
-            // Histórico
-            filteredAnimals = animals; 
+            // Histórico: se excluyen animales de referencia (no son sujetos reales de
+            // crecimiento). Vendidos/muertos SÍ se incluyen: son miembros válidos de la
+            // cohorte histórica y excluirlos introduciría sesgo de supervivencia.
+            filteredAnimals = animals.filter(a => !a.isReference);
             if (filterType === 'ANUAL' || filterType === 'COHORTE') {
                 filteredAnimals = filteredAnimals.filter(a => {
                     if (!a.birthDate || a.birthDate === 'N/A') return false;

@@ -277,6 +277,17 @@ export interface HealthEvent extends SyncedRecord {
     diasRetiroCarne?: number;
 }
 
+// --- Tombstone: borrados pendientes de propagar a Firestore (offline-first durable) ---
+// Cuando se borra un registro sin conexión, se guarda aquí para garantizar que el
+// borrado se replique a la nube al recuperar señal (evita que el registro "reviva").
+export interface PendingDeletion {
+    key: string;        // `${collection}:${docId}` (clave primaria)
+    collection: string; // nombre de la colección en Firestore
+    docId: string;      // id del documento a borrar
+    deletedAt: number;
+    userId?: string;
+}
+
 // --- Definición de Tablas con Tipos ---
 export interface GanaderoOSTables {
     animals: Table<Animal>;
@@ -295,10 +306,11 @@ export interface GanaderoOSTables {
     healthPlans: Table<HealthPlan>;
     planActivities: Table<PlanActivity>;
     healthEvents: Table<HealthEvent>;
+    pendingDeletions: Table<PendingDeletion>;
 }
 
 const DB_NAME = "GanaderoOS_DB";
-const DB_VERSION = 22; 
+const DB_VERSION = 23;
 
 export class GanaderoOSDB extends Dexie implements GanaderoOSTables {
     animals!: Table<Animal>;
@@ -317,6 +329,7 @@ export class GanaderoOSDB extends Dexie implements GanaderoOSTables {
     healthPlans!: Table<HealthPlan>;
     planActivities!: Table<PlanActivity>;
     healthEvents!: Table<HealthEvent>;
+    pendingDeletions!: Table<PendingDeletion>;
 
     constructor() {
         super(DB_NAME);
@@ -338,6 +351,7 @@ export class GanaderoOSDB extends Dexie implements GanaderoOSTables {
             healthPlans: '&id, userId, &name, targetGroup, _synced',
             planActivities: '&id, userId, healthPlanId, category, _synced',
             healthEvents: '&id, userId, animalId, date, activityId, _synced',
+            pendingDeletions: '&key, collection',
         });
     }
 }

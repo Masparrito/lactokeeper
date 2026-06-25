@@ -3,7 +3,7 @@ import { Table } from 'dexie';
 import { Animal, Weighing, Parturition, Father, Lot, Origin, BreedingSeason, SireLot, ServiceRecord, Event, EventType, BodyWeighing, Product, HealthPlan, PlanActivity, HealthEvent, FeedingPlan, initDB, getDB, GanaderoOSTables } from '../db/local';
 import { db as firestoreDb } from '../firebaseConfig';
 import { useAuth } from './AuthContext';
-import { collection, query, where, onSnapshot, deleteDoc, doc, setDoc, writeBatch, Timestamp, serverTimestamp, deleteField } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, setDoc, writeBatch, Timestamp, serverTimestamp, deleteField } from "firebase/firestore";
 import { v4 as uuidv4 } from 'uuid';
 import { calculateAgeInMonths } from '../utils/calculations';
 
@@ -38,6 +38,7 @@ interface IDataContext {
   syncStatus: SyncStatus;
   addAnimal: (animalData: Omit<Animal, 'id' | '_synced' | 'userId' | 'createdAt'> & { id?: string }) => Promise<void>;
   updateAnimal: (animalId: string, dataToUpdate: Partial<Animal>) => Promise<void>;
+  bulkUpdateAnimals: (updates: { id: string; changes: Partial<Animal> }[]) => Promise<void>;
   deleteAnimalPermanently: (animalId: string) => Promise<void>;
   startDryingProcess: (parturitionId: string) => Promise<void>;
   setLactationAsDry: (parturitionId: string) => Promise<void>;
@@ -94,7 +95,10 @@ export const useData = () => useContext(DataContext);
 const syncToFirestore = async (collectionName: string, id: string, data: any) => {
     try {
         const cleanData = Object.entries(data).reduce((acc, [key, value]) => {
-            if (value !== undefined && key !== '_synced') {
+            // Se descartan undefined, _synced y números no finitos (NaN/Infinity),
+            // que Firestore rechazaría abortando toda la escritura.
+            const isInvalidNumber = typeof value === 'number' && !Number.isFinite(value);
+            if (value !== undefined && key !== '_synced' && !isInvalidNumber) {
                 (acc as any)[key] = value;
             }
             return acc;
@@ -124,6 +128,14 @@ const syncToFirestore = async (collectionName: string, id: string, data: any) =>
         }
     }
 };
+
+// Colecciones sincronizables (la clave de tabla en Dexie = nombre de colección en Firestore).
+// Se usa para el "barrido" de registros pendientes (offline-first durable).
+const SYNCABLE_COLLECTIONS: (keyof GanaderoOSTables)[] = [
+    'animals', 'fathers', 'parturitions', 'weighings', 'lots', 'origins',
+    'breedingSeasons', 'sireLots', 'serviceRecords', 'events', 'feedingPlans',
+    'bodyWeighings', 'products', 'healthPlans', 'planActivities', 'healthEvents',
+];
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { currentUser } = useAuth();
@@ -159,7 +171,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const cleanForBatch = (data: any) => {
         const cleanData = Object.entries(data).reduce((acc, [key, value]) => {
-            if (value !== undefined && key !== '_synced') {
+            // Se descartan undefined, _synced y números no finitos (NaN/Infinity),
+            // que Firestore rechazaría abortando todo el batch.
+            const isInvalidNumber = typeof value === 'number' && !Number.isFinite(value);
+            if (value !== undefined && key !== '_synced' && !isInvalidNumber) {
                 (acc as any)[key] = value;
             }
             return acc;
@@ -226,13 +241,84 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, []);
 
+    // --- BARRIDO DE PENDIENTES (Cola persistente offline-first) ---
+    // El flag '_synced: false' en Dexie ES la cola durable: sobrevive recargas y cierres.
+    // Esta función re-encola TODO lo que se cargó offline para subirlo al recuperar conexión.
+    const syncPendingRecords = useCallback(async () => {
+        if (!currentUser || !navigator.onLine) return;
+        try {
+            const localDb = getDB();
+            let totalPending = 0;
+            for (const collectionName of SYNCABLE_COLLECTIONS) {
+                const table = localDb[collectionName] as Table<any, any>;
+                // Nota: '_synced' es booleano (no indexable de forma fiable en IndexedDB),
+                // por eso se usa filter() en lugar de where().equals().
+                const pending = await table.filter(r => r._synced === false).toArray();
+                if (pending.length === 0) continue;
+                totalPending += pending.length;
+                for (const record of pending) {
+                    if (record && record.id) {
+                        enqueueSync(() => syncToFirestore(collectionName as string, record.id, record));
+                    }
+                }
+            }
+            if (totalPending > 0) {
+                console.log(`[Sync] Re-encolados ${totalPending} registro(s) pendiente(s) de subida (cargados offline).`);
+            }
+        } catch (error) {
+            console.error("[Sync] Error en el barrido de registros pendientes:", error);
+        }
+    }, [currentUser, enqueueSync]);
+
+    // --- BORRADOS DURABLES (tombstones) ---
+    // Propaga a Firestore los borrados registrados en la tabla 'pendingDeletions'.
+    // Garantiza que un borrado hecho offline no se pierda al recargar la app
+    // (de lo contrario el documento "reviviría" desde la nube en el próximo snapshot).
+    const syncPendingDeletions = useCallback(async () => {
+        if (!currentUser || !navigator.onLine) return;
+        try {
+            const localDb = getDB();
+            const tombstones = await localDb.pendingDeletions.toArray();
+            if (tombstones.length === 0) return;
+            const CHUNK = 400; // Firestore admite hasta 500 operaciones por batch
+            for (let i = 0; i < tombstones.length; i += CHUNK) {
+                const slice = tombstones.slice(i, i + CHUNK);
+                const batch = writeBatch(firestoreDb);
+                slice.forEach(t => batch.delete(doc(firestoreDb, t.collection, t.docId)));
+                await batch.commit();
+                await localDb.pendingDeletions.bulkDelete(slice.map(t => t.key));
+            }
+        } catch (error) {
+            console.error("[Sync] Error al sincronizar borrados pendientes:", error);
+        }
+    }, [currentUser]);
+
+    // Registra borrados como tombstones (durables en Dexie) e intenta propagarlos ya.
+    const recordDeletions = useCallback(async (deletions: { collection: string; id: string }[]) => {
+        if (deletions.length === 0) return;
+        const localDb = getDB();
+        const tombstones = deletions.map(d => ({
+            key: `${d.collection}:${d.id}`,
+            collection: d.collection,
+            docId: d.id,
+            deletedAt: Date.now(),
+            userId: currentUser?.uid,
+        }));
+        await localDb.pendingDeletions.bulkPut(tombstones);
+        syncPendingDeletions(); // intento inmediato (no-op si está offline)
+    }, [currentUser, syncPendingDeletions]);
+
     // --- useEffect (Hook de Sincronización Principal) ---
     useEffect(() => {
         let unsubscribers: (() => void)[] = [];
-        const handleOnline = () => { setSyncStatus('idle'); processSyncQueue(); };
+        // Al reconectar: barrer pendientes (lo cargado offline) + borrados + cola en memoria.
+        const handleOnline = () => { setSyncStatus('idle'); syncPendingRecords(); syncPendingDeletions(); processSyncQueue(); };
         const handleOffline = () => setSyncStatus('offline');
+        // Al volver la app al primer plano (móvil de campo): reintentar si hay conexión.
+        const handleVisibility = () => { if (document.visibilityState === 'visible' && navigator.onLine) { syncPendingRecords(); syncPendingDeletions(); } };
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
+        document.addEventListener('visibilitychange', handleVisibility);
 
         const setupSync = async () => {
             if (!currentUser) {
@@ -249,6 +335,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             try {
                 const localDb = await initDB();
                 await fetchDataFromLocalDb();
+
+                // Barrido inicial: sube cualquier registro/borrado que quedó pendiente de
+                // una sesión anterior (la app pudo cerrarse offline antes de propagar).
+                syncPendingRecords();
+                syncPendingDeletions();
 
                 const configRef = doc(firestoreDb, 'configuracion', currentUser.uid);
                 const unsubConfig = onSnapshot(configRef, (docSnap) => {
@@ -321,8 +412,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         };
         setupSync();
-        return () => { unsubscribers.forEach(unsub => unsub()); window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current); };
-    }, [currentUser?.uid, fetchDataFromLocalDb, processSyncQueue]);
+        return () => { unsubscribers.forEach(unsub => unsub()); window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); document.removeEventListener('visibilitychange', handleVisibility); if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current); };
+    }, [currentUser?.uid, fetchDataFromLocalDb, processSyncQueue, syncPendingRecords, syncPendingDeletions]);
 
     // --- FUNCIONES DE ESCRITURA ---
 
@@ -461,13 +552,43 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (updatedAnimal) enqueueSync(() => syncToFirestore("animals", upperId, updatedAnimal));
     }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
 
+    // Actualización MASIVA y eficiente de animales (p. ej. saneamiento de categorías).
+    // A diferencia de llamar updateAnimal N veces, hace UNA sola transacción local,
+    // UN solo refresco y encola la sincronización en lote. Evita la "tormenta" de
+    // recargas/escrituras que satura la app con rebaños grandes.
+    const bulkUpdateAnimals = useCallback(async (updates: { id: string; changes: Partial<Animal> }[]) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        if (!updates || updates.length === 0) return;
+        const localDb = getDB();
+        const updatedIds: string[] = [];
+
+        await localDb.transaction('rw', localDb.animals, async () => {
+            for (const u of updates) {
+                const upperId = u.id.toUpperCase();
+                const existing = await localDb.animals.get(upperId);
+                if (!existing) continue; // nunca se borra ni se crea, solo se actualiza lo existente
+                await localDb.animals.update(upperId, { ...u.changes, _synced: false });
+                updatedIds.push(upperId);
+            }
+        });
+
+        // UN solo refresco de la UI tras aplicar todo
+        await fetchDataFromLocalDb();
+
+        // Sincronización en lote (la cola + el barrido garantizan la subida durable)
+        const updatedAnimals = await localDb.animals.bulkGet(updatedIds);
+        for (const animal of updatedAnimals) {
+            if (animal) enqueueSync(() => syncToFirestore("animals", animal.id, animal));
+        }
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+
     const deleteAnimalPermanently = useCallback(async (animalId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const upperId = animalId.toUpperCase();
         await localDb.animals.delete(upperId);
         fetchDataFromLocalDb();
-        enqueueSync(() => deleteDoc(doc(firestoreDb, "animals", upperId)).catch(error => console.error("Firestore delete sync failed:", error)));
+        await recordDeletions([{ collection: "animals", id: upperId }]);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
     const startDryingProcess = useCallback(async (parturitionId: string) => {
@@ -567,7 +688,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         await localDb.lots.delete(lotId);
         fetchDataFromLocalDb();
-        enqueueSync(() => deleteDoc(doc(firestoreDb, "lots", lotId)).catch(error => console.error("Firestore delete sync failed:", error)));
+        await recordDeletions([{ collection: "lots", id: lotId }]);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
     const addOrigin = useCallback(async (originName: string) => {
@@ -586,7 +707,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const localDb = getDB();
         await localDb.origins.delete(originId);
         fetchDataFromLocalDb();
-        enqueueSync(() => deleteDoc(doc(firestoreDb, "origins", originId)).catch(error => console.error("Firestore delete sync failed:", error)));
+        await recordDeletions([{ collection: "origins", id: originId }]);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
     const addWeighing = useCallback(async (weighing: Omit<Weighing, 'id' | 'userId' | '_synced'>) => {
@@ -620,9 +741,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const eventIdsToDelete = eventsToDelete.map(e => e.id);
         await localDb.transaction('rw', localDb.weighings, localDb.events, async () => { await localDb.weighings.bulkDelete(idsToDelete); await localDb.events.bulkDelete(eventIdsToDelete); });
         await fetchDataFromLocalDb();
-        const syncDeletion = async () => { const batch = writeBatch(firestoreDb); idsToDelete.forEach(id => batch.delete(doc(firestoreDb, "weighings", id))); eventIdsToDelete.forEach(id => batch.delete(doc(firestoreDb, "events", id))); await batch.commit(); };
-        enqueueSync(syncDeletion);
-    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+        await recordDeletions([
+            ...idsToDelete.map(id => ({ collection: "weighings", id })),
+            ...eventIdsToDelete.map(id => ({ collection: "events", id })),
+        ]);
+    }, [currentUser, recordDeletions, fetchDataFromLocalDb]);
 
     const deleteBodyWeighingSession = useCallback(async (date: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -641,14 +764,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await localDb.events.bulkDelete(eventIdsToDelete);
         });
         await fetchDataFromLocalDb();
-        const syncDeletion = async () => {
-            const batch = writeBatch(firestoreDb);
-            idsToDelete.forEach(id => batch.delete(doc(firestoreDb, "bodyWeighings", id)));
-            eventIdsToDelete.forEach(id => batch.delete(doc(firestoreDb, "events", id)));
-            await batch.commit();
-        };
-        enqueueSync(syncDeletion);
-    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+        await recordDeletions([
+            ...idsToDelete.map(id => ({ collection: "bodyWeighings", id })),
+            ...eventIdsToDelete.map(id => ({ collection: "events", id })),
+        ]);
+    }, [currentUser, recordDeletions, fetchDataFromLocalDb]);
 
     const addFather = useCallback(async (father: { id: string, name: string }) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -770,10 +890,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const sire = lot ? (await localDb.fathers.get(lot.sireId) || await localDb.animals.get(lot.sireId)) : null;
         const sireName = sire?.name || sire?.id || lot?.sireId || 'Desconocido';
 
-        // 3. Calcular Fecha Estimada de Parto (+150 días estándar caprino)
+        // 3. Calcular Fecha Estimada de Parto (gestación configurable; default 150 días caprino)
+        const gestationDays = appConfig?.diasGestacion ?? 150;
         const serviceDateObj = new Date(newRecord.serviceDate);
         const estimatedParturitionDate = new Date(serviceDateObj);
-        estimatedParturitionDate.setDate(serviceDateObj.getDate() + 150); 
+        estimatedParturitionDate.setDate(serviceDateObj.getDate() + gestationDays);
         const estimatedDateStr = estimatedParturitionDate.toISOString().split('T')[0];
 
         // 4. Verificar servicios previos (Para el contador x2, x3 en el ciclo actual)
@@ -818,7 +939,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const updatedAnimal = await localDb.animals.get(newRecord.femaleId);
         if (updatedAnimal) enqueueSync(() => syncToFirestore("animals", newRecord.femaleId, updatedAnimal));
 
-    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent, appConfig?.diasGestacion]);
 
     const addBatchEvent = useCallback(async (data: { lotName: string; date: string; type: EventType; details: string; }) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -901,11 +1022,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         fetchDataFromLocalDb();
 
-        enqueueSync(() => deleteDoc(doc(firestoreDb, "breedingSeasons", seasonId)));
-        
-        lotIdsToDelete.forEach(lotId => {
-            enqueueSync(() => deleteDoc(doc(firestoreDb, "sireLots", lotId)));
-        });
+        await recordDeletions([
+            { collection: "breedingSeasons", id: seasonId },
+            ...lotIdsToDelete.map(lotId => ({ collection: "sireLots", id: lotId })),
+        ]);
 
         if (animalIdsToUpdate.length > 0) {
             const updatedAnimals = await localDb.animals.bulkGet(animalIdsToUpdate);
@@ -944,7 +1064,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const localDb = getDB();
         await localDb.sireLots.delete(lotId);
         fetchDataFromLocalDb();
-        enqueueSync(() => deleteDoc(doc(firestoreDb, "sireLots", lotId)).catch(error => console.error("Firestore delete sync failed:", error)));
+        await recordDeletions([{ collection: "sireLots", id: lotId }]);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
     const addProduct = useCallback(async (productData: Omit<Product, 'id' | 'userId' | '_synced'>) => {
@@ -971,7 +1091,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const localDb = getDB();
         await localDb.products.delete(productId);
         fetchDataFromLocalDb();
-        enqueueSync(() => deleteDoc(doc(firestoreDb, "products", productId)).catch(error => console.error("Firestore delete sync failed:", error)));
+        await recordDeletions([{ collection: "products", id: productId }]);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
     const addHealthPlanWithActivities = useCallback(async (planData: Omit<HealthPlan, 'id' | 'userId' | '_synced'>, activities: Omit<PlanActivity, 'id' | 'healthPlanId' | 'userId' | '_synced'>[]) => {
@@ -1008,9 +1128,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const activityIdsToDelete = activitiesToDelete.map(act => act.id);
         await localDb.transaction('rw', localDb.healthPlans, localDb.planActivities, async () => { await localDb.planActivities.bulkDelete(activityIdsToDelete); await localDb.healthPlans.delete(planId); });
         fetchDataFromLocalDb();
-        const sync = async () => { const batch = writeBatch(firestoreDb); activityIdsToDelete.forEach(id => batch.delete(doc(firestoreDb, "planActivities", id))); batch.delete(doc(firestoreDb, "healthPlans", planId)); await batch.commit(); };
-        enqueueSync(sync);
-    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+        await recordDeletions([
+            ...activityIdsToDelete.map(id => ({ collection: "planActivities", id })),
+            { collection: "healthPlans", id: planId },
+        ]);
+    }, [currentUser, recordDeletions, fetchDataFromLocalDb]);
 
     const addPlanActivity = useCallback(async (activityData: Omit<PlanActivity, 'id' | 'userId' | '_synced'>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -1036,7 +1158,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const localDb = getDB();
         await localDb.planActivities.delete(activityId);
         fetchDataFromLocalDb();
-        enqueueSync(() => deleteDoc(doc(firestoreDb, "planActivities", activityId)).catch(error => console.error("Firestore delete sync failed:", error)));
+        await recordDeletions([{ collection: "planActivities", id: activityId }]);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
     const addHealthEvent = useCallback(async (eventData: Omit<HealthEvent, 'id' | 'userId' | '_synced'>) => {
@@ -1118,24 +1240,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             await fetchDataFromLocalDb();
 
-            enqueueSync(async () => {
-                const batch = writeBatch(firestoreDb);
-                if (eventIdToDelete) {
-                    batch.delete(doc(firestoreDb, "events", eventIdToDelete));
-                }
-                if (parturitionIdToDelete) {
-                    batch.delete(doc(firestoreDb, "parturitions", parturitionIdToDelete));
-                }
-                if (eventIdToDelete || parturitionIdToDelete) {
-                    await batch.commit();
-                }
-            });
+            const deletions: { collection: string; id: string }[] = [];
+            if (eventIdToDelete) deletions.push({ collection: "events", id: eventIdToDelete });
+            if (parturitionIdToDelete) deletions.push({ collection: "parturitions", id: parturitionIdToDelete });
+            await recordDeletions(deletions);
 
         } catch (error: any) {
             console.error("Error al eliminar el evento y/o sus asociados:", error);
             throw new Error(`Error al eliminar evento: ${error.message}`);
         }
-    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+    }, [currentUser, recordDeletions, fetchDataFromLocalDb]);
 
     const updateEventNotes = useCallback(async (eventId: string, notes: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -1189,7 +1303,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoadingConfig,
         isLoading, syncStatus,
         fetchData: fetchDataFromLocalDb,
-        addAnimal, updateAnimal, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot, 
+        addAnimal, updateAnimal, bulkUpdateAnimals, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot,
         updateLot,
         deleteLot, 
         addOrigin, deleteOrigin,
@@ -1212,7 +1326,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         products, healthPlans, planActivities, healthEvents,
         appConfig, isLoadingConfig, isLoading, syncStatus,
         fetchDataFromLocalDb,
-        addAnimal, updateAnimal, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot, 
+        addAnimal, updateAnimal, bulkUpdateAnimals, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot,
         updateLot,
         deleteLot, 
         addOrigin, deleteOrigin,

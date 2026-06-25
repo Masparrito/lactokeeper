@@ -65,16 +65,16 @@ const CustomTooltip = ({ active, payload, monedaSimbolo }: { active?: boolean; p
 
 
 export default function EconomyDashboardPage() {
-    // Valores por defecto locales ya que 'appConfig' ya no los maneja
-    const monedaSimbolo = "$";
-    const precioLecheLitro = 0.8; 
-
-    const { 
+    const {
         animalsByProfitability,
         totalFarmRevenue,
         totalFarmCosts,
         totalFarmNetProfit,
         averageCostPerLiter,
+        // Liberado: el precio y la moneda provienen ahora de la configuración global,
+        // exactamente el mismo valor usado para calcular los ingresos (sin discrepancias).
+        assumedMilkPrice: precioLecheLitro,
+        monedaSimbolo,
     } = useEconomicAnalysis();
 
     const top5Profitable = animalsByProfitability.slice(0, 5);

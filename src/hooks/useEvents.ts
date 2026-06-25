@@ -148,7 +148,8 @@ export const useEvents = (animalId: string | undefined): TimelineEvent[] => {
             const lot = sireLots.find(sl => sl.id === s.sireLotId);
             const sire = lot ? allFathers.get(lot.sireId) : null;
             const sireName = sire ? formatAnimalDisplay(sire) : 'Desconocido';
-            const probableParturition = new Date(new Date(s.serviceDate).getTime() + (150 * 86400000)).toISOString().split('T')[0];
+            const gestationDays = appConfig?.diasGestacion ?? 150;
+            const probableParturition = new Date(new Date(s.serviceDate).getTime() + (gestationDays * 86400000)).toISOString().split('T')[0];
 
             timeline.push({
                 id: s.id,
