@@ -277,6 +277,28 @@ export interface HealthEvent extends SyncedRecord {
     diasRetiroCarne?: number;
 }
 
+// --- Revisión Famacha (anemia por Haemonchus) ---
+// Principio anti-pérdida (del spec): cada revisión es un documento independiente
+// con ID DETERMINISTA `${animalId}_${fecha}`. Dos teléfonos que revisen el mismo
+// animal el mismo día generan el mismo id -> al sincronizar se resuelve como una
+// sola revisión (sin duplicados). Jornadas de fechas distintas se SUMAN.
+export type FamachaScore = 1 | 2 | 3 | 4 | 5;
+export type FamachaAccion = '−' | '+' | '=' | '+ separar';
+
+export interface FamachaRev extends SyncedRecord {
+    id: string;            // `${animalId}_${fecha}` (determinista)
+    userId?: string;
+    animalId: string;
+    arete: string;         // copia del ID/arete para mostrar sin join
+    fecha: string;         // "YYYY-MM-DD" (día de la jornada)
+    score: FamachaScore;   // 1..5
+    accion: FamachaAccion; // sugerencia calculada y registrada
+    dosis: boolean;
+    producto?: string;     // "" si no hubo dosis
+    dispositivo?: string;  // teléfono que cargó (trazabilidad)
+    createdAt?: number;
+}
+
 // --- Tombstone: borrados pendientes de propagar a Firestore (offline-first durable) ---
 // Cuando se borra un registro sin conexión, se guarda aquí para garantizar que el
 // borrado se replique a la nube al recuperar señal (evita que el registro "reviva").
@@ -306,11 +328,12 @@ export interface GanaderoOSTables {
     healthPlans: Table<HealthPlan>;
     planActivities: Table<PlanActivity>;
     healthEvents: Table<HealthEvent>;
+    famachaRevs: Table<FamachaRev>;
     pendingDeletions: Table<PendingDeletion>;
 }
 
 const DB_NAME = "GanaderoOS_DB";
-const DB_VERSION = 23;
+const DB_VERSION = 24;
 
 export class GanaderoOSDB extends Dexie implements GanaderoOSTables {
     animals!: Table<Animal>;
@@ -329,6 +352,7 @@ export class GanaderoOSDB extends Dexie implements GanaderoOSTables {
     healthPlans!: Table<HealthPlan>;
     planActivities!: Table<PlanActivity>;
     healthEvents!: Table<HealthEvent>;
+    famachaRevs!: Table<FamachaRev>;
     pendingDeletions!: Table<PendingDeletion>;
 
     constructor() {
@@ -351,6 +375,7 @@ export class GanaderoOSDB extends Dexie implements GanaderoOSTables {
             healthPlans: '&id, userId, &name, targetGroup, _synced',
             planActivities: '&id, userId, healthPlanId, category, _synced',
             healthEvents: '&id, userId, animalId, date, activityId, _synced',
+            famachaRevs: '&id, userId, animalId, fecha, _synced',
             pendingDeletions: '&key, collection',
         });
     }
