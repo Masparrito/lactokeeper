@@ -51,8 +51,7 @@ export const LoginPage: React.FC = () => {
                 return 'La contraseña debe tener al menos 6 caracteres.';
             default:
                 console.error("Firebase Auth Error:", err);
-                // DIAGNÓSTICO TEMPORAL (re-activado): muestra el código real.
-                return `[FIX-KEY-3] ${err.code || 'sin-código'} · ${err.message || 'sin mensaje'}`;
+                return 'Ocurrió un error inesperado. Por favor, intenta de nuevo.';
         }
     };
 
@@ -85,7 +84,6 @@ export const LoginPage: React.FC = () => {
                     </div>
                     {/* --- CAMBIO DE ESLOGAN --- */}
                     <p className="text-zinc-400">El sistema operativo para tu finca.</p>
-                    <p className="text-[10px] text-brand-orange/70 mt-1">build: FIX-KEY-3 · diag ON</p>
                 </div>
 
                 <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-6 border border-brand-border">

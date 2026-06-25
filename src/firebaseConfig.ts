@@ -6,7 +6,7 @@ import { initializeFirestore } from "firebase/firestore";
 import { initializeAuth, browserLocalPersistence } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCq3M2URc1tNUbpK7BDzKZKQoh8C3twzmA",
+  apiKey: "AIzaSyCq3MZURc1tNUbpK7BDzKZKQoh8C3twzmA",
   authDomain: "lactokeeper.firebaseapp.com",
   projectId: "lactokeeper",
   storageBucket: "lactokeeper.firebasestorage.app",
