@@ -1,109 +1,114 @@
 import { useMemo } from 'react';
-import { Activity, AlertTriangle } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
-import { getCleanId } from '../../../utils/formatting';
 import { FamachaScore } from '../../../db/local';
-import { calcularIndice, ultimaRevPorAnimal } from '../../../utils/famachaLogic';
+import { calcularIndice, famachaPeso } from '../../../utils/famachaLogic';
 
-const scoreColor: Record<FamachaScore, string> = {
+const scoreBadge: Record<FamachaScore, string> = {
     1: 'bg-emerald-600',
-    2: 'bg-green-500',
-    3: 'bg-yellow-500',
-    4: 'bg-orange-500',
+    2: 'bg-green-600',
+    3: 'bg-yellow-600',
+    4: 'bg-orange-600',
     5: 'bg-red-600',
 };
+
+const interpRows = [
+    { rango: '0 – 0.8', estado: 'SANO', que: 'Vigilancia habitual', color: '#34C759' },
+    { rango: '0.9 – 1.5', estado: 'VIGILAR', que: 'Acortar intervalo de revisión', color: '#FFD60A' },
+    { rango: '1.6 – 2.5', estado: 'ALERTA', que: 'Revisar manejo y desparasitación', color: '#FF9500' },
+    { rango: '+2.5', estado: 'CRÍTICO', que: 'Veterinario, revisar resistencia', color: '#FF3B30' },
+];
 
 export function FamachaIndexPage() {
     const { animals, famachaRevs } = useData();
 
-    const activos = useMemo(
-        () => animals.filter(a => a.status === 'Activo' && !a.isReference),
-        [animals]
-    );
-    const activeIds = useMemo(() => activos.map(a => a.id), [activos]);
-
-    const resultado = useMemo(
+    const activeIds = useMemo(() => animals.filter(a => a.status === 'Activo' && !a.isReference).map(a => a.id), [animals]);
+    const { indice, puntaje, totalConRevision, interpretacion, distribucion } = useMemo(
         () => calcularIndice(famachaRevs, activeIds),
         [famachaRevs, activeIds]
     );
 
-    // Animales en alerta: última revisión con score >= 4
-    const enAlerta = useMemo(() => {
-        const ultimas = ultimaRevPorAnimal(famachaRevs);
-        const activeSet = new Set(activeIds);
-        return famachaRevs
-            .length === 0
-            ? []
-            : Array.from(ultimas.values())
-                  .filter(r => activeSet.has(r.animalId) && r.score >= 4)
-                  .sort((a, b) => b.score - a.score || a.arete.localeCompare(b.arete, undefined, { numeric: true }));
-    }, [famachaRevs, activeIds]);
-
-    const { indice, interpretacion, distribucion, totalConRevision } = resultado;
-    const maxDist = Math.max(1, ...([1, 2, 3, 4, 5] as FamachaScore[]).map(s => distribucion[s]));
-
     return (
-        <div className="w-full max-w-2xl mx-auto px-4 space-y-4 mt-2">
-            {/* Tarjeta del índice */}
-            <div className="bg-brand-glass rounded-2xl border border-brand-border p-5 text-center">
-                <div className="flex items-center justify-center gap-2 text-zinc-400 text-sm uppercase font-semibold">
-                    <Activity size={16} />
-                    <span>Índice de salud del rebaño</span>
+        <div className="w-full max-w-2xl mx-auto px-4 space-y-4">
+            {/* Tabla de cálculo */}
+            <div className="bg-brand-glass rounded-2xl border border-brand-border p-4">
+                <h2 className="font-semibold text-white flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-rose-500" /> Índice de salud del rebaño
+                </h2>
+                <p className="text-xs text-zinc-400 mt-1 mb-4">
+                    Última revisión de cada animal. Pesos: F1=0 · F2=1 · F3=2 · F4=3 · F5=4.
+                </p>
+
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="text-zinc-400 text-xs uppercase">
+                            <th className="text-left font-semibold pb-2">Famacha</th>
+                            <th className="text-right font-semibold pb-2">Animales</th>
+                            <th className="text-right font-semibold pb-2">Puntos</th>
+                            <th className="text-right font-semibold pb-2">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800">
+                        {([1, 2, 3, 4, 5] as FamachaScore[]).map(score => {
+                            const count = distribucion[score];
+                            const puntos = famachaPeso(score);
+                            return (
+                                <tr key={score}>
+                                    <td className="py-2">
+                                        <span className={`w-7 h-7 rounded-md inline-flex items-center justify-center text-white text-xs font-bold ${scoreBadge[score]}`}>{score}</span>
+                                    </td>
+                                    <td className="text-right text-zinc-200">{count}</td>
+                                    <td className="text-right text-zinc-400">{puntos}</td>
+                                    <td className="text-right text-zinc-200 font-mono">{count * puntos}</td>
+                                </tr>
+                            );
+                        })}
+                        <tr className="font-bold text-white">
+                            <td className="py-2">Total</td>
+                            <td className="text-right">{totalConRevision}</td>
+                            <td></td>
+                            <td className="text-right font-mono">{puntaje}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div className="text-center mt-4">
+                    <p className="text-sm text-zinc-400">
+                        ÍNDICE = {puntaje} ÷ {totalConRevision || 0} ={' '}
+                        <span className="text-2xl font-bold" style={{ color: interpretacion.color }}>
+                            {indice === null ? '—' : indice.toFixed(2)}
+                        </span>
+                    </p>
+                    <span
+                        className="inline-block mt-2 px-4 py-1.5 rounded-full text-white font-bold text-sm"
+                        style={{ backgroundColor: interpretacion.color }}
+                    >
+                        {interpretacion.estado}
+                    </span>
+                    <p className="text-xs text-zinc-400 mt-2">{interpretacion.accion}</p>
                 </div>
-                <p className="text-6xl font-bold mt-2" style={{ color: interpretacion.color }}>
-                    {indice === null ? '—' : indice.toFixed(2)}
-                </p>
-                <p className="text-xl font-bold mt-1" style={{ color: interpretacion.color }}>
-                    {interpretacion.estado}
-                </p>
-                <p className="text-sm text-zinc-400 mt-1">{interpretacion.accion}</p>
-                <p className="text-xs text-zinc-500 mt-3">
-                    Basado en la última revisión de {totalConRevision} de {activos.length} animales activos.
-                </p>
             </div>
 
-            {/* Distribución por score */}
+            {/* Interpretación */}
             <div className="bg-brand-glass rounded-2xl border border-brand-border p-4">
-                <h3 className="text-sm font-semibold text-zinc-300 mb-3">Distribución (última revisión)</h3>
-                <div className="space-y-2">
-                    {([1, 2, 3, 4, 5] as FamachaScore[]).map(score => {
-                        const count = distribucion[score];
-                        const pct = (count / maxDist) * 100;
-                        return (
-                            <div key={score} className="flex items-center gap-3">
-                                <span className={`w-6 h-6 rounded-md flex items-center justify-center text-white text-xs font-bold ${scoreColor[score]}`}>
-                                    {score}
-                                </span>
-                                <div className="flex-1 h-5 bg-zinc-800 rounded-md overflow-hidden">
-                                    <div className={`h-full ${scoreColor[score]} transition-all`} style={{ width: `${pct}%` }} />
-                                </div>
-                                <span className="w-8 text-right text-sm text-zinc-300 font-mono">{count}</span>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* Animales en alerta */}
-            <div className="bg-brand-glass rounded-2xl border border-brand-border p-4">
-                <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-300 mb-3">
-                    <AlertTriangle size={16} className="text-orange-400" />
-                    En alerta (Famacha 4-5)
-                </h3>
-                {enAlerta.length === 0 ? (
-                    <p className="text-sm text-zinc-500 text-center py-2">Ninguno en su última revisión. 👍</p>
-                ) : (
-                    <div className="flex flex-wrap gap-2">
-                        {enAlerta.map(r => (
-                            <span
-                                key={r.animalId}
-                                className={`px-3 py-1 rounded-full text-white text-sm font-semibold ${scoreColor[r.score as FamachaScore]}`}
-                            >
-                                {getCleanId(r.arete)} · F{r.score}
-                            </span>
+                <h3 className="font-semibold text-white mb-3">Interpretación</h3>
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="text-zinc-400 text-xs uppercase">
+                            <th className="text-left font-semibold pb-2">Índice</th>
+                            <th className="text-left font-semibold pb-2">Estado</th>
+                            <th className="text-left font-semibold pb-2">Qué hacer</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800">
+                        {interpRows.map(r => (
+                            <tr key={r.estado}>
+                                <td className="py-2 text-zinc-300 font-mono whitespace-nowrap">{r.rango}</td>
+                                <td className="py-2 font-bold" style={{ color: r.color }}>{r.estado}</td>
+                                <td className="py-2 text-zinc-400 text-xs">{r.que}</td>
+                            </tr>
                         ))}
-                    </div>
-                )}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
