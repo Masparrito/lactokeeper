@@ -24,9 +24,11 @@ export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
     ] as const;
 
     return (
-        <div className="h-screen overflow-hidden animate-fade-in text-white flex flex-col">
-            <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border h-16">
-                <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-full">
+        // Columna flex a pantalla completa: respeta safe-areas sin posicionamiento fijo.
+        <div className="h-[100dvh] w-screen overflow-hidden animate-fade-in text-white flex flex-col bg-brand-dark">
+            {/* Header (con safe-area superior para no chocar con la barra de estado) */}
+            <header className="flex-shrink-0 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border pt-[env(safe-area-inset-top)]">
+                <div className="max-w-4xl mx-auto flex items-center justify-between px-4 h-16">
                     <button onClick={() => onSwitchModule('rebano')} className="p-2 -ml-2 text-zinc-400 hover:text-white" aria-label="Salir del módulo">
                         <ArrowLeft size={24} />
                     </button>
@@ -34,10 +36,10 @@ export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
                         <Eye className="text-rose-500" />
                         <div>
                             <h1 className="text-xl font-bold text-white leading-none">GanaderoOS</h1>
-                            <p className="text-xs text-zinc-400 leading-none">Famacha</p>
+                            <p className="text-xs text-zinc-400 leading-none mt-0.5">Famacha</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                         <SyncStatusIcon status={syncStatus} />
                         <button
                             onClick={() => setIsModuleSwitcherOpen(true)}
@@ -50,12 +52,13 @@ export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
                 </div>
             </header>
 
-            <main className="flex-1 overflow-y-auto pt-16 pb-20">
+            {/* Contenido scrolleable */}
+            <main className="flex-1 overflow-y-auto overflow-x-hidden py-4">
                 {activeView === 'captura' ? <FamachaCapturePage /> : <FamachaIndexPage />}
             </main>
 
-            {/* Navegación inferior */}
-            <nav className="flex-shrink-0 fixed bottom-0 left-0 right-0 z-20 bg-gray-900/90 backdrop-blur-lg border-t border-brand-border" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+            {/* Navegación inferior (con safe-area inferior para la barra de inicio) */}
+            <nav className="flex-shrink-0 bg-gray-900/90 backdrop-blur-lg border-t border-brand-border pb-[env(safe-area-inset-bottom)]">
                 <div className="max-w-4xl mx-auto flex justify-around items-center h-16">
                     {navItems.map(item => {
                         const isActive = activeView === item.view;
@@ -65,8 +68,8 @@ export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
                                 onClick={() => setActiveView(item.view)}
                                 className={`flex flex-col items-center justify-center gap-1 w-full h-full transition-colors ${isActive ? 'text-rose-500' : 'text-zinc-400 hover:text-white'}`}
                             >
-                                <item.icon size={22} />
-                                <span className="text-xs font-medium">{item.label}</span>
+                                <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                                <span className="text-[11px] font-semibold">{item.label}</span>
                             </button>
                         );
                     })}
