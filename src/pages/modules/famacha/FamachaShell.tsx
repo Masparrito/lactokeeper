@@ -60,7 +60,7 @@ export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
             </main>
 
             {/* Navegación inferior */}
-            <nav className="flex-shrink-0 bg-gray-900/90 backdrop-blur-lg border-t border-brand-border pb-[env(safe-area-inset-bottom)]">
+            <nav className="flex-shrink-0 bg-zinc-900 border-t border-brand-border pb-[env(safe-area-inset-bottom)]">
                 <div className="max-w-4xl mx-auto flex justify-around items-center h-16">
                     {navItems.map(item => {
                         const isActive = activeView === item.view;

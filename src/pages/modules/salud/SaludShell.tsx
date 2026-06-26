@@ -99,7 +99,7 @@ export default function SaludShell({ onSwitchModule }: SaludShellProps) {
             </main>
 
             {/* Nav con safe-area inferior */}
-            <nav className="flex-shrink-0 bg-zinc-900/95 backdrop-blur-xl border-t border-white/10 pb-[env(safe-area-inset-bottom)]">
+            <nav className="flex-shrink-0 bg-zinc-900 border-t border-white/10 pb-[env(safe-area-inset-bottom)]">
                 <div className="flex justify-around items-center h-16">
                 {navItems.map((item) => (
                     <button
