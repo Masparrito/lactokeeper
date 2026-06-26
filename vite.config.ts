@@ -1,4 +1,4 @@
-// vite.config.ts (Corregido)
+// vite.config.ts
 
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -6,21 +6,37 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: './', 
+  base: './',
   plugins: [
     react(),
     VitePWA({
-      // NOTA: vite-plugin-pwa esta fijado en 0.2.1 (version muy antigua) y NO
-      // genera Service Worker en el build. La app se instala en iOS via las
-      // meta tags de apple-* y funciona offline gracias a IndexedDB (Dexie),
-      // pero no hay cache de app-shell por SW. Pendiente: actualizar el plugin.
+      // autoUpdate: el nuevo Service Worker toma control de inmediato (skipWaiting
+      // + clientsClaim), así el usuario recibe las actualizaciones sin tener que
+      // reinstalar la app.
+      registerType: 'autoUpdate',
+      injectRegister: 'auto',
+      workbox: {
+        // El bundle principal pesa ~3.4 MB y supera el limite por defecto (2 MB);
+        // subimos el tope para que TODO el app-shell quede precacheado y la app
+        // cargue 100% offline.
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+        // SPA: cualquier navegacion offline cae en index.html (la app maneja el
+        // resto de la navegacion internamente con estado, no por rutas de URL).
+        navigateFallback: 'index.html',
+      },
       manifest: {
         name: 'GanaderoOS',
         short_name: 'GanaderoOS',
         description: 'El sistema operativo para la gestión ganadera, offline-first.',
-        theme_color: '#1C1C1E', 
-        background_color: '#1C1C1E', 
-        display: 'fullscreen', // <-- ¡CAMBIO REALIZADO!
+        theme_color: '#09090b',
+        background_color: '#1C1C1E',
+        // standalone: coincide con apple-mobile-web-app-capable; NO usar
+        // 'fullscreen' para no alterar el manejo de safe-areas en iOS.
+        display: 'standalone',
         start_url: '.',
         icons: [
           {
