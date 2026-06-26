@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle2, AlertTriangle, HelpCircle, ListChecks, Upload, ChevronDown } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, HelpCircle, ListChecks, Upload, ChevronDown, FileDown } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { reconcile } from '../../../utils/famachaReconcile';
 import { FAMACHA_INVENTORY_SNAPSHOT, type FamachaInventoryItem } from './famachaInventory';
@@ -50,6 +50,38 @@ export function FamachaBalancePage() {
     const result = useMemo(() => reconcile(inventory, animals), [inventory, animals]);
     const { enAmbosActivos, enFamachaPeroBaja, soloFamacha, soloGanaderoActivos, totals } = result;
 
+    const buildReport = (): string => {
+        const L: string[] = [];
+        L.push('COTEJO FAMACHA <-> GANADEROOS');
+        L.push(`Famacha: ${totals.famacha} | GanaderoOS reales: ${totals.ganaderoTotal} (activos ${totals.ganaderoActivos}, baja ${totals.ganaderoBaja})`);
+        L.push('');
+        L.push(`### FALTAN EN GANADEROOS (solo en Famacha) — ${soloFamacha.length}`);
+        soloFamacha.forEach(({ fam, sugerencias }) =>
+            L.push(`- ${fam.arete}${sugerencias.length ? `   (¿será? ${sugerencias.map(s => s.id).join(', ')})` : ''}`));
+        L.push('');
+        L.push(`### SOBRAN EN GANADEROOS (activos sin Famacha) — ${soloGanaderoActivos.length}`);
+        soloGanaderoActivos.forEach(a => L.push(`- ${a.id} (${a.sex})`));
+        L.push('');
+        L.push(`### EN FAMACHA PERO DADOS DE BAJA — ${enFamachaPeroBaja.length}`);
+        enFamachaPeroBaja.forEach(({ fam, animal }) => L.push(`- ${fam.arete} -> ${animal.status}`));
+        L.push('');
+        L.push(`### EN AMBAS (activos) — ${enAmbosActivos.length}`);
+        enAmbosActivos.forEach(({ fam }) => L.push(`- ${fam.arete}`));
+        return L.join('\n');
+    };
+
+    const exportReport = () => {
+        const txt = buildReport();
+        const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `cotejo_famacha_ganaderoos_${new Date().toISOString().split('T')[0]}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+        if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
+    };
+
     const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -92,6 +124,12 @@ export function FamachaBalancePage() {
                     {totals.ganaderoReferencia > 0 && ` + ${totals.ganaderoReferencia} de referencia`}.
                     El cotejo usa el arete (= ID del animal). Solo lectura: no se modifica nada.
                 </p>
+                <button
+                    onClick={exportReport}
+                    className="mt-3 w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-3 rounded-xl"
+                >
+                    <FileDown size={18} /> Exportar listas (.txt) y copiar
+                </button>
             </div>
 
             {/* En ambos (activos) */}
