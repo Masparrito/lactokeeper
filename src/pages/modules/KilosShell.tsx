@@ -79,7 +79,7 @@ export default function KilosShell({
     };
 
     return (
-        <div className="flex flex-col h-screen w-screen bg-black overflow-hidden text-white relative">
+        <div className="flex flex-col h-full w-screen bg-black overflow-hidden text-white relative">
             
             {/* Botón Atrás - Oculto en dashboard porque ya tiene su propio header */}
             {page !== 'dashboard' && (
@@ -93,18 +93,17 @@ export default function KilosShell({
             )}
 
             {/* MAIN */}
-            <main 
-                className="flex-1 w-full overflow-y-auto overflow-x-hidden bg-black scroll-smooth"
+            <main
+                className="flex-1 w-full overflow-y-auto overflow-x-hidden bg-black scroll-smooth pb-6"
                 style={{
-                    paddingTop: page === 'dashboard' ? '0' : 'env(safe-area-inset-top)',
-                    paddingBottom: 'calc(60px + env(safe-area-inset-bottom) + 20px)'
+                    paddingTop: page === 'dashboard' ? '0' : 'env(safe-area-inset-top)'
                 }}
             >
                 {renderContent()}
             </main>
 
             {/* NAV */}
-            <nav className="fixed bottom-0 left-0 right-0 z-50 bg-zinc-900 border-t border-zinc-800 pb-[env(safe-area-inset-bottom)]">
+            <nav className="flex-shrink-0 z-50 bg-zinc-900 border-t border-zinc-800 pb-[env(safe-area-inset-bottom)]">
                 <div className="flex justify-around items-center h-[60px] pt-1">
                     {navItems.map((item) => {
                         const isActive = page === item.id;

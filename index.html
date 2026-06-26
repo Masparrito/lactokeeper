@@ -25,9 +25,22 @@
         user-select: none;
         -webkit-tap-highlight-color: transparent;
       }
-      #root { height: 100%; width: 100%; isolation: isolate; }
+      /* --app-height lo fija el script de abajo con el alto REALMENTE visible
+         (window.innerHeight), que en Safari se actualiza al ocultar/mostrar la
+         barra del navegador. Fallback a 100% para PWA standalone. */
+      #root { height: var(--app-height, 100%); width: 100%; isolation: isolate; }
       input, textarea { -webkit-user-select: text; user-select: text; }
     </style>
+    <script>
+      (function () {
+        function setAppHeight() {
+          document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+        }
+        window.addEventListener('resize', setAppHeight);
+        window.addEventListener('orientationchange', setAppHeight);
+        setAppHeight();
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

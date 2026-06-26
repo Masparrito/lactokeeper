@@ -256,10 +256,10 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
     };
 
     return (
-        <div className="flex flex-col h-screen w-screen bg-[#09090b] overflow-hidden text-gray-200 font-sans">
+        <div className="flex flex-col h-full w-screen bg-[#09090b] overflow-hidden text-gray-200 font-sans">
             
             {/* HEADER */}
-            <header className="fixed top-0 left-0 right-0 z-40 bg-[#09090b] border-b border-zinc-800 transition-all duration-300"> 
+            <header className="flex-shrink-0 z-40 bg-[#09090b] border-b border-zinc-800">
                 <div className="w-full h-[env(safe-area-inset-top)] bg-[#09090b]" />
                 <div className="w-full h-[54px] flex items-center justify-between px-4 max-w-4xl mx-auto">
                     <div className="flex items-center gap-2">
@@ -285,16 +285,12 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
             </header>
             
             {/* MAIN CONTENT */}
-            <main 
-                ref={mainScrollRef} 
-                className="flex-1 w-full overflow-y-auto overflow-x-hidden bg-[#09090b] scroll-smooth relative"
-                style={{
-                    paddingTop: 'calc(54px + env(safe-area-inset-top))',
-                    paddingBottom: 'calc(60px + env(safe-area-inset-bottom) + 20px)'
-                }}
+            <main
+                ref={mainScrollRef}
+                className="flex-1 w-full overflow-y-auto overflow-x-hidden bg-[#09090b] scroll-smooth relative pb-6"
             >
                 {renderPage()}
-            </main> 
+            </main>
             
             {/* --- GESTOR DE ACCIONES (DRAWER) --- */}
             {page.name === 'lots-dashboard' && (
@@ -347,7 +343,7 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
             )}
 
             {/* NAVBAR */}
-            <nav className="fixed bottom-0 left-0 right-0 z-50 bg-zinc-900 border-t border-zinc-800 pb-[env(safe-area-inset-bottom)]">
+            <nav className="flex-shrink-0 z-50 bg-zinc-900 border-t border-zinc-800 pb-[env(safe-area-inset-bottom)]">
                 <div className="flex justify-around items-center h-[60px] pt-1">
                     {navItems.map((item) => {
                         const isModuleBtn = item.id === 'modules';
