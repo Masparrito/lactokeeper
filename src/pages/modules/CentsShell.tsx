@@ -18,7 +18,7 @@ export default function CentsShell({ onSwitchModule }: CentsShellProps) {
 
     return (
         // --- CORRECCIÓN SCROLL: 'h-screen overflow-hidden' ---
-        <div className="h-[100dvh] overflow-hidden animate-fade-in text-white flex flex-col bg-brand-dark">
+        <div className="h-full overflow-hidden animate-fade-in text-white flex flex-col bg-brand-dark">
 
             <header className="flex-shrink-0 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border pt-[env(safe-area-inset-top)]">
                 <div className="max-w-4xl mx-auto flex items-center justify-between px-4 h-16">

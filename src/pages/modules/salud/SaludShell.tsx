@@ -72,7 +72,7 @@ export default function SaludShell({ onSwitchModule }: SaludShellProps) {
     return (
         // --- (INICIO) CORRECCIÓN DE SCROLL ---
         // 1. Contenedor raíz con 'h-screen' y 'overflow-hidden'
-        <div className="h-[100dvh] overflow-hidden animate-fade-in text-white flex flex-col bg-brand-dark">
+        <div className="h-full overflow-hidden animate-fade-in text-white flex flex-col bg-brand-dark">
 
             {/* Header con safe-area superior */}
             <header className="flex-shrink-0 bg-brand-dark/80 backdrop-blur-lg border-b border-brand-border pt-[env(safe-area-inset-top)]">
@@ -99,7 +99,7 @@ export default function SaludShell({ onSwitchModule }: SaludShellProps) {
             </main>
 
             {/* Nav con safe-area inferior */}
-            <nav className="flex-shrink-0 bg-black/30 backdrop-blur-xl border-t border-white/20 pb-[env(safe-area-inset-bottom)]">
+            <nav className="flex-shrink-0 bg-zinc-900/95 backdrop-blur-xl border-t border-white/10 pb-[env(safe-area-inset-bottom)]">
                 <div className="flex justify-around items-center h-16">
                 {navItems.map((item) => (
                     <button

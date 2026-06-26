@@ -134,7 +134,7 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
   return (
     // --- (INICIO) CORRECCIÓN DE SCROLL ---
     // 1. Contenedor raíz con 'h-screen' y 'overflow-hidden'
-    <div className="font-sans text-gray-200 h-[100dvh] overflow-hidden animate-fade-in flex flex-col bg-brand-dark">
+    <div className="font-sans text-gray-200 h-full overflow-hidden animate-fade-in flex flex-col bg-brand-dark">
         {/* 2. Header con safe-area superior */}
         <header className="flex-shrink-0 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border pt-[env(safe-area-inset-top)]">
             <div className="max-w-4xl mx-auto flex items-center justify-between px-4 h-16">
@@ -222,7 +222,7 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
         {/* --- (FIN) CORRECCIÓN DE SCROLL --- */}
 
          {/* 4. Nav con safe-area inferior */}
-         <nav className="flex-shrink-0 bg-black/50 backdrop-blur-xl border-t border-white/20 pb-[env(safe-area-inset-bottom)]">
+         <nav className="flex-shrink-0 bg-zinc-900/95 backdrop-blur-xl border-t border-white/10 pb-[env(safe-area-inset-bottom)]">
           <div className="flex justify-around items-center h-16">
             {navItems.map((item) => {
                  const isDisabled = (item.view === 'sim-results' && !simConfig) || 
