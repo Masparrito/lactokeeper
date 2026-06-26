@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Eye, Grid, Zap, ClipboardList, BarChart3, Settings } from 'lucide-react';
+import { ArrowLeft, Eye, Grid, Zap, ClipboardList, BarChart3, Settings, GitCompareArrows } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { SyncStatusIcon } from '../../../components/ui/SyncStatusIcon';
 import { ModuleSwitcher } from '../../../components/ui/ModuleSwitcher';
@@ -8,12 +8,13 @@ import { FamachaCapturePage } from './FamachaCapturePage';
 import { FamachaAnimalsPage } from './FamachaAnimalsPage';
 import { FamachaIndexPage } from './FamachaIndexPage';
 import { FamachaMorePage } from './FamachaMorePage';
+import { FamachaBalancePage } from './FamachaBalancePage';
 
 interface FamachaShellProps {
     onSwitchModule: (module: AppModule) => void;
 }
 
-type FamachaView = 'revision' | 'animales' | 'indice' | 'mas';
+type FamachaView = 'revision' | 'animales' | 'indice' | 'cotejo' | 'mas';
 
 export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
     const { syncStatus } = useData();
@@ -24,6 +25,7 @@ export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
         { view: 'revision', label: 'Revisión', icon: Zap },
         { view: 'animales', label: 'Animales', icon: ClipboardList },
         { view: 'indice', label: 'Índice', icon: BarChart3 },
+        { view: 'cotejo', label: 'Cotejo', icon: GitCompareArrows },
         { view: 'mas', label: 'Más', icon: Settings },
     ] as const;
 
@@ -56,6 +58,7 @@ export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
                 {activeView === 'revision' && <FamachaCapturePage />}
                 {activeView === 'animales' && <FamachaAnimalsPage />}
                 {activeView === 'indice' && <FamachaIndexPage />}
+                {activeView === 'cotejo' && <FamachaBalancePage />}
                 {activeView === 'mas' && <FamachaMorePage />}
             </main>
 
