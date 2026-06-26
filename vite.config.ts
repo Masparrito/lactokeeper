@@ -10,8 +10,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // --- LÍNEA CORREGIDA: Se elimina la propiedad 'registerType' que causa el error de tipo ---
-      // La PWA usará el valor por defecto ('prompt') que es seguro y funcional.
+      // NOTA: vite-plugin-pwa esta fijado en 0.2.1 (version muy antigua) y NO
+      // genera Service Worker en el build. La app se instala en iOS via las
+      // meta tags de apple-* y funciona offline gracias a IndexedDB (Dexie),
+      // pero no hay cache de app-shell por SW. Pendiente: actualizar el plugin.
       manifest: {
         name: 'GanaderoOS',
         short_name: 'GanaderoOS',
