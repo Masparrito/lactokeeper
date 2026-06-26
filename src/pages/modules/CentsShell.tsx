@@ -18,10 +18,10 @@ export default function CentsShell({ onSwitchModule }: CentsShellProps) {
 
     return (
         // --- CORRECCIÓN SCROLL: 'h-screen overflow-hidden' ---
-        <div className="h-screen overflow-hidden animate-fade-in text-white flex flex-col">
-            
-            <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border h-16">
-                <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-full">
+        <div className="h-[100dvh] overflow-hidden animate-fade-in text-white flex flex-col bg-brand-dark">
+
+            <header className="flex-shrink-0 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border pt-[env(safe-area-inset-top)]">
+                <div className="max-w-4xl mx-auto flex items-center justify-between px-4 h-16">
                     <button onClick={() => onSwitchModule('rebano')} className="p-2 -ml-2 text-zinc-400 hover:text-white" aria-label="Salir del módulo">
                         <ArrowLeft size={24} />
                     </button>
@@ -48,7 +48,7 @@ export default function CentsShell({ onSwitchModule }: CentsShellProps) {
             </header>
             
             {/* --- CORRECCIÓN SCROLL: 'flex-1 overflow-y-auto' y padding --- */}
-            <main className="flex-1 overflow-y-auto pt-16 pb-16">
+            <main className="flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
                 <EconomyDashboardPage />
             </main>
 

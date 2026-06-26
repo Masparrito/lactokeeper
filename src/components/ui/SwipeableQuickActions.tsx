@@ -103,7 +103,7 @@ export const SwipeableQuickActions: React.FC<SwipeableQuickActionsProps> = ({ on
                     closed: { y: "calc(100% - 24px)" } // Pestaña visible
                 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className={`fixed bottom-[60px] left-0 right-0 z-50 bg-[#1c1c1e] rounded-t-[2rem] border-t border-zinc-800 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] flex flex-col ${isOpen ? 'h-auto pb-8' : 'h-auto'}`}
+                className={`fixed bottom-[calc(60px+env(safe-area-inset-bottom))] left-0 right-0 z-50 bg-[#1c1c1e] rounded-t-[2rem] border-t border-zinc-800 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] flex flex-col ${isOpen ? 'h-auto pb-8' : 'h-auto'}`}
             >
                 {/* MANEJADOR (HANDLE) */}
                 <div 

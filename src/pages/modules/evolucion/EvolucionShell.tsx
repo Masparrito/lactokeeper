@@ -134,10 +134,10 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
   return (
     // --- (INICIO) CORRECCIÓN DE SCROLL ---
     // 1. Contenedor raíz con 'h-screen' y 'overflow-hidden'
-    <div className="font-sans text-gray-200 h-screen overflow-hidden animate-fade-in flex flex-col">
-        {/* 2. Header fijo con 'h-16' */}
-        <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border h-16">
-            <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-full">
+    <div className="font-sans text-gray-200 h-[100dvh] overflow-hidden animate-fade-in flex flex-col bg-brand-dark">
+        {/* 2. Header con safe-area superior */}
+        <header className="flex-shrink-0 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border pt-[env(safe-area-inset-top)]">
+            <div className="max-w-4xl mx-auto flex items-center justify-between px-4 h-16">
                  <div className="flex items-center gap-2 min-w-0">
                     {activeView !== 'setup' && (
                          <button onClick={() => handleViewChange('setup')} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors flex-shrink-0" aria-label="Volver a Configuración">
@@ -172,7 +172,7 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
         </header>
 
         {/* 3. <main> es el ÚNICO scroll, con 'flex-1', 'overflow-y-auto' y padding */}
-        <main className="flex-1 overflow-y-auto pt-16 pb-16">
+        <main className="flex-1 overflow-y-auto">
             {activeView === 'setup' && (
                 <SimulationSetupPage
                     initialConfig={simConfig || fallbackConfig}
@@ -221,8 +221,9 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
         </main>
         {/* --- (FIN) CORRECCIÓN DE SCROLL --- */}
 
-         {/* 4. Nav fijo con 'h-16' */}
-         <nav className="flex-shrink-0 fixed bottom-0 left-0 right-0 z-20 bg-black/50 backdrop-blur-xl border-t border-white/20 flex justify-around h-16">
+         {/* 4. Nav con safe-area inferior */}
+         <nav className="flex-shrink-0 bg-black/50 backdrop-blur-xl border-t border-white/20 pb-[env(safe-area-inset-bottom)]">
+          <div className="flex justify-around items-center h-16">
             {navItems.map((item) => {
                  const isDisabled = (item.view === 'sim-results' && !simConfig) || 
                                     (item.view === 'real-results' && !realConfig) ||
@@ -230,6 +231,7 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
                  const isActive = activeView === item.view;
                  return ( <button key={item.view} onClick={() => handleViewChange(item.view)} disabled={isDisabled} className={`relative flex flex-col items-center justify-center pt-3 pb-2 w-full transition-colors ${ isActive ? 'text-indigo-400 font-semibold' : 'text-gray-500 hover:text-white'} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`} aria-current={isActive ? 'page' : undefined}> <item.icon className="w-6 h-6" /> <span className="text-xs font-semibold mt-1">{item.label}</span> </button> );
             })}
+          </div>
          </nav>
 
         {/* --- (NUEVO) ModuleSwitcher actualizado a modal --- */}

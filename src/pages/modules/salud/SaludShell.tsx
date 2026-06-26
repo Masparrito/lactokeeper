@@ -72,11 +72,11 @@ export default function SaludShell({ onSwitchModule }: SaludShellProps) {
     return (
         // --- (INICIO) CORRECCIÓN DE SCROLL ---
         // 1. Contenedor raíz con 'h-screen' y 'overflow-hidden'
-        <div className="h-screen overflow-hidden animate-fade-in text-white flex flex-col bg-brand-dark">
-            
-            {/* 2. Header fijo con 'h-16' */}
-            <header className="flex-shrink-0 fixed top-0 left-0 right-0 z-20 bg-brand-dark/80 backdrop-blur-lg border-b border-brand-border h-16">
-                <div className="max-w-4xl mx-auto flex items-center justify-between p-4 h-full">
+        <div className="h-[100dvh] overflow-hidden animate-fade-in text-white flex flex-col bg-brand-dark">
+
+            {/* Header con safe-area superior */}
+            <header className="flex-shrink-0 bg-brand-dark/80 backdrop-blur-lg border-b border-brand-border pt-[env(safe-area-inset-top)]">
+                <div className="max-w-4xl mx-auto flex items-center justify-between px-4 h-16">
                     <button onClick={navigateBack} className="p-2 -ml-2 text-zinc-400 hover:text-white" aria-label="Atrás">
                         <ArrowLeft size={24} />
                     </button>
@@ -94,13 +94,13 @@ export default function SaludShell({ onSwitchModule }: SaludShellProps) {
             </header>
             
             {/* 3. <main> es el ÚNICO scroll, con 'flex-1', 'overflow-y-auto' y padding */}
-            <main className="flex-1 overflow-y-auto pt-16 pb-16">
+            <main className="flex-1 overflow-y-auto">
                 {renderContent()}
             </main>
-            {/* --- (FIN) CORRECCIÓN DE SCROLL --- */}
 
-            {/* 4. Nav fijo con 'h-16' */}
-            <nav className="flex-shrink-0 fixed bottom-0 left-0 right-0 bg-black/30 backdrop-blur-xl border-t border-white/20 flex justify-around z-20 h-16">
+            {/* Nav con safe-area inferior */}
+            <nav className="flex-shrink-0 bg-black/30 backdrop-blur-xl border-t border-white/20 pb-[env(safe-area-inset-bottom)]">
+                <div className="flex justify-around items-center h-16">
                 {navItems.map((item) => (
                     <button
                         key={item.id}
@@ -111,6 +111,7 @@ export default function SaludShell({ onSwitchModule }: SaludShellProps) {
                         <span className="text-xs font-semibold">{item.label}</span>
                     </button>
                 ))}
+                </div>
             </nav>
         </div>
     );
