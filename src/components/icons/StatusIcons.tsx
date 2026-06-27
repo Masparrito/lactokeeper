@@ -72,7 +72,7 @@ export const StatusIcons: React.FC<StatusIconsProps> = ({
                 return (
                     <span key={key} title={label} className="relative">
                         <Icon 
-                            className={`transition-colors ${isActive ? color : 'text-zinc-600'}`} 
+                            className={`transition-colors ${isActive ? color : 'text-c-text-faint'}`}
                             size={size} 
                             strokeWidth={2.5} 
                         />

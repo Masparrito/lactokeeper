@@ -158,7 +158,7 @@ const LotCardContent = ({ lotName, count, subLotsCount, dragControls, isSubLot }
                 )}
             </p>
             <p className="text-sm text-c-text-muted">
-                <span className="font-semibold text-brand-orange">{count}</span> {count === 1 ? 'animal' : 'animales'}
+                <span className="font-semibold text-c-accent">{count}</span> {count === 1 ? 'animal' : 'animales'}
                 {subLotsCount > 0 ? ' (directos)' : ''}
             </p>
         </div>
@@ -202,7 +202,7 @@ const SwipeableLotCard = ({ lot, onEdit, onDelete, onClick, dragControls, isSubL
     return (
         <div className={`relative w-full overflow-hidden ${isSubLot ? 'rounded-lg' : 'rounded-2xl'} bg-c-surface border border-c-border shadow-sm`}>
             <div className="absolute inset-y-0 right-0 flex items-center z-0 h-full">
-                {showEdit && <button onClick={onEdit} onPointerDown={(e) => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-orange text-white"><Edit size={22} /><span className="text-xs mt-1 font-semibold">Editar</span></button>}
+                {showEdit && <button onClick={onEdit} onPointerDown={(e) => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-c-accent-sky text-white"><Edit size={22} /><span className="text-xs mt-1 font-semibold">Editar</span></button>}
                 {showDelete && <button onClick={onDelete} onPointerDown={(e) => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-red text-white"><Trash2 size={22} /><span className="text-xs mt-1 font-semibold">Borrar</span></button>}
             </div>
             <motion.div 

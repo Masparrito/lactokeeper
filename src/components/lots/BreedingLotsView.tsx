@@ -109,19 +109,19 @@ const SwipeableSireRow = ({ lot, navigateTo, onDelete }: SwipeableSireRowProps) 
                 onDragStart={() => setIsDragging(true)}
                 onDragEnd={handleDragEnd}
                 style={{ x, touchAction: "pan-y" }}
-                className="absolute inset-0 bg-zinc-900 border border-zinc-800 rounded-2xl p-3 flex items-center justify-between z-10 cursor-pointer active:cursor-grabbing hover:bg-zinc-800 transition-colors shadow-sm"
+                className="absolute inset-0 bg-c-surface border border-c-border rounded-2xl p-3 flex items-center justify-between z-10 cursor-pointer active:cursor-grabbing hover:bg-c-surface-2 transition-colors shadow-sm"
                 onClick={() => !isDragging && navigateTo({ name: 'sire-lot-detail', lotId: lot.id })}
             >
                 <div className="flex items-center gap-4 flex-1 min-w-0">
                     {/* Avatar Grande */}
-                    <div className="w-12 h-12 rounded-xl bg-black flex items-center justify-center text-brand-blue border border-zinc-800 flex-shrink-0">
+                    <div className="w-12 h-12 rounded-xl bg-c-bg flex items-center justify-center text-c-accent-sky border border-c-border flex-shrink-0">
                         <Dna size={24} strokeWidth={2} />
                     </div>
-                    
+
                     <div className="min-w-0 flex-1">
-                        <p className="text-base font-bold text-white truncate leading-tight">{sireName}</p>
+                        <p className="text-base font-bold text-c-text truncate leading-tight">{sireName}</p>
                         <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-950 px-2 py-0.5 rounded-md uppercase tracking-wide border border-zinc-800">
+                            <span className="text-[10px] font-bold text-c-text-muted bg-c-surface-2 px-2 py-0.5 rounded-md uppercase tracking-wide border border-c-border">
                                 {stats.totalFemales} Hembras
                             </span>
                             {stats.serviceRate > 0 && (
@@ -134,7 +134,7 @@ const SwipeableSireRow = ({ lot, navigateTo, onDelete }: SwipeableSireRowProps) 
                 </div>
 
                 <div className="pl-2 flex flex-col items-end justify-center">
-                     <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${stats.serviceRate >= 100 ? 'bg-green-500/10 text-brand-green' : 'bg-zinc-800 text-zinc-600'}`}>
+                     <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${stats.serviceRate >= 100 ? 'bg-green-500/10 text-brand-green' : 'bg-c-surface-2 text-c-text-faint'}`}>
                         <ChevronRight size={18} />
                     </div>
                 </div>
@@ -186,14 +186,14 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
     } else if (isOnHold) {
         statusConfig = { color: 'text-yellow-400', bg: 'bg-yellow-900/20', border: 'border-yellow-500/30', dot: 'bg-yellow-500', label: 'En Espera', pulse: false };
     } else if (isFuture) {
-        statusConfig = { color: 'text-brand-blue', bg: 'bg-blue-900/20', border: 'border-blue-500/30', dot: 'bg-brand-blue', label: 'Próxima', pulse: false };
+        statusConfig = { color: 'text-c-accent-sky', bg: 'bg-c-accent-sky/15', border: 'border-c-accent-sky/30', dot: 'bg-c-accent-sky', label: 'Próxima', pulse: false };
     } else {
-        statusConfig = { color: 'text-zinc-500', bg: 'bg-zinc-800', border: 'border-zinc-700', dot: 'bg-zinc-600', label: 'Finalizada', pulse: false };
+        statusConfig = { color: 'text-c-text-faint', bg: 'bg-c-surface-2', border: 'border-c-border-strong', dot: 'bg-c-text-faint', label: 'Finalizada', pulse: false };
     }
 
     return (
         <div 
-            className="bg-[#1c1c1e] rounded-[2rem] overflow-hidden border border-zinc-800 shadow-lg mb-6 relative group"
+            className="bg-c-surface rounded-[2rem] overflow-hidden border border-c-border shadow-lg mb-6 relative group"
         >
             {/* 1. HEADER EXPANDIDO */}
             <div className="p-6 pb-2 relative">
@@ -210,7 +210,7 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
                     <div className="flex items-center gap-2">
                         {/* Drag Handle */}
                         <div 
-                            className="p-2 text-zinc-600 cursor-grab active:cursor-grabbing touch-none hover:text-zinc-300 hover:bg-zinc-800 rounded-full transition-colors"
+                            className="p-2 text-c-text-faint cursor-grab active:cursor-grabbing touch-none hover:text-c-text-strong hover:bg-c-surface-2 rounded-full transition-colors"
                             onPointerDown={(e) => dragControls.start(e)}
                         >
                             <GripVertical size={20} />
@@ -219,7 +219,7 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
                         <div className="relative">
                             <button 
                                 onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-                                className="p-2 text-zinc-600 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
+                                className="p-2 text-c-text-faint hover:text-c-text hover:bg-c-surface-2 rounded-full transition-colors"
                             >
                                 <MoreVertical size={20} />
                             </button>
@@ -229,12 +229,12 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
                                         initial={{ opacity: 0, scale: 0.95, y: 5 }}
                                         animate={{ opacity: 1, scale: 1, y: 0 }}
                                         exit={{ opacity: 0, scale: 0.95, y: 5 }}
-                                        className="absolute right-0 mt-1 w-40 bg-[#2C2C2E] border border-zinc-700 rounded-xl shadow-2xl z-20 overflow-hidden"
+                                        className="absolute right-0 mt-1 w-40 bg-c-surface-2 border border-c-border-strong rounded-xl shadow-2xl z-20 overflow-hidden"
                                     >
-                                        <button onClick={(e) => { e.stopPropagation(); onEdit(); setShowMenu(false); }} className="w-full text-left px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-700 flex items-center gap-3">
+                                        <button onClick={(e) => { e.stopPropagation(); onEdit(); setShowMenu(false); }} className="w-full text-left px-4 py-3 text-sm font-semibold text-c-text hover:bg-c-surface-3 flex items-center gap-3">
                                             <Edit size={16} /> Editar
                                         </button>
-                                        <div className="h-px bg-zinc-700"></div>
+                                        <div className="h-px bg-c-border"></div>
                                         <button onClick={(e) => { e.stopPropagation(); onDelete(); setShowMenu(false); }} className="w-full text-left px-4 py-3 text-sm font-semibold text-red-400 hover:bg-red-900/30 flex items-center gap-3">
                                             <Trash2 size={16} /> Eliminar
                                         </button>
@@ -248,38 +248,38 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
                 {/* Título Masivo */}
                 <h2 
                     onClick={() => navigateTo({ name: 'breeding-season-detail', seasonId: season.id })}
-                    className="text-3xl font-bold text-white leading-tight mb-5 cursor-pointer hover:text-brand-purple transition-colors tracking-tight"
+                    className="text-3xl font-bold text-c-text-strong leading-tight mb-5 cursor-pointer hover:text-c-accent-sky transition-colors tracking-tight"
                 >
                     {season.name}
                 </h2>
 
                 {/* Línea de Tiempo */}
-                <div className="bg-black/30 rounded-2xl p-4 border border-zinc-800/50 mb-3">
+                <div className="bg-c-surface-2 rounded-2xl p-4 border border-c-border mb-3">
                     <div className="flex justify-between items-end mb-2 text-sm">
                         <div>
-                            <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider mb-1">Inicio</p>
-                            <p className="font-bold text-zinc-300">{startDate.toLocaleDateString('es-VE', { day: 'numeric', month: 'short' })}</p>
+                            <p className="text-c-text-faint text-[10px] font-bold uppercase tracking-wider mb-1">Inicio</p>
+                            <p className="font-bold text-c-text-strong">{startDate.toLocaleDateString('es-VE', { day: 'numeric', month: 'short' })}</p>
                         </div>
                         <div className="text-right">
-                            <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider mb-1">Fin</p>
-                            <p className="font-bold text-zinc-300">{endDate.toLocaleDateString('es-VE', { day: 'numeric', month: 'short' })}</p>
+                            <p className="text-c-text-faint text-[10px] font-bold uppercase tracking-wider mb-1">Fin</p>
+                            <p className="font-bold text-c-text-strong">{endDate.toLocaleDateString('es-VE', { day: 'numeric', month: 'short' })}</p>
                         </div>
                     </div>
-                    
-                    <div className="h-3 w-full bg-zinc-800 rounded-full overflow-hidden relative">
+
+                    <div className="h-3 w-full bg-c-surface-3 rounded-full overflow-hidden relative">
                         {/* Barra de Progreso Dinámica */}
-                        <div 
-                            className={`h-full rounded-full ${isRunning ? 'bg-gradient-to-r from-indigo-500 to-purple-500' : (isOnHold ? 'bg-yellow-600' : 'bg-zinc-700')}`} 
-                            style={{ width: `${progress}%` }} 
+                        <div
+                            className={`h-full rounded-full ${isRunning ? 'bg-gradient-to-r from-indigo-500 to-purple-500' : (isOnHold ? 'bg-yellow-600' : 'bg-c-border-strong')}`}
+                            style={{ width: `${progress}%` }}
                         />
                     </div>
-                    
+
                     <div className="flex justify-between mt-2 items-center">
-                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wide">
+                        <p className="text-[10px] text-c-text-faint font-bold uppercase tracking-wide">
                             {isActiveStatus ? `${Math.round(progress)}% Completado` : (isFuture ? 'Pendiente' : 'Finalizado')}
                         </p>
                         {isActiveStatus && (
-                            <div className={`flex items-center gap-1.5 text-xs font-bold ${isOnHold ? 'text-yellow-500' : 'text-brand-blue'}`}>
+                            <div className={`flex items-center gap-1.5 text-xs font-bold ${isOnHold ? 'text-yellow-500' : 'text-c-accent-sky'}`}>
                                 <Timer size={12} />
                                 <span>{isOnHold ? 'Sin actividad' : `${daysLeft} días restantes`}</span>
                             </div>
@@ -291,7 +291,7 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
             {/* 2. AREA DE SEMENTALES */}
             <div className="px-6 pb-6">
                 <div className="flex justify-between items-center mb-3 mt-2">
-                    <h3 className="text-xs font-extrabold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                    <h3 className="text-xs font-extrabold text-c-text-faint uppercase tracking-widest flex items-center gap-2">
                         <Users size={14} /> Equipo de Monta ({seasonLots.length})
                     </h3>
                 </div>
@@ -310,18 +310,18 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
                 ) : (
                     <div 
                         onClick={() => navigateTo({ name: 'breeding-season-detail', seasonId: season.id })}
-                        className="py-8 text-center bg-zinc-900/50 rounded-2xl border border-zinc-800 border-dashed cursor-pointer hover:bg-zinc-800 transition-colors"
+                        className="py-8 text-center bg-c-surface-2 rounded-2xl border border-c-border border-dashed cursor-pointer hover:bg-c-surface-3 transition-colors"
                     >
-                        <Dna size={32} className="text-zinc-700 mx-auto mb-2" />
-                        <p className="text-sm font-medium text-zinc-500">Sin sementales asignados</p>
-                        <p className="text-xs text-brand-blue font-bold mt-1 uppercase tracking-wide">Toca para añadir</p>
+                        <Dna size={32} className="text-c-text-faint mx-auto mb-2" />
+                        <p className="text-sm font-medium text-c-text-faint">Sin sementales asignados</p>
+                        <p className="text-xs text-c-accent-sky font-bold mt-1 uppercase tracking-wide">Toca para añadir</p>
                     </div>
                 )}
             </div>
 
             {/* 3. MAPA DE CALOR (Footer Sutil) */}
             {hasActivity && (
-                <div className="relative h-14 w-full bg-gradient-to-t from-pink-900/10 to-transparent border-t border-zinc-800/50">
+                <div className="relative h-14 w-full bg-gradient-to-t from-pink-900/10 to-transparent border-t border-c-border">
                      <div className="absolute left-6 top-3 flex items-center gap-2">
                         <Activity size={12} className="text-pink-500" />
                         <span className="text-[9px] font-bold text-pink-500/70 uppercase tracking-widest">
@@ -416,13 +416,13 @@ export default function BreedingLotsView({ navigateTo, onEditSeason }: BreedingL
 
     if (localOrderedSeasons.length === 0) {
         return (
-             <div className="text-center py-20 px-6 mx-4 mt-6 bg-[#1c1c1e] rounded-[2.5rem] border border-zinc-800 border-dashed flex flex-col items-center gap-6">
-                <div className="bg-zinc-900 p-6 rounded-full text-zinc-600 shadow-inner">
+             <div className="text-center py-20 px-6 mx-4 mt-6 bg-c-surface rounded-[2.5rem] border border-c-border border-dashed flex flex-col items-center gap-6">
+                <div className="bg-c-surface-2 p-6 rounded-full text-c-text-faint shadow-inner">
                     <HeartHandshake size={56} strokeWidth={1} />
                 </div>
                 <div>
-                    <h3 className="text-xl font-bold text-white mb-2">Sin Temporadas Activas</h3>
-                    <p className="text-base text-zinc-500 max-w-[240px] mx-auto leading-relaxed">
+                    <h3 className="text-xl font-bold text-c-text-strong mb-2">Sin Temporadas Activas</h3>
+                    <p className="text-base text-c-text-faint max-w-[240px] mx-auto leading-relaxed">
                         Inicia una nueva temporada para gestionar la reproducción controlada de tu finca.
                     </p>
                 </div>

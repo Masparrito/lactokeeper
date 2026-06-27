@@ -18,6 +18,10 @@
   --c-text-faint:    113 113 122;   /* terciario (zinc-500) */
   --c-border:        39 39 42;      /* bordes (zinc-800) */
   --c-border-strong: 63 63 70;      /* bordes marcados (zinc-700) */
+  /* Acentos (más brillantes en oscuro) */
+  --c-accent:        76 175 92;     /* verde pasto */
+  --c-accent-sky:    56 152 224;    /* azul cielo */
+  --c-accent-gold:   245 197 24;    /* amarillo/oro */
 }
 
 .theme-light {
@@ -31,6 +35,10 @@
   --c-text-faint:    125 138 136;
   --c-border:        225 230 226;   /* bordes claros */
   --c-border-strong: 200 208 203;
+  /* Acentos (más profundos en claro, legibles sobre blanco) */
+  --c-accent:        47 132 60;     /* #2F843C verde pasto */
+  --c-accent-sky:    30 111 173;    /* #1E6FAD azul cielo oscuro */
+  --c-accent-gold:   183 132 8;     /* #B78408 oro legible */
 }
 
 html, body {

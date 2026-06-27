@@ -41,12 +41,12 @@ const FilterBar = ({ title, filters, activeFilter, onFilterChange }: {
     title?: string, filters: FilterItem[], activeFilter: string, onFilterChange: (key: string) => void
 }) => (
     <div>
-        {title && <label className="block text-sm font-semibold text-zinc-400 mb-2">{title}</label>}
+        {title && <label className="block text-sm font-semibold text-c-text-muted mb-2">{title}</label>}
         <div className="flex flex-wrap gap-2">
-            <button onClick={() => onFilterChange('ALL')} className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${activeFilter === 'all' || activeFilter === 'ALL' ? 'bg-zinc-600 text-white' : 'bg-zinc-800/80 text-zinc-300'}`}>Todos</button>
+            <button onClick={() => onFilterChange('ALL')} className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${activeFilter === 'all' || activeFilter === 'ALL' ? 'bg-c-surface-2 text-c-text' : 'bg-c-surface-2/80 text-c-text-strong'}`}>Todos</button>
             {filters.map(f => {
                 const Icon = f.Icon || null;
-                return ( <button key={f.key} onClick={() => onFilterChange(f.key)} className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full transition-colors ${activeFilter === f.key ? 'bg-brand-green text-white' : 'bg-zinc-800/80 text-zinc-300'}`}>{Icon && <Icon size={14} />}{f.label}</button> );
+                return ( <button key={f.key} onClick={() => onFilterChange(f.key)} className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full transition-colors ${activeFilter === f.key ? 'bg-c-accent text-white' : 'bg-c-surface-2/80 text-c-text-strong'}`}>{Icon && <Icon size={14} />}{f.label}</button> );
             })}
         </div>
     </div>
@@ -64,24 +64,24 @@ const BatchMoveModal = ({ isOpen, onClose, onConfirm, lots }: {
         <Modal isOpen={isOpen} onClose={onClose} title="Mover Animales en Lote">
             <div className="space-y-4">
                 <div>
-                    <label className="block text-sm font-medium text-zinc-400 mb-1">Seleccionar lote de destino</label>
+                    <label className="block text-sm font-medium text-c-text-muted mb-1">Seleccionar lote de destino</label>
                     <div className="flex items-center gap-2">
-                        <select 
-                            value={selectedLot} 
+                        <select
+                            value={selectedLot}
                             onChange={(e) => setSelectedLot(e.target.value)}
-                            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-brand-orange"
+                            className="w-full bg-c-surface-2 border border-c-border-strong rounded-lg p-2.5 text-c-text appearance-none focus:outline-none focus:ring-2 focus:ring-c-accent"
                         >
                             <option value="">Sin Asignar</option>
                             {lots.map(lot => <option key={lot.id} value={lot.name}>{lot.name}</option>)}
                         </select>
                     </div>
                 </div>
-                <div className="flex justify-end gap-3 pt-4 border-t border-brand-border">
-                    <button onClick={onClose} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg text-white">Cancelar</button>
-                    <button 
-                        onClick={handleConfirmClick} 
+                <div className="flex justify-end gap-3 pt-4 border-t border-c-border">
+                    <button onClick={onClose} className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-3 font-semibold rounded-lg text-c-text">Cancelar</button>
+                    <button
+                        onClick={handleConfirmClick}
                         disabled={!selectedLot}
-                        className="px-5 py-2 bg-brand-blue hover:bg-blue-600 text-white font-bold rounded-lg disabled:opacity-50"
+                        className="px-5 py-2 bg-c-accent-sky hover:bg-c-accent-sky text-white font-bold rounded-lg disabled:opacity-50"
                     >
                         Mover
                     </button>
@@ -427,7 +427,7 @@ export default function HerdPage({
         overscan: 5
     });
 
-    if (isLoading) { return <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Cargando rebaño...</h1></div>; }
+    if (isLoading) { return <div className="text-center p-10"><h1 className="text-2xl text-c-text-muted">Cargando rebaño...</h1></div>; }
 
     return (
         <>
@@ -442,22 +442,22 @@ export default function HerdPage({
                 
                 {!isKpiView ? (
                     <div className="space-y-4 px-4 pt-4"> 
-                        <div className="flex bg-zinc-800 rounded-xl p-1 w-full">
-                            <button onClick={() => { setViewMode('Activos'); resetAllFilters(); setCategoryFilter('Todos'); }} className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${viewMode === 'Activos' ? 'bg-zinc-600 text-white' : 'text-zinc-400'}`}><Users size={16} /> Activos</button>
-                            <button onClick={() => { setViewMode('Referencia'); resetAllFilters(); }} className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${viewMode === 'Referencia' ? 'bg-zinc-600 text-white' : 'text-zinc-400'}`}><FileArchive size={16} /> Referencia</button>
+                        <div className="flex bg-c-surface-2 rounded-xl p-1 w-full">
+                            <button onClick={() => { setViewMode('Activos'); resetAllFilters(); setCategoryFilter('Todos'); }} className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${viewMode === 'Activos' ? 'bg-c-surface-3 text-c-text' : 'text-c-text-muted'}`}><Users size={16} /> Activos</button>
+                            <button onClick={() => { setViewMode('Referencia'); resetAllFilters(); }} className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${viewMode === 'Referencia' ? 'bg-c-surface-3 text-c-text' : 'text-c-text-muted'}`}><FileArchive size={16} /> Referencia</button>
                         </div>
                         
                         {viewMode === 'Activos' && !isSelectionMode && (
                             <div className="space-y-4 animate-fade-in">
-                                <div className="space-y-4 bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
-                                    <div className="space-y-3"><button onClick={() => setProductiveFiltersVisible(!productiveFiltersVisible)} className="w-full flex justify-between items-center text-sm font-semibold text-zinc-400 hover:text-white transition-colors"><span>Filtros Productivos</span><ChevronDown className={`transition-transform ${productiveFiltersVisible ? 'rotate-180' : ''}`} size={18} /></button>{productiveFiltersVisible && ( <div className="animate-fade-in"><FilterBar title="" filters={['MILKING', 'DRYING_OFF', 'DRY'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey]).filter(Boolean)} activeFilter={productiveFilter} onFilterChange={setProductiveFilter} /></div> )}</div>
-                                    <div className="space-y-3"><button onClick={() => setReproductiveFiltersVisible(!reproductiveFiltersVisible)} className="w-full flex justify-between items-center text-sm font-semibold text-zinc-400 hover:text-white transition-colors"><span>Filtros Reproductivos</span><ChevronDown className={`transition-transform ${reproductiveFiltersVisible ? 'rotate-180' : ''}`} size={18} /></button>{reproductiveFiltersVisible && ( <div className="animate-fade-in"><FilterBar title="" filters={['PREGNANT', 'IN_SERVICE_CONFIRMED', 'IN_SERVICE', 'EMPTY', 'SIRE_IN_SERVICE'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey]).filter(Boolean)} activeFilter={reproductiveFilter} onFilterChange={setReproductiveFilter} /></div> )}</div>
+                                <div className="space-y-4 bg-c-surface backdrop-blur-xl rounded-2xl p-4 border border-c-border">
+                                    <div className="space-y-3"><button onClick={() => setProductiveFiltersVisible(!productiveFiltersVisible)} className="w-full flex justify-between items-center text-sm font-semibold text-c-text-muted hover:text-c-text transition-colors"><span>Filtros Productivos</span><ChevronDown className={`transition-transform ${productiveFiltersVisible ? 'rotate-180' : ''}`} size={18} /></button>{productiveFiltersVisible && ( <div className="animate-fade-in"><FilterBar title="" filters={['MILKING', 'DRYING_OFF', 'DRY'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey]).filter(Boolean)} activeFilter={productiveFilter} onFilterChange={setProductiveFilter} /></div> )}</div>
+                                    <div className="space-y-3"><button onClick={() => setReproductiveFiltersVisible(!reproductiveFiltersVisible)} className="w-full flex justify-between items-center text-sm font-semibold text-c-text-muted hover:text-c-text transition-colors"><span>Filtros Reproductivos</span><ChevronDown className={`transition-transform ${reproductiveFiltersVisible ? 'rotate-180' : ''}`} size={18} /></button>{reproductiveFiltersVisible && ( <div className="animate-fade-in"><FilterBar title="" filters={['PREGNANT', 'IN_SERVICE_CONFIRMED', 'IN_SERVICE', 'EMPTY', 'SIRE_IN_SERVICE'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey]).filter(Boolean)} activeFilter={reproductiveFilter} onFilterChange={setReproductiveFilter} /></div> )}</div>
                                 </div>
                             </div>
                         )}
                         
                         {viewMode === 'Referencia' && !isSelectionMode && (
-                            <div className="space-y-4 bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border animate-fade-in">
+                            <div className="space-y-4 bg-c-surface backdrop-blur-xl rounded-2xl p-4 border border-c-border animate-fade-in">
                                 <FilterBar title="Filtrar por Causa de Baja" filters={[{key: 'Venta', label: 'Venta'}, {key: 'Muerte', label: 'Muerte'}, {key: 'Descarte', label: 'Descarte'}]} activeFilter={decommissionFilter} onFilterChange={setDecommissionFilter as any} />
                             </div>
                         )}
@@ -468,7 +468,7 @@ export default function HerdPage({
                                     <X size={16} /> Cancelar
                                 </button>
                             ) : (
-                                <button onClick={() => setIsSelectionMode(true)} className="flex items-center gap-2 py-1 px-3 text-sm font-semibold rounded-lg text-brand-orange hover:bg-brand-orange/10">
+                                <button onClick={() => setIsSelectionMode(true)} className="flex items-center gap-2 py-1 px-3 text-sm font-semibold rounded-lg text-c-accent hover:bg-c-accent/15">
                                     <ListChecks size={16} /> Seleccionar
                                 </button>
                             )}
@@ -477,12 +477,12 @@ export default function HerdPage({
                                 <button 
                                     onClick={() => setIsBatchActionSheetOpen(true)}
                                     disabled={selectedAnimals.size === 0}
-                                    className="flex items-center gap-2 py-1 px-3 text-sm font-semibold rounded-lg text-brand-orange hover:bg-brand-orange/10 disabled:opacity-50 disabled:hover:bg-transparent disabled:text-zinc-500"
+                                    className="flex items-center gap-2 py-1 px-3 text-sm font-semibold rounded-lg text-c-accent hover:bg-c-accent/15 disabled:opacity-50 disabled:hover:bg-transparent disabled:text-c-text-faint"
                                 >
                                     <Edit size={16} /> Acciones ({selectedAnimals.size})
                                 </button>
                             ) : (
-                                <button onClick={resetAllFilters} className="flex items-center gap-2 text-zinc-400 hover:text-brand-orange text-sm font-semibold py-1 px-3">
+                                <button onClick={resetAllFilters} className="flex items-center gap-2 text-c-text-muted hover:text-c-accent text-sm font-semibold py-1 px-3">
                                     <FilterX size={14} /> Limpiar
                                 </button>
                             )}
@@ -490,16 +490,16 @@ export default function HerdPage({
 
                         {!isSelectionMode && (
                             <div className="flex items-center justify-between text-sm">
-                                <button onClick={() => setIsLatestFilterActive(!isLatestFilterActive)} title={isLatestFilterActive ? "Mostrar todos" : "Mostrar última carga"} className={`flex items-center gap-2 py-1 px-3 font-semibold rounded-lg transition-colors ${isLatestFilterActive ? 'text-brand-orange' : 'text-zinc-400 hover:text-brand-orange'}`}>
+                                <button onClick={() => setIsLatestFilterActive(!isLatestFilterActive)} title={isLatestFilterActive ? "Mostrar todos" : "Mostrar última carga"} className={`flex items-center gap-2 py-1 px-3 font-semibold rounded-lg transition-colors ${isLatestFilterActive ? 'text-c-accent' : 'text-c-text-muted hover:text-c-accent'}`}>
                                     <History size={16} /> {isLatestFilterActive ? 'Viendo Última Carga' : 'Última Carga'}
                                 </button>
-                                <button onClick={() => navigateTo({ name: 'manage-lots' })} className="flex items-center gap-2 text-zinc-400 hover:text-brand-orange font-semibold py-1 px-3">
+                                <button onClick={() => navigateTo({ name: 'manage-lots' })} className="flex items-center gap-2 text-c-text-muted hover:text-c-accent font-semibold py-1 px-3">
                                     <Settings size={14} /> Gestionar Lotes
                                 </button>
                             </div>
                         )}
 
-                        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="w-full bg-brand-glass p-3 rounded-xl text-white border border-brand-border focus:border-brand-orange focus:ring-0 appearance-none">
+                        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="w-full bg-c-surface p-3 rounded-xl text-c-text border border-c-border focus:border-c-accent focus:ring-0 appearance-none">
                             <option value="Todos">Todas las Categorías Zootécnicas</option>
                             {ZOOTECNIC_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
@@ -540,15 +540,15 @@ export default function HerdPage({
                             })}
                         </div>
                     ) : (
-                        <div className="text-center py-10 bg-brand-glass rounded-2xl mx-4">
-                            <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <AlertCircle size={32} className="text-zinc-600" />
+                        <div className="text-center py-10 bg-c-surface rounded-2xl mx-4">
+                            <div className="w-16 h-16 bg-c-surface-2 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <AlertCircle size={32} className="text-c-text-faint" />
                             </div>
-                            <p className="text-zinc-400">{searchTerm ? `No se encontraron resultados para "${searchTerm}"` : "No hay animales que coincidan con los filtros."}</p>
+                            <p className="text-c-text-muted">{searchTerm ? `No se encontraron resultados para "${searchTerm}"` : "No hay animales que coincidan con los filtros."}</p>
                             {categoryFilter !== 'Todos' && (
-                                <button 
+                                <button
                                     onClick={() => setCategoryFilter('Todos')}
-                                    className="mt-4 text-brand-blue text-sm font-bold hover:underline"
+                                    className="mt-4 text-c-accent-sky text-sm font-bold hover:underline"
                                 >
                                     Ver todos los animales
                                 </button>
@@ -611,11 +611,11 @@ export default function HerdPage({
                     {isLotChangeModalOpen && (
                          <Modal isOpen={true} onClose={closeModal} title="Mover a Lote">
                              <div className="space-y-4 p-4">
-                                 <select value={selectedNewLot} onChange={(e) => setSelectedNewLot(e.target.value)} className="w-full bg-zinc-800 p-2 rounded text-white">
+                                 <select value={selectedNewLot} onChange={(e) => setSelectedNewLot(e.target.value)} className="w-full bg-c-surface-2 p-2 rounded text-c-text">
                                      <option value="">Sin Asignar</option>
                                      {lots.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
                                  </select>
-                                 <button onClick={handleUpdateLocation} className="w-full bg-brand-blue py-2 rounded text-white font-bold">Guardar</button>
+                                 <button onClick={handleUpdateLocation} className="w-full bg-c-accent-sky py-2 rounded text-white font-bold">Guardar</button>
                              </div>
                          </Modal>
                     )}

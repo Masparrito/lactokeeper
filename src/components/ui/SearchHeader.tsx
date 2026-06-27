@@ -30,7 +30,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({ title, subtitle, sea
     const headerClasses = [
         "text-center pb-4 relative overflow-hidden",
         isSticky 
-            ? "sticky top-0 z-10 bg-brand-dark/80 backdrop-blur-md border-b border-brand-border px-4" // Se pega y añade fondo
+            ? "sticky top-0 z-10 bg-c-bg/85 backdrop-blur-md border-b border-c-border px-4" // Se pega y añade fondo
             : "pt-4 px-4" // Padding normal si no es sticky
     ].join(' ');
 
@@ -38,8 +38,8 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({ title, subtitle, sea
         <header className={headerClasses}>
             {/* Títulos */}
             <div className={`transition-transform duration-300 ${isSearchVisible ? '-translate-y-20' : 'translate-y-0'}`}>
-                <h1 className="text-2xl font-bold tracking-tight text-white">{title}</h1>
-                <p className="text-md text-zinc-400">{subtitle}</p>
+                <h1 className="text-2xl font-bold tracking-tight text-c-text">{title}</h1>
+                <p className="text-md text-c-text-muted">{subtitle}</p>
             </div>
 
             {/* Barra de Búsqueda */}
@@ -50,7 +50,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({ title, subtitle, sea
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Buscar por ID..."
-                    className="w-full bg-zinc-800 text-white text-lg placeholder-zinc-500 p-3 rounded-xl border-2 border-transparent focus:border-amber-500 focus:ring-0 focus:outline-none"
+                    className="w-full bg-c-surface-2 text-c-text text-lg placeholder-c-text-faint p-3 rounded-xl border-2 border-transparent focus:border-c-accent focus:ring-0 focus:outline-none"
                 />
             </div>
 
@@ -59,7 +59,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({ title, subtitle, sea
                  {/* --- (NUEVO) Añadido px-4 si es sticky --- */}
                 <button 
                     onClick={isSearchVisible ? handleClear : () => setIsSearchVisible(true)}
-                    className={`p-2 text-zinc-400 hover:text-white transition-colors ${isSticky ? 'px-4' : ''}`}
+                    className={`p-2 text-c-text-muted hover:text-c-text transition-colors ${isSticky ? 'px-4' : ''}`}
                 >
                     {isSearchVisible ? <X size={22} /> : <Search size={22} />}
                 </button>

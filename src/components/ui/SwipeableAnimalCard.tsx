@@ -29,9 +29,9 @@ export const SwipeableAnimalCard: React.FC<SwipeableAnimalCardProps> = ({
                 onClick={() => onSelect(animal.id)}
                 className={`
                     relative w-full rounded-2xl p-4 transition-all duration-200 border
-                    ${isSelected 
-                        ? 'bg-brand-blue/10 border-brand-blue' 
-                        : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700 active:scale-[0.99]'
+                    ${isSelected
+                        ? 'bg-c-accent-sky/10 border-c-accent-sky'
+                        : 'bg-c-surface border-c-border hover:border-c-border-strong active:scale-[0.99]'
                     }
                 `}
             >
@@ -44,9 +44,9 @@ export const SwipeableAnimalCard: React.FC<SwipeableAnimalCardProps> = ({
                         {isSelectionMode && (
                             <div className={`
                                 mt-1 w-5 h-5 rounded-full border flex items-center justify-center transition-all
-                                ${isSelected 
-                                    ? 'bg-brand-blue border-brand-blue' 
-                                    : 'border-zinc-600 bg-transparent'
+                                ${isSelected
+                                    ? 'bg-c-accent-sky border-c-accent-sky'
+                                    : 'border-c-border-strong bg-transparent'
                                 }
                             `}>
                                 {isSelected && <CheckCircle2 size={14} className="text-white" />}
@@ -56,11 +56,11 @@ export const SwipeableAnimalCard: React.FC<SwipeableAnimalCardProps> = ({
                         <div className="flex flex-col min-w-0">
                             {/* Línea 1: ID y Nombre */}
                             <div className="flex items-baseline gap-2">
-                                <span className={`text-lg font-bold font-mono tracking-tight ${isSelected ? 'text-brand-blue' : 'text-white'}`}>
+                                <span className={`text-lg font-bold font-mono tracking-tight ${isSelected ? 'text-c-accent-sky' : 'text-c-text'}`}>
                                     {animal.id}
                                 </span>
                                 {animal.name && (
-                                    <span className="text-sm text-zinc-400 truncate max-w-[120px]">
+                                    <span className="text-sm text-c-text-muted truncate max-w-[120px]">
                                         {animal.name}
                                     </span>
                                 )}
@@ -68,16 +68,16 @@ export const SwipeableAnimalCard: React.FC<SwipeableAnimalCardProps> = ({
 
                             {/* Línea 2: Categoría y Edad */}
                             <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-xs font-semibold text-zinc-300 bg-zinc-800 px-2 py-0.5 rounded-md">
+                                <span className="text-xs font-semibold text-c-text-muted bg-c-surface-2 px-2 py-0.5 rounded-md">
                                     {animal.lifecycleStage || 'Sin Categoría'}
                                 </span>
-                                <span className="text-xs text-zinc-500">
+                                <span className="text-xs text-c-text-faint">
                                     • {formatAge(animal.birthDate)}
                                 </span>
                             </div>
 
                             {/* Línea 3: Ubicación */}
-                            <div className="flex items-center gap-1 mt-2 text-zinc-500">
+                            <div className="flex items-center gap-1 mt-2 text-c-text-faint">
                                 <MapPin size={12} />
                                 <span className="text-xs">
                                     {animal.location || 'Sin Ubicación'}
@@ -95,7 +95,7 @@ export const SwipeableAnimalCard: React.FC<SwipeableAnimalCardProps> = ({
                                     e.stopPropagation();
                                     onOpenActions(animal);
                                 }}
-                                className="p-2 -mr-2 -mt-2 text-zinc-500 hover:text-white transition-colors"
+                                className="p-2 -mr-2 -mt-2 text-c-text-faint hover:text-c-text transition-colors"
                             >
                                 <MoreHorizontal size={20} />
                             </button>

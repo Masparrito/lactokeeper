@@ -263,8 +263,8 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
                 <div className="w-full h-[env(safe-area-inset-top)] bg-c-bg" />
                 <div className="w-full h-[54px] flex items-center justify-between px-4 max-w-4xl mx-auto">
                     <div className="flex items-center gap-2">
-                        <div className="p-1 bg-brand-orange/20 rounded-lg">
-                             <GiGoat className="text-brand-orange" size={20}/> 
+                        <div className="p-1 bg-c-accent/15 rounded-lg">
+                             <GiGoat className="text-c-accent" size={20}/>
                         </div>
                         <div>
                             <h1 className="text-lg font-bold text-c-text leading-none">GanaderoOS</h1>
@@ -349,7 +349,7 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
                         const isModuleBtn = item.id === 'modules';
                         const isActive = !isModuleBtn && (item.mapsTo as readonly string[]).includes(page.name);
                         const isAddButton = item.id === 'add-animal';
-                        const activeColor = isAddButton ? 'text-brand-orange' : 'text-brand-blue';
+                        const activeColor = isAddButton ? 'text-c-accent' : 'text-c-accent-sky';
 
                         return (
                             <button 
@@ -361,7 +361,7 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
                                 className="flex-1 flex flex-col items-center justify-center relative group active:scale-95 transition-transform h-full"
                             >
                                 {isActive && (
-                                    <div className={`absolute top-0 w-8 h-0.5 rounded-full shadow-[0_0_8px_currentColor] ${isAddButton ? 'bg-brand-orange' : 'bg-brand-blue'}`} />
+                                    <div className={`absolute top-0 w-8 h-0.5 rounded-full shadow-[0_0_8px_currentColor] ${isAddButton ? 'bg-c-accent' : 'bg-c-accent-sky'}`} />
                                 )}
                                 <div className={`p-1 rounded-xl transition-all duration-300 ${isActive ? `${activeColor} -translate-y-0.5` : (isModuleBtn ? 'text-c-text-muted hover:text-c-text' : 'text-c-text-faint')}`}>
                                     <item.icon className="w-6 h-6" strokeWidth={isActive ? 2.5 : 2} />

@@ -28,10 +28,10 @@ const CategoryChip = ({ title, value, icon: Icon, onClick }: {
 }) => (
     <button 
         onClick={onClick}
-        className="flex-shrink-0 w-32 bg-c-surface backdrop-blur-md rounded-2xl p-4 border border-c-border text-left hover:border-brand-orange/50 hover:bg-c-surface-2 transition-all duration-200 group active:scale-95 shadow-sm"
+        className="flex-shrink-0 w-32 bg-c-surface backdrop-blur-md rounded-2xl p-4 border border-c-border text-left hover:border-c-accent/50 hover:bg-c-surface-2 transition-all duration-200 group active:scale-95 shadow-sm"
     >
         <div className="flex justify-between items-start mb-2">
-            <Icon className="w-5 h-5 text-c-text-faint group-hover:text-brand-orange transition-colors" />
+            <Icon className="w-5 h-5 text-c-text-faint group-hover:text-c-accent transition-colors" />
         </div>
         <p className="text-2xl font-bold text-c-text tracking-tight">{value}</p>
         <p className="text-[10px] font-bold text-c-text-faint uppercase tracking-wider mt-1">{title}</p>
@@ -182,7 +182,7 @@ export default function LotsDashboardPage({ navigateTo, initialTab }: LotsDashbo
                             </button>
                             <div className="border-l border-c-border h-10 mx-2 self-center"></div>
                             <button onClick={() => navigateTo({ name: 'herd', kpiFilter: 'vientres' })} className="hover:opacity-80 transition-opacity group">
-                                <span className="text-5xl font-bold text-brand-orange group-hover:text-orange-400 transition-colors tracking-tight">{herdAnalytics.totalVientres}</span>
+                                <span className="text-5xl font-bold text-c-accent-gold group-hover:opacity-80 transition-opacity tracking-tight">{herdAnalytics.totalVientres}</span>
                                 <p className="text-[10px] text-c-text-faint uppercase tracking-widest font-bold mt-1">Vientres</p>
                             </button>
                         </div>
@@ -224,8 +224,8 @@ export default function LotsDashboardPage({ navigateTo, initialTab }: LotsDashbo
                             </button>
                         ) : (
                             <button 
-                                onClick={() => handleOpenSeasonModal()} 
-                                className="w-10 h-10 bg-brand-blue hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-all shadow-lg shadow-blue-900/20 active:scale-90"
+                                onClick={() => handleOpenSeasonModal()}
+                                className="w-10 h-10 bg-c-accent-sky hover:opacity-90 text-white rounded-full flex items-center justify-center transition-all shadow-lg shadow-sky-900/20 active:scale-90"
                             >
                                 <Plus size={24} />
                             </button>

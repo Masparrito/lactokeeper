@@ -43,6 +43,9 @@ export default {
         'c-text-faint':    'rgb(var(--c-text-faint) / <alpha-value>)',
         'c-border':        'rgb(var(--c-border) / <alpha-value>)',
         'c-border-strong': 'rgb(var(--c-border-strong) / <alpha-value>)',
+        'c-accent':        'rgb(var(--c-accent) / <alpha-value>)',
+        'c-accent-sky':    'rgb(var(--c-accent-sky) / <alpha-value>)',
+        'c-accent-gold':   'rgb(var(--c-accent-gold) / <alpha-value>)',
       }
     },
   },
