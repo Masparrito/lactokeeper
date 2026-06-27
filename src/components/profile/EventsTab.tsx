@@ -17,9 +17,9 @@ const getEventStyle = (type: string) => {
     switch (type) {
         // --- GENERAL ---
         case 'Nacimiento': return { icon: Leaf, color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' };
-        case 'Registro': return { icon: FileText, color: 'text-zinc-300', bg: 'bg-zinc-800', border: 'border-zinc-700' };
-        case 'Ingreso': return { icon: FileText, color: 'text-zinc-300', bg: 'bg-zinc-800', border: 'border-zinc-700' };
-        case 'Baja de Rebaño': return { icon: FileText, color: 'text-zinc-400', bg: 'bg-zinc-900', border: 'border-zinc-800' };
+        case 'Registro': return { icon: FileText, color: 'text-c-text-strong', bg: 'bg-c-surface-2', border: 'border-c-border-strong' };
+        case 'Ingreso': return { icon: FileText, color: 'text-c-text-strong', bg: 'bg-c-surface-2', border: 'border-c-border-strong' };
+        case 'Baja de Rebaño': return { icon: FileText, color: 'text-c-text-muted', bg: 'bg-c-surface', border: 'border-c-border' };
 
         // --- REPRODUCTIVOS ---
         case 'Parto': return { icon: Baby, color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/20' };
@@ -43,7 +43,7 @@ const getEventStyle = (type: string) => {
         case 'Pesaje Corporal': return { icon: TrendingUp, color: 'text-brand-green', bg: 'bg-brand-green/10', border: 'border-brand-green/20' };
         case 'Pesaje Lechero': return { icon: Droplets, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' };
         
-        default: return { icon: FileText, color: 'text-zinc-400', bg: 'bg-zinc-800', border: 'border-zinc-700' };
+        default: return { icon: FileText, color: 'text-c-text-muted', bg: 'bg-c-surface-2', border: 'border-c-border-strong' };
     }
 };
 
@@ -113,12 +113,12 @@ const EventCard = ({ event, onDeleteRequest }: { event: TimelineEvent, onDeleteR
             <div className="relative w-full overflow-hidden rounded-xl mb-2 last:mb-0">
                 
                 {/* --- CAPA TRASERA: BOTONES --- */}
-                <div className="absolute inset-y-0 right-0 flex items-center z-0 h-full bg-zinc-900 rounded-xl">
-                    <button onClick={handleEdit} disabled={isVirtualEvent} className="h-full w-[65px] flex flex-col items-center justify-center bg-brand-blue text-white disabled:bg-zinc-700 disabled:opacity-50 border-r border-black/10">
+                <div className="absolute inset-y-0 right-0 flex items-center z-0 h-full bg-c-surface rounded-xl">
+                    <button onClick={handleEdit} disabled={isVirtualEvent} className="h-full w-[65px] flex flex-col items-center justify-center bg-c-accent-sky text-white disabled:bg-c-surface-2 disabled:opacity-50 border-r border-c-border">
                         <Edit size={18} />
                         <span className="text-[10px] mt-1 font-semibold">Editar</span>
                     </button>
-                    <button onClick={handleDeleteClick} disabled={isVirtualEvent} className="h-full w-[65px] flex flex-col items-center justify-center bg-brand-red text-white disabled:bg-zinc-700 disabled:opacity-50 rounded-r-xl">
+                    <button onClick={handleDeleteClick} disabled={isVirtualEvent} className="h-full w-[65px] flex flex-col items-center justify-center bg-brand-red text-white disabled:bg-c-surface-2 disabled:opacity-50 rounded-r-xl">
                         <Trash2 size={18} />
                         <span className="text-[10px] mt-1 font-semibold">Eliminar</span>
                     </button>
@@ -136,7 +136,7 @@ const EventCard = ({ event, onDeleteRequest }: { event: TimelineEvent, onDeleteR
                     transition={{ type: "spring", stiffness: 400, damping: 40 }}
                     // CLAVE: 'bg-zinc-900' hace que la tarjeta sea sólida y tape los botones
                     // 'border' aplica el color del borde según el tipo de evento
-                    className={`relative w-full z-10 cursor-pointer flex items-start gap-3 p-3 bg-zinc-900 border ${style.border} rounded-xl shadow-sm`}
+                    className={`relative w-full z-10 cursor-pointer flex items-start gap-3 p-3 bg-c-surface border ${style.border} rounded-xl shadow-sm`}
                 >
                     <div className={`flex-shrink-0 mt-0.5 p-1.5 rounded-full ${style.bg} ${style.color}`}>
                         <Icon size={18} />
@@ -145,22 +145,22 @@ const EventCard = ({ event, onDeleteRequest }: { event: TimelineEvent, onDeleteR
                     <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-baseline">
                             <h4 className={`text-sm font-bold ${style.color}`}>{event.type}</h4>
-                            <span className="text-[10px] text-zinc-500 font-mono">{displayDate}</span>
+                            <span className="text-[10px] text-c-text-faint font-mono">{displayDate}</span>
                         </div>
-                        
-                        <p className="text-xs text-zinc-300 mt-0.5 break-words leading-snug">
+
+                        <p className="text-xs text-c-text-strong mt-0.5 break-words leading-snug">
                             {event.details}
                         </p>
                         
                         {event.notes && (
-                            <div className="mt-1.5 pt-1.5 border-t border-white/5 flex gap-1.5">
+                            <div className="mt-1.5 pt-1.5 border-t border-c-border flex gap-1.5">
                                 <span className="text-[10px] text-yellow-500/70 italic">Nota:</span>
-                                <p className="text-[10px] text-zinc-400 italic line-clamp-2">{event.notes}</p>
+                                <p className="text-[10px] text-c-text-muted italic line-clamp-2">{event.notes}</p>
                             </div>
                         )}
 
                         {event.lotName && (
-                            <p className="text-[9px] text-zinc-500 mt-1 flex items-center gap-1">
+                            <p className="text-[9px] text-c-text-faint mt-1 flex items-center gap-1">
                                 <ArrowRightLeft size={9} /> {event.lotName}
                             </p>
                         )}
@@ -193,7 +193,7 @@ const CategorySection = ({ title, events, colorClass, onDeleteRequest }: { title
             <h3 className={`text-xs font-bold uppercase tracking-widest mb-3 pl-1 ${colorClass} flex items-center justify-between`}>
                 <span className="flex items-center gap-2">
                     {title}
-                    <span className="bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded text-[9px] tabular-nums">
+                    <span className="bg-c-surface-2 text-c-text-muted px-1.5 py-0.5 rounded text-[9px] tabular-nums">
                         {events.length}
                     </span>
                 </span>
@@ -212,7 +212,7 @@ const CategorySection = ({ title, events, colorClass, onDeleteRequest }: { title
             {hasMore && (
                 <button 
                     onClick={() => setIsExpanded(!isExpanded)}
-                    className="w-full flex items-center justify-center gap-1 text-[10px] text-zinc-500 py-2 hover:text-white transition-colors"
+                    className="w-full flex items-center justify-center gap-1 text-[10px] text-c-text-faint py-2 hover:text-c-text transition-colors"
                 >
                     {isExpanded ? (
                         <>Ver menos <ChevronUp size={12} /></>
@@ -290,10 +290,10 @@ export const EventsTab = ({ events }: { events: TimelineEvent[] }) => {
     if (!events || events.length === 0) {
         return (
             <div className="text-center py-12 flex flex-col items-center">
-                <div className="p-4 bg-zinc-800/50 rounded-full mb-3">
-                    <Calendar className="w-8 h-8 text-zinc-600" />
+                <div className="p-4 bg-c-surface-2 rounded-full mb-3">
+                    <Calendar className="w-8 h-8 text-c-text-faint" />
                 </div>
-                <p className="text-zinc-500 font-medium">No hay eventos registrados aún.</p>
+                <p className="text-c-text-faint font-medium">No hay eventos registrados aún.</p>
             </div>
         );
     }

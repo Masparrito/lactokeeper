@@ -12,8 +12,8 @@ const getEventStyle = (type: string) => {
     switch (type) {
         // --- GENERAL ---
         case 'Nacimiento': return { icon: Leaf, color: 'text-green-400', bg: 'bg-green-500/10' };
-        case 'Registro': return { icon: FileText, color: 'text-zinc-300', bg: 'bg-zinc-800' };
-        case 'Baja de Rebaño': return { icon: FileText, color: 'text-zinc-400', bg: 'bg-zinc-900' };
+        case 'Registro': return { icon: FileText, color: 'text-c-text-strong', bg: 'bg-c-surface-2' };
+        case 'Baja de Rebaño': return { icon: FileText, color: 'text-c-text-muted', bg: 'bg-c-surface' };
 
         // --- REPRODUCTIVOS ---
         case 'Parto': return { icon: Baby, color: 'text-pink-400', bg: 'bg-pink-500/10' };
@@ -34,7 +34,7 @@ const getEventStyle = (type: string) => {
         case 'Pesaje Corporal': return { icon: TrendingUp, color: 'text-brand-green', bg: 'bg-brand-green/10' };
         case 'Pesaje Lechero': return { icon: Droplets, color: 'text-cyan-400', bg: 'bg-cyan-500/10' };
         
-        default: return { icon: FileText, color: 'text-zinc-400', bg: 'bg-zinc-800' };
+        default: return { icon: FileText, color: 'text-c-text-muted', bg: 'bg-c-surface-2' };
     }
 };
 
@@ -55,7 +55,7 @@ const MiniEventRow = ({ event }: { event: TimelineEvent }) => {
     }
 
     return (
-        <div className="flex items-start gap-4 p-4 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors cursor-default">
+        <div className="flex items-start gap-4 p-4 border-b border-c-border last:border-0 hover:bg-c-surface-2 transition-colors cursor-default">
             <div className={`mt-1 p-2.5 rounded-xl flex-shrink-0 ${style.bg} ${style.color}`}>
                 <Icon size={20} />
             </div>
@@ -63,15 +63,15 @@ const MiniEventRow = ({ event }: { event: TimelineEvent }) => {
             <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start mb-1">
                     <span className={`text-sm font-bold ${style.color}`}>{event.type}</span>
-                    <span className="text-xs text-zinc-500 font-mono ml-2 pt-0.5">{displayDate}</span>
+                    <span className="text-xs text-c-text-faint font-mono ml-2 pt-0.5">{displayDate}</span>
                 </div>
-                
-                <p className="text-sm text-zinc-300 leading-relaxed">
+
+                <p className="text-sm text-c-text-strong leading-relaxed">
                     {event.details}
                 </p>
                 
                 {event.lotName && (
-                    <p className="text-xs text-zinc-500 mt-1.5 flex items-center gap-1.5">
+                    <p className="text-xs text-c-text-faint mt-1.5 flex items-center gap-1.5">
                         <ArrowRightLeft size={12} /> <span>{event.lotName}</span>
                     </p>
                 )}
@@ -117,9 +117,9 @@ export const RecentEvents = ({ events }: { events: TimelineEvent[] }) => {
 
     if (!events || events.length === 0) {
         return (
-            <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-2xl p-8 text-center mt-4">
-                <Calendar className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
-                <p className="text-base text-zinc-500">Sin actividad reciente</p>
+            <div className="bg-c-surface border border-c-border rounded-2xl p-8 text-center mt-4">
+                <Calendar className="w-10 h-10 text-c-text-faint mx-auto mb-3" />
+                <p className="text-base text-c-text-faint">Sin actividad reciente</p>
             </div>
         );
     }
@@ -129,9 +129,9 @@ export const RecentEvents = ({ events }: { events: TimelineEvent[] }) => {
             
             {/* 1. GENERALES */}
             {categorizedEvents.General.length > 0 && (
-                <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl overflow-hidden">
-                    <div className="px-4 py-3 bg-zinc-800/50 border-b border-zinc-800">
-                        <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">General e Hitos</span>
+                <div className="bg-c-surface border border-c-border rounded-2xl overflow-hidden">
+                    <div className="px-4 py-3 bg-c-surface-2 border-b border-c-border">
+                        <span className="text-xs font-bold uppercase tracking-widest text-c-text-muted">General e Hitos</span>
                     </div>
                     <div>
                         {categorizedEvents.General.map(event => (
@@ -143,7 +143,7 @@ export const RecentEvents = ({ events }: { events: TimelineEvent[] }) => {
 
             {/* 2. REPRODUCTIVOS */}
             {categorizedEvents.Reproductivo.length > 0 && (
-                <div className="bg-zinc-900/80 border border-pink-500/20 rounded-2xl overflow-hidden">
+                <div className="bg-c-surface border border-pink-500/20 rounded-2xl overflow-hidden">
                     <div className="px-4 py-3 bg-pink-500/5 border-b border-pink-500/10">
                         <span className="text-xs font-bold uppercase tracking-widest text-pink-400">Reproductivos</span>
                     </div>
@@ -157,7 +157,7 @@ export const RecentEvents = ({ events }: { events: TimelineEvent[] }) => {
 
             {/* 3. PRODUCTIVOS */}
             {categorizedEvents.Productivo.length > 0 && (
-                <div className="bg-zinc-900/80 border border-yellow-500/20 rounded-2xl overflow-hidden">
+                <div className="bg-c-surface border border-yellow-500/20 rounded-2xl overflow-hidden">
                     <div className="px-4 py-3 bg-yellow-500/5 border-b border-yellow-500/10">
                         <span className="text-xs font-bold uppercase tracking-widest text-yellow-400">Productivos</span>
                     </div>
@@ -171,8 +171,8 @@ export const RecentEvents = ({ events }: { events: TimelineEvent[] }) => {
 
             {/* 4. MANEJO */}
             {categorizedEvents.Manejo.length > 0 && (
-                <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl overflow-hidden">
-                    <div className="px-4 py-3 bg-zinc-800/50 border-b border-zinc-800">
+                <div className="bg-c-surface border border-c-border rounded-2xl overflow-hidden">
+                    <div className="px-4 py-3 bg-c-surface-2 border-b border-c-border">
                         <span className="text-xs font-bold uppercase tracking-widest text-blue-400">Manejo y Sanidad</span>
                     </div>
                     <div>

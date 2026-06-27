@@ -51,19 +51,19 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ isOpen, onClose,
             {/* 2. Contenedor del Panel (para que no se cierre al hacer clic en él) */}
             <div
                 onClick={(e) => e.stopPropagation()}
-                className="fixed bottom-0 left-0 right-0 w-full bg-ios-modal-bg rounded-t-2xl p-4 shadow-lg animate-slide-up"
+                className="fixed bottom-0 left-0 right-0 w-full bg-c-surface rounded-t-2xl p-4 shadow-lg animate-slide-up"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom, 1rem)' }}
             >
                 {/* Botón de cerrar (la X) */}
                 <button
                     onClick={onClose}
-                    className="absolute top-3 right-3 p-2 text-zinc-500 hover:text-white rounded-full hover:bg-zinc-700/50"
+                    className="absolute top-3 right-3 p-2 text-c-text-faint hover:text-c-text rounded-full hover:bg-c-surface-2"
                     aria-label="Cerrar"
                 >
                     <X size={20} />
                 </button>
-                
-                <h2 className="text-lg font-semibold text-white text-center mb-4">
+
+                <h2 className="text-lg font-semibold text-c-text text-center mb-4">
                     Seleccionar Módulo
                 </h2>
 
@@ -73,14 +73,14 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ isOpen, onClose,
                         <button
                             key={module.id}
                             onClick={() => handleModuleSelect(module.id as AppModule)}
-                            className="flex flex-col items-center justify-center p-4 bg-brand-glass hover:bg-zinc-800 border border-brand-border rounded-2xl transition-colors"
+                            className="flex flex-col items-center justify-center p-4 bg-c-surface-2 hover:bg-c-border/40 border border-c-border rounded-2xl transition-colors"
                             aria-label={`Cambiar al módulo ${module.name}`}
                         >
                             {/* Icono con fondo de color */}
                             <div className={`flex items-center justify-center w-14 h-14 rounded-full ${module.color} bg-opacity-20 mb-2`}>
                                 <module.icon size={28} className={module.color} />
                             </div>
-                            <span className="text-white font-semibold text-sm">{module.name}</span>
+                            <span className="text-c-text font-semibold text-sm">{module.name}</span>
                         </button>
                     ))}
                 </div>

@@ -29,13 +29,13 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
       className={`fixed inset-0 bg-black/60 backdrop-blur-md flex justify-center z-50 animate-fade-in ${containerClasses}`}
       onClick={onClose}
     >
-      <div 
-        className={`bg-ios-modal-bg border border-zinc-700/80 shadow-2xl text-white transform transition-all animate-slide-up ${modalSizeClasses[size]}`}
+      <div
+        className={`bg-c-surface border border-c-border shadow-2xl text-c-text transform transition-all animate-slide-up ${modalSizeClasses[size]}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex-shrink-0 flex justify-between items-center p-4 border-b border-zinc-800/80">
-          <h2 className="text-xl font-semibold text-white tracking-tight">{title}</h2>
-          <button onClick={onClose} className="p-1 rounded-full text-zinc-500 hover:text-white hover:bg-zinc-700/50 transition-colors">
+        <header className="flex-shrink-0 flex justify-between items-center p-4 border-b border-c-border">
+          <h2 className="text-xl font-semibold text-c-text tracking-tight">{title}</h2>
+          <button onClick={onClose} className="p-1 rounded-full text-c-text-faint hover:text-c-text hover:bg-c-surface-2 transition-colors">
             <X size={20} />
           </button>
         </header>

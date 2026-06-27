@@ -356,39 +356,39 @@ export default function RebanoProfilePage({
 
     return (
         <>
-            <div ref={parentRef} className="w-full max-w-2xl mx-auto bg-[#09090b] min-h-screen text-gray-200 flex flex-col">
-                <header className="p-4 space-y-4 sticky top-0 z-20 bg-[#09090b]/95 backdrop-blur-sm border-b border-zinc-800">
+            <div ref={parentRef} className="w-full max-w-2xl mx-auto bg-c-bg min-h-screen text-c-text-strong flex flex-col">
+                <header className="p-4 space-y-4 sticky top-0 z-20 bg-c-bg/95 backdrop-blur-sm border-b border-c-border">
                     <div className="flex justify-between items-start">
-                        <button onClick={onBack} className="flex items-center gap-1 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={20} /><span>Volver</span></button>
+                        <button onClick={onBack} className="flex items-center gap-1 text-c-text-muted hover:text-c-text transition-colors"><ArrowLeft size={20} /><span>Volver</span></button>
                         <div className="flex gap-2">
                             {isEditing ? (
                                 <>
-                                    <button onClick={handleCancel} className="bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2"><X size={18} /></button>
-                                    <button onClick={handleSave} disabled={saveStatus !== 'idle'} className="bg-brand-green hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 disabled:opacity-50 min-w-[100px] justify-center">{saveStatus === 'saving' ? <span className="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full" /> : <Save size={18} />}</button>
+                                    <button onClick={handleCancel} className="bg-c-surface-2 hover:bg-c-surface-3 text-c-text font-bold py-2 px-4 rounded-lg flex items-center gap-2"><X size={18} /></button>
+                                    <button onClick={handleSave} disabled={saveStatus !== 'idle'} className="bg-c-accent hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 disabled:opacity-50 min-w-[100px] justify-center">{saveStatus === 'saving' ? <span className="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full" /> : <Save size={18} />}</button>
                                 </>
                             ) : (
-                                <button onClick={() => setIsEditing(true)} className={`bg-brand-orange/20 hover:bg-brand-orange/30 text-brand-orange font-bold py-2 px-4 rounded-lg flex items-center gap-2`}><Edit size={16} /><span>Editar</span></button>
+                                <button onClick={() => setIsEditing(true)} className={`bg-c-accent/15 hover:bg-c-accent/25 text-c-accent font-bold py-2 px-4 rounded-lg flex items-center gap-2`}><Edit size={16} /><span>Editar</span></button>
                             )}
                         </div>
                     </div>
                     
                     <div className="flex justify-between items-center">
                         <div className="min-w-0 flex-1">
-                            {isEditing ? ( <FormInput type="text" value={displayId} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditedData(prev => ({ ...prev, id: e.target.value.toUpperCase() }))} placeholder="ID DEL ANIMAL" className="text-2xl font-mono font-bold tracking-tight text-white p-2" /> ) : ( <h1 className="text-2xl font-mono font-bold tracking-tight text-white truncate">{displayId}</h1> )}
-                            {isEditing ? ( <FormInput type="text" value={displayFormattedName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditedData(prev => ({ ...prev, name: e.target.value.toUpperCase() }))} placeholder="Nombre del Animal" className="text-lg text-zinc-400 -mt-0 p-2" /> ) : ( <p className="text-lg text-zinc-400 truncate -mt-1">{displayFormattedName}</p> )}
+                            {isEditing ? ( <FormInput type="text" value={displayId} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditedData(prev => ({ ...prev, id: e.target.value.toUpperCase() }))} placeholder="ID DEL ANIMAL" className="text-2xl font-mono font-bold tracking-tight text-c-text p-2" /> ) : ( <h1 className="text-2xl font-mono font-bold tracking-tight text-c-text truncate">{displayId}</h1> )}
+                            {isEditing ? ( <FormInput type="text" value={displayFormattedName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditedData(prev => ({ ...prev, name: e.target.value.toUpperCase() }))} placeholder="Nombre del Animal" className="text-lg text-c-text-muted -mt-0 p-2" /> ) : ( <p className="text-lg text-c-text-muted truncate -mt-1">{displayFormattedName}</p> )}
                         </div>
                     </div>
                     
                     {/* Acciones Rápidas */}
-                    {!isEditing && <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>{quickActions.map((action) => ( <button key={action.label} onClick={action.onClick} disabled={action.disabled} className={`flex-shrink-0 flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 ${action.color} font-semibold px-3 py-1.5 rounded-full text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}><action.icon size={14} /><span>{action.label}</span></button>))}</div>}
+                    {!isEditing && <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>{quickActions.map((action) => ( <button key={action.label} onClick={action.onClick} disabled={action.disabled} className={`flex-shrink-0 flex items-center gap-2 bg-c-surface-2 hover:bg-c-surface-3 ${action.color} font-semibold px-3 py-1.5 rounded-full text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}><action.icon size={14} /><span>{action.label}</span></button>))}</div>}
                 </header>
 
                 <main className="px-4 space-y-4 pb-32 flex-1"> 
-                    <div className="flex bg-brand-glass rounded-xl p-1 border border-brand-border">
-                        <button onClick={() => setActiveTab('ficha')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'ficha' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Ficha</button>
-                        <button onClick={() => setActiveTab('genealogia')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'genealogia' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Genealogía</button>
-                        <button onClick={() => setActiveTab('progenie')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'progenie' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Progenie</button>
-                        <button onClick={() => setActiveTab('eventos')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'eventos' ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>Eventos</button>
+                    <div className="flex bg-c-surface-2 rounded-xl p-1 border border-c-border">
+                        <button onClick={() => setActiveTab('ficha')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'ficha' ? 'bg-c-surface text-c-text shadow-sm' : 'text-c-text-muted'}`}>Ficha</button>
+                        <button onClick={() => setActiveTab('genealogia')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'genealogia' ? 'bg-c-surface text-c-text shadow-sm' : 'text-c-text-muted'}`}>Genealogía</button>
+                        <button onClick={() => setActiveTab('progenie')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'progenie' ? 'bg-c-surface text-c-text shadow-sm' : 'text-c-text-muted'}`}>Progenie</button>
+                        <button onClick={() => setActiveTab('eventos')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'eventos' ? 'bg-c-surface text-c-text shadow-sm' : 'text-c-text-muted'}`}>Eventos</button>
                     </div>
 
                     {activeTab === 'ficha' && (
@@ -414,12 +414,12 @@ export default function RebanoProfilePage({
                                 onEditFather={() => setFatherSelectorOpen(true)}
                                 onEditMother={() => setMotherSelectorOpen(true)}
                             />
-                            {!isEditing && <div className="pt-2"><h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2 px-1">Actividad Reciente</h3><RecentEvents events={animalEvents} /></div>}
+                            {!isEditing && <div className="pt-2"><h3 className="text-[10px] font-bold uppercase tracking-widest text-c-text-faint mb-2 px-1">Actividad Reciente</h3><RecentEvents events={animalEvents} /></div>}
                         </div>
                     )}
-                    {activeTab === 'genealogia' && <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border min-h-[200px]"><GeneticsTab animal={animal} rootNode={pedigreeRoot} navigateTo={navigateTo} onExportPDF={handleExportPedigree} isExporting={isExporting} /></div>}
-                    {activeTab === 'progenie' && <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border min-h-[200px]"><ProgenyTab offspring={progeny} navigateTo={navigateTo} /></div>}
-                    {activeTab === 'eventos' && <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border min-h-[200px]"><EventsTab events={animalEvents} /></div>}
+                    {activeTab === 'genealogia' && <div className="bg-c-surface backdrop-blur-xl rounded-2xl p-4 border border-c-border min-h-[200px]"><GeneticsTab animal={animal} rootNode={pedigreeRoot} navigateTo={navigateTo} onExportPDF={handleExportPedigree} isExporting={isExporting} /></div>}
+                    {activeTab === 'progenie' && <div className="bg-c-surface backdrop-blur-xl rounded-2xl p-4 border border-c-border min-h-[200px]"><ProgenyTab offspring={progeny} navigateTo={navigateTo} /></div>}
+                    {activeTab === 'eventos' && <div className="bg-c-surface backdrop-blur-xl rounded-2xl p-4 border border-c-border min-h-[200px]"><EventsTab events={animalEvents} /></div>}
                 </main>
             </div>
 
@@ -428,8 +428,8 @@ export default function RebanoProfilePage({
             {/* MODALES DE ACCIÓN */}
             <Modal isOpen={isLotChangeModalOpen} onClose={() => setLotChangeModalOpen(false)} title={`Mover a ${formatAnimalDisplay(animal)}`}>
                 <div className="space-y-4">
-                    <div><label className="block text-sm font-medium text-zinc-400 mb-1">Seleccionar nuevo lote</label><div className="flex items-center gap-2"><FormSelect value={selectedNewLot} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedNewLot(e.target.value)}><option value="">Sin Asignar</option>{lots.map(lot => <option key={lot.id} value={lot.name}>{lot.name}</option>)}</FormSelect><button type="button" onClick={() => { setLotChangeModalOpen(false); setAddLotModalOpen(true); }} className="p-3 bg-brand-orange hover:bg-orange-600 text-white rounded-xl"><PlusCircle size={24} /></button></div></div>
-                    <div className="flex justify-end gap-3 pt-2"><button onClick={() => setLotChangeModalOpen(false)} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg text-white">Cancelar</button><button onClick={handleUpdateLocation} className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg">Guardar Cambio</button></div>
+                    <div><label className="block text-sm font-medium text-c-text-muted mb-1">Seleccionar nuevo lote</label><div className="flex items-center gap-2"><FormSelect value={selectedNewLot} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedNewLot(e.target.value)}><option value="">Sin Asignar</option>{lots.map(lot => <option key={lot.id} value={lot.name}>{lot.name}</option>)}</FormSelect><button type="button" onClick={() => { setLotChangeModalOpen(false); setAddLotModalOpen(true); }} className="p-3 bg-c-accent hover:bg-green-600 text-white rounded-xl"><PlusCircle size={24} /></button></div></div>
+                    <div className="flex justify-end gap-3 pt-2"><button onClick={() => setLotChangeModalOpen(false)} className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-3 font-semibold rounded-lg text-c-text">Cancelar</button><button onClick={handleUpdateLocation} className="px-5 py-2 bg-c-accent hover:bg-green-600 text-white font-bold rounded-lg">Guardar Cambio</button></div>
                 </div>
             </Modal>
             
@@ -457,7 +457,7 @@ export default function RebanoProfilePage({
             <AnimalSelectorModal isOpen={isMotherSelectorOpen} onClose={() => setMotherSelectorOpen(false)} onSelect={(id) => { setEditedData(prev => ({ ...prev, motherId: id })); setMotherSelectorOpen(false); }} animals={mothers} title="Seleccionar Madre" filterSex="Hembra" />
             <AnimalSelectorModal isOpen={isFatherSelectorOpen} onClose={() => setFatherSelectorOpen(false)} onSelect={(id) => { setEditedData(prev => ({ ...prev, fatherId: id })); setFatherSelectorOpen(false); }} animals={allFathers} title="Seleccionar Padre" filterSex="Macho" />
             {isParentModalOpen && <AddQuickParentModal type={isParentModalOpen} onClose={() => setIsParentModalOpen(null)} onSave={handleSaveQuickParent} />}
-            <Modal isOpen={isPedigreeModalOpen} onClose={() => setIsPedigreeModalOpen(false)} title={`Genealogía de ${formatAnimalDisplay(animal)}`} size="fullscreen"><div className="w-full h-full overflow-auto p-4 bg-brand-darkest"><div className="flex justify-end mb-4"><button onClick={handleExportPedigree} disabled={isExporting} className="flex items-center gap-2 bg-zinc-700 hover:bg-zinc-600 text-white font-semibold py-1.5 px-3 rounded-lg transition-colors text-sm disabled:opacity-50"><Printer size={16} />{isExporting ? 'Generando...' : 'Exportar PDF'}</button></div><PedigreeChart rootNode={pedigreeRoot} onAncestorClick={(id: string) => { setIsPedigreeModalOpen(false); setTimeout(() => navigateTo({ name: 'rebano-profile', animalId: id }), 50); }} /></div></Modal>
+            <Modal isOpen={isPedigreeModalOpen} onClose={() => setIsPedigreeModalOpen(false)} title={`Genealogía de ${formatAnimalDisplay(animal)}`} size="fullscreen"><div className="w-full h-full overflow-auto p-4 bg-c-bg"><div className="flex justify-end mb-4"><button onClick={handleExportPedigree} disabled={isExporting} className="flex items-center gap-2 bg-c-surface-2 hover:bg-c-surface-3 text-c-text font-semibold py-1.5 px-3 rounded-lg transition-colors text-sm disabled:opacity-50"><Printer size={16} />{isExporting ? 'Generando...' : 'Exportar PDF'}</button></div><PedigreeChart rootNode={pedigreeRoot} onAncestorClick={(id: string) => { setIsPedigreeModalOpen(false); setTimeout(() => navigateTo({ name: 'rebano-profile', animalId: id }), 50); }} /></div></Modal>
             <StatusLegendModal isOpen={isStatusLegendOpen} onClose={() => setIsStatusLegendOpen(false)} />
         </>
     );

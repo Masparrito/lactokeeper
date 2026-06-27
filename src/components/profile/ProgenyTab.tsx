@@ -14,7 +14,7 @@ interface ProgenyTabProps {
 
 export const ProgenyTab: React.FC<ProgenyTabProps> = ({ offspring, navigateTo }) => {
     if (offspring.length === 0) {
-        return <div className="text-center p-8 text-zinc-500">Este animal no tiene descendencia registrada.</div>;
+        return <div className="text-center p-8 text-c-text-faint">Este animal no tiene descendencia registrada.</div>;
     }
     return (
         <div className="space-y-2">
@@ -24,16 +24,16 @@ export const ProgenyTab: React.FC<ProgenyTabProps> = ({ offspring, navigateTo })
                     <button
                         key={child.id}
                         onClick={() => navigateTo({ name: 'rebano-profile', animalId: child.id })}
-                        className="w-full text-left p-3 bg-black/20 hover:bg-zinc-800/60 rounded-lg transition-colors flex justify-between items-center group"
+                        className="w-full text-left p-3 bg-c-surface-2 hover:bg-c-surface-2 rounded-lg transition-colors flex justify-between items-center group"
                     >
                         <div className="min-w-0 pr-3">
-                            <p className="font-mono font-semibold text-base text-white truncate">{child.id.toUpperCase()}</p>
-                            {formattedName && (<p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>)}
-                            <div className="text-xs text-zinc-500 mt-1 min-h-[1rem] truncate">
+                            <p className="font-mono font-semibold text-base text-c-text truncate">{child.id.toUpperCase()}</p>
+                            {formattedName && (<p className="text-sm font-normal text-c-text-strong truncate">{formattedName}</p>)}
+                            <div className="text-xs text-c-text-faint mt-1 min-h-[1rem] truncate">
                                 <span>{child.sex} | {formatAge(child.birthDate)} | Lote: {child.location || 'N/A'}</span>
                             </div>
                         </div>
-                        <ChevronRight className="text-zinc-600 group-hover:text-white transition-colors flex-shrink-0" />
+                        <ChevronRight className="text-c-text-faint group-hover:text-c-text transition-colors flex-shrink-0" />
                     </button>
                 )
             })}

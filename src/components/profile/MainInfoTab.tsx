@@ -106,7 +106,7 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
                         {animal.sex === 'Hembra' && (
                             <StatusIcons statuses={statusObjects} sex={animal.sex} size={16} />
                         )}
-                        <button onClick={onOpenLegend} title="Ver leyenda de estados" className="p-1 text-zinc-500 hover:text-white">
+                        <button onClick={onOpenLegend} title="Ver leyenda de estados" className="p-1 text-c-text-faint hover:text-c-text">
                             <Info size={16} />
                         </button>
                     </div>
@@ -140,7 +140,7 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
                             <option value="Indefinido">Indefinido</option>
                         </FormSelect>
                         {isEditing && isNativo && (
-                             <p className="text-xs text-zinc-500 mt-1">La categoría de animales nativos se calcula automáticamente.</p>
+                             <p className="text-xs text-c-text-faint mt-1">La categoría de animales nativos se calcula automáticamente.</p>
                         )}
                     </InfoRow>
 
@@ -154,7 +154,7 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
                                 <option value="">Sin Asignar</option>
                                 {lots.map(lot => <option key={lot.id} value={lot.name}>{lot.name}</option>)}
                             </FormSelect>
-                            <button type="button" onClick={onAddLotClick} className="p-2.5 bg-zinc-700 hover:bg-zinc-600 text-brand-orange rounded-lg"><Plus size={18} /></button>
+                            <button type="button" onClick={onAddLotClick} className="p-2.5 bg-c-surface-2 hover:bg-c-surface-2 text-c-accent rounded-lg"><Plus size={18} /></button>
                         </div>
                     </InfoRow>
                     <InfoRow label="Edad" value={formattedAge} />
@@ -173,10 +173,10 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
                 </div>
             </FormGroup>
 
-            <div className="bg-brand-glass rounded-2xl border border-brand-border overflow-hidden">
+            <div className="bg-c-surface rounded-2xl border border-c-border overflow-hidden">
                 <div className="flex justify-between items-center px-4 pt-4 pb-2">
-                    <h2 className="text-zinc-400 font-semibold text-sm uppercase tracking-wide">Genética</h2>
-                    <button onClick={onOpenPedigree} title="Ver Árbol Genealógico" className="p-1 text-brand-orange hover:text-orange-300 transition-colors rounded-lg hover:bg-zinc-700/50">
+                    <h2 className="text-c-text-muted font-semibold text-sm uppercase tracking-wide">Genética</h2>
+                    <button onClick={onOpenPedigree} title="Ver Árbol Genealógico" className="p-1 text-c-accent-sky hover:text-c-accent-sky transition-colors rounded-lg hover:bg-c-surface-2">
                         <Network size={18} />
                     </button>
                 </div>
@@ -185,42 +185,42 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
 
                         <InfoRow
                             label="Padre (Reproductor)"
-                            value={father ? (<button onClick={() => father.id && navigateTo({ name: 'rebano-profile', animalId: father.id })} className="text-brand-orange hover:underline text-left"> {formatAnimalDisplay(father)} </button>) : 'Desconocido'}
+                            value={father ? (<button onClick={() => father.id && navigateTo({ name: 'rebano-profile', animalId: father.id })} className="text-c-accent-sky hover:underline text-left"> {formatAnimalDisplay(father)} </button>) : 'Desconocido'}
                             isEditing={isEditing}
                         >
                             <button
                                 type="button"
                                 onClick={onEditFather}
-                                className="w-full text-left bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-white placeholder-zinc-500 flex justify-between items-center"
+                                className="w-full text-left bg-c-surface-2 border border-c-border-strong rounded-lg p-2.5 text-c-text placeholder-c-text-faint flex justify-between items-center"
                             >
-                                <span className={editedData.fatherId ? 'text-white' : 'text-zinc-400'}>
+                                <span className={editedData.fatherId ? 'text-c-text' : 'text-c-text-muted'}>
                                     {editedData.fatherId ? (formatAnimalDisplay(allFathers.find(f => f.id === editedData.fatherId)) || editedData.fatherId) : 'Seleccionar...'}
                                 </span>
-                                <Search size={16} className="text-zinc-400" />
+                                <Search size={16} className="text-c-text-muted" />
                             </button>
                         </InfoRow>
 
                         <InfoRow
                             label="Madre"
-                            value={mother ? (<button onClick={() => mother.id && navigateTo({ name: 'rebano-profile', animalId: mother.id })} className="text-brand-orange hover:underline text-left"> {formatAnimalDisplay(mother)} </button>) : 'Desconocida'}
+                            value={mother ? (<button onClick={() => mother.id && navigateTo({ name: 'rebano-profile', animalId: mother.id })} className="text-c-accent-sky hover:underline text-left"> {formatAnimalDisplay(mother)} </button>) : 'Desconocida'}
                             isEditing={isEditing}
                         >
                             <button
                                 type="button"
                                 onClick={onEditMother}
-                                className="w-full text-left bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-white placeholder-zinc-500 flex justify-between items-center"
+                                className="w-full text-left bg-c-surface-2 border border-c-border-strong rounded-lg p-2.5 text-c-text placeholder-c-text-faint flex justify-between items-center"
                             >
-                                <span className={editedData.motherId ? 'text-white' : 'text-zinc-400'}>
+                                <span className={editedData.motherId ? 'text-c-text' : 'text-c-text-muted'}>
                                     {editedData.motherId ? (formatAnimalDisplay(mothers.find(m => m.id === editedData.motherId)) || editedData.motherId) : 'Seleccionar...'}
                                 </span>
-                                <Search size={16} className="text-zinc-400" />
+                                <Search size={16} className="text-c-text-muted" />
                             </button>
                         </InfoRow>
 
                     </div>
                     <InfoRow label="Composición Racial" value={animal.racialComposition || 'N/A'} isEditing={isEditing}>
                         {!isEditing && compositionData.length > 0 && (
-                            <div className="w-full flex h-2 rounded-full overflow-hidden mt-2 bg-zinc-700">
+                            <div className="w-full flex h-2 rounded-full overflow-hidden mt-2 bg-c-surface-2">
                                 {compositionData.map((breed) => (
                                     <div
                                         key={breed.label}
@@ -247,7 +247,7 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
             <FormGroup title="Nacimiento y Origen">
                 <div className="grid grid-cols-2 gap-4">
                     <InfoRow label="Fecha Nacimiento" value={animal.birthDate !== 'N/A' ? new Date(animal.birthDate + 'T00:00:00Z').toLocaleDateString('es-VE', { timeZone: 'UTC' }) : 'N/A'} isEditing={isEditing}>
-                        <input type="date" value={editedData.birthDate === 'N/A' ? '' : editedData.birthDate || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('birthDate', e.target.value || 'N/A')} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-white" />
+                        <input type="date" value={editedData.birthDate === 'N/A' ? '' : editedData.birthDate || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('birthDate', e.target.value || 'N/A')} className="w-full bg-c-surface-2 border border-c-border-strong rounded-lg p-2.5 text-c-text" />
                     </InfoRow>
                     <InfoRow label="Peso al Nacer" value={animal.birthWeight ? `${animal.birthWeight} Kg` : 'N/A'} isEditing={isEditing}>
                         <FormInput
@@ -283,7 +283,7 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
                                 <option value="Finca Masparrito">Finca Masparrito</option>
                                 {origins.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
                             </FormSelect>
-                            <button type="button" onClick={onAddOriginClick} className="p-2.5 bg-zinc-700 hover:bg-zinc-600 text-brand-orange rounded-lg"><Plus size={18} /></button>
+                            <button type="button" onClick={onAddOriginClick} className="p-2.5 bg-c-surface-2 hover:bg-c-surface-2 text-c-accent rounded-lg"><Plus size={18} /></button>
                         </div>
                     </InfoRow>
                 </div>
@@ -292,7 +292,7 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
             {animal.sex === 'Hembra' && (
                 <FormGroup title="Indicadores Reproductivos">
                     {indicatorsLoading ? (
-                        <p className="text-zinc-400 text-center text-sm">Calculando...</p>
+                        <p className="text-c-text-muted text-center text-sm">Calculando...</p>
                     ) : (
                         isEditing && indicators.needsManualData ? (
                             <div className="space-y-4">
@@ -305,16 +305,16 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('priorParturitions', e.target.value ? parseInt(e.target.value) : undefined)}
                                         placeholder="Partos antes de usar la app"
                                     />
-                                    <p className="text-xs text-zinc-500 mt-1">Solo para cabras sin partos registrados en la app.</p>
+                                    <p className="text-xs text-c-text-faint mt-1">Solo para cabras sin partos registrados en la app.</p>
                                 </InfoRow>
                                 <InfoRow label="Fecha 1er Parto (Manual)" isEditing={true}>
                                     <input
                                         type="date"
                                         value={editedData.manualFirstParturitionDate || ''}
                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('manualFirstParturitionDate', e.target.value || undefined)}
-                                        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-white"
+                                        className="w-full bg-c-surface-2 border border-c-border-strong rounded-lg p-2.5 text-c-text"
                                     />
-                                    <p className="text-xs text-zinc-500 mt-1">Requerido para calcular la "Edad 1er Parto" correcta.</p>
+                                    <p className="text-xs text-c-text-faint mt-1">Requerido para calcular la "Edad 1er Parto" correcta.</p>
                                 </InfoRow>
                             </div>
                         ) : (

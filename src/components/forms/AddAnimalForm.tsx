@@ -19,7 +19,7 @@ const FormInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<H
     <input
         ref={ref}
         {...props}
-        className={`w-full bg-brand-glass border border-brand-border rounded-xl p-3 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-brand-orange disabled:opacity-50 disabled:bg-brand-dark/50 ${className}`}
+        className={`w-full bg-c-surface border border-c-border rounded-xl p-3 text-c-text placeholder-c-text-faint focus:outline-none focus:ring-2 focus:ring-c-accent disabled:opacity-50 disabled:bg-c-surface/50 ${className}`}
     />
 ));
 
@@ -28,25 +28,25 @@ const FormSelect = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttribute
         <select
             ref={ref}
             {...props}
-            className={`w-full bg-brand-glass border border-brand-border rounded-xl p-3 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-brand-orange ${className}`}
+            className={`w-full bg-c-surface border border-c-border rounded-xl p-3 text-c-text appearance-none focus:outline-none focus:ring-2 focus:ring-c-accent ${className}`}
         >
             {children}
         </select>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500 pointer-events-none" />
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-c-text-faint pointer-events-none" />
     </div>
 ));
 
 const FormGroup: React.FC<{ title: string, children: React.ReactNode }> = ({ title, children }) => (
-    <div className="bg-brand-glass rounded-2xl border border-brand-border p-4 space-y-4">
-        <h2 className="text-zinc-400 font-semibold text-sm uppercase tracking-wide">{title}</h2>
+    <div className="bg-c-surface rounded-2xl border border-c-border p-4 space-y-4">
+        <h2 className="text-c-text-muted font-semibold text-sm uppercase tracking-wide">{title}</h2>
         {children}
     </div>
 );
 
 const Toggle = ({ labelOn, labelOff, value, onChange }: { labelOn: string, labelOff: string, value: boolean, onChange: (newValue: boolean) => void }) => (
-    <div onClick={() => onChange(!value)} className="w-full bg-brand-dark rounded-xl p-1 flex cursor-pointer">
-        <span className={`w-1/2 text-center font-semibold p-2 rounded-lg transition-all ${value ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>{labelOn}</span>
-        <span className={`w-1/2 text-center font-semibold p-2 rounded-lg transition-all ${!value ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>{labelOff}</span>
+    <div onClick={() => onChange(!value)} className="w-full bg-c-surface-2 rounded-xl p-1 flex cursor-pointer">
+        <span className={`w-1/2 text-center font-semibold p-2 rounded-lg transition-all ${value ? 'bg-c-surface text-c-text shadow-sm' : 'text-c-text-muted'}`}>{labelOn}</span>
+        <span className={`w-1/2 text-center font-semibold p-2 rounded-lg transition-all ${!value ? 'bg-c-surface text-c-text shadow-sm' : 'text-c-text-muted'}`}>{labelOff}</span>
     </div>
 );
 
@@ -240,14 +240,14 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
 
                 {/* ID Animal */}
                 <div>
-                    <label className="block text-sm font-medium text-zinc-400 mb-2">ID Animal {status === 'Activo' ? '(Obligatorio)' : '(Opcional para Referencia)'}</label>
+                    <label className="block text-sm font-medium text-c-text-muted mb-2">ID Animal {status === 'Activo' ? '(Obligatorio)' : '(Opcional para Referencia)'}</label>
                     <input
                         type="text"
                         value={animalId}
                         onClick={() => setIsIdKeyboardOpen(true)}
                         readOnly
                         placeholder={status === 'Activo' ? "T047" : "Opcional..."}
-                        className={`w-full bg-brand-glass border rounded-xl p-4 text-white text-center text-3xl font-mono tracking-widest placeholder-zinc-700 focus:outline-none focus:ring-2 cursor-pointer ${idExistsError ? 'border-brand-red ring-brand-red' : 'border-brand-border focus:ring-brand-orange'}`}
+                        className={`w-full bg-c-surface border rounded-xl p-4 text-c-text text-center text-3xl font-mono tracking-widest placeholder-c-text-faint focus:outline-none focus:ring-2 cursor-pointer ${idExistsError ? 'border-brand-red ring-brand-red' : 'border-c-border focus:ring-c-accent'}`}
                         required={status === 'Activo'}
                     />
                     {idExistsError && ( <p className="mt-2 text-sm text-brand-red flex items-center justify-center gap-1"><AlertTriangle size={14} /> {idExistsError}</p> )}
@@ -255,7 +255,7 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
 
                 {/* Nombre (Opcional) */}
                 <div>
-                    <label className="block text-sm font-medium text-zinc-400 mb-2">Nombre (Opcional)</label>
+                    <label className="block text-sm font-medium text-c-text-muted mb-2">Nombre (Opcional)</label>
                     <FormInput type="text" value={name} onChange={(e) => setName(e.target.value.toUpperCase())} placeholder="Ej: PRINCESA" />
                 </div>
 
@@ -263,20 +263,20 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
                 <FormGroup title="Genética y Nacimiento">
                     {/* Fecha de Nacimiento */}
                     <div>
-                        <label className="block text-sm font-medium text-zinc-400 mb-2">Fecha de Nacimiento (Opcional)</label>
-                        <button type="button" onClick={() => setDatePickerOpen(true)} className="w-full bg-brand-glass border border-brand-border rounded-xl p-3 text-white flex justify-between items-center">
-                            <span className={birthDate ? 'text-white' : 'text-zinc-500'}>{birthDate ? new Date(birthDate + 'T00:00:00Z').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : 'Seleccionar fecha...'}</span>
-                            <Calendar className="text-zinc-400" size={20} />
+                        <label className="block text-sm font-medium text-c-text-muted mb-2">Fecha de Nacimiento (Opcional)</label>
+                        <button type="button" onClick={() => setDatePickerOpen(true)} className="w-full bg-c-surface border border-c-border rounded-xl p-3 text-c-text flex justify-between items-center">
+                            <span className={birthDate ? 'text-c-text' : 'text-c-text-faint'}>{birthDate ? new Date(birthDate + 'T00:00:00Z').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : 'Seleccionar fecha...'}</span>
+                            <Calendar className="text-c-text-muted" size={20} />
                         </button>
                     </div>
 
                     {/* (ACTUALIZADO) ESTADO (100% manual y obligatorio) */}
                     <div>
-                        <label className="block text-sm font-medium text-zinc-400 mb-2">Estado (Categoría Zootécnica)</label>
-                        <FormSelect 
-                            value={lifecycleStageManual} 
+                        <label className="block text-sm font-medium text-c-text-muted mb-2">Estado (Categoría Zootécnica)</label>
+                        <FormSelect
+                            value={lifecycleStageManual}
                             onChange={e => setLifecycleStageManual(e.target.value)}
-                            className={finalLifecycleStage === 'Indefinido' && message?.type === 'error' ? 'border-brand-red ring-2 ring-brand-red' : 'border-brand-border'}
+                            className={finalLifecycleStage === 'Indefinido' && message?.type === 'error' ? 'border-brand-red ring-2 ring-brand-red' : 'border-c-border'}
                         >
                             <option value="Indefinido">Seleccionar Categoría...</option>
                             {/* (ESTA ES LA CORRECCIÓN) */}
@@ -287,7 +287,7 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
                             <option value="Macho de Levante">Macho de Levante</option>
                             <option value="Reproductor">Reproductor</option> 
                         </FormSelect>
-                        <p className="text-xs text-zinc-500 mt-1 px-1">Categoría asignada al animal. Si nace en la app, se actualizará por eventos.</p>
+                        <p className="text-xs text-c-text-faint mt-1 px-1">Categoría asignada al animal. Si nace en la app, se actualizará por eventos.</p>
                     </div>
                     
                     <FormSelect value={geneticMethod} onChange={e => setGeneticMethod(e.target.value)}>
@@ -315,42 +315,42 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
 
                     {/* Padre */}
                     <div>
-                        <label className="block text-sm font-medium text-zinc-400 mb-2">Padre (Reproductor)</label>
+                        <label className="block text-sm font-medium text-c-text-muted mb-2">Padre (Reproductor)</label>
                         <div className="flex items-center gap-2">
-                            <button type="button" onClick={() => setFatherSelectorOpen(true)} className="w-full text-left bg-brand-glass border border-brand-border rounded-xl p-3 text-white placeholder-zinc-500 flex justify-between items-center">
-                                <span className={fatherId ? 'text-white' : 'text-zinc-500'}>
+                            <button type="button" onClick={() => setFatherSelectorOpen(true)} className="w-full text-left bg-c-surface border border-c-border rounded-xl p-3 text-c-text placeholder-c-text-faint flex justify-between items-center">
+                                <span className={fatherId ? 'text-c-text' : 'text-c-text-faint'}>
                                     {fatherId ? (formatAnimalDisplay(allFathers.find(f => f.id === fatherId)) || fatherId) : 'Seleccionar padre...'}
                                 </span>
-                                <Search size={18} className="text-zinc-400" />
+                                <Search size={18} className="text-c-text-muted" />
                             </button>
-                            <button type="button" onClick={() => setIsParentModalOpen('father')} className="p-3 bg-brand-glass border border-brand-border rounded-xl text-brand-orange hover:bg-brand-orange/20 flex-shrink-0"><Plus size={20} /></button>
+                            <button type="button" onClick={() => setIsParentModalOpen('father')} className="p-3 bg-c-surface border border-c-border rounded-xl text-c-accent hover:bg-c-accent/15 flex-shrink-0"><Plus size={20} /></button>
                         </div>
                     </div>
                     {/* Madre */}
                     <div>
-                        <label className="block text-sm font-medium text-zinc-400 mb-2">Madre</label>
+                        <label className="block text-sm font-medium text-c-text-muted mb-2">Madre</label>
                         <div className="flex items-center gap-2">
-                            <button type="button" onClick={() => setMotherSelectorOpen(true)} className="w-full text-left bg-brand-glass border border-brand-border rounded-xl p-3 text-white placeholder-zinc-500 flex justify-between items-center">
-                                <span className={motherId ? 'text-white' : 'text-zinc-500'}>
+                            <button type="button" onClick={() => setMotherSelectorOpen(true)} className="w-full text-left bg-c-surface border border-c-border rounded-xl p-3 text-c-text placeholder-c-text-faint flex justify-between items-center">
+                                <span className={motherId ? 'text-c-text' : 'text-c-text-faint'}>
                                     {motherId ? (formatAnimalDisplay(mothers.find(m => m.id === motherId)) || motherId) : 'Seleccionar madre...'}
                                 </span>
-                                <Search size={18} className="text-zinc-400" />
+                                <Search size={18} className="text-c-text-muted" />
                             </button>
-                            <button type="button" onClick={() => setIsParentModalOpen('mother')} className="p-3 bg-brand-glass border border-brand-border rounded-xl text-brand-orange hover:bg-brand-orange/20 flex-shrink-0"><Plus size={20} /></button>
+                            <button type="button" onClick={() => setIsParentModalOpen('mother')} className="p-3 bg-c-surface border border-c-border rounded-xl text-c-accent hover:bg-c-accent/15 flex-shrink-0"><Plus size={20} /></button>
                         </div>
                     </div>
                     {/* Composición Racial */}
                     <div>
-                        <label className="block text-sm font-medium text-zinc-400 mb-2">Composición Racial (Ej: 50%A 50%S)</label>
-                        <input type="text" value={racialComposition} onClick={() => { if (!isCompositionDisabled) setIsRacialKeyboardOpen(true); }} readOnly placeholder="100%A ó 75%A 25%AGC" disabled={isCompositionDisabled} className={`w-full bg-brand-glass border border-brand-border rounded-xl p-3 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-brand-orange ${isCompositionDisabled ? 'opacity-50 bg-brand-dark/50' : 'cursor-pointer'}`}/>
+                        <label className="block text-sm font-medium text-c-text-muted mb-2">Composición Racial (Ej: 50%A 50%S)</label>
+                        <input type="text" value={racialComposition} onClick={() => { if (!isCompositionDisabled) setIsRacialKeyboardOpen(true); }} readOnly placeholder="100%A ó 75%A 25%AGC" disabled={isCompositionDisabled} className={`w-full bg-c-surface border border-c-border rounded-xl p-3 text-c-text placeholder-c-text-faint focus:outline-none focus:ring-2 focus:ring-c-accent ${isCompositionDisabled ? 'opacity-50 bg-c-surface/50' : 'cursor-pointer'}`}/>
                     </div>
-                    <div><label className="block text-sm font-medium text-zinc-400 mb-2">Raza (Auto-calculada)</label><FormInput type="text" value={breed} readOnly disabled placeholder="Ej: Mestiza Alpina"/></div>
+                    <div><label className="block text-sm font-medium text-c-text-muted mb-2">Raza (Auto-calculada)</label><FormInput type="text" value={breed} readOnly disabled placeholder="Ej: Mestiza Alpina"/></div>
                 </FormGroup>
 
                 {/* Indicadores Manuales */}
                 {sex === 'Hembra' && (
                     <FormGroup title="Indicadores Reproductivos (Opcional)">
-                         <p className="text-xs text-zinc-500 text-center -mt-2">Solo para hembras que ya han parido antes de usar la app.</p>
+                         <p className="text-xs text-c-text-faint text-center -mt-2">Solo para hembras que ya han parido antes de usar la app.</p>
                         <FormInput
                             type="number"
                             step="1"
@@ -362,11 +362,11 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
                         <button 
                             type="button" 
                             onClick={() => setIsFirstPartDateOpen(true)} 
-                            className={`w-full bg-brand-glass border border-brand-border rounded-xl p-3 text-white flex justify-between items-center ${!birthDate ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`w-full bg-c-surface border border-c-border rounded-xl p-3 text-c-text flex justify-between items-center ${!birthDate ? 'opacity-50 cursor-not-allowed' : ''}`}
                             disabled={!birthDate}
                         >
-                            <span className={manualFirstParturitionDate ? 'text-white' : 'text-zinc-500'}>{manualFirstParturitionDate ? new Date(manualFirstParturitionDate + 'T00:00:00Z').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : 'Fecha 1er Parto (Manual)'}</span>
-                            <Calendar className="text-zinc-400" size={20} />
+                            <span className={manualFirstParturitionDate ? 'text-c-text' : 'text-c-text-faint'}>{manualFirstParturitionDate ? new Date(manualFirstParturitionDate + 'T00:00:00Z').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : 'Fecha 1er Parto (Manual)'}</span>
+                            <Calendar className="text-c-text-muted" size={20} />
                         </button>
                         {!birthDate && (
                             <p className="text-xs text-brand-red text-center -mt-2">Debe ingresar una Fecha de Nacimiento para poder seleccionar la fecha del primer parto.</p>
@@ -378,24 +378,24 @@ export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onC
                 {/* Manejo */}
                 <FormGroup title="Manejo">
                     <FormSelect value={location} onChange={e => setLocation(e.target.value)}><option value="">Ubicación / Lote (Opcional)...</option>{locationsList.map((loc: { id: string; name: string }) => <option key={loc.id} value={loc.name}>{loc.name}</option>)}</FormSelect>
-                    <p className="text-xs text-zinc-500 text-center px-4">Si no se asigna un lote, se podrá encontrar en el filtro "Última Carga".</p>
+                    <p className="text-xs text-c-text-faint text-center px-4">Si no se asigna un lote, se podrá encontrar en el filtro "Última Carga".</p>
                 </FormGroup>
 
                 {/* Botones Guardar/Cancelar */}
                 <div className="space-y-3 pt-4">
-                    {message && ( <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-brand-green' : 'bg-red-500/20 text-brand-red'}`}> {message.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />} <span>{message.text}</span> </div> )}
-                    <button 
-                        type="submit" 
-                        disabled={!!idExistsError || finalLifecycleStage === 'Indefinido'} 
+                    {message && ( <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-c-accent/15 text-c-accent' : 'bg-red-500/20 text-brand-red'}`}> {message.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />} <span>{message.text}</span> </div> )}
+                    <button
+                        type="submit"
+                        disabled={!!idExistsError || finalLifecycleStage === 'Indefinido'}
                         className={`w-full text-white font-bold py-4 rounded-xl text-lg ${
-                            !!idExistsError || finalLifecycleStage === 'Indefinido' 
-                                ? 'bg-zinc-600 cursor-not-allowed' 
-                                : 'bg-brand-green hover:bg-green-600'
+                            !!idExistsError || finalLifecycleStage === 'Indefinido'
+                                ? 'bg-c-surface-2 cursor-not-allowed'
+                                : 'bg-c-accent hover:bg-c-accent'
                         }`}
                     >
                         Guardar Animal
                     </button>
-                    <button type="button" onClick={onCancel} className="w-full bg-zinc-700 hover:bg-zinc-600 text-white font-semibold py-3 rounded-xl text-lg">Cancelar</button>
+                    <button type="button" onClick={onCancel} className="w-full bg-c-surface-2 hover:bg-c-surface-2 text-c-text font-semibold py-3 rounded-xl text-lg">Cancelar</button>
                 </div>
             </form>
 
@@ -424,9 +424,9 @@ const BottomSheetDatePicker: React.FC<BottomSheetDatePickerProps> = ({ onClose, 
     // ... (sin cambios) ...
     return (
         <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-            <div className="fixed bottom-0 left-0 right-0 w-full bg-ios-modal-bg rounded-t-2xl p-4 shadow-lg animate-slide-up" onClick={(e) => e.stopPropagation()} style={{ paddingBottom: 'env(safe-area-inset-bottom, 1rem)' }}>
-                <div onClick={onClose} className="w-16 h-1.5 bg-zinc-700 rounded-full mx-auto mb-4 cursor-pointer"></div>
-                <div className="flex justify-center [&_.rdp]:bg-transparent [&_.rdp]:text-white [&_.rdp-caption_select]:bg-brand-glass [&_.rdp-caption_select]:border-brand-border [&_.rdp-caption_select]:text-white [&_.rdp-caption_select]:rounded-lg [&_.rdp-day_selected]:bg-brand-orange [&_.rdp-day_selected]:text-white [&_.rdp-day_today]:text-brand-orange [&_.rdp-nav_button]:text-zinc-400 [&_.rdp-head_cell]:text-zinc-500 [&_.rdp-day]:text-zinc-200 [&_.rdp-day_outside]:text-zinc-600">
+            <div className="fixed bottom-0 left-0 right-0 w-full bg-c-surface rounded-t-2xl p-4 shadow-lg animate-slide-up" onClick={(e) => e.stopPropagation()} style={{ paddingBottom: 'env(safe-area-inset-bottom, 1rem)' }}>
+                <div onClick={onClose} className="w-16 h-1.5 bg-c-surface-2 rounded-full mx-auto mb-4 cursor-pointer"></div>
+                <div className="flex justify-center [&_.rdp]:bg-transparent [&_.rdp]:text-c-text [&_.rdp-caption_select]:bg-c-surface [&_.rdp-caption_select]:border-c-border [&_.rdp-caption_select]:text-c-text [&_.rdp-caption_select]:rounded-lg [&_.rdp-day_selected]:bg-c-accent [&_.rdp-day_selected]:text-white [&_.rdp-day_today]:text-c-accent [&_.rdp-nav_button]:text-c-text-muted [&_.rdp-head_cell]:text-c-text-faint [&_.rdp-day]:text-c-text-strong [&_.rdp-day_outside]:text-c-text-faint">
                     <DayPicker mode="single" selected={currentValue} onSelect={onSelectDate} captionLayout="dropdown-buttons" fromYear={new Date().getFullYear() - 20} toYear={new Date().getFullYear()} defaultMonth={currentValue} locale={es} />
                 </div>
             </div>
@@ -447,15 +447,15 @@ const CustomAlphanumericKeyboard: React.FC<CustomKeyboardProps> = ({ onClose, on
     const handleDelete = () => { onInput(currentValue.slice(0, -1)); };
     return (
         <div className="fixed inset-0 z-[100] bg-black/50" onClick={onClose}>
-            <div className="fixed bottom-0 left-0 right-0 w-full bg-[#333333] p-2 space-y-2" onClick={(e) => e.stopPropagation()} style={{ paddingBottom: 'env(safe-area-inset-bottom, 0.5rem)' }}>
+            <div className="fixed bottom-0 left-0 right-0 w-full bg-c-surface p-2 space-y-2" onClick={(e) => e.stopPropagation()} style={{ paddingBottom: 'env(safe-area-inset-bottom, 0.5rem)' }}>
                 <div className="flex flex-nowrap space-x-1.5 overflow-x-auto py-2 alphabet-scroller" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     <style>{`.alphabet-scroller::-webkit-scrollbar { display: none; }`}</style>
-                    {alphabet.map(key => <button key={key} onClick={() => handleKeyPress(key)} className="flex-shrink-0 w-10 h-10 bg-[#555555] text-white rounded-md text-lg font-medium active:bg-zinc-500">{key}</button>)}
+                    {alphabet.map(key => <button key={key} onClick={() => handleKeyPress(key)} className="flex-shrink-0 w-10 h-10 bg-c-surface-2 text-c-text rounded-md text-lg font-medium active:bg-c-surface-2">{key}</button>)}
                 </div>
                 <div className="grid grid-cols-3 gap-1.5">
-                    {numpadKeys.map(key => <button key={key} onClick={() => handleKeyPress(key)} className="h-12 bg-[#555555] text-white rounded-md text-xl font-medium active:bg-zinc-500 flex items-center justify-center">{key === 'DEL' ? <Delete size={20} /> : key}</button>)}
+                    {numpadKeys.map(key => <button key={key} onClick={() => handleKeyPress(key)} className="h-12 bg-c-surface-2 text-c-text rounded-md text-xl font-medium active:bg-c-surface-2 flex items-center justify-center">{key === 'DEL' ? <Delete size={20} /> : key}</button>)}
                 </div>
-                <button onClick={onClose} className="h-12 w-full bg-blue-600 text-white rounded-md text-lg font-semibold active:bg-blue-700">Done</button>
+                <button onClick={onClose} className="h-12 w-full bg-c-accent-sky text-white rounded-md text-lg font-semibold active:bg-c-accent-sky">Done</button>
             </div>
         </div>
     );
@@ -512,15 +512,15 @@ const RacialCompositionKeyboard: React.FC<RacialKeyboardProps> = ({ onClose, onI
 
     return (
         <div className="fixed inset-0 z-[100] bg-black/50" onClick={onClose}>
-            <div className="fixed bottom-0 left-0 right-0 w-full bg-[#333333] p-2 space-y-2" onClick={(e) => e.stopPropagation()} style={{ paddingBottom: 'env(safe-area-inset-bottom, 0.5rem)' }}>
+            <div className="fixed bottom-0 left-0 right-0 w-full bg-c-surface p-2 space-y-2" onClick={(e) => e.stopPropagation()} style={{ paddingBottom: 'env(safe-area-inset-bottom, 0.5rem)' }}>
                 <div className="flex flex-nowrap space-x-1.5 overflow-x-auto py-2 alphabet-scroller" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     <style>{`.alphabet-scroller::-webkit-scrollbar { display: none; }`}</style>
-                    {alphabet.map(key => <button key={key} onClick={() => handleKeyPress(key)} className="flex-shrink-0 w-10 h-10 bg-[#555555] text-white rounded-md text-lg font-medium active:bg-zinc-500">{key}</button>)}
+                    {alphabet.map(key => <button key={key} onClick={() => handleKeyPress(key)} className="flex-shrink-0 w-10 h-10 bg-c-surface-2 text-c-text rounded-md text-lg font-medium active:bg-c-surface-2">{key}</button>)}
                 </div>
                 <div className="grid grid-cols-3 gap-1.5">
-                    {numpadKeys.map(key => <button key={key} onClick={() => handleKeyPress(key)} className={`h-12 bg-[#555555] text-white rounded-md text-xl font-medium active:bg-zinc-500 flex items-center justify-center ${key === '%' ? 'text-brand-orange' : ''}`}>{key === 'DEL' ? <Delete size={20} /> : key}</button>)}
+                    {numpadKeys.map(key => <button key={key} onClick={() => handleKeyPress(key)} className={`h-12 bg-c-surface-2 text-c-text rounded-md text-xl font-medium active:bg-c-surface-2 flex items-center justify-center ${key === '%' ? 'text-c-accent' : ''}`}>{key === 'DEL' ? <Delete size={20} /> : key}</button>)}
                 </div>
-                <button onClick={onClose} className="h-12 w-full bg-blue-600 text-white rounded-md text-lg font-semibold active:bg-blue-700">Done</button>
+                <button onClick={onClose} className="h-12 w-full bg-c-accent-sky text-white rounded-md text-lg font-semibold active:bg-c-accent-sky">Done</button>
             </div>
         </div>
     );
@@ -593,26 +593,26 @@ const AddQuickParentModal: React.FC<AddQuickParentModalProps> = ({ type, onClose
 
     return (
         <>
-            <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm animate-fade-in flex items-center justify-center p-4" onClick={onClose}>
-                <div className="w-full max-w-md bg-ios-modal-bg rounded-2xl shadow-lg animate-slide-up flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
-                    <header className="flex-shrink-0 flex items-center justify-between p-4 border-b border-brand-border"><div className="w-10"></div><h2 className="text-lg font-semibold text-white">Agregar {type === 'mother' ? 'Madre' : 'Padre'} Rápido</h2><button onClick={onClose} className="p-2 -mr-2 text-zinc-400 hover:text-white rounded-full hover:bg-zinc-700/50"><X size={20} /></button></header>
+            <div className="fixed inset-0 z-[110] bg-black/50 backdrop-blur-sm animate-fade-in flex items-center justify-center p-4" onClick={onClose}>
+                <div className="w-full max-w-md bg-c-surface rounded-2xl shadow-lg animate-slide-up flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+                    <header className="flex-shrink-0 flex items-center justify-between p-4 border-b border-c-border"><div className="w-10"></div><h2 className="text-lg font-semibold text-c-text">Agregar {type === 'mother' ? 'Madre' : 'Padre'} Rápido</h2><button onClick={onClose} className="p-2 -mr-2 text-c-text-muted hover:text-c-text rounded-full hover:bg-c-surface-2"><X size={20} /></button></header>
                     <div className="p-4 space-y-4 overflow-y-auto">
                         <FormGroup title="Categoría"><Toggle labelOn="Activo" labelOff="Referencia" value={status === 'Activo'} onChange={(isActive: boolean) => setStatus(isActive ? 'Activo' : 'Referencia')} /></FormGroup>
                         <FormGroup title="Identificación">
-                            <input type="text" value={animalId} onClick={() => setIsKeyboardOpen(true)} readOnly placeholder={status === 'Activo' ? "ID (Obligatorio)" : "ID (Opcional)"} className={`w-full bg-brand-glass border rounded-xl p-3 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 cursor-pointer font-mono ${message && message.includes('ID ya existe') ? 'border-brand-red ring-brand-red' : 'border-brand-border focus:ring-brand-orange'}`} />
+                            <input type="text" value={animalId} onClick={() => setIsKeyboardOpen(true)} readOnly placeholder={status === 'Activo' ? "ID (Obligatorio)" : "ID (Opcional)"} className={`w-full bg-c-surface border rounded-xl p-3 text-c-text placeholder-c-text-faint focus:outline-none focus:ring-2 cursor-pointer font-mono ${message && message.includes('ID ya existe') ? 'border-brand-red ring-brand-red' : 'border-c-border focus:ring-c-accent'}`} />
                             <FormInput value={name} onChange={e => setName(e.target.value.toUpperCase())} placeholder="Nombre (Opcional)" />
-                            <button type="button" onClick={() => setIsDatePickerOpen(true)} className="w-full bg-brand-glass border border-brand-border rounded-xl p-3 text-left flex justify-between items-center">
-                                <span className={birthDate ? 'text-white' : 'text-zinc-500'}>{birthDate ? new Date(birthDate + 'T00:00:00Z').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : 'Fecha Nacimiento (Opcional)'}</span>
-                                <Calendar className="text-zinc-400" size={20} />
+                            <button type="button" onClick={() => setIsDatePickerOpen(true)} className="w-full bg-c-surface border border-c-border rounded-xl p-3 text-left flex justify-between items-center">
+                                <span className={birthDate ? 'text-c-text' : 'text-c-text-faint'}>{birthDate ? new Date(birthDate + 'T00:00:00Z').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : 'Fecha Nacimiento (Opcional)'}</span>
+                                <Calendar className="text-c-text-muted" size={20} />
                             </button>
                         </FormGroup>
                         <FormGroup title="Raza">
-                            <input type="text" value={racialComposition} onClick={() => setIsRacialKeyboardOpenModal(true)} readOnly placeholder="Composición Racial (Opcional)" className="w-full bg-brand-glass border border-brand-border rounded-xl p-3 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-brand-orange cursor-pointer" />
+                            <input type="text" value={racialComposition} onClick={() => setIsRacialKeyboardOpenModal(true)} readOnly placeholder="Composición Racial (Opcional)" className="w-full bg-c-surface border border-c-border rounded-xl p-3 text-c-text placeholder-c-text-faint focus:outline-none focus:ring-2 focus:ring-c-accent cursor-pointer" />
                             <FormInput value={breed} disabled readOnly placeholder="Raza (Auto-calculada)" />
                         </FormGroup>
                         {message && <p className="text-sm text-brand-red text-center">{message}</p>}
                     </div>
-                    <footer className="p-4 border-t border-brand-border flex-shrink-0"><button onClick={handleSubmit} className="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-lg transition-colors">Guardar</button></footer>
+                    <footer className="p-4 border-t border-c-border flex-shrink-0"><button onClick={handleSubmit} className="w-full bg-c-accent hover:bg-c-accent text-white font-bold py-3 rounded-xl text-lg transition-colors">Guardar</button></footer>
                 </div>
             </div>
             {isKeyboardOpen && <CustomAlphanumericKeyboard onClose={() => setIsKeyboardOpen(false)} onInput={(val: string) => setAnimalId(val.toUpperCase())} currentValue={animalId}/>}

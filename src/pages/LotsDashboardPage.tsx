@@ -64,28 +64,28 @@ const LotSegmentedControl = ({ value, onChange }: {
 
 const ModalSection = ({ title, children }: { title: string, children: React.ReactNode }) => (
     <div className="mb-6 last:mb-0">
-        <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 px-1 flex items-center gap-2">
-            <div className="w-1 h-3 bg-brand-orange rounded-full"></div>
+        <h3 className="text-xs font-bold text-c-text-faint uppercase tracking-widest mb-3 px-1 flex items-center gap-2">
+            <div className="w-1 h-3 bg-c-accent rounded-full"></div>
             {title}
         </h3>
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-1 overflow-hidden">
+        <div className="bg-c-surface-2 border border-c-border rounded-2xl p-1 overflow-hidden">
             {children}
         </div>
     </div>
 );
 
 const StatItem = ({ label, value, unit, subLabel, icon: Icon }: { label: string, value: string | number, unit: string, subLabel?: string, icon?: React.ElementType }) => (
-     <div className="flex justify-between items-center p-4 border-b border-zinc-800 last:border-0 hover:bg-white/5 transition-colors">
+     <div className="flex justify-between items-center p-4 border-b border-c-border last:border-0 hover:bg-c-surface-2 transition-colors">
         <div className="flex items-center gap-3">
-            {Icon && <div className="p-2 bg-zinc-800 rounded-lg text-zinc-400"><Icon size={16} /></div>}
+            {Icon && <div className="p-2 bg-c-surface-2 rounded-lg text-c-text-muted"><Icon size={16} /></div>}
             <div>
-                <p className="text-sm font-bold text-white">{label}</p>
-                {subLabel && <p className="text-[10px] text-zinc-500 font-medium mt-0.5">{subLabel}</p>}
+                <p className="text-sm font-bold text-c-text">{label}</p>
+                {subLabel && <p className="text-[10px] text-c-text-faint font-medium mt-0.5">{subLabel}</p>}
             </div>
         </div>
         <div className="text-right">
-            <p className="text-lg font-mono font-bold text-white leading-none">{value}</p>
-            <p className="text-[10px] text-zinc-500 uppercase font-bold mt-1">{unit}</p>
+            <p className="text-lg font-mono font-bold text-c-text leading-none">{value}</p>
+            <p className="text-[10px] text-c-text-faint uppercase font-bold mt-1">{unit}</p>
         </div>
     </div>
 );
@@ -245,7 +245,7 @@ export default function LotsDashboardPage({ navigateTo, initialTab }: LotsDashbo
             
             <Modal isOpen={isCabrasModalOpen} onClose={() => setCabrasModalOpen(false)} title="Análisis: Cabras">
                 <div className="p-1">
-                    <button onClick={() => { setCabrasModalOpen(false); navigateTo({ name: 'herd', kpiFilter: 'Cabra' } as any); }} className="w-full py-3 px-4 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 rounded-xl text-brand-blue font-bold text-xs mb-6 transition-all flex items-center justify-center gap-2 group">
+                    <button onClick={() => { setCabrasModalOpen(false); navigateTo({ name: 'herd', kpiFilter: 'Cabra' } as any); }} className="w-full py-3 px-4 bg-c-surface-2 hover:bg-c-border/40 border border-c-border rounded-xl text-c-accent-sky font-bold text-xs mb-6 transition-all flex items-center justify-center gap-2 group">
                         VER LISTADO COMPLETO ({herdAnalytics.cabras.total}) <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform"/>
                     </button>
                     
@@ -256,9 +256,9 @@ export default function LotsDashboardPage({ navigateTo, initialTab }: LotsDashbo
                     
                     <ModalSection title="Estado Reproductivo">
                         <div className="p-4 grid grid-cols-3 gap-2 text-center mb-2">
-                             <div className="bg-zinc-800/50 rounded-lg p-2"><p className="text-xl font-bold text-brand-green">{herdAnalytics.cabras.preñadas}</p><p className="text-[9px] text-zinc-500 font-bold uppercase">Preñadas</p></div>
-                             <div className="bg-zinc-800/50 rounded-lg p-2"><p className="text-xl font-bold text-brand-blue">{herdAnalytics.cabras.enMonta}</p><p className="text-[9px] text-zinc-500 font-bold uppercase">En Monta</p></div>
-                             <div className="bg-zinc-800/50 rounded-lg p-2"><p className="text-xl font-bold text-brand-orange">{herdAnalytics.cabras.vacias}</p><p className="text-[9px] text-zinc-500 font-bold uppercase">Vacías</p></div>
+                             <div className="bg-c-surface-2 rounded-lg p-2"><p className="text-xl font-bold text-c-accent">{herdAnalytics.cabras.preñadas}</p><p className="text-[9px] text-c-text-faint font-bold uppercase">Preñadas</p></div>
+                             <div className="bg-c-surface-2 rounded-lg p-2"><p className="text-xl font-bold text-c-accent-sky">{herdAnalytics.cabras.enMonta}</p><p className="text-[9px] text-c-text-faint font-bold uppercase">En Monta</p></div>
+                             <div className="bg-c-surface-2 rounded-lg p-2"><p className="text-xl font-bold text-c-accent-gold">{herdAnalytics.cabras.vacias}</p><p className="text-[9px] text-c-text-faint font-bold uppercase">Vacías</p></div>
                         </div>
                     </ModalSection>
                 </div>
@@ -268,22 +268,22 @@ export default function LotsDashboardPage({ navigateTo, initialTab }: LotsDashbo
                 <div className="p-1">
                     <div className="flex items-center justify-between mb-4 px-2">
                         <div>
-                            <p className="text-sm text-zinc-400">Total Activos</p>
-                            <p className="text-3xl font-bold text-white">{filteredReproductores.length}</p>
+                            <p className="text-sm text-c-text-muted">Total Activos</p>
+                            <p className="text-3xl font-bold text-c-text">{filteredReproductores.length}</p>
                         </div>
-                        <button onClick={() => { setReproductoresModalOpen(false); navigateTo({ name: 'herd', kpiFilter: 'Reproductor' } as any); }} className="py-2 px-4 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 rounded-lg text-brand-blue font-bold text-xs transition-all flex items-center gap-2">
+                        <button onClick={() => { setReproductoresModalOpen(false); navigateTo({ name: 'herd', kpiFilter: 'Reproductor' } as any); }} className="py-2 px-4 bg-c-surface-2 hover:bg-c-border/40 border border-c-border rounded-lg text-c-accent-sky font-bold text-xs transition-all flex items-center gap-2">
                             Ver en Rebaño <ChevronRight size={14}/>
                         </button>
                     </div>
 
                     <div className="relative mb-4 px-1">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-c-text-faint" />
                         <input
                             type="text"
                             placeholder="Buscar reproductor..."
                             value={reproductorSearch}
                             onChange={(e) => setReproductorSearch(e.target.value)}
-                            className="w-full bg-zinc-900/80 border border-zinc-700 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:ring-2 focus:ring-brand-blue outline-none placeholder-zinc-600"
+                            className="w-full bg-c-surface-2 border border-c-border rounded-xl pl-10 pr-4 py-3 text-sm text-c-text focus:ring-2 focus:ring-c-accent-sky outline-none placeholder-c-text-faint"
                         />
                     </div>
 
@@ -296,18 +296,18 @@ export default function LotsDashboardPage({ navigateTo, initialTab }: LotsDashbo
                                         <div 
                                             key={sire.id}
                                             onClick={() => { setReproductoresModalOpen(false); navigateTo({ name: 'rebano-profile', animalId: sire.id }) }}
-                                            className="bg-black border border-zinc-800 rounded-xl p-3 flex flex-col gap-3 cursor-pointer hover:border-brand-blue/50 transition-all group active:scale-[0.99]"
+                                            className="bg-c-surface border border-c-border rounded-xl p-3 flex flex-col gap-3 cursor-pointer hover:border-c-accent-sky/50 transition-all group active:scale-[0.99]"
                                         >
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3 overflow-hidden">
-                                                    <div className="w-10 h-10 rounded-full bg-zinc-900 flex-shrink-0 flex items-center justify-center text-brand-blue border border-zinc-800">
+                                                    <div className="w-10 h-10 rounded-full bg-c-surface-2 flex-shrink-0 flex items-center justify-center text-c-accent-sky border border-c-border">
                                                         <Dna size={18} />
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="font-bold text-white text-sm truncate max-w-[140px]">
+                                                        <p className="font-bold text-c-text text-sm truncate max-w-[140px]">
                                                             {formatAnimalDisplay(sire).split(' ')[1] || formatAnimalDisplay(sire)}
                                                         </p>
-                                                        <p className="text-[10px] text-zinc-500 font-mono truncate">{sire.id}</p>
+                                                        <p className="text-[10px] text-c-text-faint font-mono truncate">{sire.id}</p>
                                                     </div>
                                                 </div>
                                                 
@@ -316,16 +316,16 @@ export default function LotsDashboardPage({ navigateTo, initialTab }: LotsDashbo
                                                         Trabajando
                                                     </span>
                                                 ) : (
-                                                    <span className="px-2 py-1 bg-zinc-800 text-zinc-500 text-[9px] font-bold uppercase rounded border border-zinc-700">
+                                                    <span className="px-2 py-1 bg-c-surface-2 text-c-text-faint text-[9px] font-bold uppercase rounded border border-c-border">
                                                         Descanso
                                                     </span>
                                                 )}
                                             </div>
-                                            
+
                                             {activeAssignment && (
-                                                <div className="pt-2 border-t border-zinc-800/50 flex justify-between items-center">
-                                                    <span className="text-[10px] text-zinc-500">Lote Activo</span>
-                                                    <span className="text-[10px] font-bold text-brand-blue flex items-center gap-1">
+                                                <div className="pt-2 border-t border-c-border flex justify-between items-center">
+                                                    <span className="text-[10px] text-c-text-faint">Lote Activo</span>
+                                                    <span className="text-[10px] font-bold text-c-accent-sky flex items-center gap-1">
                                                         {activeAssignment.assignedFemales} hembras asignadas
                                                     </span>
                                                 </div>
@@ -336,8 +336,8 @@ export default function LotsDashboardPage({ navigateTo, initialTab }: LotsDashbo
                             </div>
                         ) : (
                             <div className="text-center py-10">
-                                <Dna size={32} className="text-zinc-700 mx-auto mb-3 opacity-50"/>
-                                <p className="text-sm text-zinc-500">No se encontraron reproductores activos.</p>
+                                <Dna size={32} className="text-c-text-faint mx-auto mb-3 opacity-50"/>
+                                <p className="text-sm text-c-text-faint">No se encontraron reproductores activos.</p>
                             </div>
                         )}
                     </ModalSection>
