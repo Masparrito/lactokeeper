@@ -2,6 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   TOKENS SEMÁNTICOS DE TEMA (canales RGB para usar con Tailwind)
+   :root  = tema OSCURO (look actual, sin cambios para el resto de la app)
+   .theme-light = tema CLARO (se aplica envolviendo un módulo/contenedor)
+   ============================================================ */
+:root {
+  --c-bg:            9 9 11;        /* #09090b  fondo de página */
+  --c-surface:       24 24 27;      /* #18181b  tarjetas */
+  --c-surface-2:     39 39 42;      /* #27272a  controles / hover */
+  --c-surface-3:     44 44 46;      /* #2C2C2E  cara de tarjetas elevadas */
+  --c-text:          255 255 255;   /* texto principal */
+  --c-text-strong:   244 244 245;   /* títulos/números */
+  --c-text-muted:    161 161 170;   /* secundario (zinc-400) */
+  --c-text-faint:    113 113 122;   /* terciario (zinc-500) */
+  --c-border:        39 39 42;      /* bordes (zinc-800) */
+  --c-border-strong: 63 63 70;      /* bordes marcados (zinc-700) */
+}
+
+.theme-light {
+  --c-bg:            244 245 243;   /* blanco roto, sensación de campo */
+  --c-surface:       255 255 255;   /* tarjetas blancas */
+  --c-surface-2:     238 241 238;   /* controles / hover claros */
+  --c-surface-3:     255 255 255;   /* caras elevadas */
+  --c-text:          22 27 28;      /* casi negro, ligeramente frío */
+  --c-text-strong:   15 23 23;
+  --c-text-muted:    82 96 96;      /* gris medio legible */
+  --c-text-faint:    125 138 136;
+  --c-border:        225 230 226;   /* bordes claros */
+  --c-border-strong: 200 208 203;
+}
+
 html, body {
   /* Mantenemos estas propiedades básicas para App-Like feel */
   height: 100%;

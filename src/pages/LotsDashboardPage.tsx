@@ -28,13 +28,13 @@ const CategoryChip = ({ title, value, icon: Icon, onClick }: {
 }) => (
     <button 
         onClick={onClick}
-        className="flex-shrink-0 w-32 bg-zinc-900/80 backdrop-blur-md rounded-2xl p-4 border border-zinc-800 text-left hover:border-brand-orange/50 hover:bg-zinc-800 transition-all duration-200 group active:scale-95 shadow-sm"
+        className="flex-shrink-0 w-32 bg-c-surface backdrop-blur-md rounded-2xl p-4 border border-c-border text-left hover:border-brand-orange/50 hover:bg-c-surface-2 transition-all duration-200 group active:scale-95 shadow-sm"
     >
         <div className="flex justify-between items-start mb-2">
-            <Icon className="w-5 h-5 text-zinc-500 group-hover:text-brand-orange transition-colors" />
+            <Icon className="w-5 h-5 text-c-text-faint group-hover:text-brand-orange transition-colors" />
         </div>
-        <p className="text-2xl font-bold text-white tracking-tight">{value}</p>
-        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mt-1">{title}</p>
+        <p className="text-2xl font-bold text-c-text tracking-tight">{value}</p>
+        <p className="text-[10px] font-bold text-c-text-faint uppercase tracking-wider mt-1">{title}</p>
     </button>
 );
 
@@ -42,11 +42,11 @@ const LotSegmentedControl = ({ value, onChange }: {
     value: 'physical' | 'breeding', 
     onChange: (val: 'physical' | 'breeding') => void 
 }) => (
-    <div className="flex rounded-xl bg-black/40 border border-zinc-800 p-1"> 
+    <div className="flex rounded-xl bg-c-surface-2 border border-c-border p-1">
         <button 
             onClick={() => onChange('physical')} 
             className={`w-1/2 rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${ 
-              value === 'physical' ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700' : 'text-zinc-500 hover:text-zinc-300' 
+              value === 'physical' ? 'bg-c-surface text-c-text shadow-sm border border-c-border-strong' : 'text-c-text-faint hover:text-c-text-muted'
             }`} 
         >
             <LayoutGrid size={14} /> Lotes Físicos
@@ -54,7 +54,7 @@ const LotSegmentedControl = ({ value, onChange }: {
         <button 
             onClick={() => onChange('breeding')} 
             className={`w-1/2 rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${ 
-              value === 'breeding' ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700' : 'text-zinc-500 hover:text-zinc-300' 
+              value === 'breeding' ? 'bg-c-surface text-c-text shadow-sm border border-c-border-strong' : 'text-c-text-faint hover:text-c-text-muted'
             }`} 
         >
             <Heart size={14} /> Temporadas
@@ -172,18 +172,18 @@ export default function LotsDashboardPage({ navigateTo, initialTab }: LotsDashbo
                         {/* Números Flotantes */}
                         <div className="flex justify-around items-baseline text-center px-4">
                             <button onClick={() => navigateTo({ name: 'herd', kpiFilter: 'all' })} className="hover:opacity-80 transition-opacity group">
-                                <span className="text-4xl font-bold text-zinc-200 group-hover:text-white transition-colors tracking-tight">{herdAnalytics.totalPoblacion}</span>
-                                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mt-1">Total</p>
+                                <span className="text-4xl font-bold text-c-text-strong group-hover:text-c-text transition-colors tracking-tight">{herdAnalytics.totalPoblacion}</span>
+                                <p className="text-[10px] text-c-text-faint uppercase tracking-widest font-bold mt-1">Total</p>
                             </button>
-                            <div className="border-l border-zinc-800 h-10 mx-2 self-center"></div>
+                            <div className="border-l border-c-border h-10 mx-2 self-center"></div>
                             <button onClick={() => navigateTo({ name: 'herd', kpiFilter: 'females' })} className="hover:opacity-80 transition-opacity group">
-                                <span className="text-4xl font-bold text-zinc-200 group-hover:text-white transition-colors tracking-tight">{herdAnalytics.totalHembras}</span>
-                                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mt-1">Hembras</p>
+                                <span className="text-4xl font-bold text-c-text-strong group-hover:text-c-text transition-colors tracking-tight">{herdAnalytics.totalHembras}</span>
+                                <p className="text-[10px] text-c-text-faint uppercase tracking-widest font-bold mt-1">Hembras</p>
                             </button>
-                            <div className="border-l border-zinc-800 h-10 mx-2 self-center"></div>
+                            <div className="border-l border-c-border h-10 mx-2 self-center"></div>
                             <button onClick={() => navigateTo({ name: 'herd', kpiFilter: 'vientres' })} className="hover:opacity-80 transition-opacity group">
                                 <span className="text-5xl font-bold text-brand-orange group-hover:text-orange-400 transition-colors tracking-tight">{herdAnalytics.totalVientres}</span>
-                                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mt-1">Vientres</p>
+                                <p className="text-[10px] text-c-text-faint uppercase tracking-widest font-bold mt-1">Vientres</p>
                             </button>
                         </div>
 
@@ -208,17 +208,17 @@ export default function LotsDashboardPage({ navigateTo, initialTab }: LotsDashbo
                     Aumentado z-index de 'z-10' a 'z-50' para que el header 
                     siempre esté por encima de las tarjetas que scrollean.
                 */}
-                <div className={`sticky top-0 z-50 bg-[#09090b]/95 backdrop-blur-md px-4 py-3 border-b border-zinc-800 transition-all ${activeTab === 'breeding' ? 'pt-6' : ''}`}>
+                <div className={`sticky top-0 z-50 bg-c-bg/95 backdrop-blur-md px-4 py-3 border-b border-c-border transition-all ${activeTab === 'breeding' ? 'pt-6' : ''}`}>
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <h2 className="text-xl font-bold text-c-text flex items-center gap-2">
                             {activeTab === 'physical' ? 'Gestión de Lotes' : 'Temporadas de Monta'}
                         </h2>
                         
                         {/* Botón (+) contextual */}
                         {activeTab === 'physical' ? (
                              <button 
-                                onClick={() => setAddLotModalOpen(true)} 
-                                className="w-10 h-10 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-full flex items-center justify-center transition-all"
+                                onClick={() => setAddLotModalOpen(true)}
+                                className="w-10 h-10 bg-c-surface-2 hover:bg-c-border-strong text-c-text-muted hover:text-c-text rounded-full flex items-center justify-center transition-all"
                             >
                                 <Plus size={18} />
                             </button>

@@ -103,14 +103,14 @@ export const SwipeableQuickActions: React.FC<SwipeableQuickActionsProps> = ({ on
                     closed: { y: "calc(100% - 24px)" } // Pestaña visible
                 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className={`fixed bottom-[calc(60px+env(safe-area-inset-bottom))] left-0 right-0 z-50 bg-[#1c1c1e] rounded-t-[2rem] border-t border-zinc-800 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] flex flex-col ${isOpen ? 'h-auto pb-8' : 'h-auto'}`}
+                className={`fixed bottom-[calc(60px+env(safe-area-inset-bottom))] left-0 right-0 z-50 bg-c-surface rounded-t-[2rem] border-t border-c-border shadow-[0_-10px_40px_rgba(0,0,0,0.18)] flex flex-col ${isOpen ? 'h-auto pb-8' : 'h-auto'}`}
             >
                 {/* MANEJADOR (HANDLE) */}
                 <div 
                     className="w-full h-8 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
                     onClick={() => setIsOpen(!isOpen)}
                 >
-                    <div className="w-12 h-1.5 bg-zinc-600 rounded-full opacity-50 hover:opacity-100 transition-opacity" />
+                    <div className="w-12 h-1.5 bg-c-border-strong rounded-full opacity-70 hover:opacity-100 transition-opacity" />
                 </div>
 
                 {/* CONTENIDO DEL MENÚ */}
@@ -123,8 +123,8 @@ export const SwipeableQuickActions: React.FC<SwipeableQuickActionsProps> = ({ on
                             className="px-6"
                         >
                             <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-xl font-bold text-white">Acciones Rápidas</h3>
-                                <button onClick={() => setIsOpen(false)} className="p-2 bg-zinc-800 rounded-full text-zinc-400">
+                                <h3 className="text-xl font-bold text-c-text">Acciones Rápidas</h3>
+                                <button onClick={() => setIsOpen(false)} className="p-2 bg-c-surface-2 rounded-full text-c-text-muted">
                                     <X size={20} />
                                 </button>
                             </div>
@@ -139,7 +139,7 @@ export const SwipeableQuickActions: React.FC<SwipeableQuickActionsProps> = ({ on
                                         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ${action.color}`}>
                                             <action.icon size={28} strokeWidth={2} />
                                         </div>
-                                        <span className="text-[11px] font-semibold text-zinc-300 text-center leading-tight">
+                                        <span className="text-[11px] font-semibold text-c-text-muted text-center leading-tight">
                                             {action.label}
                                         </span>
                                     </button>

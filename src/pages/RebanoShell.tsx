@@ -256,28 +256,28 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
     };
 
     return (
-        <div className="flex flex-col h-full w-screen bg-[#09090b] overflow-hidden text-gray-200 font-sans">
+        <div className="theme-light flex flex-col h-full w-screen bg-c-bg overflow-hidden text-c-text font-sans">
             
             {/* HEADER */}
-            <header className="flex-shrink-0 z-40 bg-[#09090b] border-b border-zinc-800">
-                <div className="w-full h-[env(safe-area-inset-top)] bg-[#09090b]" />
+            <header className="flex-shrink-0 z-40 bg-c-bg/95 backdrop-blur-md border-b border-c-border">
+                <div className="w-full h-[env(safe-area-inset-top)] bg-c-bg" />
                 <div className="w-full h-[54px] flex items-center justify-between px-4 max-w-4xl mx-auto">
                     <div className="flex items-center gap-2">
                         <div className="p-1 bg-brand-orange/20 rounded-lg">
                              <GiGoat className="text-brand-orange" size={20}/> 
                         </div>
                         <div>
-                            <h1 className="text-lg font-bold text-white leading-none">GanaderoOS</h1>
-                            <p className="text-[10px] text-zinc-500 leading-none font-bold tracking-widest uppercase mt-0.5">Rebaño</p>
+                            <h1 className="text-lg font-bold text-c-text leading-none">GanaderoOS</h1>
+                            <p className="text-[10px] text-c-text-faint leading-none font-bold tracking-widest uppercase mt-0.5">Rebaño</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
                         <SyncStatusIcon status={syncStatus} /> 
-                        <button onClick={() => navigateTo({ name: 'management' })} className="p-2 text-zinc-400 hover:text-white transition-colors relative" title="Alertas">
+                        <button onClick={() => navigateTo({ name: 'management' })} className="p-2 text-c-text-muted hover:text-c-text transition-colors relative" title="Alertas">
                             <Bell size={18} />
-                            {hasAlerts && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-[#09090b]"></span>}
+                            {hasAlerts && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-c-bg"></span>}
                         </button>
-                        <button onClick={() => navigateTo({ name: 'configuracion' })} className="p-2 text-zinc-400 hover:text-white transition-colors" title="Configuración">
+                        <button onClick={() => navigateTo({ name: 'configuracion' })} className="p-2 text-c-text-muted hover:text-c-text transition-colors" title="Configuración">
                             <Settings size={18} />
                         </button>
                     </div>
@@ -287,7 +287,7 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
             {/* MAIN CONTENT */}
             <main
                 ref={mainScrollRef}
-                className="flex-1 w-full overflow-y-auto overflow-x-hidden bg-[#09090b] scroll-smooth relative pb-6"
+                className="flex-1 w-full overflow-y-auto overflow-x-hidden bg-c-bg scroll-smooth relative pb-6"
             >
                 {renderPage()}
             </main>
@@ -343,7 +343,7 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
             )}
 
             {/* NAVBAR */}
-            <nav className="flex-shrink-0 z-50 bg-zinc-900 border-t border-zinc-800 pb-[env(safe-area-inset-bottom)]">
+            <nav className="flex-shrink-0 z-50 bg-c-surface border-t border-c-border pb-[env(safe-area-inset-bottom)]">
                 <div className="flex justify-around items-center h-[60px] pt-1">
                     {navItems.map((item) => {
                         const isModuleBtn = item.id === 'modules';
@@ -363,10 +363,10 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
                                 {isActive && (
                                     <div className={`absolute top-0 w-8 h-0.5 rounded-full shadow-[0_0_8px_currentColor] ${isAddButton ? 'bg-brand-orange' : 'bg-brand-blue'}`} />
                                 )}
-                                <div className={`p-1 rounded-xl transition-all duration-300 ${isActive ? `${activeColor} -translate-y-0.5` : (isModuleBtn ? 'text-zinc-400 hover:text-white' : 'text-zinc-500')}`}>
+                                <div className={`p-1 rounded-xl transition-all duration-300 ${isActive ? `${activeColor} -translate-y-0.5` : (isModuleBtn ? 'text-c-text-muted hover:text-c-text' : 'text-c-text-faint')}`}>
                                     <item.icon className="w-6 h-6" strokeWidth={isActive ? 2.5 : 2} />
                                 </div>
-                                <span className={`text-[9px] font-bold uppercase tracking-wide transition-all duration-300 ${isActive ? activeColor : 'text-zinc-600'}`}>
+                                <span className={`text-[9px] font-bold uppercase tracking-wide transition-all duration-300 ${isActive ? activeColor : 'text-c-text-faint'}`}>
                                     {item.label}
                                 </span>
                             </button>

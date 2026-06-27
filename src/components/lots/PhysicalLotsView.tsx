@@ -143,22 +143,22 @@ const LotCardContent = ({ lotName, count, subLotsCount, dragControls, isSubLot }
     <div className="w-full p-4 flex items-center">
         {!isSubLot && (
             <div className="pl-2 pr-4 cursor-grab touch-none self-stretch flex items-center" onPointerDown={(e) => dragControls.start(e)}>
-                <GripVertical className="text-zinc-500" />
+                <GripVertical className="text-c-text-faint" />
             </div>
         )}
         {isSubLot && <div className="w-4 flex-shrink-0"></div>}
 
         <div className="flex-grow">
-            <p className="font-bold text-lg text-white flex items-center gap-2">
+            <p className="font-bold text-lg text-c-text flex items-center gap-2">
                 {lotName}
                 {subLotsCount > 0 && (
-                    <span title={`${subLotsCount} sub-lotes`} className="bg-zinc-700/80 p-1 rounded-full">
-                        <Layers size={12} className="text-zinc-400" />
+                    <span title={`${subLotsCount} sub-lotes`} className="bg-c-surface-2 p-1 rounded-full">
+                        <Layers size={12} className="text-c-text-muted" />
                     </span>
                 )}
             </p>
-            <p className="text-sm text-zinc-400">
-                <span className="font-semibold text-brand-orange">{count}</span> {count === 1 ? 'animal' : 'animales'} 
+            <p className="text-sm text-c-text-muted">
+                <span className="font-semibold text-brand-orange">{count}</span> {count === 1 ? 'animal' : 'animales'}
                 {subLotsCount > 0 ? ' (directos)' : ''}
             </p>
         </div>
@@ -200,7 +200,7 @@ const SwipeableLotCard = ({ lot, onEdit, onDelete, onClick, dragControls, isSubL
     };
 
     return (
-        <div className={`relative w-full overflow-hidden ${isSubLot ? 'rounded-lg' : 'rounded-2xl'} bg-brand-glass border border-brand-border`}>
+        <div className={`relative w-full overflow-hidden ${isSubLot ? 'rounded-lg' : 'rounded-2xl'} bg-c-surface border border-c-border shadow-sm`}>
             <div className="absolute inset-y-0 right-0 flex items-center z-0 h-full">
                 {showEdit && <button onClick={onEdit} onPointerDown={(e) => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-orange text-white"><Edit size={22} /><span className="text-xs mt-1 font-semibold">Editar</span></button>}
                 {showDelete && <button onClick={onDelete} onPointerDown={(e) => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-red text-white"><Trash2 size={22} /><span className="text-xs mt-1 font-semibold">Borrar</span></button>}
@@ -208,7 +208,7 @@ const SwipeableLotCard = ({ lot, onEdit, onDelete, onClick, dragControls, isSubL
             <motion.div 
                 {...dragProps}
                 dragListener={!isSubLot && dragControls ? false : undefined}
-                className="relative w-full z-10 cursor-pointer bg-ios-modal-bg"
+                className="relative w-full z-10 cursor-pointer bg-c-surface"
             >
                 <LotCardContent 
                     lotName={lot.name} 
@@ -356,10 +356,10 @@ export default function PhysicalLotsView({ navigateTo }: { navigateTo: (page: Pa
 
     if (orderedLots.length === 0) {
         return (
-            <div className="text-center py-10 bg-brand-glass rounded-2xl flex flex-col items-center gap-2 mx-4">
-                <GiBarn size={32} className="text-zinc-600" />
-                <p className="text-zinc-500 font-semibold">No hay lotes físicos creados.</p>
-                <p className="text-xs text-zinc-600">Usa el botón '+' para empezar a organizar tu rebaño.</p>
+            <div className="text-center py-10 bg-c-surface border border-c-border rounded-2xl flex flex-col items-center gap-2 mx-4">
+                <GiBarn size={32} className="text-c-text-faint" />
+                <p className="text-c-text-muted font-semibold">No hay lotes físicos creados.</p>
+                <p className="text-xs text-c-text-faint">Usa el botón '+' para empezar a organizar tu rebaño.</p>
             </div>
         );
     }
