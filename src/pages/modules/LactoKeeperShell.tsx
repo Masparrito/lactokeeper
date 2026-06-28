@@ -105,19 +105,19 @@ export default function LactoKeeperShell({ initialPage, onPageStateChange, navig
     return (
         // --- (INICIO) CORRECCIÓN DE SCROLL ---
         // 1. Contenedor raíz con 'h-screen' y 'overflow-hidden'
-        <div className="h-full overflow-hidden animate-fade-in text-white flex flex-col bg-brand-dark">
+        <div className="theme-light h-full overflow-hidden animate-fade-in text-c-text flex flex-col bg-c-bg">
 
             {/* Header con safe-area superior (no choca con la barra de estado) */}
-            <header className="flex-shrink-0 bg-brand-dark/80 backdrop-blur-lg border-b border-brand-border pt-[env(safe-area-inset-top)]">
+            <header className="flex-shrink-0 bg-c-bg/95 backdrop-blur-lg border-b border-c-border pt-[env(safe-area-inset-top)]">
                 <div className="max-w-4xl mx-auto flex items-center justify-between px-4 h-16">
-                    <button onClick={navigateBack} className="p-2 -ml-2 text-zinc-400 hover:text-white" aria-label="Atrás">
+                    <button onClick={navigateBack} className="p-2 -ml-2 text-c-text-muted hover:text-c-text" aria-label="Atrás">
                         <ArrowLeft size={24} />
                     </button>
                     <div className="flex items-center gap-2">
-                        <GiMilkCarton className="text-brand-orange" size={28} />
+                        <GiMilkCarton className="text-c-accent-sky" size={28} />
                         <div>
-                            <h1 className="text-xl font-bold text-white leading-none">GanaderoOS</h1>
-                            <p className="text-xs text-zinc-400 leading-none">LactoKeeper</p>
+                            <h1 className="text-xl font-bold text-c-text leading-none">GanaderoOS</h1>
+                            <p className="text-xs text-c-text-muted leading-none">LactoKeeper</p>
                         </div>
                     </div>
                     {/* --- (NUEVO) Contenedor para iconos de header --- */}
@@ -126,7 +126,7 @@ export default function LactoKeeperShell({ initialPage, onPageStateChange, navig
                         {/* --- (NUEVO) Botón de Módulos --- */}
                         <button 
                             onClick={() => setIsModuleSwitcherOpen(true)}
-                            className="p-2 text-zinc-400 hover:text-white transition-colors"
+                            className="p-2 text-c-text-muted hover:text-c-text transition-colors"
                             title="Módulos"
                         >
                             <Grid size={20} />
@@ -149,14 +149,14 @@ export default function LactoKeeperShell({ initialPage, onPageStateChange, navig
             />
 
             {/* 4. Nav fijo con 'h-16' */}
-            <nav className="flex-shrink-0 bg-zinc-900 border-t border-white/10 pb-[env(safe-area-inset-bottom)]">
+            <nav className="flex-shrink-0 bg-c-surface border-t border-c-border pb-[env(safe-area-inset-bottom)]">
                 <div className="flex justify-around items-center h-16">
                 {navItems.map((item) => (
                     <button
                         key={item.id}
                         onClick={() => handleNavClick(item.id as LactoKeeperPage['name'])}
                         className={`flex flex-col items-center justify-center p-3 w-full transition-colors ${
-                            page.name === item.id ? 'text-brand-orange' : 'text-gray-400 hover:text-brand-orange'
+                            page.name === item.id ? 'text-c-accent-sky' : 'text-c-text-muted hover:text-c-accent-sky'
                         }`}
                     >
                         <item.icon className="w-6 h-6 mb-1" />

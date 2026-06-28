@@ -8,8 +8,8 @@ export const CustomTooltip = ({ active, payload, label }: any) => {
 
         if (isGaussChart) {
             return (
-                 <div className="bg-black/50 backdrop-blur-xl p-3 rounded-lg border border-brand-border text-white">
-                    <p className="label text-brand-light-gray text-sm">Rango: {payload[0].payload.range} Kg</p>
+                 <div className="bg-c-surface/95 backdrop-blur-xl p-3 rounded-lg border border-c-border text-c-text shadow-lg">
+                    <p className="label text-c-text-muted text-sm">Rango: {payload[0].payload.range} Kg</p>
                     <p className="font-bold text-base">Nº de Cabras: {payload[0].value}</p>
                 </div>
             );
@@ -17,7 +17,7 @@ export const CustomTooltip = ({ active, payload, label }: any) => {
 
         return (
             <div className="bg-black/50 backdrop-blur-xl p-3 rounded-lg border border-brand-border text-white">
-                <p className="label text-brand-light-gray text-sm">
+                <p className="label text-c-text-muted text-sm">
                     {isHerdChart ? `Días en Leche (DEL): ${label}` : `DEL: ${label}`}
                 </p>
                 <p className="font-bold text-base">

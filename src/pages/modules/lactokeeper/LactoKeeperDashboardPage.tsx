@@ -85,7 +85,7 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
   // --- (CORREGIDO) Handlers del flujo de importación ELIMINADOS ---
 
   if (isLoading) {
-    return <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Cargando datos del rebaño...</h1></div>;
+    return <div className="text-center p-10"><h1 className="text-2xl text-c-text-muted">Cargando datos del rebaño...</h1></div>;
   }
 
   return (
@@ -95,42 +95,42 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
         {/* (CORREGIDO) Padding inferior 'pb-24' ELIMINADO */}
         <div className="w-full max-w-2xl mx-auto space-y-4 px-4"> 
             <header className="text-center pt-4 pb-4">
-                <h1 className="text-2xl font-bold tracking-tight text-white">Dashboard de Producción</h1>
-                <p className="text-md text-zinc-400">Análisis General de LactoKeeper</p>
+                <h1 className="text-2xl font-bold tracking-tight text-c-text">Dashboard de Producción</h1>
+                <p className="text-md text-c-text-muted">Análisis General de LactoKeeper</p>
             </header>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
-                    <div className="flex items-center space-x-2 text-zinc-400 font-semibold mb-2 text-xs uppercase tracking-wider">
-                        <Droplet size={14} />
+                <div className="bg-c-surface rounded-2xl p-4 border border-c-border shadow-sm">
+                    <div className="flex items-center space-x-2 text-c-text-muted font-semibold mb-2 text-xs uppercase tracking-wider">
+                        <Droplet size={14} className="text-c-accent-sky" />
                         <span>Promedio Global</span>
                     </div>
-                    <p className="text-4xl font-bold tracking-tight text-white">{analytics.herdAverage.toFixed(2)} <span className="text-2xl font-medium text-zinc-400">Kg</span></p>
+                    <p className="text-4xl font-bold tracking-tight text-c-accent-gold">{analytics.herdAverage.toFixed(2)} <span className="text-2xl font-medium text-c-text-faint">Kg</span></p>
                 </div>
-                 <button  
+                 <button
                    onClick={onNavigateToAnalysis}
-                   className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border text-left hover:border-brand-orange transition-colors"
+                   className="bg-c-surface rounded-2xl p-4 border border-c-border shadow-sm text-left hover:border-c-accent-sky transition-colors active:scale-[0.99]"
                  >
-                    <div className="flex items-center space-x-2 text-zinc-400 font-semibold mb-2 text-xs uppercase tracking-wider"><ActivitySquare /><span>Animales en Ordeño</span></div>
-                    <p className="text-4xl font-bold tracking-tight text-white">{analytics.activeGoats}</p>
+                    <div className="flex items-center space-x-2 text-c-text-muted font-semibold mb-2 text-xs uppercase tracking-wider"><ActivitySquare size={14} className="text-c-accent-sky" /><span>Animales en Ordeño</span></div>
+                    <p className="text-4xl font-bold tracking-tight text-c-text">{analytics.activeGoats}</p>
                 </button>
             </div>
 
             {/* ... (Resto de los gráficos de Curva de Lactancia y Distribución SIN CAMBIOS) ... */}
-            <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
-                <div className="flex justify-between items-center border-b border-brand-border pb-2 mb-4">
-                    <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase tracking-wider">
+            <div className="bg-c-surface rounded-2xl p-4 border border-c-border shadow-sm">
+                <div className="flex justify-between items-center border-b border-c-border pb-2 mb-4">
+                    <div className="flex items-center space-x-2 text-c-text-muted font-semibold text-xs uppercase tracking-wider">
                         <BarChartIconLucide size={16}/>
                         <span>Curva de Lactancia</span>
-                        <button onClick={() => setIsChartInfoModalOpen(true)} className="text-zinc-500 hover:text-white transition-colors">
+                        <button onClick={() => setIsChartInfoModalOpen(true)} className="text-c-text-faint hover:text-c-text transition-colors">
                             <Info size={14}/>
                         </button>
                     </div>
-                    <div className="flex bg-zinc-900/80 rounded-lg p-0.5">
-                        <button onClick={() => setChartView('current')} className={`px-2 py-0.5 text-xs font-semibold rounded-md transition-colors ${chartView === 'current' ? 'bg-brand-orange text-white' : 'text-zinc-400 hover:bg-zinc-700/50'}`}>
+                    <div className="flex bg-c-surface-2 rounded-lg p-0.5">
+                        <button onClick={() => setChartView('current')} className={`px-2 py-0.5 text-xs font-semibold rounded-md transition-colors ${chartView === 'current' ? 'bg-c-accent-sky text-white shadow-sm' : 'text-c-text-muted hover:text-c-text'}`}>
                             Actual
                         </button>
-                        <button onClick={() => setChartView('historical')} className={`px-2 py-0.5 text-xs font-semibold rounded-md transition-colors ${chartView === 'historical' ? 'bg-brand-orange text-white' : 'text-zinc-400 hover:bg-zinc-700/50'}`}>
+                        <button onClick={() => setChartView('historical')} className={`px-2 py-0.5 text-xs font-semibold rounded-md transition-colors ${chartView === 'historical' ? 'bg-c-accent-sky text-white shadow-sm' : 'text-c-text-muted hover:text-c-text'}`}>
                             Histórico
                         </button>
                     </div>
@@ -138,20 +138,20 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
                 <div className="w-full h-48">
                     <ResponsiveContainer>
                         <AreaChart data={analytics.herdLactationCurve} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                            <defs><linearGradient id="lactationGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#FF9500" stopOpacity={0.7}/><stop offset="80%" stopColor="#34C759" stopOpacity={0.1}/></linearGradient></defs>
-                            <XAxis dataKey="del" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} stroke="rgba(255,255,255,0.3)" tickLine={false} axisLine={false} />
-                            <YAxis orientation="right" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} stroke="rgba(255,255,255,0.3)" tickLine={false} axisLine={false} domain={['dataMin - 0.5', 'dataMax + 0.5']} width={30} />
+                            <defs><linearGradient id="lactationGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#1E6FAD" stopOpacity={0.45}/><stop offset="85%" stopColor="#1E6FAD" stopOpacity={0.04}/></linearGradient></defs>
+                            <XAxis dataKey="del" tick={{ fill: '#64748b', fontSize: 12 }} stroke="#cbd5e1" tickLine={false} axisLine={false} />
+                            <YAxis orientation="right" tick={{ fill: '#64748b', fontSize: 12 }} stroke="#cbd5e1" tickLine={false} axisLine={false} domain={['dataMin - 0.5', 'dataMax + 0.5']} width={30} />
                             <Tooltip content={<CustomTooltip />} />
-                            <Area type="monotone" dataKey="kg" stroke="#FF9500" strokeWidth={2.5} fill="url(#lactationGradient)" />
+                            <Area type="monotone" dataKey="kg" stroke="#1E6FAD" strokeWidth={2.5} fill="url(#lactationGradient)" />
                     </AreaChart></ResponsiveContainer>
                 </div>
             </div>
-            <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
-                <div className="flex justify-between items-center border-b border-brand-border pb-2 mb-4">
-                    <div className="flex items-center space-x-2 text-zinc-400 font-semibold text-xs uppercase tracking-wider">
+            <div className="bg-c-surface rounded-2xl p-4 border border-c-border shadow-sm">
+                <div className="flex justify-between items-center border-b border-c-border pb-2 mb-4">
+                    <div className="flex items-center space-x-2 text-c-text-muted font-semibold text-xs uppercase tracking-wider">
                         <BarChartIconLucide size={16}/>
                         <span>Distribución del Rebaño</span>
-                        <button onClick={() => setIsGaussInfoModalOpen(true)} className="text-zinc-500 hover:text-white transition-colors">
+                        <button onClick={() => setIsGaussInfoModalOpen(true)} className="text-c-text-faint hover:text-c-text transition-colors">
                             <Info size={14}/>
                         </button>
                     </div>
@@ -159,12 +159,12 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
                 <div className="w-full h-48">
                     <ResponsiveContainer>
                         <BarChart data={analytics.gaussData.distribution} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                            <XAxis dataKey="range" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} stroke="rgba(255,255,255,0.3)" tickLine={false} axisLine={false} />
-                            <YAxis orientation="right" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} stroke="rgba(255,255,255,0.3)" tickLine={false} axisLine={false} allowDecimals={false} width={30} />
-                            <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(255, 255, 255, 0.05)'}} />
-                            <Bar dataKey="count" fill="rgba(255, 255, 255, 0.4)" name="Nº de Cabras" />
-                            <ReferenceLine x={analytics.gaussData.mean.toFixed(2)} stroke="#34C759" strokeWidth={2} label={{ value: `μ`, fill: '#34C759', position: 'insideTopLeft' }} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis dataKey="range" tick={{ fill: '#64748b', fontSize: 12 }} stroke="#cbd5e1" tickLine={false} axisLine={false} />
+                            <YAxis orientation="right" tick={{ fill: '#64748b', fontSize: 12 }} stroke="#cbd5e1" tickLine={false} axisLine={false} allowDecimals={false} width={30} />
+                            <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(30, 111, 173, 0.06)'}} />
+                            <Bar dataKey="count" fill="rgba(30, 111, 173, 0.45)" name="Nº de Cabras" radius={[4, 4, 0, 0]} />
+                            <ReferenceLine x={analytics.gaussData.mean.toFixed(2)} stroke="#2F843C" strokeWidth={2} label={{ value: `μ`, fill: '#2F843C', position: 'insideTopLeft' }} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -179,14 +179,14 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
             onClose={() => setIsChartInfoModalOpen(false)}    
             title="¿Qué es la Curva de Lactancia del Rebaño?"
         >
-            <div className="text-zinc-300 space-y-4 text-base">
+            <div className="text-c-text-muted space-y-4 text-base">
                 <p>Este gráfico revela la **"personalidad productiva"** de tu rebaño. No es un promedio simple, sino una línea de tiempo del rendimiento promedio.</p>
                 <div>
-                    <h4 className="font-semibold text-white mb-1">¿Cómo se Calcula?</h4>
+                    <h4 className="font-semibold text-c-text mb-1">¿Cómo se Calcula?</h4>
                     <p className="text-sm">Para cada "Día en Leche" (DEL) en el eje horizontal, el sistema agrupa los pesajes de **todos los animales** que han pasado por ese día de su ciclo y calcula el promedio.</p>
-                    <p className="text-sm mt-2 bg-black/20 p-2 rounded-md"><strong>Ejemplo:</strong> El punto en "DEL 50" es el promedio de todos los pesajes que se hicieron a cualquier animal cuando estaba exactamente en su día 50 de lactancia.</p>
+                    <p className="text-sm mt-2 bg-c-surface-2 p-2 rounded-md"><strong>Ejemplo:</strong> El punto en "DEL 50" es el promedio de todos los pesajes que se hicieron a cualquier animal cuando estaba exactamente en su día 50 de lactancia.</p>
                 </div>
-                <p className="pt-2 border-t border-zinc-700/80">Te permite responder visualmente a preguntas clave como: ¿Cuándo ocurre el pico de producción del rebaño? y ¿Qué tan persistente es la lactancia después del pico?</p>
+                <p className="pt-2 border-t border-c-border">Te permite responder visualmente a preguntas clave como: ¿Cuándo ocurre el pico de producción del rebaño? y ¿Qué tan persistente es la lactancia después del pico?</p>
             </div>
         </Modal>
 
@@ -195,17 +195,17 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
             onClose={() => setIsGaussInfoModalOpen(false)}    
             title="¿Qué es la Distribución del Rebaño?"
         >
-            <div className="text-zinc-300 space-y-4 text-base">
+            <div className="text-c-text-muted space-y-4 text-base">
                 <p>Este gráfico, conocido como Campana de Gauss o distribución normal, clasifica el rendimiento promedio de cada animal en el rebaño.</p>
                 <div>
-                    <h4 className="font-semibold text-white mb-1">Media (μ)</h4>
+                    <h4 className="font-semibold text-c-text mb-1">Media (μ)</h4>
                     <p className="text-sm">La línea verde marcada como **μ** representa el **promedio de producción de todo el rebaño**. Es el punto de referencia central.</p>
                 </div>
                 <div>
-                    <h4 className="font-semibold text-white mb-1">Las Barras</h4>
+                    <h4 className="font-semibold text-c-text mb-1">Las Barras</h4>
                     <p className="text-sm">Cada barra muestra cuántos animales caen dentro de un rango específico de producción. Una barra alta en el centro (cerca de μ) indica que la mayoría de tu rebaño tiene un rendimiento promedio y consistente.</p>
                 </div>
-                <p className="pt-2 border-t border-zinc-700/80">Esta herramienta es clave para identificar rápidamente a los animales de élite (extremo derecho) y a los que podrían necesitar atención (extremo izquierdo).</p>
+                <p className="pt-2 border-t border-c-border">Esta herramienta es clave para identificar rápidamente a los animales de élite (extremo derecho) y a los que podrían necesitar atención (extremo izquierdo).</p>
             </div>
         </Modal>
     </>
