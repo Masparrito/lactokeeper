@@ -19,7 +19,7 @@ export const KilosListView: React.FC<KilosListViewProps> = ({ analytics }) => {
             case 'En Meta': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
             case 'Bajo Meta': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
             case 'Alerta': return 'bg-brand-red/20 text-brand-red border-brand-red/30';
-            default: return 'bg-zinc-800 text-zinc-500 border-zinc-700';
+            default: return 'bg-c-surface-2 text-c-text-faint border-c-border-strong';
         }
     };
 
@@ -64,24 +64,24 @@ export const KilosListView: React.FC<KilosListViewProps> = ({ analytics }) => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-black">
-            
+        <div className="flex flex-col h-full bg-c-bg">
+
             {/* Header de la Vista */}
-            <div className="flex justify-between items-center px-4 py-3 border-b border-zinc-800 bg-black">
+            <div className="flex justify-between items-center px-4 py-3 border-b border-c-border bg-c-bg">
                 <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold uppercase text-zinc-500 tracking-wider">
+                    <span className="text-xs font-bold uppercase text-c-text-faint tracking-wider">
                         Listado Detallado
                     </span>
-                    <span className="bg-zinc-800 text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 border border-zinc-700">
+                    <span className="bg-c-surface-2 text-c-text text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 border border-c-border-strong">
                         <Users size={10} />
                         N = {rows.length}
                     </span>
                 </div>
-                
-                <button 
+
+                <button
                     onClick={handleExportPDF}
                     disabled={isExporting}
-                    className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 border border-zinc-700"
+                    className="flex items-center gap-2 bg-c-accent hover:bg-c-accent/90 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 border border-c-border-strong"
                 >
                     {isExporting ? 'Generando...' : 'Exportar PDF'}
                     <Printer size={14} />
@@ -91,75 +91,75 @@ export const KilosListView: React.FC<KilosListViewProps> = ({ analytics }) => {
             {/* Contenedor de Tabla Scrollable */}
             <div className="flex-1 overflow-auto relative pb-20 custom-scrollbar">
                 <table className="w-full text-left border-collapse">
-                    <thead className="bg-zinc-900 sticky top-0 z-20 shadow-sm">
+                    <thead className="bg-c-surface sticky top-0 z-20 shadow-sm">
                         <tr>
-                            <th className="sticky left-0 z-30 bg-zinc-900 p-3 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-800 min-w-[120px]">
+                            <th className="sticky left-0 z-30 bg-c-surface p-3 text-[10px] font-bold text-c-text-muted uppercase tracking-wider border-b border-c-border min-w-[120px]">
                                 Animal
                             </th>
-                            <th className="p-3 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-800 text-right whitespace-nowrap">
+                            <th className="p-3 text-[10px] font-bold text-c-text-muted uppercase tracking-wider border-b border-c-border text-right whitespace-nowrap">
                                 GDP (g/d)
                             </th>
-                            <th className="p-3 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-800 text-right whitespace-nowrap">
+                            <th className="p-3 text-[10px] font-bold text-c-text-muted uppercase tracking-wider border-b border-c-border text-right whitespace-nowrap">
                                 Peso Act.
                             </th>
-                            <th className="p-3 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-800 text-right whitespace-nowrap">
+                            <th className="p-3 text-[10px] font-bold text-c-text-muted uppercase tracking-wider border-b border-c-border text-right whitespace-nowrap">
                                 Destete
                             </th>
-                            <th className="p-3 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-800 text-right whitespace-nowrap">
+                            <th className="p-3 text-[10px] font-bold text-c-text-muted uppercase tracking-wider border-b border-c-border text-right whitespace-nowrap">
                                 90d
                             </th>
-                            <th className="p-3 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-800 text-right whitespace-nowrap">
+                            <th className="p-3 text-[10px] font-bold text-c-text-muted uppercase tracking-wider border-b border-c-border text-right whitespace-nowrap">
                                 180d
                             </th>
-                            <th className="p-3 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-800 text-right whitespace-nowrap">
+                            <th className="p-3 text-[10px] font-bold text-c-text-muted uppercase tracking-wider border-b border-c-border text-right whitespace-nowrap">
                                 270d
                             </th>
-                            <th className="p-3 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-800 text-right whitespace-nowrap pr-4">
+                            <th className="p-3 text-[10px] font-bold text-c-text-muted uppercase tracking-wider border-b border-c-border text-right whitespace-nowrap pr-4">
                                 Score / Estado
                             </th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-800/50">
+                    <tbody className="divide-y divide-c-border/50">
                         {rows.map((row, index) => (
-                            <tr 
-                                key={row.id} 
-                                className={`${index % 2 === 0 ? 'bg-black' : 'bg-[#0c0c0e]'} hover:bg-zinc-900 transition-colors group`}
+                            <tr
+                                key={row.id}
+                                className={`${index % 2 === 0 ? 'bg-c-bg' : 'bg-c-surface/40'} hover:bg-c-surface-2 transition-colors group`}
                             >
                                 {/* Columna Fija ID/Nombre */}
-                                <td className={`sticky left-0 z-10 p-3 border-r border-zinc-800/50 ${index % 2 === 0 ? 'bg-black' : 'bg-[#0c0c0e] group-hover:bg-zinc-900'}`}>
+                                <td className={`sticky left-0 z-10 p-3 border-r border-c-border/50 ${index % 2 === 0 ? 'bg-c-bg' : 'bg-c-surface/40 group-hover:bg-c-surface-2'}`}>
                                     <div className="flex flex-col">
-                                        <span className="text-sm font-bold text-white font-mono">{row.id}</span>
-                                        {row.name && <span className="text-[10px] text-zinc-500 truncate max-w-[100px]">{row.name}</span>}
-                                        <span className="text-[9px] text-brand-blue font-bold uppercase mt-0.5">{row.category}</span>
+                                        <span className="text-sm font-bold text-c-text-strong font-mono">{row.id}</span>
+                                        {row.name && <span className="text-[10px] text-c-text-faint truncate max-w-[100px]">{row.name}</span>}
+                                        <span className="text-[9px] text-c-accent-sky font-bold uppercase mt-0.5">{row.category}</span>
                                     </div>
                                 </td>
 
                                 {/* Datos Numéricos */}
                                 <td className="p-3 text-right">
-                                    <span className="font-mono text-sm font-bold text-zinc-300">{row.gdp > 0 ? row.gdp.toFixed(0) : '--'}</span>
+                                    <span className="font-mono text-sm font-bold text-c-accent-gold">{row.gdp > 0 ? row.gdp.toFixed(0) : '--'}</span>
                                 </td>
                                 <td className="p-3 text-right">
-                                    <span className="font-mono text-sm font-bold text-white">
+                                    <span className="font-mono text-sm font-bold text-c-accent-gold">
                                         {row.currentWeight > 0 ? row.currentWeight.toFixed(1) : '--'}
                                     </span>
                                 </td>
                                 <td className="p-3 text-right">
-                                    <span className={`font-mono text-sm ${row.weaningWeight ? 'text-zinc-300' : 'text-zinc-700'}`}>
+                                    <span className={`font-mono text-sm ${row.weaningWeight ? 'text-c-accent-gold' : 'text-c-text-faint'}`}>
                                         {row.weaningWeight ? row.weaningWeight.toFixed(1) : '--'}
                                     </span>
                                 </td>
                                 <td className="p-3 text-right">
-                                    <span className="font-mono text-sm text-zinc-500">
+                                    <span className="font-mono text-sm text-c-accent-gold">
                                         {row.w90 ? row.w90.toFixed(1) : '--'}
                                     </span>
                                 </td>
                                 <td className="p-3 text-right">
-                                    <span className="font-mono text-sm text-zinc-500">
+                                    <span className="font-mono text-sm text-c-accent-gold">
                                         {row.w180 ? row.w180.toFixed(1) : '--'}
                                     </span>
                                 </td>
                                 <td className="p-3 text-right">
-                                    <span className="font-mono text-sm text-zinc-500">
+                                    <span className="font-mono text-sm text-c-accent-gold">
                                         {row.w270 ? row.w270.toFixed(1) : '--'}
                                     </span>
                                 </td>
@@ -169,7 +169,7 @@ export const KilosListView: React.FC<KilosListViewProps> = ({ analytics }) => {
                                             {row.classification}
                                         </span>
                                         {row.score > 0 && (
-                                            <span className="text-[10px] text-zinc-500 font-mono">
+                                            <span className="text-[10px] text-c-text-faint font-mono">
                                                 {row.score.toFixed(1)} pts
                                             </span>
                                         )}
@@ -179,9 +179,9 @@ export const KilosListView: React.FC<KilosListViewProps> = ({ analytics }) => {
                         ))}
                     </tbody>
                 </table>
-                
+
                 {rows.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-40 text-zinc-500">
+                    <div className="flex flex-col items-center justify-center h-40 text-c-text-faint">
                         <span className="text-sm">No hay datos para mostrar con estos filtros.</span>
                     </div>
                 )}
