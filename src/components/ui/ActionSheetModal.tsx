@@ -27,20 +27,20 @@ export const ActionSheetModal: React.FC<ActionSheetModalProps> = ({ isOpen, onCl
             onClick={onClose}
         >
             {/* Contenedor principal del modal, con el nuevo color de fondo y animación */}
-            <div 
-                className="w-full max-w-sm bg-ios-modal-bg rounded-t-2xl sm:rounded-2xl shadow-2xl text-white animate-slide-up"
+            <div
+                className="w-full max-w-sm bg-c-surface rounded-t-2xl sm:rounded-2xl shadow-2xl text-c-text animate-slide-up"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Encabezado con el título */}
                 <div className="p-2">
-                    <header className="text-center p-2 rounded-lg bg-zinc-800/50">
-                        <h2 className="text-sm font-semibold text-brand-light-gray">{title}</h2>
+                    <header className="text-center p-2 rounded-lg bg-c-surface-2">
+                        <h2 className="text-sm font-semibold text-c-text-muted">{title}</h2>
                     </header>
                 </div>
 
                 {/* Lista de acciones */}
                 <div className="p-2">
-                    <div className="bg-zinc-800/50 rounded-lg">
+                    <div className="bg-c-surface-2 rounded-lg">
                         {actions.map((action, index) => (
                             <button
                                 key={index}
@@ -51,10 +51,10 @@ export const ActionSheetModal: React.FC<ActionSheetModalProps> = ({ isOpen, onCl
                                     action.onClick();
                                     // --- FIN DE LA CORRECCIÓN ---
                                 }}
-                                className={`w-full flex items-center p-3 text-left transition-colors hover:bg-white/10 ${action.color || 'text-brand-blue'} ${index > 0 ? 'border-t border-zinc-700/80' : ''}`}
+                                className={`w-full flex items-center p-3 text-left transition-colors hover:bg-c-surface-3 ${action.color || 'text-c-accent-sky'} ${index > 0 ? 'border-t border-c-border-strong' : ''}`}
                             >
                                 <action.icon size={22} className="mr-4" />
-                                <span className="text-lg font-medium text-white">{action.label}</span>
+                                <span className="text-lg font-medium text-c-text">{action.label}</span>
                             </button>
                         ))}
                     </div>
@@ -62,9 +62,9 @@ export const ActionSheetModal: React.FC<ActionSheetModalProps> = ({ isOpen, onCl
 
                 {/* Botón de Cancelar separado con el nuevo estilo */}
                 <div className="p-2 mt-1">
-                    <button 
+                    <button
                         onClick={onClose}
-                        className="w-full bg-zinc-700 p-3 text-lg font-bold text-white rounded-xl hover:bg-zinc-600 transition-colors"
+                        className="w-full bg-c-surface-2 p-3 text-lg font-bold text-c-text rounded-xl hover:bg-c-surface-3 transition-colors"
                     >
                         Cancelar
                     </button>

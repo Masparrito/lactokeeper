@@ -25,7 +25,7 @@ export const WeighingTrendIcon: React.FC<WeighingTrendIconProps> = ({ trend, isL
         stable: {
             // --- MEJORA: Se usa un ícono 'Minus' en lugar de un guion para mayor visibilidad ---
             Icon: Minus,
-            color: 'text-zinc-400', // Un color neutro pero visible
+            color: 'text-c-text-muted', // Un color neutro pero visible
         },
     };
 

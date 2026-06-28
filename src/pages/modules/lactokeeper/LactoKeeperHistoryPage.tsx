@@ -29,14 +29,14 @@ const ChangeIndicator = ({ value }: { value?: number }) => {
 };
 
 const PeriodCard = ({ stats, onClick }: { stats: PeriodStats, onClick: () => void }) => (
-    <button onClick={onClick} className="w-full text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border flex justify-between items-center hover:border-brand-orange transition-colors">
+    <button onClick={onClick} className="w-full text-left bg-c-surface backdrop-blur-xl rounded-2xl p-4 border border-c-border flex justify-between items-center hover:border-c-accent-sky transition-colors">
         <div className="min-w-0 mr-2">
-            <p className="font-bold text-lg text-white truncate">{stats.periodLabel}</p>
-            <p className="text-sm text-zinc-400 truncate">Prom: {stats.averageKg.toFixed(2)} Kg | {stats.animalCount} animales</p>
+            <p className="font-bold text-lg text-c-text truncate">{stats.periodLabel}</p>
+            <p className="text-sm text-c-text-muted truncate">Prom: {stats.averageKg.toFixed(2)} Kg | {stats.animalCount} animales</p>
         </div>
         <div className="flex-shrink-0 flex items-center space-x-2">
              <ChangeIndicator value={stats.avgKgChange} />
-            <ChevronRight className="text-zinc-600 flex-shrink-0" />
+            <ChevronRight className="text-c-text-faint flex-shrink-0" />
         </div>
     </button>
 );
@@ -47,23 +47,23 @@ const WeighingRow = ({ weighing, onSelectAnimal }: { weighing: AnalyzedAnimal, o
     const formattedName = weighing.name ? String(weighing.name).toUpperCase().trim() : '';
 
     return(
-        <button onClick={() => onSelectAnimal(weighing.id)} className="w-full text-left bg-black/20 rounded-lg p-3 border border-zinc-700/50 flex justify-between items-center hover:border-orange-400/50">
+        <button onClick={() => onSelectAnimal(weighing.id)} className="w-full text-left bg-c-surface-2 rounded-lg p-3 border border-c-border flex justify-between items-center hover:border-c-accent-sky/50">
             {/* --- INICIO: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
             <div className="min-w-0 pr-3 flex items-center gap-3"> {/* Added gap-3 */}
                 {/* ID (Protagonista) - Fuente y tamaño aplicados */}
                 <div> {/* Wrapper div for text alignment */}
-                    <p className="font-mono font-semibold text-base text-white truncate">{weighing.id.toUpperCase()}</p>
+                    <p className="font-mono font-semibold text-base text-c-text truncate">{weighing.id.toUpperCase()}</p>
 
                     {/* Nombre (Secundario, si existe) */}
                     {formattedName && (
-                      <p className="text-xs font-normal text-zinc-400 truncate">{formattedName}</p> // Adjusted size/color
+                      <p className="text-xs font-normal text-c-text-muted truncate">{formattedName}</p> // Adjusted size/color
                     )}
                 </div>
                 {/* --- CAMBIO: Clasificación movida aquí como "píldora" --- */}
                 <span className={`px-2 py-0.5 text-xs font-semibold rounded-full text-white whitespace-nowrap ${ // Added whitespace-nowrap
                     weighing.classification === 'Pobre' ? 'bg-brand-red/80' :
                     weighing.classification === 'Sobresaliente' ? 'bg-brand-green/80' :
-                    'bg-gray-500/80'
+                    'bg-c-text-faint/80'
                 }`}>
                     {weighing.classification}
                 </span>
@@ -71,9 +71,9 @@ const WeighingRow = ({ weighing, onSelectAnimal }: { weighing: AnalyzedAnimal, o
             {/* --- FIN: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
 
             {/* Producción a la derecha */}
-            <p className="font-semibold text-lg text-white flex-shrink-0"> {/* Added flex-shrink-0 */}
+            <p className="font-semibold text-lg text-c-accent-gold flex-shrink-0"> {/* Added flex-shrink-0 */}
                 {weighing.latestWeighing.toFixed(2)}
-                <span className="text-base font-medium text-zinc-400 ml-1">Kg</span> {/* Added ml-1 */}
+                <span className="text-base font-medium text-c-text-faint ml-1">Kg</span> {/* Added ml-1 */}
             </p>
         </button>
     );
@@ -113,14 +113,14 @@ const AnalysisModal = ({ isOpen, onClose, data, periodLabel, onSelectAnimal }: {
         <Modal isOpen={isOpen} onClose={onClose} title={`Análisis Nuevos Ingresos - ${periodLabel}`}>
             <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-black/20 p-3 rounded-2xl"><div className="text-xs uppercase text-zinc-400 mb-1 flex items-center gap-1"><Droplet size={14}/>Promedio</div><p className="text-2xl font-bold text-white">{analysis.mean.toFixed(2)}<span className="text-lg ml-1 text-zinc-400">Kg</span></p></div>
-                    <div className="bg-black/20 p-3 rounded-2xl"><div className="text-xs uppercase text-zinc-400 mb-1 flex items-center gap-1"><Users size={14}/>Animales</div><p className="text-2xl font-bold text-white">{analysis.classifiedAnimals.length}</p></div>
+                    <div className="bg-c-surface-2 p-3 rounded-2xl"><div className="text-xs uppercase text-c-text-muted mb-1 flex items-center gap-1"><Droplet size={14}/>Promedio</div><p className="text-2xl font-bold text-c-accent-gold">{analysis.mean.toFixed(2)}<span className="text-lg ml-1 text-c-text-faint">Kg</span></p></div>
+                    <div className="bg-c-surface-2 p-3 rounded-2xl"><div className="text-xs uppercase text-c-text-muted mb-1 flex items-center gap-1"><Users size={14}/>Animales</div><p className="text-2xl font-bold text-c-text">{analysis.classifiedAnimals.length}</p></div>
                 </div>
-                <div className="bg-black/20 backdrop-blur-xl rounded-2xl p-4 border border-zinc-800/50">
+                <div className="bg-c-surface-2 backdrop-blur-xl rounded-2xl p-4 border border-c-border">
                     <div className="w-full h-48">
                         <ResponsiveContainer><BarChart data={analysis.distribution} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                            <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} /><YAxis orientation="left" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
-                            <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(255, 255, 255, 0.05)'}} />
+                            <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 12 }} stroke="#cbd5e1" /><YAxis orientation="left" tick={{ fill: '#64748b', fontSize: 12 }} stroke="#cbd5e1" />
+                            <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(30, 111, 173, 0.06)'}} />
                             <Bar dataKey="count" onClick={handleBarClick} cursor="pointer">
                                 {analysis.distribution.map(entry => <Cell key={entry.name} fill={entry.fill} className={`${classificationFilter !== 'all' && classificationFilter !== entry.name ? 'opacity-30' : 'opacity-100'}`} />)}
                                 <LabelList dataKey="count" content={<CustomBarLabel total={analysis.classifiedAnimals.length} />} />
@@ -162,19 +162,19 @@ export default function LactoKeeperHistoryPage({ navigateToRebano }: LactoKeeper
 
     const handleBarClick = (data: any) => { if (data?.payload?.name) { const newFilter = data.payload.name as any; setClassificationFilter(prev => prev === newFilter ? 'all' : newFilter); }};
 
-    if (isLoading) { return <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Cargando historial...</h1></div>; }
+    if (isLoading) { return <div className="text-center p-10"><h1 className="text-2xl text-c-text-muted">Cargando historial...</h1></div>; }
 
     if (!selectedPeriod) {
         return (
             <div className="w-full max-w-2xl mx-auto space-y-4 pb-12 px-4 pt-4">
-                <header className="text-center pb-4"><h1 className="text-2xl font-bold tracking-tight text-white">Historial de Producción</h1></header>
+                <header className="text-center pb-4"><h1 className="text-2xl font-bold tracking-tight text-c-text">Historial de Producción</h1></header>
                 {monthlyData.length > 0 ? (
                     <div className="space-y-2">
                         {monthlyData.map(stats => (<PeriodCard key={stats.periodId} stats={stats} onClick={() => setSelectedPeriod(stats)} />))}
                     </div>
                  ) : (
-                    <div className="text-center py-10 bg-brand-glass rounded-2xl mx-4">
-                        <p className="text-zinc-400">No hay datos históricos de pesajes registrados.</p>
+                    <div className="text-center py-10 bg-c-surface rounded-2xl mx-4">
+                        <p className="text-c-text-muted">No hay datos históricos de pesajes registrados.</p>
                     </div>
                  )}
             </div>
@@ -185,64 +185,64 @@ export default function LactoKeeperHistoryPage({ navigateToRebano }: LactoKeeper
         <>
             <div className="w-full max-w-2xl mx-auto space-y-4 pb-12 animate-fade-in px-4">
                 <header className="flex items-center pt-4 pb-4">
-                    <button onClick={() => { setSelectedPeriod(null); setClassificationFilter('all'); }} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
-                    <div className="text-center flex-grow"><h1 className="text-2xl font-bold tracking-tight text-white">{selectedPeriod.periodLabel}</h1></div>
+                    <button onClick={() => { setSelectedPeriod(null); setClassificationFilter('all'); }} className="p-2 -ml-2 text-c-text-muted hover:text-c-text transition-colors"><ArrowLeft size={24} /></button>
+                    <div className="text-center flex-grow"><h1 className="text-2xl font-bold tracking-tight text-c-text">{selectedPeriod.periodLabel}</h1></div>
                     <div className="w-8"></div> {/* Spacer */}
                 </header>
 
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-brand-glass p-3 rounded-2xl"><div className="text-xs uppercase text-zinc-400 mb-1 flex items-center gap-1"><Droplet size={14}/>Promedio / Animal</div><div className="flex items-baseline gap-2"><p className="text-2xl font-bold text-white">{selectedPeriod.averageKg.toFixed(2)}<span className="text-lg ml-1 text-zinc-400">Kg</span></p><ChangeIndicator value={selectedPeriod.avgKgChange} /></div></div>
-                    <div className="bg-brand-glass p-3 rounded-2xl"><div className="text-xs uppercase text-zinc-400 mb-1 flex items-center gap-1"><Calendar size={14}/>Eventos de Pesaje</div><p className="text-2xl font-bold text-white">{selectedPeriod.weighingEvents}</p></div>
-                    <button onClick={() => setIsVariationModalOpen(true)} className="bg-brand-glass p-3 rounded-2xl text-left hover:border-brand-orange transition-colors border border-brand-border"><div className="text-xs uppercase text-zinc-400 mb-1 flex items-center gap-1"><Users size={14}/>Animales Ordeñados</div><div className="flex items-baseline gap-2"><p className="text-2xl font-bold text-white">{selectedPeriod.animalCount}</p><ChangeIndicator value={selectedPeriod.animalCountChange}/></div></button>
-                    <div className="bg-brand-glass p-3 rounded-2xl"><div className="text-xs uppercase text-zinc-400 mb-1 flex items-center gap-1"><TrendingUp size={14}/>Total Registrado</div><p className="text-2xl font-bold text-white">{selectedPeriod.totalKg.toFixed(0)}<span className="text-lg ml-1 text-zinc-400">Kg</span></p></div>
+                    <div className="bg-c-surface p-3 rounded-2xl"><div className="text-xs uppercase text-c-text-muted mb-1 flex items-center gap-1"><Droplet size={14}/>Promedio / Animal</div><div className="flex items-baseline gap-2"><p className="text-2xl font-bold text-c-accent-gold">{selectedPeriod.averageKg.toFixed(2)}<span className="text-lg ml-1 text-c-text-faint">Kg</span></p><ChangeIndicator value={selectedPeriod.avgKgChange} /></div></div>
+                    <div className="bg-c-surface p-3 rounded-2xl"><div className="text-xs uppercase text-c-text-muted mb-1 flex items-center gap-1"><Calendar size={14}/>Eventos de Pesaje</div><p className="text-2xl font-bold text-c-text">{selectedPeriod.weighingEvents}</p></div>
+                    <button onClick={() => setIsVariationModalOpen(true)} className="bg-c-surface p-3 rounded-2xl text-left hover:border-c-accent-sky transition-colors border border-c-border"><div className="text-xs uppercase text-c-text-muted mb-1 flex items-center gap-1"><Users size={14}/>Animales Ordeñados</div><div className="flex items-baseline gap-2"><p className="text-2xl font-bold text-c-text">{selectedPeriod.animalCount}</p><ChangeIndicator value={selectedPeriod.animalCountChange}/></div></button>
+                    <div className="bg-c-surface p-3 rounded-2xl"><div className="text-xs uppercase text-c-text-muted mb-1 flex items-center gap-1"><TrendingUp size={14}/>Total Registrado</div><p className="text-2xl font-bold text-c-accent-gold">{selectedPeriod.totalKg.toFixed(0)}<span className="text-lg ml-1 text-c-text-faint">Kg</span></p></div>
                 </div>
 
-                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
-                    <div className="flex items-center space-x-2 border-b border-brand-border pb-2 mb-4"><BarChart2 className="text-brand-orange" size={18}/><h3 className="text-lg font-semibold text-white">Distribución del Período</h3></div>
+                <div className="bg-c-surface backdrop-blur-xl rounded-2xl p-4 border border-c-border">
+                    <div className="flex items-center space-x-2 border-b border-c-border pb-2 mb-4"><BarChart2 className="text-c-accent-sky" size={18}/><h3 className="text-lg font-semibold text-c-text">Distribución del Período</h3></div>
                     <div className="w-full h-48">
                         <ResponsiveContainer><BarChart data={periodAnalysis.distribution} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                            <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} /><YAxis orientation="left" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
-                            <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(255, 255, 255, 0.05)'}} />
+                            <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 12 }} stroke="#cbd5e1" /><YAxis orientation="left" tick={{ fill: '#64748b', fontSize: 12 }} stroke="#cbd5e1" />
+                            <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(30, 111, 173, 0.06)'}} />
                             <Bar dataKey="count" onClick={handleBarClick} cursor="pointer">
                                 {periodAnalysis.distribution.map((entry) => (<Cell key={entry.name} fill={entry.fill} className={`${classificationFilter !== 'all' && classificationFilter !== entry.name ? 'opacity-30' : 'opacity-100'} transition-opacity`} />))}
                                 <LabelList dataKey="count" content={<CustomBarLabel total={periodAnalysis.classifiedAnimals.length} />} />
                             </Bar>
                         </BarChart></ResponsiveContainer>
                     </div>
-                    <div className="text-center text-xs text-zinc-400 mt-2"><span>μ = {periodAnalysis.mean.toFixed(2)} Kg</span> | <span>σ = {periodAnalysis.stdDev.toFixed(2)}</span></div>
+                    <div className="text-center text-xs text-c-text-muted mt-2"><span>μ = {periodAnalysis.mean.toFixed(2)} Kg</span> | <span>σ = {periodAnalysis.stdDev.toFixed(2)}</span></div>
                 </div>
 
                 <div className="space-y-2">
-                    <h3 className="text-lg font-semibold text-zinc-300 ml-1 mt-4">Pesajes del Período ({filteredWeighings.length})</h3>
+                    <h3 className="text-lg font-semibold text-c-text-strong ml-1 mt-4">Pesajes del Período ({filteredWeighings.length})</h3>
                     {filteredWeighings.length > 0 ? (
                         filteredWeighings.sort((a,b) => b.latestWeighing - a.latestWeighing).map((animal) => (
                             // --- Usa WeighingRow actualizado ---
                             <WeighingRow key={animal.weighingId || animal.id} weighing={animal} onSelectAnimal={(id) => navigateToRebano({ name: 'lactation-profile', animalId: id })} />
                         ))
                     ) : (
-                        <div className="text-center py-6 bg-brand-glass rounded-lg">
-                            <p className="text-zinc-500">No hay pesajes que coincidan con el filtro.</p>
+                        <div className="text-center py-6 bg-c-surface rounded-lg">
+                            <p className="text-c-text-faint">No hay pesajes que coincidan con el filtro.</p>
                         </div>
                     )}
                 </div>
             </div>
 
             <Modal isOpen={isVariationModalOpen} onClose={() => setIsVariationModalOpen(false)} title="Variación de Animales en Ordeño">
-                <div className="text-zinc-300 space-y-4">
+                <div className="text-c-text-strong space-y-4">
                     <div>
-                        <h4 className="font-semibold text-white mb-1">{selectedPeriod.periodLabel} vs Mes Anterior</h4>
-                        <p className="text-sm text-zinc-400">El mes anterior tenías <span className='font-bold text-white'>{selectedPeriod.previousAnimalCount}</span> animales en ordeño. Este mes tienes <span className='font-bold text-white'>{selectedPeriod.animalCount}</span>.</p>
+                        <h4 className="font-semibold text-c-text mb-1">{selectedPeriod.periodLabel} vs Mes Anterior</h4>
+                        <p className="text-sm text-c-text-muted">El mes anterior tenías <span className='font-bold text-c-text'>{selectedPeriod.previousAnimalCount}</span> animales en ordeño. Este mes tienes <span className='font-bold text-c-text'>{selectedPeriod.animalCount}</span>.</p>
                         <div className="flex items-center gap-2 mt-2">
-                            <p>El cambio neto es de <span className='font-bold text-white'>{selectedPeriod.animalCount - (selectedPeriod.previousAnimalCount || 0)}</span> animales</p>
+                            <p>El cambio neto es de <span className='font-bold text-c-text'>{selectedPeriod.animalCount - (selectedPeriod.previousAnimalCount || 0)}</span> animales</p>
                             <ChangeIndicator value={selectedPeriod.animalCountChange}/>
                         </div>
                     </div>
-                    <div className="pt-4 border-t border-zinc-700/80">
-                        {selectedPeriod.exitingAnimalCount! > 0 && <p className="text-sm text-zinc-400 mt-1">Salieron del ordeño: <span className="font-bold text-brand-red">{selectedPeriod.exitingAnimalCount}</span> animales.</p>}
-                        {selectedPeriod.newAnimalsWeighings.length > 0 && <p className="text-sm text-zinc-400 mt-1">Nuevos ingresos: <span className="font-bold text-brand-green">{new Set(selectedPeriod.newAnimalsWeighings.map(w => w.goatId)).size}</span> animales.</p>}
+                    <div className="pt-4 border-t border-c-border">
+                        {selectedPeriod.exitingAnimalCount! > 0 && <p className="text-sm text-c-text-muted mt-1">Salieron del ordeño: <span className="font-bold text-brand-red">{selectedPeriod.exitingAnimalCount}</span> animales.</p>}
+                        {selectedPeriod.newAnimalsWeighings.length > 0 && <p className="text-sm text-c-text-muted mt-1">Nuevos ingresos: <span className="font-bold text-brand-green">{new Set(selectedPeriod.newAnimalsWeighings.map(w => w.goatId)).size}</span> animales.</p>}
 
                         {selectedPeriod.newAnimalsWeighings.length > 0 && (
-                            <button onClick={() => { setAnalysisModalData(selectedPeriod); setIsVariationModalOpen(false); }} className="w-full mt-4 bg-brand-orange text-white font-semibold py-2 rounded-lg hover:bg-orange-600 transition-colors">
+                            <button onClick={() => { setAnalysisModalData(selectedPeriod); setIsVariationModalOpen(false); }} className="w-full mt-4 bg-c-accent-sky text-white font-semibold py-2 rounded-lg hover:opacity-90 transition-colors">
                                 Analizar los {new Set(selectedPeriod.newAnimalsWeighings.map(w => w.goatId)).size} Nuevos Ingresos
                             </button>
                         )}

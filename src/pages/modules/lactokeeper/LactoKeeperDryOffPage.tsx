@@ -15,20 +15,20 @@ const StatusAnimalRow = ({ animal, parturition, onSelectAnimal }: { animal: Anim
     // --- CAMBIO: Variable 'animalDisplay' eliminada ---
     
     return (
-        <div onClick={() => onSelectAnimal(animal.id)} className="w-full cursor-pointer text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border flex justify-between items-center hover:border-amber-400 transition-colors min-h-[80px]">
+        <div onClick={() => onSelectAnimal(animal.id)} className="w-full cursor-pointer text-left bg-c-surface backdrop-blur-xl rounded-2xl p-3 border border-c-border flex justify-between items-center hover:border-amber-400 transition-colors min-h-[80px]">
             <div className="min-w-0 pr-3">
-                <p className="font-mono font-semibold text-base text-white truncate">
+                <p className="font-mono font-semibold text-base text-c-text-strong truncate">
                     {animal.id.toUpperCase()}
                 </p>
                 {animal.name && (
-                  <p className="text-sm font-normal text-zinc-300 truncate">{animal.name.toUpperCase().trim()}</p>
+                  <p className="text-sm font-normal text-c-text-strong truncate">{animal.name.toUpperCase().trim()}</p>
                 )}
-                <div className="text-xs text-zinc-500 mt-1 min-h-[1rem] truncate">
+                <div className="text-xs text-c-text-faint mt-1 min-h-[1rem] truncate">
                     {parturition.status === 'en-secado' && `Secado desde: ${new Date(parturition.dryingStartDate! + 'T00:00:00Z').toLocaleDateString('es-VE', {timeZone: 'UTC'})}`}
                     {parturition.status === 'seca' && `Lactancia finalizada`}
                 </div>
             </div>
-            <ChevronRight className="text-zinc-600 w-5 h-5 flex-shrink-0" />
+            <ChevronRight className="text-c-text-faint w-5 h-5 flex-shrink-0" />
         </div>
     );
 };
@@ -65,20 +65,20 @@ export default function LactoKeeperDryOffPage({ navigateToRebano }: LactoKeeperD
     const currentList = lists[view] || [];
 
     if (isLoading) {
-        return <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Cargando datos...</h1></div>;
+        return <div className="text-center p-10"><h1 className="text-2xl text-c-text-muted">Cargando datos...</h1></div>;
     }
 
     return (
         <div className="w-full max-w-2xl mx-auto space-y-4 pb-12 px-4">
             <header className="text-center pt-4 pb-4">
-                <h1 className="text-2xl font-bold tracking-tight text-white">Gestión de Secado</h1>
-                <p className="text-md text-zinc-400">Animales por Estado de Lactancia</p>
+                <h1 className="text-2xl font-bold tracking-tight text-c-text-strong">Gestión de Secado</h1>
+                <p className="text-md text-c-text-muted">Animales por Estado de Lactancia</p>
             </header>
 
-            <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-2 border border-brand-border">
-                <div className="flex bg-zinc-900/80 rounded-xl p-1 w-full">
-                    <button onClick={() => setView('drying')} className={`w-1/2 px-4 py-1.5 text-sm font-semibold rounded-lg transition-colors ${view === 'drying' ? 'bg-blue-500 text-white' : 'text-zinc-300 hover:bg-zinc-700/50'}`}>En Secado ({lists.drying.length})</button>
-                    <button onClick={() => setView('dry')} className={`w-1/2 px-4 py-1.5 text-sm font-semibold rounded-lg transition-colors ${view === 'dry' ? 'bg-gray-600 text-white' : 'text-zinc-300 hover:bg-zinc-700/50'}`}>Secas ({lists.dry.length})</button>
+            <div className="bg-c-surface backdrop-blur-xl rounded-2xl p-2 border border-c-border">
+                <div className="flex bg-c-surface-2 rounded-xl p-1 w-full">
+                    <button onClick={() => setView('drying')} className={`w-1/2 px-4 py-1.5 text-sm font-semibold rounded-lg transition-colors ${view === 'drying' ? 'bg-c-accent-sky text-white shadow-sm' : 'text-c-text-muted hover:bg-c-surface-2'}`}>En Secado ({lists.drying.length})</button>
+                    <button onClick={() => setView('dry')} className={`w-1/2 px-4 py-1.5 text-sm font-semibold rounded-lg transition-colors ${view === 'dry' ? 'bg-c-accent-sky text-white shadow-sm' : 'text-c-text-muted hover:bg-c-surface-2'}`}>Secas ({lists.dry.length})</button>
                 </div>
             </div>
             
@@ -93,8 +93,8 @@ export default function LactoKeeperDryOffPage({ navigateToRebano }: LactoKeeperD
                         />
                     ))
                 ) : (
-                    <div className="text-center py-10 bg-brand-glass rounded-2xl">
-                        <p className="text-zinc-400">No hay animales en este estado.</p>
+                    <div className="text-center py-10 bg-c-surface rounded-2xl">
+                        <p className="text-c-text-muted">No hay animales en este estado.</p>
                     </div>
                 )}
             </div>

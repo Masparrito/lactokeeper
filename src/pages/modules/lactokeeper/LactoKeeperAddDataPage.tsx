@@ -35,9 +35,9 @@ const QuickDatePicker = ({ selectedDate, onDateChange, onOpenCalendar }: { selec
 
     return (
         <div className="px-4">
-            <label className="flex items-center gap-2 text-sm font-semibold text-zinc-400 mb-2"><Calendar size={16}/>Fecha del Pesaje</label>
+            <label className="flex items-center gap-2 text-sm font-semibold text-c-text-muted mb-2"><Calendar size={16}/>Fecha del Pesaje</label>
             <div className="flex items-center gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                <button type="button" onClick={onOpenCalendar} className="flex flex-col items-center justify-center bg-zinc-800/80 rounded-lg p-2 w-16 h-16 flex-shrink-0 text-zinc-300 hover:bg-zinc-700 transition-colors">
+                <button type="button" onClick={onOpenCalendar} className="flex flex-col items-center justify-center bg-c-surface-2 rounded-lg p-2 w-16 h-16 flex-shrink-0 text-c-text-strong hover:bg-c-surface-2 transition-colors">
                     <Calendar size={20}/>
                     <span className="text-xs mt-1">Calendario</span>
                 </button>
@@ -45,7 +45,7 @@ const QuickDatePicker = ({ selectedDate, onDateChange, onOpenCalendar }: { selec
                     const isSelected = date.getTime() === selectedDate.getTime();
                     return (
                         <button key={date.toISOString()} type="button" onClick={() => onDateChange(date)}
-                            className={`flex flex-col items-center justify-center rounded-lg p-2 w-16 h-16 flex-shrink-0 transition-colors ${isSelected ? 'bg-brand-orange text-white' : 'bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700'}`}>
+                            className={`flex flex-col items-center justify-center rounded-lg p-2 w-16 h-16 flex-shrink-0 transition-colors ${isSelected ? 'bg-c-accent-sky text-white' : 'bg-c-surface-2 text-c-text-strong hover:bg-c-surface-2'}`}>
                             <span className="text-xs capitalize">{formatDateLabel(date, dates[0])}</span>
                             <span className="font-bold text-2xl">{date.getDate()}</span>
                             <span className="text-xs">{date.toLocaleDateString('es-VE', { month: 'short' }).replace('.', '')}</span>
@@ -62,20 +62,20 @@ const EntryRow = ({ entry, onDelete, onRegister }: { entry: any, onDelete: (temp
     const isUnrecognized = !entry.isRecognized;
     
     return (
-        <div className={`p-3 rounded-lg flex justify-between items-center animate-fade-in group ${isUnrecognized ? 'bg-amber-900/40 border border-amber-500/50' : 'bg-zinc-800/50'}`}>
+        <div className={`p-3 rounded-lg flex justify-between items-center animate-fade-in group ${isUnrecognized ? 'bg-amber-900/40 border border-amber-500/50' : 'bg-c-surface-2'}`}>
             <div className="flex items-center space-x-2 min-w-0 pr-2">
                 {isUnrecognized && <AlertTriangle className="text-amber-400 flex-shrink-0" size={18} />}
                 <div className="min-w-0">
-                    <p className="font-mono font-semibold text-base text-white truncate">{entry.animalId.toUpperCase()}</p>
+                    <p className="font-mono font-semibold text-base text-c-text-strong truncate">{entry.animalId.toUpperCase()}</p>
                 </div>
             </div>
             <div className="flex items-center space-x-3 flex-shrink-0">
                 {isUnrecognized ? (
-                    <button onClick={() => onRegister(entry.animalId)} className="text-xs font-semibold bg-brand-orange text-white px-2 py-1 rounded-md hover:bg-orange-600">Registrar Parto</button>
+                    <button onClick={() => onRegister(entry.animalId)} className="text-xs font-semibold bg-c-accent-sky text-white px-2 py-1 rounded-md hover:bg-c-accent-sky/90">Registrar Parto</button>
                 ) : (
-                    <span className="text-zinc-300 font-semibold">{entry.kg.toFixed(2)} Kg</span>
+                    <span className="text-c-accent-gold font-semibold">{entry.kg.toFixed(2)} Kg</span>
                 )}
-                <button onClick={() => onDelete(entry.tempId)} className="p-1 text-zinc-400 hover:text-brand-red opacity-0 group-hover:opacity-100 transition-opacity"><X size={16}/></button>
+                <button onClick={() => onDelete(entry.tempId)} className="p-1 text-c-text-muted hover:text-brand-red opacity-0 group-hover:opacity-100 transition-opacity"><X size={16}/></button>
             </div>
         </div>
     );
@@ -202,34 +202,34 @@ const RapidEntryForm = ({ onSaveSuccess, onBack }: { onSaveSuccess: (date: strin
             <div className="flex flex-col h-full animate-fade-in">
                 <div className="flex-shrink-0 space-y-4 pt-4">
                     <header className="text-center px-4 flex items-center">
-                        <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
+                        <button onClick={onBack} className="p-2 -ml-2 text-c-text-muted hover:text-c-text transition-colors"><ArrowLeft size={24} /></button>
                         <div className="flex-grow">
-                            <h1 className="text-2xl font-bold tracking-tight text-white">Carga Rápida de Leche</h1>
-                            <p className="text-md text-zinc-400">Sesión de Ordeño</p>
+                            <h1 className="text-2xl font-bold tracking-tight text-c-text-strong">Carga Rápida de Leche</h1>
+                            <p className="text-md text-c-text-muted">Sesión de Ordeño</p>
                         </div>
                         <div className="w-8"></div>
                     </header>
                     <div className="space-y-4">
                         <QuickDatePicker selectedDate={sessionDate} onDateChange={setSessionDate} onOpenCalendar={() => setCalendarOpen(true)} />
                         <div className="flex items-center gap-2 px-4">
-                            <input ref={idInputRef} type="text" value={currentId} onChange={(e) => setCurrentId(e.target.value)} onKeyDown={handleIdKeyDown} placeholder="ID Animal" className="w-full bg-brand-glass p-4 rounded-xl text-lg placeholder-zinc-500 border-2 border-transparent focus:border-brand-orange focus:ring-0"/>
-                            <input ref={kgInputRef} type="number" step="0.01" value={currentKg} onChange={(e) => setCurrentKg(e.target.value)} onKeyDown={handleKgKeyDown} placeholder="Kg" className="w-32 flex-shrink-0 bg-brand-glass p-4 rounded-xl text-lg placeholder-zinc-500 border-2 border-transparent focus:border-brand-orange focus:ring-0"/>
-                            <button onClick={handleAddToList} disabled={!currentId || !currentKg || isLoading} aria-label="Añadir a la lista" className="aspect-square h-full bg-brand-orange text-white rounded-xl flex items-center justify-center transition-all hover:bg-orange-600 disabled:opacity-40"><PlusCircle size={24} /></button>
+                            <input ref={idInputRef} type="text" value={currentId} onChange={(e) => setCurrentId(e.target.value)} onKeyDown={handleIdKeyDown} placeholder="ID Animal" className="w-full bg-c-surface p-4 rounded-xl text-lg placeholder-c-text-faint border-2 border-transparent focus:border-c-accent-sky focus:ring-0"/>
+                            <input ref={kgInputRef} type="number" step="0.01" value={currentKg} onChange={(e) => setCurrentKg(e.target.value)} onKeyDown={handleKgKeyDown} placeholder="Kg" className="w-32 flex-shrink-0 bg-c-surface p-4 rounded-xl text-lg placeholder-c-text-faint border-2 border-transparent focus:border-c-accent-sky focus:ring-0"/>
+                            <button onClick={handleAddToList} disabled={!currentId || !currentKg || isLoading} aria-label="Añadir a la lista" className="aspect-square h-full bg-c-accent-sky text-white rounded-xl flex items-center justify-center transition-all hover:bg-c-accent-sky/90 disabled:opacity-40"><PlusCircle size={24} /></button>
                         </div>
                     </div>
                 </div>
 
                 <div className="flex-grow overflow-y-auto px-4 space-y-2 py-4">
-                    {sessionEntries.length === 0 && <p className="text-center text-zinc-500 text-sm pt-8">Los pesajes añadidos aparecerán aquí.</p>}
+                    {sessionEntries.length === 0 && <p className="text-center text-c-text-faint text-sm pt-8">Los pesajes añadidos aparecerán aquí.</p>}
                     {sessionEntries.map((entry) => ( <EntryRow key={entry.tempId} entry={entry} onDelete={handleDeleteFromList} onRegister={(id) => setParturitionModal({ isOpen: true, motherId: id })} /> ))}
                 </div>
 
-                <div className="flex-shrink-0 p-4 border-t border-brand-border bg-gray-900/80 backdrop-blur-sm">
+                <div className="flex-shrink-0 p-4 border-t border-c-border bg-c-surface/80 backdrop-blur-sm">
                     {message && ( <div className={`mb-3 flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-brand-green' : 'bg-red-500/20 text-brand-red'}`}> {message.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />} <span>{message.text}</span> </div> )}
                     <button 
                         onClick={handleFinalSave} 
                         disabled={isLoading || sessionEntries.length === 0 || sessionEntries.some(e => !e.isRecognized)}
-                        className="w-full flex items-center justify-center gap-2 bg-brand-orange/20 border border-brand-orange text-brand-orange hover:bg-brand-orange/30 font-bold py-4 px-4 rounded-xl transition-colors text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-2 bg-c-accent-sky/15 border border-c-accent-sky text-c-accent-sky hover:bg-c-accent-sky/25 font-bold py-4 px-4 rounded-xl transition-colors text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isLoading ? (
                             <Loader2 size={24} className="animate-spin" />
@@ -256,17 +256,17 @@ const RapidEntryForm = ({ onSaveSuccess, onBack }: { onSaveSuccess: (date: strin
 const EntryOptions = ({ onSelectMode }: { onSelectMode: (mode: 'rapid' | 'scan') => void }) => {
   return (
     <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in px-4 pt-4">
-        <h1 className="text-2xl font-bold tracking-tight text-white text-center">Añadir Datos de Leche</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-c-text-strong text-center">Añadir Datos de Leche</h1>
         <div className="space-y-4">
-            <button onClick={() => onSelectMode('rapid')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-orange text-white p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
-                <Zap className="w-12 h-12 mb-2 text-brand-orange" />
+            <button onClick={() => onSelectMode('rapid')} className="w-full bg-c-surface backdrop-blur-xl border border-c-border hover:border-c-accent-sky shadow-sm text-c-text p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
+                <Zap className="w-12 h-12 mb-2 text-c-accent-sky" />
                 <span className="text-lg font-semibold">Carga Rápida</span>
-                <span className="text-sm font-normal text-zinc-400">Para carga masiva con teclado</span>
+                <span className="text-sm font-normal text-c-text-muted">Para carga masiva con teclado</span>
             </button>
-            <button onClick={() => onSelectMode('scan')} className="w-full bg-brand-glass backdrop-blur-xl border border-brand-border hover:border-brand-blue text-white p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
-                <ScanLine className="w-12 h-12 mb-2 text-brand-blue" />
+            <button onClick={() => onSelectMode('scan')} className="w-full bg-c-surface backdrop-blur-xl border border-c-border hover:border-c-accent-sky shadow-sm text-c-text p-6 rounded-2xl flex flex-col items-center justify-center text-center transition-all transform hover:scale-105">
+                <ScanLine className="w-12 h-12 mb-2 text-c-accent-sky" />
                 <span className="text-lg font-semibold">Escanear Cuaderno</span>
-                <span className="text-sm font-normal text-zinc-400">Digitalización asistida por IA</span>
+                <span className="text-sm font-normal text-c-text-muted">Digitalización asistida por IA</span>
             </button>
         </div>
     </div>
