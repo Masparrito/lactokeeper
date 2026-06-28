@@ -37,7 +37,7 @@ export const AddOriginModal: React.FC<AddOriginModalProps> = ({ isOpen, onClose 
     return (
         <Modal isOpen={isOpen} onClose={handleClose} title="Crear Nuevo Origen">
             <div className="space-y-4">
-                <p className="text-sm text-zinc-400">
+                <p className="text-sm text-c-text-muted">
                     Introduce el nombre de la ganadería o finca de origen.
                 </p>
                 <div>
@@ -46,15 +46,15 @@ export const AddOriginModal: React.FC<AddOriginModalProps> = ({ isOpen, onClose 
                         value={originName}
                         onChange={(e) => setOriginName(e.target.value)}
                         placeholder="Ej: Agropecuaria La Bendición"
-                        className="w-full bg-zinc-800 text-white p-3 rounded-xl focus:border-brand-orange focus:ring-0"
+                        className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl focus:border-c-accent focus:ring-0"
                     />
                 </div>
                 {error && <p className="text-sm text-brand-red">{error}</p>}
                 <div className="flex justify-end space-x-3 pt-2">
-                    <button onClick={handleClose} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg">
+                    <button onClick={handleClose} className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-3 font-semibold rounded-lg text-c-text">
                         Cancelar
                     </button>
-                    <button onClick={handleSave} className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg">
+                    <button onClick={handleSave} className="px-5 py-2 bg-c-accent hover:bg-c-accent text-white font-bold rounded-lg">
                         Guardar Origen
                     </button>
                 </div>

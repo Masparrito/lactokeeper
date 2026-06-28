@@ -74,7 +74,7 @@ export const MilkWeighingActionModal: React.FC<MilkWeighingActionModalProps> = (
           </p>
           <button
             onClick={() => setParturitionModalOpen(true)}
-            className="w-full flex items-center justify-center gap-2 bg-c-accent hover:bg-c-accent font-bold py-3 px-4 rounded-xl transition-colors text-base"
+            className="w-full flex items-center justify-center gap-2 bg-c-accent hover:bg-c-accent/90 text-white font-bold py-3 px-4 rounded-xl transition-colors text-base"
           >
             <Baby size={18} /> Declarar Parto Ahora
           </button>

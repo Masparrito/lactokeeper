@@ -9,9 +9,9 @@ import { formatAge } from '../../utils/calculations';
 
 // --- SUB-COMPONENTES PARA LOS INTERRUPTORES DE FILTRO (sin cambios) ---
 const MainFilterToggle = ({ activeFilter, setActiveFilter }: { activeFilter: 'Activo' | 'Referencia', setActiveFilter: (filter: 'Activo' | 'Referencia') => void }) => (
-    <div className="flex bg-zinc-800 rounded-xl p-1 w-full">
-        <button onClick={() => setActiveFilter('Activo')} className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors ${activeFilter === 'Activo' ? 'bg-zinc-600 text-white' : 'text-zinc-400'}`}>Activos</button>
-        <button onClick={() => setActiveFilter('Referencia')} className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors ${activeFilter === 'Referencia' ? 'bg-zinc-600 text-white' : 'text-zinc-400'}`}>De Referencia</button>
+    <div className="flex bg-c-surface-2 rounded-xl p-1 w-full">
+        <button onClick={() => setActiveFilter('Activo')} className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors ${activeFilter === 'Activo' ? 'bg-c-surface-3 text-c-text' : 'text-c-text-muted'}`}>Activos</button>
+        <button onClick={() => setActiveFilter('Referencia')} className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors ${activeFilter === 'Referencia' ? 'bg-c-surface-3 text-c-text' : 'text-c-text-muted'}`}>De Referencia</button>
     </div>
 );
 
@@ -21,11 +21,11 @@ const ReferenceSubFilterToggle = ({ activeFilter, setFilter }: { activeFilter: s
         { key: 'Muerte', label: 'Muertos' }, { key: 'Descarte', label: 'Descartados' }
     ];
     return (
-        <div className="p-3 bg-black/20 rounded-lg">
-            <label className="block text-xs font-medium text-zinc-400 mb-2">Filtrar por estado:</label>
+        <div className="p-3 bg-c-surface-2 rounded-lg">
+            <label className="block text-xs font-medium text-c-text-muted mb-2">Filtrar por estado:</label>
             <div className="flex flex-wrap gap-2">
                 {filters.map(f => (
-                    <button key={f.key} onClick={() => setFilter(f.key)} className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${activeFilter === f.key ? 'bg-brand-blue text-white' : 'bg-zinc-700 text-zinc-300'}`}>
+                    <button key={f.key} onClick={() => setFilter(f.key)} className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${activeFilter === f.key ? 'bg-c-accent-sky text-white' : 'bg-c-surface-3 text-c-text-strong'}`}>
                         {f.label}
                     </button>
                 ))}
@@ -95,13 +95,13 @@ export const AnimalSelectorModal: React.FC<AnimalSelectorModalProps> = ({ isOpen
             <div className="space-y-4">
                 {/* Barra de búsqueda */}
                 <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-c-text-faint" />
                     <input
                         type="search"
                         placeholder="Buscar ID o Nombre..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-zinc-800 border border-zinc-700 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange"
+                        className="w-full bg-c-surface-2 border border-c-border-strong rounded-xl pl-10 pr-4 py-3 text-c-text focus:outline-none focus:ring-2 focus:ring-c-accent"
                     />
                 </div>
 
@@ -125,20 +125,20 @@ export const AnimalSelectorModal: React.FC<AnimalSelectorModalProps> = ({ isOpen
                                 <button
                                     key={animal.id}
                                     onClick={() => handleSelect(animal.id)}
-                                    className="w-full text-left p-3 bg-zinc-800/50 hover:bg-zinc-700 rounded-lg transition-colors"
+                                    className="w-full text-left p-3 bg-c-surface-2/50 hover:bg-c-surface-3 rounded-lg transition-colors"
                                 >
                                     {/* --- INICIO: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
                                     <div className="min-w-0"> {/* Permitir que el texto se encoja y trunque */}
                                         {/* ID (Protagonista) - Fuente y tamaño aplicados */}
-                                        <p className="font-mono font-semibold text-base text-white truncate">{animal.id.toUpperCase()}</p>
+                                        <p className="font-mono font-semibold text-base text-c-text truncate">{animal.id.toUpperCase()}</p>
 
                                         {/* Nombre (Secundario, si existe) */}
                                         {formattedName && (
-                                          <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+                                          <p className="text-sm font-normal text-c-text-strong truncate">{formattedName}</p>
                                         )}
 
                                         {/* Detalles (Contexto) */}
-                                        <div className="text-xs text-zinc-500 mt-1 min-h-[1rem] truncate">
+                                        <div className="text-xs text-c-text-faint mt-1 min-h-[1rem] truncate">
                                             {animal.sex ? `${animal.sex}` : ''}
                                             {animal.birthDate && animal.birthDate !== 'N/A' ? ` | ${formatAge(animal.birthDate)}` : ''}
                                             {` | Lote: ${animal.location || 'N/A'}`}
@@ -150,7 +150,7 @@ export const AnimalSelectorModal: React.FC<AnimalSelectorModalProps> = ({ isOpen
                         })
                     ) : (
                         // Mensaje si no hay resultados
-                        <p className="text-center text-zinc-500 py-8">No se encontraron animales con estos filtros.</p>
+                        <p className="text-center text-c-text-faint py-8">No se encontraron animales con estos filtros.</p>
                     )}
                 </div>
             </div>

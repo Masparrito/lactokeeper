@@ -322,8 +322,8 @@ export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePag
                 <div className="w-8" />
             </div>
 
-            <div className="bg-zinc-800 rounded-2xl overflow-hidden border border-zinc-800 shadow-xl grid grid-cols-[1.4fr_1fr_1fr] gap-px">
-                <div className="bg-zinc-900 p-4 flex flex-col justify-center">
+            <div className="bg-c-surface-2 rounded-2xl overflow-hidden border border-c-border shadow-xl grid grid-cols-[1.4fr_1fr_1fr] gap-px">
+                <div className="bg-c-surface p-4 flex flex-col justify-center">
                     <HeaderKpi 
                         label="Peso Actual" 
                         value={latestWeight.toFixed(1)} 
@@ -333,7 +333,7 @@ export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePag
                         isMain={true}
                         subValue={
                             lastDiff !== null && (
-                                <div className={`flex items-center gap-1 text-xs font-bold ${lastDiff >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>
+                                <div className={`flex items-center gap-1 text-xs font-bold ${lastDiff >= 0 ? 'text-c-accent' : 'text-brand-red'}`}>
                                     {lastDiff >= 0 ? <ArrowUpRight size={14}/> : <ArrowDownRight size={14}/>}
                                     {Math.abs(lastDiff).toFixed(2)} 
                                 </div>
@@ -341,16 +341,16 @@ export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePag
                         }
                     />
                 </div>
-                <div className="bg-zinc-900 p-3 flex flex-col justify-center">
-                    <HeaderKpi 
-                        label="G.D.P." 
-                        value={gdp.overall ? (gdp.overall * 1000).toFixed(0) : '--'} 
-                        unit="g/d" 
-                        icon={Activity} 
-                        subValue={<span className="text-xs text-zinc-500 font-medium">Promedio Histórico</span>}
+                <div className="bg-c-surface p-3 flex flex-col justify-center">
+                    <HeaderKpi
+                        label="G.D.P."
+                        value={gdp.overall ? (gdp.overall * 1000).toFixed(0) : '--'}
+                        unit="g/d"
+                        icon={Activity}
+                        subValue={<span className="text-xs text-c-text-faint font-medium">Promedio Histórico</span>}
                     />
                 </div>
-                <div className="bg-zinc-900 p-3 flex flex-col justify-center">
+                <div className="bg-c-surface p-3 flex flex-col justify-center">
                     <HeaderKpi 
                         label="Edad (Días)" 
                         value={formattedAgeDays} 
@@ -358,7 +358,7 @@ export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePag
                         icon={Calendar} 
                         subValue={
                             <div className="flex flex-col leading-tight">
-                                <span className="text-xs text-zinc-500">{birthDateFormatted}</span>
+                                <span className="text-xs text-c-text-faint">{birthDateFormatted}</span>
                             </div>
                         }
                     />
@@ -374,11 +374,11 @@ export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePag
 
             <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between px-1">
-                     <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Hitos de Crecimiento</h3>
-                     <button 
+                     <h3 className="text-xs font-bold text-c-text-faint uppercase tracking-wider">Hitos de Crecimiento</h3>
+                     <button
                         onClick={() => setIsChartModalOpen(true)}
                         disabled={!hasEnoughData}
-                        className="text-xs text-brand-blue font-medium hover:underline flex items-center gap-1 disabled:opacity-50"
+                        className="text-xs text-c-accent-sky font-medium hover:underline flex items-center gap-1 disabled:opacity-50"
                      >
                         Ver Curva <BarChart2 size={12}/>
                      </button>
@@ -398,7 +398,7 @@ export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePag
              <button
                 onClick={() => setIsChartModalOpen(true)}
                 disabled={!hasEnoughData}
-                className="w-full mt-4 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700/50 rounded-xl p-3 flex items-center justify-center gap-2 transition-all text-zinc-400 hover:text-white text-sm font-medium"
+                className="w-full mt-4 bg-c-surface-2/50 hover:bg-c-surface-2 border border-c-border-strong/50 rounded-xl p-3 flex items-center justify-center gap-2 transition-all text-c-text-muted hover:text-c-text text-sm font-medium"
             >
                 <Expand size={14} />
                 Abrir Gráfico Detallado

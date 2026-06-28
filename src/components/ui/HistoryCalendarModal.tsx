@@ -15,25 +15,25 @@ interface HistoryCalendarModalProps {
 const css = `
   .rdp {
     --rdp-cell-size: 40px;
-    --rdp-accent-color: #FBBF24; /* Amber */
-    --rdp-background-color: #3a3a3c; /* Gris oscuro iOS */
-    --rdp-accent-color-dark: #FBBF24;
-    --rdp-background-color-dark: #3a3a3c;
+    --rdp-accent-color: rgb(var(--c-accent-sky));
+    --rdp-background-color: rgb(var(--c-surface-2));
+    --rdp-accent-color-dark: rgb(var(--c-accent-sky));
+    --rdp-background-color-dark: rgb(var(--c-surface-2));
     --rdp-outline: 2px solid var(--rdp-accent-color);
     --rdp-outline-selected: 3px solid var(--rdp-accent-color);
     --rdp-border-radius: 6px;
-    color: #FFF;
+    color: rgb(var(--c-text));
     margin: 1em;
   }
   .rdp-caption_label, .rdp-nav_button {
-    color: #FBBF24;
+    color: rgb(var(--c-accent-sky));
   }
   .rdp-head_cell {
-    color: #8e8e93;
+    color: rgb(var(--c-text-muted));
   }
   .rdp-day_selected {
     background-color: var(--rdp-accent-color);
-    color: #000;
+    color: #FFF;
     font-weight: bold;
   }
 `;

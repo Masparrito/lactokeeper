@@ -44,11 +44,11 @@ export const AddLotModal: React.FC<AddLotModalProps> = ({ isOpen, onClose, editi
     return (
         <Modal isOpen={isOpen} onClose={handleClose} title="Crear Nuevo Lote">
             <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-4">
-                <p className="text-sm text-zinc-400">
+                <p className="text-sm text-c-text-muted">
                     Introduce el nombre de la nueva ubicación o lote en tu finca.
                 </p>
                 <div>
-                    <label htmlFor="lotName" className="block text-sm font-medium text-zinc-400 mb-1">Nombre del Lote</label>
+                    <label htmlFor="lotName" className="block text-sm font-medium text-c-text-muted mb-1">Nombre del Lote</label>
                     <input 
                         id="lotName"
                         type="text"
@@ -56,17 +56,17 @@ export const AddLotModal: React.FC<AddLotModalProps> = ({ isOpen, onClose, editi
                         // --- TYPO 'S' ELIMINADO ---
                         onChange={(e) => setLotName(e.target.value)}
                         placeholder="Ej: Galpón 1"
-                        className="w-full bg-zinc-800 text-white p-3 rounded-xl focus:border-brand-orange focus:ring-0"
+                        className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl focus:border-c-accent focus:ring-0"
                     />
                 </div>
 
                 <div>
-                    <label htmlFor="parentLot" className="block text-sm font-medium text-zinc-400 mb-1">Sub-lote de (Opcional)</label>
+                    <label htmlFor="parentLot" className="block text-sm font-medium text-c-text-muted mb-1">Sub-lote de (Opcional)</label>
                     <select
                         id="parentLot"
                         value={parentLotId}
                         onChange={(e) => setParentLotId(e.target.value)}
-                        className="w-full bg-zinc-800 text-white p-3 rounded-xl focus:border-brand-orange focus:ring-0"
+                        className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl focus:border-c-accent focus:ring-0"
                     >
                         <option value="">Ninguno (Es un Lote Principal)</option>
                         {availableParentLots.map(lot => (
@@ -78,10 +78,10 @@ export const AddLotModal: React.FC<AddLotModalProps> = ({ isOpen, onClose, editi
                 {error && <p className="text-sm text-brand-red text-center">{error}</p>}
 
                 <div className="flex justify-end space-x-3 pt-2">
-                    <button type="button" onClick={handleClose} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg">
+                    <button type="button" onClick={handleClose} className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-3 font-semibold rounded-lg text-c-text">
                         Cancelar
                     </button>
-                    <button type="submit" className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg">
+                    <button type="submit" className="px-5 py-2 bg-c-accent hover:bg-c-accent text-white font-bold rounded-lg">
                         Guardar Lote
                     </button>
                 </div>

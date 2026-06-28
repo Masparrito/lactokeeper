@@ -77,10 +77,10 @@ export const AddLotModal: React.FC<AddLotModalProps> = ({ isOpen, onClose, editi
                 {error && <p className="text-sm text-brand-red text-center">{error}</p>}
 
                 <div className="flex justify-end space-x-3 pt-2">
-                    <button type="button" onClick={handleClose} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg">
+                    <button type="button" onClick={handleClose} className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-3 font-semibold rounded-lg text-c-text">
                         Cancelar
                     </button>
-                    <button type="submit" className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg">
+                    <button type="submit" className="px-5 py-2 bg-c-accent hover:bg-c-accent text-white font-bold rounded-lg">
                         Guardar Lote
                     </button>
                 </div>
