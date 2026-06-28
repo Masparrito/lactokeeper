@@ -357,33 +357,31 @@ export default function RebanoProfilePage({
     return (
         <>
             <div ref={parentRef} className="w-full max-w-2xl mx-auto bg-c-bg min-h-screen text-c-text-strong flex flex-col">
-                <header className="p-4 space-y-4 sticky top-0 z-20 bg-c-bg/95 backdrop-blur-sm border-b border-c-border">
-                    <div className="flex justify-between items-start">
-                        <button onClick={onBack} className="flex items-center gap-1 text-c-text-muted hover:text-c-text transition-colors"><ArrowLeft size={20} /><span>Volver</span></button>
-                        <div className="flex gap-2">
-                            {isEditing ? (
-                                <>
-                                    <button onClick={handleCancel} className="bg-c-surface-2 hover:bg-c-surface-3 text-c-text font-bold py-2 px-4 rounded-lg flex items-center gap-2"><X size={18} /></button>
-                                    <button onClick={handleSave} disabled={saveStatus !== 'idle'} className="bg-c-accent hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 disabled:opacity-50 min-w-[100px] justify-center">{saveStatus === 'saving' ? <span className="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full" /> : <Save size={18} />}</button>
-                                </>
-                            ) : (
-                                <button onClick={() => setIsEditing(true)} className={`bg-c-accent/15 hover:bg-c-accent/25 text-c-accent font-bold py-2 px-4 rounded-lg flex items-center gap-2`}><Edit size={16} /><span>Editar</span></button>
-                            )}
-                        </div>
+                {/* Barra de acciones fija y delgada (siempre accesible) */}
+                <header className="px-4 py-3 sticky top-0 z-20 bg-c-bg/95 backdrop-blur-sm border-b border-c-border flex justify-between items-center">
+                    <button onClick={onBack} className="flex items-center gap-1 text-c-text-muted hover:text-c-text transition-colors"><ArrowLeft size={20} /><span>Volver</span></button>
+                    <div className="flex gap-2">
+                        {isEditing ? (
+                            <>
+                                <button onClick={handleCancel} className="bg-c-surface-2 hover:bg-c-surface-3 text-c-text font-bold py-2 px-4 rounded-lg flex items-center gap-2"><X size={18} /></button>
+                                <button onClick={handleSave} disabled={saveStatus !== 'idle'} className="bg-c-accent hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 disabled:opacity-50 min-w-[100px] justify-center">{saveStatus === 'saving' ? <span className="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full" /> : <Save size={18} />}</button>
+                            </>
+                        ) : (
+                            <button onClick={() => setIsEditing(true)} className={`bg-c-accent/15 hover:bg-c-accent/25 text-c-accent font-bold py-2 px-4 rounded-lg flex items-center gap-2`}><Edit size={16} /><span>Editar</span></button>
+                        )}
                     </div>
-                    
-                    <div className="flex justify-between items-center">
-                        <div className="min-w-0 flex-1">
-                            {isEditing ? ( <FormInput type="text" value={displayId} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditedData(prev => ({ ...prev, id: e.target.value.toUpperCase() }))} placeholder="ID DEL ANIMAL" className="text-2xl font-mono font-bold tracking-tight text-c-text p-2" /> ) : ( <h1 className="text-2xl font-mono font-bold tracking-tight text-c-text truncate">{displayId}</h1> )}
-                            {isEditing ? ( <FormInput type="text" value={displayFormattedName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditedData(prev => ({ ...prev, name: e.target.value.toUpperCase() }))} placeholder="Nombre del Animal" className="text-lg text-c-text-muted -mt-0 p-2" /> ) : ( <p className="text-lg text-c-text-muted truncate -mt-1">{displayFormattedName}</p> )}
-                        </div>
-                    </div>
-                    
-                    {/* Acciones Rápidas */}
-                    {!isEditing && <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>{quickActions.map((action) => ( <button key={action.label} onClick={action.onClick} disabled={action.disabled} className={`flex-shrink-0 flex items-center gap-2 bg-c-surface-2 hover:bg-c-surface-3 ${action.color} font-semibold px-3 py-1.5 rounded-full text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}><action.icon size={14} /><span>{action.label}</span></button>))}</div>}
                 </header>
 
-                <main className="px-4 space-y-4 pb-32 flex-1"> 
+                <main className="px-4 space-y-4 pb-32 flex-1">
+                    {/* Identidad del animal (en el flujo, ya no fijo) */}
+                    <div className="pt-4 space-y-2">
+                        {isEditing ? ( <FormInput type="text" value={displayId} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditedData(prev => ({ ...prev, id: e.target.value.toUpperCase() }))} placeholder="ID DEL ANIMAL" className="text-2xl font-mono font-bold tracking-tight text-c-text p-2" /> ) : ( <h1 className="text-2xl font-mono font-bold tracking-tight text-c-text truncate">{displayId}</h1> )}
+                        {isEditing ? ( <FormInput type="text" value={displayFormattedName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditedData(prev => ({ ...prev, name: e.target.value.toUpperCase() }))} placeholder="Nombre del Animal" className="text-lg text-c-text-muted p-2" /> ) : ( <p className="text-lg text-c-text-muted truncate -mt-1">{displayFormattedName}</p> )}
+                    </div>
+
+                    {/* Acciones Rápidas */}
+                    {!isEditing && <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>{quickActions.map((action) => ( <button key={action.label} onClick={action.onClick} disabled={action.disabled} className={`flex-shrink-0 flex items-center gap-2 bg-c-surface-2 hover:bg-c-surface-3 ${action.color} font-semibold px-3 py-1.5 rounded-full text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}><action.icon size={14} /><span>{action.label}</span></button>))}</div>}
+
                     <div className="flex bg-c-surface-2 rounded-xl p-1 border border-c-border">
                         <button onClick={() => setActiveTab('ficha')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'ficha' ? 'bg-c-surface text-c-text shadow-sm' : 'text-c-text-muted'}`}>Ficha</button>
                         <button onClick={() => setActiveTab('genealogia')} className={`w-1/4 py-2 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'genealogia' ? 'bg-c-surface text-c-text shadow-sm' : 'text-c-text-muted'}`}>Genealogía</button>

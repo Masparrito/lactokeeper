@@ -30,9 +30,9 @@ const CATEGORIES = ['Cabrita', 'Cabritona', 'Cabra', 'Cabrito', 'Macho de Levant
 // --- COMPONENTES DE FILTRO ---
 const FilterBar = ({ title, filters, activeFilter, onFilterChange }: { title: string, filters: any[], activeFilter: string, onFilterChange: (key: string) => void }) => (
     <div className="mb-3">
-        <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">{title}</label>
+        <label className="block text-[10px] font-bold text-c-text-faint uppercase tracking-wider mb-2">{title}</label>
         <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => onFilterChange('ALL')} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors border ${activeFilter==='ALL'?'bg-zinc-700 text-white border-zinc-600':'bg-transparent text-zinc-500 border-zinc-800 hover:border-zinc-700'}`}>Todos</button>
+            <button type="button" onClick={() => onFilterChange('ALL')} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors border ${activeFilter==='ALL'?'bg-c-surface-2 text-c-text border-c-border-strong':'bg-transparent text-c-text-faint border-c-border hover:border-c-border-strong'}`}>Todos</button>
             {filters.map(f => {
                 const Icon = f.Icon || null;
                 const isActive = activeFilter === f.key;
@@ -41,7 +41,7 @@ const FilterBar = ({ title, filters, activeFilter, onFilterChange }: { title: st
                         type="button" 
                         key={f.key} 
                         onClick={() => onFilterChange(f.key)} 
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-colors border ${isActive ? 'bg-brand-blue/20 text-brand-blue border-brand-blue/30' : 'bg-transparent text-zinc-500 border-zinc-800 hover:border-zinc-700'}`}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-colors border ${isActive ? 'bg-c-accent-sky/20 text-c-accent-sky border-c-accent-sky/30' : 'bg-transparent text-c-text-faint border-c-border hover:border-c-border-strong'}`}
                     >
                         {Icon && <Icon size={14}/>}
                         {f.label}
@@ -53,16 +53,16 @@ const FilterBar = ({ title, filters, activeFilter, onFilterChange }: { title: st
 );
 
 const ModeToggle = ({ activeMode, setActiveMode }: { activeMode: 'Activo' | 'Referencia', setActiveMode: (mode: 'Activo' | 'Referencia') => void }) => (
-    <div className="flex bg-black rounded-xl p-1 w-full border border-zinc-800 mb-4">
-        <button 
-            onClick={() => setActiveMode('Activo')} 
-            className={`w-1/2 rounded-lg py-2 text-xs font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2 ${activeMode === 'Activo' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+    <div className="flex bg-c-surface-2 rounded-xl p-1 w-full border border-c-border mb-4">
+        <button
+            onClick={() => setActiveMode('Activo')}
+            className={`w-1/2 rounded-lg py-2 text-xs font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2 ${activeMode === 'Activo' ? 'bg-c-surface text-c-text shadow-sm' : 'text-c-text-faint hover:text-c-text-strong'}`}
         >
             <Users size={14} /> Activos
         </button>
-        <button 
-            onClick={() => setActiveMode('Referencia')} 
-            className={`w-1/2 rounded-lg py-2 text-xs font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2 ${activeMode === 'Referencia' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+        <button
+            onClick={() => setActiveMode('Referencia')}
+            className={`w-1/2 rounded-lg py-2 text-xs font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2 ${activeMode === 'Referencia' ? 'bg-c-surface text-c-text shadow-sm' : 'text-c-text-faint hover:text-c-text-strong'}`}
         >
             <FileArchive size={14} /> Referencia
         </button>
@@ -83,35 +83,35 @@ const AnimalSelectionRow = ({ animal, isSelected, onToggle, inbreedingRisk }: {
             onClick={() => onToggle(animal.id)}
             className={`
                 relative w-full text-left p-3.5 mb-2 rounded-xl cursor-pointer transition-all border flex items-center justify-between group
-                ${isSelected 
-                    ? 'bg-brand-blue/10 border-brand-blue/50 shadow-[0_0_15px_rgba(37,99,235,0.1)]' 
-                    : inbreedingRisk 
+                ${isSelected
+                    ? 'bg-c-accent-sky/10 border-c-accent-sky/50 shadow-[0_0_15px_rgba(37,99,235,0.1)]'
+                    : inbreedingRisk
                         ? 'bg-red-900/10 border-red-500/30 hover:bg-red-900/20'
-                        : 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700'
+                        : 'bg-c-surface border-c-border hover:bg-c-surface-2 hover:border-c-border-strong'
                 }
             `}
         >
             <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${isSelected ? 'bg-brand-blue border-brand-blue' : 'border-zinc-600 group-hover:border-zinc-500'}`}>
+                <div className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${isSelected ? 'bg-c-accent-sky border-c-accent-sky' : 'border-c-border-strong group-hover:border-c-text-faint'}`}>
                     {isSelected && <CheckSquare size={14} className="text-white" />}
                 </div>
-                
+
                 <div className="min-w-0">
                     <div className="flex items-baseline gap-2">
-                        <span className={`font-mono font-bold text-base tracking-tight ${isSelected ? 'text-white' : 'text-zinc-200'}`}>
+                        <span className={`font-mono font-bold text-base tracking-tight ${isSelected ? 'text-c-text-strong' : 'text-c-text-strong'}`}>
                             {animal.id}
                         </span>
                         {formattedName && (
-                            <span className="text-xs text-zinc-500 truncate max-w-[140px] font-medium">
+                            <span className="text-xs text-c-text-faint truncate max-w-[140px] font-medium">
                                 {formattedName}
                             </span>
                         )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] font-bold uppercase text-zinc-400 bg-black/50 px-1.5 py-0.5 rounded border border-zinc-800">
+                        <span className="text-[10px] font-bold uppercase text-c-text-muted bg-c-surface-2 px-1.5 py-0.5 rounded border border-c-border">
                             {animal.zootecnicCategory}
                         </span>
-                        <span className="text-[10px] text-zinc-500">
+                        <span className="text-[10px] text-c-text-faint">
                              {animal.location || 'Sin Lote'}
                         </span>
                     </div>
@@ -283,26 +283,26 @@ export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({
                 title={formattedTitle} 
                 size="fullscreen"
             >
-                <div className="flex flex-col h-full bg-black">
-                    
+                <div className="flex flex-col h-full bg-c-surface">
+
                     {/* 1. Header Fijo (Búsqueda y Resumen) */}
-                    <div className="flex-shrink-0 px-4 pt-4 pb-2 bg-black/80 backdrop-blur-md border-b border-zinc-800 z-10">
-                        
+                    <div className="flex-shrink-0 px-4 pt-4 pb-2 bg-c-bg/80 backdrop-blur-md border-b border-c-border z-10">
+
                         {/* Barra de Búsqueda Mejorada */}
                         <div className="relative mb-3">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500 pointer-events-none" />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-c-text-faint pointer-events-none" />
                             <input
                                 type="search"
                                 placeholder="Buscar por ID o nombre..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full bg-zinc-900/80 border border-zinc-700 rounded-2xl pl-12 pr-12 py-3.5 text-white placeholder-zinc-600 focus:border-brand-blue focus:ring-1 focus:ring-brand-blue outline-none transition-all text-base shadow-inner"
+                                className="w-full bg-c-surface-2 border border-c-border-strong rounded-2xl pl-12 pr-12 py-3.5 text-c-text placeholder-c-text-faint focus:border-c-accent-sky focus:ring-1 focus:ring-c-accent-sky outline-none transition-all text-base shadow-inner"
                             />
                             
                             {/* Botón Filtros (Dentro de la barra) */}
                             <button 
                                 onClick={() => setIsFiltersVisible(true)}
-                                className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-xl transition-colors ${isFiltersVisible || categoryFilter !== 'ALL' ? 'text-brand-blue bg-brand-blue/10' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-xl transition-colors ${isFiltersVisible || categoryFilter !== 'ALL' ? 'text-c-accent-sky bg-c-accent-sky/10' : 'text-c-text-faint hover:text-c-text-strong'}`}
                             >
                                 <Filter size={20} />
                             </button>
@@ -312,16 +312,16 @@ export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({
                         <div className="flex justify-between items-center py-2">
                             <button 
                                 onClick={handleSelectAll} 
-                                className="flex items-center gap-3 px-1 py-1 rounded-lg hover:bg-zinc-900/50 transition-colors group"
+                                className="flex items-center gap-3 px-1 py-1 rounded-lg hover:bg-c-surface-2 transition-colors group"
                             >
-                                <div className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${isAllSelected ? 'bg-brand-blue border-brand-blue' : 'border-zinc-600 group-hover:border-zinc-400'}`}>
-                                    {isAllSelected ? <CheckSquare size={14} className="text-white" /> : isSomeSelected ? <MinusSquare size={14} className="text-zinc-400" /> : null}
+                                <div className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${isAllSelected ? 'bg-c-accent-sky border-c-accent-sky' : 'border-c-border-strong group-hover:border-c-text-muted'}`}>
+                                    {isAllSelected ? <CheckSquare size={14} className="text-white" /> : isSomeSelected ? <MinusSquare size={14} className="text-c-text-muted" /> : null}
                                 </div>
-                                <span className="text-sm font-semibold text-zinc-300 group-hover:text-white">
+                                <span className="text-sm font-semibold text-c-text-strong group-hover:text-c-text">
                                     {isAllSelected ? 'Deseleccionar' : 'Seleccionar Todo'}
                                 </span>
                             </button>
-                            <span className="text-xs font-mono text-zinc-500">
+                            <span className="text-xs font-mono text-c-text-faint">
                                 {filteredAnimals.length} resultados
                             </span>
                         </div>
@@ -358,7 +358,7 @@ export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({
                             })}
                         </div>
                         {filteredAnimals.length === 0 && (
-                            <div className="flex flex-col items-center justify-center py-20 text-zinc-500">
+                            <div className="flex flex-col items-center justify-center py-20 text-c-text-faint">
                                 <Search size={48} className="opacity-20 mb-4" />
                                 <p className="text-sm">No se encontraron animales.</p>
                             </div>
@@ -366,18 +366,18 @@ export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({
                     </div>
 
                     {/* 3. Footer Flotante de Acción */}
-                    <div className="fixed bottom-0 left-0 right-0 p-4 pb-8 bg-gradient-to-t from-black via-black to-transparent z-20">
+                    <div className="fixed bottom-0 left-0 right-0 p-4 pb-8 bg-gradient-to-t from-c-bg via-c-bg to-transparent z-20">
                         <div className="flex gap-3 max-w-md mx-auto">
-                            <button 
+                            <button
                                 onClick={handleClose}
-                                className="px-6 py-4 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-400 font-bold hover:text-white hover:bg-zinc-800 transition-colors"
+                                className="px-6 py-4 rounded-2xl bg-c-surface border border-c-border text-c-text-muted font-bold hover:text-c-text hover:bg-c-surface-2 transition-colors"
                             >
                                 Cancelar
                             </button>
-                            <button 
+                            <button
                                 onClick={handleFinalSelect}
                                 disabled={selectedIds.size === 0}
-                                className="flex-1 bg-brand-blue hover:bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-900/30 disabled:opacity-50 disabled:shadow-none transition-all active:scale-[0.98] text-lg flex items-center justify-center gap-2"
+                                className="flex-1 bg-c-accent-sky hover:bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-900/30 disabled:opacity-50 disabled:shadow-none transition-all active:scale-[0.98] text-lg flex items-center justify-center gap-2"
                             >
                                 <CheckCircle2 size={20} />
                                 Asignar ({selectedIds.size})
@@ -397,11 +397,11 @@ export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({
                     <ModeToggle activeMode={activeMode} setActiveMode={setActiveMode} />
 
                     <div>
-                        <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Categoría</label>
+                        <label className="block text-[10px] font-bold text-c-text-faint uppercase tracking-wider mb-2">Categoría</label>
                         <div className="flex flex-wrap gap-2">
-                            <button onClick={() => setCategoryFilter('ALL')} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${categoryFilter === 'ALL' ? 'bg-white text-black border-white' : 'bg-transparent text-zinc-500 border-zinc-800'}`}>Todas</button>
+                            <button onClick={() => setCategoryFilter('ALL')} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${categoryFilter === 'ALL' ? 'bg-c-surface-2 text-c-text border-c-border-strong' : 'bg-transparent text-c-text-faint border-c-border'}`}>Todas</button>
                             {CATEGORIES.map(key => (
-                                <button key={key} onClick={() => setCategoryFilter(key)} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${categoryFilter === key ? 'bg-brand-blue text-white border-brand-blue' : 'bg-transparent text-zinc-500 border-zinc-800'}`}>
+                                <button key={key} onClick={() => setCategoryFilter(key)} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${categoryFilter === key ? 'bg-c-accent-sky text-white border-c-accent-sky' : 'bg-transparent text-c-text-faint border-c-border'}`}>
                                     {key}
                                 </button>
                             ))}
@@ -409,27 +409,27 @@ export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({
                     </div>
                     
                     {activeMode === 'Activo' && (
-                        <div className="space-y-4 pt-2 border-t border-zinc-800/50">
+                        <div className="space-y-4 pt-2 border-t border-c-border/50">
                             <FilterBar title="Estado Productivo" filters={['MILKING', 'DRYING_OFF', 'DRY'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey]).filter(Boolean)} activeFilter={productiveFilter} onFilterChange={setProductiveFilter} />
                             <FilterBar title="Estado Reproductivo" filters={['PREGNANT', 'IN_SERVICE_CONFIRMED', 'IN_SERVICE', 'EMPTY', 'SIRE_IN_SERVICE'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey]).filter(Boolean)} activeFilter={reproductiveFilter} onFilterChange={setReproductiveFilter} />
                         </div>
                     )}
 
                     {activeMode === 'Referencia' && (
-                        <div className="pt-2 border-t border-zinc-800/50">
-                            <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Causa de Baja</label>
+                        <div className="pt-2 border-t border-c-border/50">
+                            <label className="block text-[10px] font-bold text-c-text-faint uppercase tracking-wider mb-2">Causa de Baja</label>
                             <div className="flex flex-wrap gap-2">
-                                <button onClick={() => setStatusFilter('ALL')} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${statusFilter === 'ALL' ? 'bg-white text-black border-white' : 'bg-transparent text-zinc-500 border-zinc-800'}`}>Todas</button>
-                                <button onClick={() => setStatusFilter('Venta')} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${statusFilter === 'Venta' ? 'bg-green-500/20 text-green-500 border-green-500/30' : 'bg-transparent text-zinc-500 border-zinc-800'}`}>Venta</button>
-                                <button onClick={() => setStatusFilter('Muerte')} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${statusFilter === 'Muerte' ? 'bg-red-500/20 text-red-500 border-red-500/30' : 'bg-transparent text-zinc-500 border-zinc-800'}`}>Muerte</button>
-                                <button onClick={() => setStatusFilter('Descarte')} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${statusFilter === 'Descarte' ? 'bg-orange-500/20 text-orange-500 border-orange-500/30' : 'bg-transparent text-zinc-500 border-zinc-800'}`}>Descarte</button>
+                                <button onClick={() => setStatusFilter('ALL')} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${statusFilter === 'ALL' ? 'bg-c-surface-2 text-c-text border-c-border-strong' : 'bg-transparent text-c-text-faint border-c-border'}`}>Todas</button>
+                                <button onClick={() => setStatusFilter('Venta')} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${statusFilter === 'Venta' ? 'bg-green-500/20 text-green-500 border-green-500/30' : 'bg-transparent text-c-text-faint border-c-border'}`}>Venta</button>
+                                <button onClick={() => setStatusFilter('Muerte')} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${statusFilter === 'Muerte' ? 'bg-red-500/20 text-red-500 border-red-500/30' : 'bg-transparent text-c-text-faint border-c-border'}`}>Muerte</button>
+                                <button onClick={() => setStatusFilter('Descarte')} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${statusFilter === 'Descarte' ? 'bg-orange-500/20 text-orange-500 border-orange-500/30' : 'bg-transparent text-c-text-faint border-c-border'}`}>Descarte</button>
                             </div>
                         </div>
                     )}
                     
-                    <div className="flex justify-between items-center pt-6 mt-4 border-t border-zinc-800">
-                        <button onClick={resetFilters} className="text-zinc-400 text-xs font-bold hover:text-white flex items-center gap-2 px-2"><FilterX size={16}/> Limpiar Todo</button>
-                        <button onClick={() => setIsFiltersVisible(false)} className="px-6 py-3 bg-white text-black font-bold rounded-xl shadow-lg hover:bg-gray-200 transition-colors">Ver Resultados</button>
+                    <div className="flex justify-between items-center pt-6 mt-4 border-t border-c-border">
+                        <button onClick={resetFilters} className="text-c-text-muted text-xs font-bold hover:text-c-text flex items-center gap-2 px-2"><FilterX size={16}/> Limpiar Todo</button>
+                        <button onClick={() => setIsFiltersVisible(false)} className="px-6 py-3 bg-c-accent text-white font-bold rounded-xl shadow-lg hover:bg-c-accent/90 transition-colors">Ver Resultados</button>
                     </div>
                 </div>
             </Modal>
