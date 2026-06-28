@@ -32,23 +32,23 @@ export const GrowthChartModal: React.FC<GrowthChartModalProps> = ({
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} size="fullscreen" title="">
-            {/* Contenedor para la exportación a PDF (fondo oscuro) */}
-            <div ref={chartExportRef} className="w-full h-full bg-brand-dark flex flex-col p-4">
-                
+            {/* Contenedor para la exportación a PDF */}
+            <div ref={chartExportRef} className="w-full h-full bg-c-bg flex flex-col p-4">
+
                 {/* Header del Modal */}
                 <div className="flex justify-between items-center mb-4 flex-shrink-0 px-2 md:px-4">
                     <div className="min-w-0">
-                        <h2 className="text-xl md:text-2xl font-bold text-white truncate">
+                        <h2 className="text-xl md:text-2xl font-bold text-c-text truncate">
                             Curva de Crecimiento: {formatAnimalDisplay(animal)}
                         </h2>
-                        <p className="text-sm text-zinc-400">Use sus dedos para zoom y paneo</p>
+                        <p className="text-sm text-c-text-muted">Use sus dedos para zoom y paneo</p>
                     </div>
                     <div className="flex items-center gap-2">
                         {/* Botón de Exportar PDF */}
                         <button
                             onClick={() => onExportPDF(chartExportRef)}
                             disabled={isExporting}
-                            className="p-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                            className="p-2 bg-c-surface-2 hover:bg-c-surface-3 text-c-text rounded-lg transition-colors disabled:opacity-50"
                             title="Exportar a PDF"
                         >
                             {isExporting ? (
@@ -57,11 +57,11 @@ export const GrowthChartModal: React.FC<GrowthChartModalProps> = ({
                                 <Printer size={20} />
                             )}
                         </button>
-                        
+
                         {/* Botón de Cerrar */}
                         <button
                             onClick={onClose}
-                            className="p-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors"
+                            className="p-2 bg-c-surface-2 hover:bg-c-surface-3 text-c-text rounded-lg transition-colors"
                         >
                             <X size={20} />
                         </button>
