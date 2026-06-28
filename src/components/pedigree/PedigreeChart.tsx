@@ -19,23 +19,23 @@ const AncestorCard = ({ animal, onClick, theme }: {
     const isLight = theme === 'light';
     const cardBaseClasses = `p-1.5 rounded-lg border w-44 text-left shadow-md transition-colors text-xs px-2`;
     
-    const themeClasses = isLight 
-        ? 'bg-white border-zinc-300 text-black' 
+    const themeClasses = isLight
+        ? 'bg-c-surface border-c-border text-c-text'
         : 'bg-zinc-800/80 border-zinc-700/80 text-white';
 
     // Estilo para ancestro desconocido
     if (!animal) {
         return (
-            <div className={`${cardBaseClasses} ${isLight ? 'bg-zinc-50 border-dashed' : 'bg-zinc-900/50 border-dashed'} text-center`}> {/* Centrado solo para 'Desconocido' */}
-                <p className="font-semibold text-zinc-500">Desconocido</p>
+            <div className={`${cardBaseClasses} ${isLight ? 'bg-c-surface-2 border-dashed' : 'bg-zinc-900/50 border-dashed'} text-center`}> {/* Centrado solo para 'Desconocido' */}
+                <p className="font-semibold text-c-text-faint">Desconocido</p>
             </div>
         );
     }
 
     // Determinar color por sexo
-    const genderColor = animal.sex === 'Hembra' 
-        ? (isLight ? 'text-pink-600' : 'text-pink-400') 
-        : (isLight ? 'text-blue-600' : 'text-blue-400');
+    const genderColor = animal.sex === 'Hembra'
+        ? (isLight ? 'text-pink-600' : 'text-pink-400')
+        : (isLight ? 'text-c-accent-sky' : 'text-blue-400');
     
     const formattedName = animal.name ? String(animal.name).toUpperCase().trim() : '';
 
@@ -43,16 +43,16 @@ const AncestorCard = ({ animal, onClick, theme }: {
         // Botón clickeable
         <button
             onClick={() => onClick(animal.id)}
-            className={`${cardBaseClasses} ${themeClasses} ${isLight ? 'hover:border-blue-500' : 'hover:border-brand-orange'}`}
+            className={`${cardBaseClasses} ${themeClasses} ${isLight ? 'hover:border-c-accent-sky' : 'hover:border-brand-orange'}`}
         >
             {/* --- INICIO: APLICACIÓN DEL ESTILO ESTÁNDAR (TAMAÑO PEQUEÑO) --- */}
             <p className={`font-mono font-semibold text-xs truncate ${genderColor}`}>
                 {animal.id.toUpperCase()}
             </p>
             {formattedName && (
-                <p className={`text-[10px] ${isLight ? 'text-zinc-700' : 'text-zinc-300'} truncate`}>{formattedName}</p>
+                <p className={`text-[10px] ${isLight ? 'text-c-text' : 'text-zinc-300'} truncate`}>{formattedName}</p>
             )}
-            <p className={`text-[10px] ${isLight ? 'text-zinc-600' : 'text-zinc-400'}`}>{animal.sex}</p>
+            <p className={`text-[10px] ${isLight ? 'text-c-text-muted' : 'text-zinc-400'}`}>{animal.sex}</p>
             {/* --- FIN: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
         </button>
     );
@@ -68,12 +68,12 @@ interface PedigreeChartProps {
 // --- Componente Principal del Gráfico de Pedigrí ---
 export const PedigreeChart: React.FC<PedigreeChartProps> = ({ rootNode, onAncestorClick, theme = 'dark' }) => {
     if (!rootNode) {
-        return <div className="text-center p-8 text-zinc-500">No hay datos de genealogía suficientes para mostrar el pedigrí.</div>;
+        return <div className="text-center p-8 text-c-text-faint">No hay datos de genealogía suficientes para mostrar el pedigrí.</div>;
     }
 
     // --- (NUEVO) Estilos de líneas dinámicos ---
     const isLight = theme === 'light';
-    const lineClasses = isLight ? "border-zinc-400" : "border-zinc-600";
+    const lineClasses = isLight ? "border-c-border" : "border-zinc-600";
 
     const hLine = <div className={`w-3 border-t-2 ${lineClasses}`}></div>;
     const vLineParent = <div className={`h-20 border-r-2 ${lineClasses}`}></div>;
@@ -83,12 +83,12 @@ export const PedigreeChart: React.FC<PedigreeChartProps> = ({ rootNode, onAncest
     const rootFormattedName = rootNode.animal.name ? String(rootNode.animal.name).toUpperCase().trim() : '';
     
     // --- (NUEVO) Clases de texto dinámicas ---
-    const textColor = isLight ? 'text-black' : 'text-white';
-    const subTextColor = isLight ? 'text-zinc-600' : 'text-zinc-400';
-    const genderColorRoot = rootNode.animal.sex === 'Hembra' 
-        ? (isLight ? 'text-pink-600' : 'text-pink-400') 
-        : (isLight ? 'text-blue-600' : 'text-blue-400');
-    const rootBg = isLight ? 'bg-white border-zinc-300' : 'bg-zinc-800/80 border-zinc-700/80';
+    const textColor = isLight ? 'text-c-text' : 'text-white';
+    const subTextColor = isLight ? 'text-c-text-muted' : 'text-zinc-400';
+    const genderColorRoot = rootNode.animal.sex === 'Hembra'
+        ? (isLight ? 'text-pink-600' : 'text-pink-400')
+        : (isLight ? 'text-c-accent-sky' : 'text-blue-400');
+    const rootBg = isLight ? 'bg-c-surface border-c-border' : 'bg-zinc-800/80 border-zinc-700/80';
 
     // --- RENDERIZADO DEL GRÁFICO ---
     return (
@@ -103,7 +103,7 @@ export const PedigreeChart: React.FC<PedigreeChartProps> = ({ rootNode, onAncest
                         {rootNode.animal.id.toUpperCase()}
                     </p>
                     {rootFormattedName && (
-                        <p className={`text-[10px] ${isLight ? 'text-zinc-700' : 'text-zinc-300'} truncate`}>{rootFormattedName}</p>
+                        <p className={`text-[10px] ${isLight ? 'text-c-text' : 'text-zinc-300'} truncate`}>{rootFormattedName}</p>
                     )}
                     <p className={`text-[10px] ${subTextColor}`}>{rootNode.animal.sex}</p>
                     {/* --- FIN: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}

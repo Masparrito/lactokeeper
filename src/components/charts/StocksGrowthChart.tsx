@@ -80,12 +80,12 @@ export const StocksGrowthChart: React.FC<StocksGrowthChartProps> = ({ animal, ch
                 }
             },
         },
-        // --- Tema Oscuro ---
+        // --- Tema Claro ---
         theme: {
-            mode: 'dark',
+            mode: 'light',
         },
         // --- Colores y Estilos ---
-        colors: ['#34C759', '#FF9500'], // Verde y Naranja iOS
+        colors: ['#2F843C', '#FF9500'], // Verde y Naranja iOS
         stroke: {
             curve: 'smooth',
             width: [3, 2], // 3px para animal, 2px para meta
@@ -127,12 +127,12 @@ export const StocksGrowthChart: React.FC<StocksGrowthChartProps> = ({ animal, ch
             offsetY: 10,
         },
         grid: {
-            borderColor: 'rgba(255, 255, 255, 0.1)',
+            borderColor: '#e2e8f0',
         }
     };
 
     if (!hasData) {
-        return <div className="text-zinc-500 text-center p-8">Datos insuficientes para mostrar el gráfico.</div>
+        return <div className="text-c-text-faint text-center p-8">Datos insuficientes para mostrar el gráfico.</div>
     }
 
     return (

@@ -40,6 +40,7 @@ export const GeneticsTab: React.FC<GeneticsTabProps> = ({ rootNode, navigateTo, 
                 <PedigreeChart
                     rootNode={rootNode}
                     onAncestorClick={handleAncestorClick}
+                    theme="light"
                 />
             </div>
         </div>
