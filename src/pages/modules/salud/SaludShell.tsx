@@ -72,19 +72,19 @@ export default function SaludShell({ onSwitchModule }: SaludShellProps) {
     return (
         // --- (INICIO) CORRECCIÓN DE SCROLL ---
         // 1. Contenedor raíz con 'h-screen' y 'overflow-hidden'
-        <div className="h-full overflow-hidden animate-fade-in text-white flex flex-col bg-brand-dark">
+        <div className="theme-light h-full overflow-hidden animate-fade-in text-c-text flex flex-col bg-c-bg">
 
             {/* Header con safe-area superior */}
-            <header className="flex-shrink-0 bg-brand-dark/80 backdrop-blur-lg border-b border-brand-border pt-[env(safe-area-inset-top)]">
+            <header className="flex-shrink-0 bg-c-bg/95 backdrop-blur-lg border-b border-c-border pt-[env(safe-area-inset-top)]">
                 <div className="max-w-4xl mx-auto flex items-center justify-between px-4 h-16">
-                    <button onClick={navigateBack} className="p-2 -ml-2 text-zinc-400 hover:text-white" aria-label="Atrás">
+                    <button onClick={navigateBack} className="p-2 -ml-2 text-c-text-muted hover:text-c-text" aria-label="Atrás">
                         <ArrowLeft size={24} />
                     </button>
                     <div className="flex items-center gap-2">
-                        <HeartPulse className="text-teal-400" />
+                        <HeartPulse className="text-teal-500" />
                         <div>
-                            <h1 className="text-xl font-bold text-white leading-none">GanaderoOS</h1>
-                            <p className="text-xs text-zinc-400 leading-none">StockCare</p>
+                            <h1 className="text-xl font-bold text-c-text leading-none">GanaderoOS</h1>
+                            <p className="text-xs text-c-text-muted leading-none">StockCare</p>
                         </div>
                     </div>
                     <div className="w-8 flex justify-end">
@@ -99,13 +99,13 @@ export default function SaludShell({ onSwitchModule }: SaludShellProps) {
             </main>
 
             {/* Nav con safe-area inferior */}
-            <nav className="flex-shrink-0 bg-zinc-900 border-t border-white/10 pb-[env(safe-area-inset-bottom)]">
+            <nav className="flex-shrink-0 bg-c-surface border-t border-c-border pb-[env(safe-area-inset-bottom)]">
                 <div className="flex justify-around items-center h-16">
                 {navItems.map((item) => (
                     <button
                         key={item.id}
                         onClick={() => handleNavClick(item.id as SaludPage['name'])}
-                        className={`flex flex-col items-center justify-center p-3 w-full transition-colors ${page.name === item.id ? 'text-teal-400' : 'text-gray-400 hover:text-teal-400'}`}
+                        className={`flex flex-col items-center justify-center p-3 w-full transition-colors ${page.name === item.id ? 'text-teal-600' : 'text-c-text-muted hover:text-teal-600'}`}
                     >
                         <item.icon className="w-6 h-6 mb-1" />
                         <span className="text-xs font-semibold">{item.label}</span>

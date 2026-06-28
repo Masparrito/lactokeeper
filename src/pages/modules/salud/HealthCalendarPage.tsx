@@ -28,17 +28,17 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({ isOpen, onClo
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={taskGroup.activity.name}>
             <div className="flex flex-col space-y-3 max-h-[60vh] overflow-y-auto">
-                <p className="text-zinc-400 text-sm">
+                <p className="text-c-text-muted text-sm">
                     Esta actividad aplica a los siguientes {taskGroup.animalCount} animales:
                 </p>
-                <div className="bg-black/20 rounded-lg p-2 space-y-1">
+                <div className="bg-c-surface-2 rounded-lg p-2 space-y-1">
                     {taskGroup.animals.map(animal => (
-                        <div key={animal.id} className="flex justify-between items-center p-2 rounded hover:bg-zinc-700/50">
+                        <div key={animal.id} className="flex justify-between items-center p-2 rounded hover:bg-c-surface-2">
                             <div>
-                                <p className="font-mono text-white font-semibold">{animal.id}</p>
-                                <p className="text-xs text-zinc-400">{animal.name || 'Sin Nombre'}</p>
+                                <p className="font-mono text-c-text font-semibold">{animal.id}</p>
+                                <p className="text-xs text-c-text-muted">{animal.name || 'Sin Nombre'}</p>
                             </div>
-                            <span className="text-xs text-zinc-500">{animal.location || 'N/A'}</span>
+                            <span className="text-xs text-c-text-faint">{animal.location || 'N/A'}</span>
                         </div>
                     ))}
                 </div>
@@ -74,14 +74,14 @@ const GroupedActivityCard = ({ task, onMarkDone, onClick }: {
     };
 
     return (
-        <div className="relative w-full overflow-hidden rounded-2xl bg-brand-glass border border-brand-border">
+        <div className="relative w-full overflow-hidden rounded-2xl bg-c-surface border border-c-border">
             <div className="absolute inset-y-0 left-0 flex items-center justify-start z-0 h-full w-[80px] bg-brand-green text-white">
                 <div className="flex flex-col items-center justify-center w-full">
                     <Check size={20} />
                     <span className="text-[10px] mt-0.5 font-semibold">Hecho</span>
                 </div>
             </div>
-            <div className="absolute inset-y-0 right-0 flex items-center justify-end z-0 h-full w-[80px] bg-brand-blue text-white opacity-30">
+            <div className="absolute inset-y-0 right-0 flex items-center justify-end z-0 h-full w-[80px] bg-teal-600 text-white opacity-30">
                 <div className="flex flex-col items-center justify-center w-full">
                     <Clock size={20} />
                     <span className="text-[10px] mt-0.5 font-semibold">Mover</span>
@@ -97,7 +97,7 @@ const GroupedActivityCard = ({ task, onMarkDone, onClick }: {
                 onTap={() => { if (!dragStarted.current) onClick(); }}
                 animate={swipeControls}
                 transition={{ type: "spring", stiffness: 400, damping: 40 }}
-                className="relative w-full z-10 cursor-pointer bg-ios-modal-bg p-4 flex items-center gap-4"
+                className="relative w-full z-10 cursor-pointer bg-c-surface p-4 flex items-center gap-4"
             >
                 {isOverdue && (
                     <div className="flex-shrink-0 text-brand-red" title="Actividad Vencida">
@@ -105,17 +105,17 @@ const GroupedActivityCard = ({ task, onMarkDone, onClick }: {
                     </div>
                 )}
                 <div className="flex-grow min-w-0">
-                    <p className="font-semibold text-white truncate">{activity.name}</p>
-                    <p className="text-sm text-zinc-400 flex items-center gap-1.5">
+                    <p className="font-semibold text-c-text truncate">{activity.name}</p>
+                    <p className="text-sm text-c-text-muted flex items-center gap-1.5">
                         <Users size={14} />
                         {animalCount} {animalCount === 1 ? 'animal' : 'animales'}
                     </p>
                 </div>
                 <div className="flex-shrink-0 text-right">
-                    <p className={`font-semibold text-sm ${isOverdue ? 'text-brand-red' : 'text-zinc-300'}`}>
+                    <p className={`font-semibold text-sm ${isOverdue ? 'text-brand-red' : 'text-c-text-strong'}`}>
                         {new Date(dueDate).toLocaleString('es-VE', { timeZone: 'UTC' })}
                     </p>
-                    <p className="text-xs text-zinc-500">{status}</p>
+                    <p className="text-xs text-c-text-faint">{status}</p>
                 </div>
             </motion.div>
         </div>
@@ -171,20 +171,20 @@ export default function HealthCalendarPage() {
                 
                 <header className="flex justify-between items-center p-4">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-white">StockCare</h1>
-                        <p className="text-lg text-zinc-400">Agenda Sanitaria</p>
+                        <h1 className="text-3xl font-bold tracking-tight text-c-text">StockCare</h1>
+                        <p className="text-lg text-c-text-muted">Agenda Sanitaria</p>
                     </div>
                     <div className="flex items-center gap-2">
                          <button
                             onClick={() => setIsUnplannedModalOpen(true)}
-                            className="flex-shrink-0 bg-brand-blue text-white font-semibold p-2 rounded-lg transition-colors"
+                            className="flex-shrink-0 bg-teal-600 text-white font-semibold p-2 rounded-lg transition-colors"
                             title="Registrar Actividad"
                         >
                             <Plus size={20} />
                         </button>
                          <button
                             onClick={() => alert('Modal de Calendario (en desarrollo)')}
-                            className="flex-shrink-0 bg-zinc-700 text-white font-semibold p-2 rounded-lg transition-colors"
+                            className="flex-shrink-0 bg-c-surface-2 text-c-text font-semibold p-2 rounded-lg transition-colors"
                             title="Ver Calendario"
                         >
                             <Calendar size={20} />
@@ -213,12 +213,12 @@ export default function HealthCalendarPage() {
 
                     {/* Esta sección ahora usa 'allUpcomingTasks' corregido (y corrige TS7006) */}
                     <section className="animate-fade-in">
-                        <h2 className="text-xl font-semibold text-zinc-300 mb-3">Próximas</h2>
+                        <h2 className="text-xl font-semibold text-c-text-strong mb-3">Próximas</h2>
                         {allUpcomingTasks.length > 0 ? (
                             <div className="space-y-3">
                                 {allUpcomingTasks.map(taskGroup => ( // 'taskGroup' ahora está correctamente tipado
-                                    <GroupedActivityCard 
-                                        key={taskGroup.groupKey} 
+                                    <GroupedActivityCard
+                                        key={taskGroup.groupKey}
                                         task={taskGroup}
                                         onMarkDone={() => handleEventClick(taskGroup)}
                                         onClick={() => setDetailTaskGroup(taskGroup)}
@@ -226,8 +226,8 @@ export default function HealthCalendarPage() {
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-10 bg-brand-glass rounded-2xl">
-                                <p className="text-zinc-500">No hay actividades próximas agendadas.</p>
+                            <div className="text-center py-10 bg-c-surface rounded-2xl">
+                                <p className="text-c-text-faint">No hay actividades próximas agendadas.</p>
                             </div>
                         )}
                     </section>

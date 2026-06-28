@@ -33,7 +33,7 @@ const SwipeablePlanCard = ({ plan, onClick, onDelete, isDeleting }: { plan: Heal
     };
 
     return (
-        <div className={`relative w-full overflow-hidden rounded-2xl bg-dashboard-surface border border-brand-border transition-opacity ${isDeleting ? 'opacity-50' : 'opacity-100'}`}>
+        <div className={`relative w-full overflow-hidden rounded-2xl bg-c-surface border border-c-border transition-opacity ${isDeleting ? 'opacity-50' : 'opacity-100'}`}>
             <div className="absolute inset-y-0 right-0 flex items-center z-0 h-full">
                 <button onClick={onDelete} onPointerDown={(e) => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-red text-white transition-colors hover:bg-red-600">
                     <Trash2 size={22} /><span className="text-xs mt-1 font-semibold">Eliminar</span>
@@ -49,14 +49,14 @@ const SwipeablePlanCard = ({ plan, onClick, onDelete, isDeleting }: { plan: Heal
                 onTap={() => { if (!dragStarted.current && !isDeleting) onClick(); }}
                 animate={swipeControls}
                 transition={{ type: "spring", stiffness: 400, damping: 40 }}
-                className="relative w-full z-10 cursor-pointer bg-ios-modal-bg p-4"
+                className="relative w-full z-10 cursor-pointer bg-c-surface p-4"
             >
                 <div className="flex justify-between items-center">
                     <div>
-                        <p className="font-bold text-lg text-white">{plan.name}</p>
-                        <p className="text-sm text-zinc-400 mt-1">{plan.description || `Plan para ${plan.targetGroup}`}</p>
+                        <p className="font-bold text-lg text-c-text">{plan.name}</p>
+                        <p className="text-sm text-c-text-muted mt-1">{plan.description || `Plan para ${plan.targetGroup}`}</p>
                     </div>
-                    {isDeleting ? <Loader2 className="animate-spin text-zinc-400" /> : <ChevronRight className="text-zinc-600" />}
+                    {isDeleting ? <Loader2 className="animate-spin text-c-text-muted" /> : <ChevronRight className="text-c-text-faint" />}
                 </div>
             </motion.div>
         </div>
@@ -98,13 +98,13 @@ export default function HealthPlannerPage({ navigateTo }: HealthPlannerPageProps
         <>
             <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in px-4">
                 <header className="text-center">
-                    <h1 className="text-3xl font-bold tracking-tight text-white">Planificador Sanitario</h1>
-                    <p className="text-lg text-zinc-400">Define tus Protocolos y Planes</p>
+                    <h1 className="text-3xl font-bold tracking-tight text-c-text">Planificador Sanitario</h1>
+                    <p className="text-lg text-c-text-muted">Define tus Protocolos y Planes</p>
                 </header>
 
                 <button
                     onClick={() => setIsBuilderModalOpen(true)}
-                    className="w-full flex items-center justify-center gap-2 bg-brand-orange hover:opacity-90 text-black font-bold py-3 px-4 rounded-xl transition-colors text-base">
+                    className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition-colors text-base">
                     <Plus size={18} /> Crear Nuevo Plan Sanitario
                 </button>
 
@@ -120,10 +120,10 @@ export default function HealthPlannerPage({ navigateTo }: HealthPlannerPageProps
                             />
                         ))
                     ) : (
-                        <div className="text-center py-10 bg-dashboard-surface rounded-2xl flex flex-col items-center gap-4">
-                            <ClipboardList size={48} className="text-zinc-600" />
-                            <p className="text-zinc-400 font-semibold">Aún no has creado ningún plan.</p>
-                            <p className="text-zinc-500 text-sm">Usa el botón de arriba para empezar.</p>
+                        <div className="text-center py-10 bg-c-surface rounded-2xl flex flex-col items-center gap-4">
+                            <ClipboardList size={48} className="text-c-text-faint" />
+                            <p className="text-c-text-muted font-semibold">Aún no has creado ningún plan.</p>
+                            <p className="text-c-text-faint text-sm">Usa el botón de arriba para empezar.</p>
                         </div>
                     )}
                 </div>

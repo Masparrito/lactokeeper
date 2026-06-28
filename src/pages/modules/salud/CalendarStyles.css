@@ -1,7 +1,7 @@
 /* --- GENERAL CONTAINER & THEME --- */
 .fc {
     background-color: transparent !important;
-    color: #e4e4e7; /* zinc-200 */
+    color: rgb(var(--c-text));
     border: none !important;
 }
 
@@ -9,29 +9,29 @@
 /* Esta clase se usa en PlanPreviewModal */
 .fc-toolbar.fc-header-toolbar {
     margin-bottom: 1.5em !important;
-    color: white;
+    color: rgb(var(--c-text));
     /* Para móvil, hacemos los botones de navegación más pequeños */
     font-size: 0.9rem;
 }
 .fc-toolbar-title {
     font-size: 1.5em !important; /* Ajustado para un look más prominente */
     font-weight: 700 !important;
-    color: white !important;
+    color: rgb(var(--c-text)) !important;
     text-transform: capitalize;
 }
 .fc .fc-button {
-    background: rgba(56, 56, 58, 0.7) !important;
-    border: 1px solid #3f3f46 !important; /* zinc-700 */
-    color: white !important;
+    background: rgb(var(--c-surface-2)) !important;
+    border: 1px solid rgb(var(--c-border-strong)) !important;
+    color: rgb(var(--c-text)) !important;
     box-shadow: none !important;
     text-transform: capitalize !important;
     transition: background-color 0.2s;
 }
 .fc .fc-button-primary:hover {
-    background: rgba(74, 74, 76, 0.9) !important;
+    background: rgb(var(--c-surface-3)) !important;
 }
 .fc .fc-button-primary:active, .fc .fc-button-active {
-    background: rgba(90, 90, 92, 1) !important;
+    background: rgb(var(--c-border-strong)) !important;
 }
 .fc .fc-button-primary:disabled {
     opacity: 0.5;
@@ -43,25 +43,25 @@
 
 /* --- CALENDAR GRID --- */
 .fc .fc-view, .fc-scrollgrid, .fc-theme-standard td, .fc-theme-standard th {
-    border: 1px solid #27272a; /* zinc-800 */
+    border: 1px solid rgb(var(--c-border));
 }
 .fc-daygrid-day-number {
-    color: #a1a1aa; /* zinc-400 */
+    color: rgb(var(--c-text-muted));
     padding: 0.5em !important;
     font-size: 0.8rem; /* Más pequeño para móvil */
 }
 .fc-day-today {
-    background: rgba(45, 212, 191, 0.1) !important; /* teal-500/10 */
+    background: rgba(20, 184, 166, 0.10) !important; /* teal tint */
 }
 .fc-day-today .fc-daygrid-day-number {
     font-weight: bold;
-    color: #2dd4bf; /* teal-400 */
+    color: #0d9488; /* teal-600, readable on light */
 }
 .fc-col-header-cell {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgb(var(--c-surface-2));
 }
 .fc-col-header-cell-cushion { /* Contenedor de los días de la semana (L, M, M, etc.) */
-    color: #d4d4d8; /* zinc-300 */
+    color: rgb(var(--c-text-muted));
     font-weight: 600;
     padding-top: 0.5em !important;
     padding-bottom: 0.5em !important;
