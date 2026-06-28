@@ -4,10 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>GanaderoOS</title>
-    <meta name="theme-color" content="#09090b">
+    <meta name="theme-color" content="#f4f5f3">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <!-- 'default' = glifos oscuros (hora/batería) legibles sobre el tema claro.
+         El script de abajo lo ajusta a 'black-translucent' si el tema guardado es oscuro. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -16,7 +18,7 @@
       html, body {
         height: 100%;
         width: 100%;
-        background-color: #09090b;
+        background-color: #f4f5f3;
         margin: 0;
         padding: 0;
         overscroll-behavior-y: none; 
@@ -38,6 +40,21 @@
       }
       input, textarea { -webkit-user-select: text; user-select: text; }
     </style>
+    <script>
+      /* Aplica el tema guardado ANTES de pintar (evita parpadeo). Default: claro. */
+      (function () {
+        try {
+          var t = localStorage.getItem('ganaderoOS_theme') || 'light';
+          var isLight = t !== 'dark';
+          document.documentElement.classList.toggle('theme-light', isLight);
+          document.documentElement.style.backgroundColor = isLight ? '#f4f5f3' : '#09090b';
+          var sb = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+          var tc = document.querySelector('meta[name="theme-color"]');
+          if (sb) sb.setAttribute('content', isLight ? 'default' : 'black-translucent');
+          if (tc) tc.setAttribute('content', isLight ? '#f4f5f3' : '#09090b');
+        } catch (e) { document.documentElement.classList.add('theme-light'); }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -74,7 +74,7 @@ export const LoginPage: React.FC = () => {
     };
 
     return (
-        <div className="theme-light relative min-h-[100dvh] flex flex-col items-center justify-center p-6 font-sans bg-c-bg overflow-hidden">
+        <div className="relative min-h-[100dvh] flex flex-col items-center justify-center p-6 font-sans bg-c-bg overflow-hidden">
             {/* Glows decorativos (profundidad, sensación de campo fresco) */}
             <div className="pointer-events-none absolute -top-28 -right-24 w-80 h-80 rounded-full bg-c-accent/20 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-28 -left-24 w-80 h-80 rounded-full bg-c-accent-sky/15 blur-3xl" />

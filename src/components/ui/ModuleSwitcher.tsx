@@ -1,8 +1,9 @@
 import React from 'react';
 // --- (CAMBIO) 'Layers' ya no se usa, 'X' se usa para cerrar ---
-import { Droplets, Scale, HeartPulse, X, DollarSign, TrendingUp, Eye } from 'lucide-react';
+import { Droplets, Scale, HeartPulse, X, DollarSign, TrendingUp, Eye, Sun, Moon } from 'lucide-react';
 import { GiGoat } from 'react-icons/gi';
 import { AppModule } from '../../types/navigation';
+import { useTheme } from '../../context/ThemeContext';
 
 const modules = [
     { id: 'rebano', name: 'Rebaño', icon: GiGoat, color: 'text-amber-600' },
@@ -24,6 +25,7 @@ interface ModuleSwitcherProps {
 }
 
 export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ isOpen, onClose, onSwitchModule }) => {
+    const { theme, toggleTheme } = useTheme();
 
     const handleModuleSelect = (moduleId: AppModule) => {
         onClose(); // Cerrar el modal
@@ -54,6 +56,16 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ isOpen, onClose,
                 className="fixed bottom-0 left-0 right-0 w-full bg-c-surface rounded-t-2xl p-4 shadow-lg animate-slide-up"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom, 1rem)' }}
             >
+                {/* Interruptor de tema (claro/oscuro) */}
+                <button
+                    onClick={toggleTheme}
+                    className="absolute top-3 left-3 p-2 text-c-text-muted hover:text-c-text rounded-full hover:bg-c-surface-2 transition-colors"
+                    aria-label={theme === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'}
+                    title={theme === 'light' ? 'Modo oscuro' : 'Modo claro'}
+                >
+                    {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+                </button>
+
                 {/* Botón de cerrar (la X) */}
                 <button
                     onClick={onClose}

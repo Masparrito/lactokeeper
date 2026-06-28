@@ -256,7 +256,7 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
     };
 
     return (
-        <div className="theme-light flex flex-col h-full w-screen bg-c-bg overflow-hidden text-c-text font-sans">
+        <div className="flex flex-col h-full w-screen bg-c-bg overflow-hidden text-c-text font-sans">
             
             {/* HEADER */}
             <header className="flex-shrink-0 z-40 bg-c-bg/95 backdrop-blur-md border-b border-c-border">

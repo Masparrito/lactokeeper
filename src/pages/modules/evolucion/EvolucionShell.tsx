@@ -134,7 +134,7 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
   return (
     // --- (INICIO) CORRECCIÓN DE SCROLL ---
     // 1. Contenedor raíz con 'h-screen' y 'overflow-hidden'
-    <div className="theme-light font-sans text-c-text h-full overflow-hidden animate-fade-in flex flex-col bg-c-bg">
+    <div className="font-sans text-c-text h-full overflow-hidden animate-fade-in flex flex-col bg-c-bg">
         {/* 2. Header con safe-area superior */}
         <header className="flex-shrink-0 bg-c-bg/95 backdrop-blur-lg border-b border-c-border pt-[env(safe-area-inset-top)]">
             <div className="max-w-4xl mx-auto flex items-center justify-between px-4 h-16">

@@ -30,7 +30,7 @@ export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
     ] as const;
 
     return (
-        <div className="theme-light h-full w-screen overflow-hidden animate-fade-in text-c-text flex flex-col bg-c-bg">
+        <div className="h-full w-screen overflow-hidden animate-fade-in text-c-text flex flex-col bg-c-bg">
             {/* Header */}
             <header className="flex-shrink-0 bg-c-bg/95 backdrop-blur-lg border-b border-c-border pt-[env(safe-area-inset-top)]">
                 <div className="max-w-4xl mx-auto flex items-center justify-between px-4 h-16">

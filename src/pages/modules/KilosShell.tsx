@@ -79,7 +79,7 @@ export default function KilosShell({
     };
 
     return (
-        <div className="theme-light flex flex-col h-full w-screen bg-c-bg overflow-hidden text-c-text relative">
+        <div className="flex flex-col h-full w-screen bg-c-bg overflow-hidden text-c-text relative">
 
             {/* Botón Atrás - Oculto en dashboard porque ya tiene su propio header */}
             {page !== 'dashboard' && (
