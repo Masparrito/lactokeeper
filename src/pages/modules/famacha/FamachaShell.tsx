@@ -30,23 +30,23 @@ export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
     ] as const;
 
     return (
-        <div className="h-full w-screen overflow-hidden animate-fade-in text-white flex flex-col bg-brand-dark">
+        <div className="theme-light h-full w-screen overflow-hidden animate-fade-in text-c-text flex flex-col bg-c-bg">
             {/* Header */}
-            <header className="flex-shrink-0 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border pt-[env(safe-area-inset-top)]">
+            <header className="flex-shrink-0 bg-c-bg/95 backdrop-blur-lg border-b border-c-border pt-[env(safe-area-inset-top)]">
                 <div className="max-w-4xl mx-auto flex items-center justify-between px-4 h-16">
-                    <button onClick={() => onSwitchModule('rebano')} className="p-2 -ml-2 text-zinc-400 hover:text-white" aria-label="Salir del módulo">
+                    <button onClick={() => onSwitchModule('rebano')} className="p-2 -ml-2 text-c-text-muted hover:text-c-text" aria-label="Salir del módulo">
                         <ArrowLeft size={24} />
                     </button>
                     <div className="flex items-center gap-2">
                         <Eye className="text-rose-500" />
                         <div>
-                            <h1 className="text-lg font-bold text-white leading-none">Famacha</h1>
-                            <p className="text-[11px] text-zinc-400 leading-none mt-0.5">Anemia del rebaño</p>
+                            <h1 className="text-lg font-bold text-c-text leading-none">Famacha</h1>
+                            <p className="text-[11px] text-c-text-muted leading-none mt-0.5">Anemia del rebaño</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
                         <SyncStatusIcon status={syncStatus} />
-                        <button onClick={() => setIsModuleSwitcherOpen(true)} className="p-2 text-zinc-400 hover:text-white transition-colors" title="Módulos">
+                        <button onClick={() => setIsModuleSwitcherOpen(true)} className="p-2 text-c-text-muted hover:text-c-text transition-colors" title="Módulos">
                             <Grid size={20} />
                         </button>
                     </div>
@@ -63,7 +63,7 @@ export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
             </main>
 
             {/* Navegación inferior */}
-            <nav className="flex-shrink-0 bg-zinc-900 border-t border-brand-border pb-[env(safe-area-inset-bottom)]">
+            <nav className="flex-shrink-0 bg-c-surface border-t border-c-border pb-[env(safe-area-inset-bottom)]">
                 <div className="max-w-4xl mx-auto flex justify-around items-center h-16">
                     {navItems.map(item => {
                         const isActive = activeView === item.view;
@@ -71,7 +71,7 @@ export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
                             <button
                                 key={item.view}
                                 onClick={() => setActiveView(item.view)}
-                                className={`flex flex-col items-center justify-center gap-1 w-full h-full transition-colors ${isActive ? 'text-rose-500' : 'text-zinc-400 hover:text-white'}`}
+                                className={`flex flex-col items-center justify-center gap-1 w-full h-full transition-colors ${isActive ? 'text-rose-500' : 'text-c-text-muted hover:text-c-text'}`}
                             >
                                 <item.icon size={21} strokeWidth={isActive ? 2.5 : 2} />
                                 <span className="text-[11px] font-semibold">{item.label}</span>

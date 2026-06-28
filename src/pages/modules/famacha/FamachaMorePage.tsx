@@ -39,24 +39,24 @@ export function FamachaMorePage() {
     return (
         <div className="w-full max-w-2xl mx-auto px-4 space-y-4">
             {/* Datos / respaldo */}
-            <div className="bg-brand-glass rounded-2xl border border-brand-border p-4">
-                <h2 className="font-semibold text-white mb-1">Datos y respaldo</h2>
-                <p className="text-xs text-zinc-400 mb-3">
+            <div className="bg-c-surface rounded-2xl border border-c-border p-4">
+                <h2 className="font-semibold text-c-text-strong mb-1">Datos y respaldo</h2>
+                <p className="text-xs text-c-text-muted mb-3">
                     {totalRevisiones} revisión(es) en {animalesConRev} animal(es). Tus datos se sincronizan
                     automáticamente con la nube; aquí puedes exportar una copia.
                 </p>
                 <button
                     onClick={exportarCSV}
                     disabled={totalRevisiones === 0}
-                    className="w-full flex items-center justify-center gap-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 text-white font-semibold py-3 rounded-xl"
+                    className="w-full flex items-center justify-center gap-2 bg-c-surface-2 hover:bg-c-surface-3 disabled:opacity-40 text-c-text font-semibold py-3 rounded-xl"
                 >
                     <Download size={18} /> Exportar a CSV
                 </button>
             </div>
 
             {/* Escala Famacha (referencia) */}
-            <div className="bg-brand-glass rounded-2xl border border-brand-border p-4">
-                <h3 className="font-semibold text-white mb-3">Escala Famacha (referencia)</h3>
+            <div className="bg-c-surface rounded-2xl border border-c-border p-4">
+                <h3 className="font-semibold text-c-text-strong mb-3">Escala Famacha (referencia)</h3>
                 <div className="flex rounded-lg overflow-hidden">
                     {escala.map(e => (
                         <div key={e.n} className={`flex-1 ${e.cls} py-2 text-center`}>
@@ -65,7 +65,7 @@ export function FamachaMorePage() {
                         </div>
                     ))}
                 </div>
-                <p className="text-xs text-zinc-400 mt-3 leading-relaxed">
+                <p className="text-xs text-c-text-muted mt-3 leading-relaxed">
                     Mira la mucosa del párpado inferior. 1 = roja sana · 5 = blanca, grave.
                     Se trata a partir de 3.
                 </p>

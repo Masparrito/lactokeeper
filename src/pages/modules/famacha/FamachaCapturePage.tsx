@@ -25,10 +25,10 @@ const scoreColor: Record<FamachaScore, string> = {
 };
 
 const accionText: Record<FamachaAccion, { label: string; cls: string }> = {
-    '−': { label: 'No dosis', cls: 'text-zinc-400' },
-    '+': { label: '+ Dosificar', cls: 'text-orange-400' },
-    '=': { label: '= No repetir · revisar', cls: 'text-purple-300' },
-    '+ separar': { label: '+ Separar + vet.', cls: 'text-red-400' },
+    '−': { label: 'No dosis', cls: 'text-c-text-muted' },
+    '+': { label: '+ Dosificar', cls: 'text-orange-600' },
+    '=': { label: '= No repetir · revisar', cls: 'text-purple-600' },
+    '+ separar': { label: '+ Separar + vet.', cls: 'text-red-600' },
 };
 
 export function FamachaCapturePage() {
@@ -102,12 +102,12 @@ export function FamachaCapturePage() {
     return (
         <div className="w-full max-w-2xl mx-auto px-4 space-y-3">
             {/* Tarjeta de instrucción + controles */}
-            <div className="bg-brand-glass rounded-2xl border border-brand-border p-4 space-y-3">
+            <div className="bg-c-surface rounded-2xl border border-c-border p-4 space-y-3">
                 <div>
-                    <h2 className="flex items-center gap-2 font-semibold text-white">
+                    <h2 className="flex items-center gap-2 font-semibold text-c-text-strong">
                         <span className="w-2 h-2 rounded-full bg-rose-500" /> Revisión del día
                     </h2>
-                    <p className="text-xs text-zinc-400 mt-1">Toca el Famacha (1-5) de cada animal — se guarda solo.</p>
+                    <p className="text-xs text-c-text-muted mt-1">Toca el Famacha (1-5) de cada animal — se guarda solo.</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <input
@@ -115,40 +115,40 @@ export function FamachaCapturePage() {
                         value={fecha}
                         max={today}
                         onChange={e => setFecha(e.target.value)}
-                        className="flex-1 bg-zinc-800 text-white rounded-lg px-3 py-2 text-sm border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        className="flex-1 bg-c-surface-2 text-c-text rounded-lg px-3 py-2 text-sm border border-c-border focus:outline-none focus:ring-2 focus:ring-rose-500"
                     />
-                    <button onClick={() => setShowAdd(true)} className="flex items-center gap-1 bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-semibold rounded-lg px-3 py-2">
+                    <button onClick={() => setShowAdd(true)} className="flex items-center gap-1 bg-c-surface-2 hover:bg-c-surface-3 text-c-text text-sm font-semibold rounded-lg px-3 py-2">
                         <Plus size={16} /> animal
                     </button>
                 </div>
                 <select
                     value={productoDelDia}
                     onChange={e => setProductoDelDia(e.target.value)}
-                    className="w-full bg-zinc-800 text-white rounded-lg px-3 py-2 text-sm border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    className="w-full bg-c-surface-2 text-c-text rounded-lg px-3 py-2 text-sm border border-c-border focus:outline-none focus:ring-2 focus:ring-rose-500"
                 >
                     <option value="">Producto del día: ninguno</option>
                     {desparasitantes.map(p => <option key={p.id} value={p.name}>Producto: {p.name}</option>)}
                 </select>
-                <div className="bg-rose-500/10 text-rose-300 text-sm font-semibold rounded-lg px-3 py-2 text-center">
+                <div className="bg-rose-500/10 text-rose-600 text-sm font-semibold rounded-lg px-3 py-2 text-center">
                     {revisadosHoy} de {activos.length} revisados — {fecha}
                 </div>
             </div>
 
             {/* Buscador */}
             <div className="relative">
-                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-c-text-faint" />
                 <input
                     type="text"
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     placeholder="Buscar arete…"
-                    className="w-full bg-zinc-800/80 text-white pl-10 pr-3 py-2.5 rounded-xl border border-transparent focus:border-rose-500 focus:outline-none placeholder-zinc-500"
+                    className="w-full bg-c-surface-2/80 text-c-text pl-10 pr-3 py-2.5 rounded-xl border border-transparent focus:border-rose-500 focus:outline-none placeholder-c-text-faint"
                 />
             </div>
 
             {/* Lista compacta */}
-            <div className="bg-brand-glass rounded-2xl border border-brand-border divide-y divide-zinc-800 overflow-hidden">
-                {lista.length === 0 && <p className="text-center text-zinc-500 py-8">No hay animales activos que coincidan.</p>}
+            <div className="bg-c-surface rounded-2xl border border-c-border divide-y divide-c-border overflow-hidden">
+                {lista.length === 0 && <p className="text-center text-c-text-faint py-8">No hay animales activos que coincidan.</p>}
                 {lista.map(({ animal, arete }) => {
                     const rev = revsDelDia.get(animal.id);
                     const alerta = tratadoYNoMejora(famachaRevs, animal.id);
@@ -156,7 +156,7 @@ export function FamachaCapturePage() {
                         <div key={animal.id} className="flex items-center gap-2 px-3 py-2.5">
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1.5">
-                                    <span className="font-bold text-white truncate">{arete}</span>
+                                    <span className="font-bold text-c-text-strong truncate">{arete}</span>
                                     {alerta && (
                                         <span title="Tratado y no mejora">
                                             <AlertTriangle size={14} className="text-amber-400 flex-shrink-0" />
@@ -174,7 +174,7 @@ export function FamachaCapturePage() {
                                             disabled={savingId === animal.id}
                                             onClick={() => handleScore(animal.id, arete, score)}
                                             className={`w-9 h-9 rounded-lg font-bold text-sm border transition-all disabled:opacity-50 ${
-                                                selected ? `${scoreColor[score]} text-white scale-105` : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
+                                                selected ? `${scoreColor[score]} text-white scale-105` : 'bg-c-surface-2 border-c-border-strong text-c-text-muted hover:border-c-text-faint'
                                             }`}
                                         >
                                             {score}
@@ -190,24 +190,24 @@ export function FamachaCapturePage() {
             {/* Modal + animal */}
             {showAdd && (
                 <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center" onClick={() => setShowAdd(false)}>
-                    <div className="w-full max-w-sm bg-ios-modal-bg rounded-t-2xl sm:rounded-2xl p-5 m-0 sm:m-4 animate-slide-up" onClick={e => e.stopPropagation()}>
+                    <div className="w-full max-w-sm bg-c-surface rounded-t-2xl sm:rounded-2xl p-5 m-0 sm:m-4 animate-slide-up" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-white text-lg">Agregar animal</h3>
-                            <button onClick={() => setShowAdd(false)} className="text-zinc-500 hover:text-white"><X size={20} /></button>
+                            <h3 className="font-bold text-c-text-strong text-lg">Agregar animal</h3>
+                            <button onClick={() => setShowAdd(false)} className="text-c-text-faint hover:text-c-text"><X size={20} /></button>
                         </div>
                         <input
                             type="text"
                             value={newArete}
                             onChange={e => setNewArete(e.target.value)}
                             placeholder="Arete (ej. A047)"
-                            className="w-full bg-zinc-800 text-white rounded-lg px-3 py-2.5 border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-rose-500 mb-3"
+                            className="w-full bg-c-surface-2 text-c-text rounded-lg px-3 py-2.5 border border-c-border focus:outline-none focus:ring-2 focus:ring-rose-500 mb-3"
                         />
                         <div className="flex gap-2 mb-3">
                             {(['Hembra', 'Macho'] as const).map(s => (
-                                <button key={s} onClick={() => setNewSexo(s)} className={`flex-1 py-2 rounded-lg font-semibold text-sm border ${newSexo === s ? 'bg-rose-500/20 border-rose-500 text-rose-300' : 'bg-zinc-800 border-zinc-700 text-zinc-400'}`}>{s}</button>
+                                <button key={s} onClick={() => setNewSexo(s)} className={`flex-1 py-2 rounded-lg font-semibold text-sm border ${newSexo === s ? 'bg-rose-500/20 border-rose-500 text-rose-600' : 'bg-c-surface-2 border-c-border text-c-text-muted'}`}>{s}</button>
                             ))}
                         </div>
-                        {addError && <p className="text-red-400 text-sm mb-3">{addError}</p>}
+                        {addError && <p className="text-red-600 text-sm mb-3">{addError}</p>}
                         <button onClick={handleAddAnimal} className="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 rounded-xl">Agregar</button>
                     </div>
                 </div>

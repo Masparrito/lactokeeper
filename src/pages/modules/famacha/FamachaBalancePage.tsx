@@ -9,9 +9,9 @@ const scoreColor: Record<number, string> = {
 };
 
 function ScoreDot({ score }: { score: number | null }) {
-    if (!score) return <span className="text-zinc-600 text-xs">—</span>;
+    if (!score) return <span className="text-c-text-faint text-xs">—</span>;
     return (
-        <span className={`w-6 h-6 rounded-md inline-flex items-center justify-center text-white text-xs font-bold ${scoreColor[score] || 'bg-zinc-600'}`}>
+        <span className={`w-6 h-6 rounded-md inline-flex items-center justify-center text-white text-xs font-bold ${scoreColor[score] || 'bg-c-surface-3'}`}>
             {score}
         </span>
     );
@@ -25,17 +25,17 @@ function Section({
 }) {
     const [open, setOpen] = useState(defaultOpen);
     return (
-        <div className="bg-brand-glass rounded-2xl border border-brand-border overflow-hidden">
+        <div className="bg-c-surface rounded-2xl border border-c-border overflow-hidden">
             <button onClick={() => setOpen(o => !o)} className="w-full flex items-center gap-3 p-4 text-left">
                 <span className={color}>{icon}</span>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-white">{title}</h3>
+                        <h3 className="font-semibold text-c-text-strong">{title}</h3>
                         <span className={`text-sm font-bold ${color}`}>{count}</span>
                     </div>
-                    <p className="text-xs text-zinc-400 mt-0.5">{hint}</p>
+                    <p className="text-xs text-c-text-muted mt-0.5">{hint}</p>
                 </div>
-                <ChevronDown size={18} className={`text-zinc-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+                <ChevronDown size={18} className={`text-c-text-faint transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
             {open && <div className="px-4 pb-4">{children}</div>}
         </div>
@@ -107,19 +107,19 @@ export function FamachaBalancePage() {
     return (
         <div className="w-full max-w-2xl mx-auto px-4 space-y-4">
             {/* Resumen */}
-            <div className="bg-brand-glass rounded-2xl border border-brand-border p-4">
-                <h2 className="font-semibold text-white mb-3">Cotejo Famacha ↔ GanaderoOS</h2>
+            <div className="bg-c-surface rounded-2xl border border-c-border p-4">
+                <h2 className="font-semibold text-c-text-strong mb-3">Cotejo Famacha ↔ GanaderoOS</h2>
                 <div className="grid grid-cols-2 gap-3 text-center">
-                    <div className="bg-black/20 rounded-xl p-3">
-                        <div className="text-2xl font-bold text-white">{totals.famacha}</div>
-                        <div className="text-[11px] text-zinc-400 uppercase tracking-wide">En Famacha</div>
+                    <div className="bg-c-surface-2 rounded-xl p-3">
+                        <div className="text-2xl font-bold text-c-text-strong">{totals.famacha}</div>
+                        <div className="text-[11px] text-c-text-muted uppercase tracking-wide">En Famacha</div>
                     </div>
-                    <div className="bg-black/20 rounded-xl p-3">
-                        <div className="text-2xl font-bold text-white">{totals.ganaderoActivos}</div>
-                        <div className="text-[11px] text-zinc-400 uppercase tracking-wide">Activos GanaderoOS</div>
+                    <div className="bg-c-surface-2 rounded-xl p-3">
+                        <div className="text-2xl font-bold text-c-text-strong">{totals.ganaderoActivos}</div>
+                        <div className="text-[11px] text-c-text-muted uppercase tracking-wide">Activos GanaderoOS</div>
                     </div>
                 </div>
-                <p className="text-[11px] text-zinc-500 mt-3 leading-relaxed">
+                <p className="text-[11px] text-c-text-faint mt-3 leading-relaxed">
                     GanaderoOS: {totals.ganaderoTotal} reales ({totals.ganaderoActivos} activos, {totals.ganaderoBaja} de baja)
                     {totals.ganaderoReferencia > 0 && ` + ${totals.ganaderoReferencia} de referencia`}.
                     El cotejo usa el arete (= ID del animal). Solo lectura: no se modifica nada.
@@ -142,11 +142,11 @@ export function FamachaBalancePage() {
             >
                 <div className="flex flex-wrap gap-2 pt-1">
                     {enAmbosActivos.map(({ fam }) => (
-                        <span key={fam.arete} className="inline-flex items-center gap-1.5 bg-black/30 rounded-lg px-2 py-1 text-sm text-zinc-200">
+                        <span key={fam.arete} className="inline-flex items-center gap-1.5 bg-c-surface-2 rounded-lg px-2 py-1 text-sm text-c-text-strong">
                             {fam.arete} <ScoreDot score={fam.lastScore} />
                         </span>
                     ))}
-                    {enAmbosActivos.length === 0 && <p className="text-sm text-zinc-500">Ninguno.</p>}
+                    {enAmbosActivos.length === 0 && <p className="text-sm text-c-text-faint">Ninguno.</p>}
                 </div>
             </Section>
 
@@ -161,11 +161,11 @@ export function FamachaBalancePage() {
             >
                 <div className="space-y-2 pt-1">
                     {soloFamacha.map(({ fam, sugerencias }) => (
-                        <div key={fam.arete} className="bg-black/20 rounded-xl p-3">
+                        <div key={fam.arete} className="bg-c-surface-2 rounded-xl p-3">
                             <div className="flex items-center gap-2">
-                                <span className="font-semibold text-white">{fam.arete}</span>
+                                <span className="font-semibold text-c-text-strong">{fam.arete}</span>
                                 <ScoreDot score={fam.lastScore} />
-                                <span className="text-[11px] text-zinc-500 ml-auto">{fam.revCount} rev.</span>
+                                <span className="text-[11px] text-c-text-faint ml-auto">{fam.revCount} rev.</span>
                             </div>
                             {sugerencias.length > 0 && (
                                 <div className="mt-2 flex items-start gap-1.5 text-xs text-amber-300/90">
@@ -175,7 +175,7 @@ export function FamachaBalancePage() {
                             )}
                         </div>
                     ))}
-                    {soloFamacha.length === 0 && <p className="text-sm text-zinc-500">Ninguno: todos los de Famacha existen en GanaderoOS. 🎉</p>}
+                    {soloFamacha.length === 0 && <p className="text-sm text-c-text-faint">Ninguno: todos los de Famacha existen en GanaderoOS. 🎉</p>}
                 </div>
             </Section>
 
@@ -189,13 +189,13 @@ export function FamachaBalancePage() {
             >
                 <div className="space-y-2 pt-1">
                     {enFamachaPeroBaja.map(({ fam, animal }) => (
-                        <div key={fam.arete} className="flex items-center gap-2 bg-black/20 rounded-xl p-3">
-                            <span className="font-semibold text-white">{fam.arete}</span>
+                        <div key={fam.arete} className="flex items-center gap-2 bg-c-surface-2 rounded-xl p-3">
+                            <span className="font-semibold text-c-text-strong">{fam.arete}</span>
                             <ScoreDot score={fam.lastScore} />
                             <span className="text-xs text-amber-300 ml-auto px-2 py-0.5 rounded-full bg-amber-500/15">{animal.status}</span>
                         </div>
                     ))}
-                    {enFamachaPeroBaja.length === 0 && <p className="text-sm text-zinc-500">Ninguno.</p>}
+                    {enFamachaPeroBaja.length === 0 && <p className="text-sm text-c-text-faint">Ninguno.</p>}
                 </div>
             </Section>
 
@@ -209,23 +209,23 @@ export function FamachaBalancePage() {
             >
                 <div className="flex flex-wrap gap-2 pt-1">
                     {soloGanaderoActivos.map(a => (
-                        <span key={a.id} className="inline-flex items-center gap-1.5 bg-black/30 rounded-lg px-2 py-1 text-sm text-zinc-200">
+                        <span key={a.id} className="inline-flex items-center gap-1.5 bg-c-surface-2 rounded-lg px-2 py-1 text-sm text-c-text-strong">
                             {a.id}
-                            <span className="text-[10px] text-zinc-500">{a.sex === 'Macho' ? '♂' : '♀'}</span>
+                            <span className="text-[10px] text-c-text-faint">{a.sex === 'Macho' ? '♂' : '♀'}</span>
                         </span>
                     ))}
-                    {soloGanaderoActivos.length === 0 && <p className="text-sm text-zinc-500">Ninguno.</p>}
+                    {soloGanaderoActivos.length === 0 && <p className="text-sm text-c-text-faint">Ninguno.</p>}
                 </div>
             </Section>
 
             {/* Importar respaldo */}
-            <div className="bg-brand-glass rounded-2xl border border-brand-border p-4">
-                <label className="w-full flex items-center justify-center gap-2 bg-zinc-700 hover:bg-zinc-600 text-white font-semibold py-3 rounded-xl cursor-pointer">
+            <div className="bg-c-surface rounded-2xl border border-c-border p-4">
+                <label className="w-full flex items-center justify-center gap-2 bg-c-surface-2 hover:bg-c-surface-3 text-c-text font-semibold py-3 rounded-xl cursor-pointer">
                     <Upload size={18} /> Importar otro respaldo Famacha (.json)
                     <input type="file" accept="application/json,.json" onChange={handleImport} className="hidden" />
                 </label>
-                {importInfo && <p className="text-xs text-zinc-400 mt-2 text-center">{importInfo}</p>}
-                <p className="text-[11px] text-zinc-500 mt-2 text-center">
+                {importInfo && <p className="text-xs text-c-text-muted mt-2 text-center">{importInfo}</p>}
+                <p className="text-[11px] text-c-text-faint mt-2 text-center">
                     Por defecto se compara con el respaldo cargado el {FAMACHA_INVENTORY_SNAPSHOT.length === 92 ? '25/06/2026' : 'inicial'}.
                 </p>
             </div>

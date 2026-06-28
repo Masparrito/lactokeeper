@@ -30,24 +30,24 @@ export function FamachaIndexPage() {
     return (
         <div className="w-full max-w-2xl mx-auto px-4 space-y-4">
             {/* Tabla de cálculo */}
-            <div className="bg-brand-glass rounded-2xl border border-brand-border p-4">
-                <h2 className="font-semibold text-white flex items-center gap-2">
+            <div className="bg-c-surface rounded-2xl border border-c-border p-4">
+                <h2 className="font-semibold text-c-text-strong flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-rose-500" /> Índice de salud del rebaño
                 </h2>
-                <p className="text-xs text-zinc-400 mt-1 mb-4">
+                <p className="text-xs text-c-text-muted mt-1 mb-4">
                     Última revisión de cada animal. Pesos: F1=0 · F2=1 · F3=2 · F4=3 · F5=4.
                 </p>
 
                 <table className="w-full text-sm">
                     <thead>
-                        <tr className="text-zinc-400 text-xs uppercase">
+                        <tr className="text-c-text-muted text-xs uppercase">
                             <th className="text-left font-semibold pb-2">Famacha</th>
                             <th className="text-right font-semibold pb-2">Animales</th>
                             <th className="text-right font-semibold pb-2">Puntos</th>
                             <th className="text-right font-semibold pb-2">Subtotal</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-800">
+                    <tbody className="divide-y divide-c-border">
                         {([1, 2, 3, 4, 5] as FamachaScore[]).map(score => {
                             const count = distribucion[score];
                             const puntos = famachaPeso(score);
@@ -56,13 +56,13 @@ export function FamachaIndexPage() {
                                     <td className="py-2">
                                         <span className={`w-7 h-7 rounded-md inline-flex items-center justify-center text-white text-xs font-bold ${scoreBadge[score]}`}>{score}</span>
                                     </td>
-                                    <td className="text-right text-zinc-200">{count}</td>
-                                    <td className="text-right text-zinc-400">{puntos}</td>
-                                    <td className="text-right text-zinc-200 font-mono">{count * puntos}</td>
+                                    <td className="text-right text-c-text-strong">{count}</td>
+                                    <td className="text-right text-c-text-muted">{puntos}</td>
+                                    <td className="text-right text-c-text-strong font-mono">{count * puntos}</td>
                                 </tr>
                             );
                         })}
-                        <tr className="font-bold text-white">
+                        <tr className="font-bold text-c-text-strong">
                             <td className="py-2">Total</td>
                             <td className="text-right">{totalConRevision}</td>
                             <td></td>
@@ -72,7 +72,7 @@ export function FamachaIndexPage() {
                 </table>
 
                 <div className="text-center mt-4">
-                    <p className="text-sm text-zinc-400">
+                    <p className="text-sm text-c-text-muted">
                         ÍNDICE = {puntaje} ÷ {totalConRevision || 0} ={' '}
                         <span className="text-2xl font-bold" style={{ color: interpretacion.color }}>
                             {indice === null ? '—' : indice.toFixed(2)}
@@ -84,27 +84,27 @@ export function FamachaIndexPage() {
                     >
                         {interpretacion.estado}
                     </span>
-                    <p className="text-xs text-zinc-400 mt-2">{interpretacion.accion}</p>
+                    <p className="text-xs text-c-text-muted mt-2">{interpretacion.accion}</p>
                 </div>
             </div>
 
             {/* Interpretación */}
-            <div className="bg-brand-glass rounded-2xl border border-brand-border p-4">
-                <h3 className="font-semibold text-white mb-3">Interpretación</h3>
+            <div className="bg-c-surface rounded-2xl border border-c-border p-4">
+                <h3 className="font-semibold text-c-text-strong mb-3">Interpretación</h3>
                 <table className="w-full text-sm">
                     <thead>
-                        <tr className="text-zinc-400 text-xs uppercase">
+                        <tr className="text-c-text-muted text-xs uppercase">
                             <th className="text-left font-semibold pb-2">Índice</th>
                             <th className="text-left font-semibold pb-2">Estado</th>
                             <th className="text-left font-semibold pb-2">Qué hacer</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-800">
+                    <tbody className="divide-y divide-c-border">
                         {interpRows.map(r => (
                             <tr key={r.estado}>
-                                <td className="py-2 text-zinc-300 font-mono whitespace-nowrap">{r.rango}</td>
+                                <td className="py-2 text-c-text-strong font-mono whitespace-nowrap">{r.rango}</td>
                                 <td className="py-2 font-bold" style={{ color: r.color }}>{r.estado}</td>
-                                <td className="py-2 text-zinc-400 text-xs">{r.que}</td>
+                                <td className="py-2 text-c-text-muted text-xs">{r.que}</td>
                             </tr>
                         ))}
                     </tbody>
