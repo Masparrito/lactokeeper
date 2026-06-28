@@ -173,9 +173,9 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
                 </div>
             </FormGroup>
 
-            <div className="bg-c-surface rounded-2xl border border-c-border overflow-hidden">
+            <div className="bg-c-surface rounded-2xl border border-c-border overflow-hidden shadow-sm">
                 <div className="flex justify-between items-center px-4 pt-4 pb-2">
-                    <h2 className="text-c-text-muted font-semibold text-sm uppercase tracking-wide">Genética</h2>
+                    <h2 className="text-c-text-faint font-semibold text-xs uppercase tracking-wider">Genética</h2>
                     <button onClick={onOpenPedigree} title="Ver Árbol Genealógico" className="p-1 text-c-accent-sky hover:text-c-accent-sky transition-colors rounded-lg hover:bg-c-surface-2">
                         <Network size={18} />
                     </button>

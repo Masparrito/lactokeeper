@@ -8,7 +8,7 @@ export const FormInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttri
     <input
         ref={ref}
         {...props}
-        className={`w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-brand-orange disabled:opacity-50 disabled:bg-brand-dark/50 ${className}`}
+        className={`w-full bg-c-surface-2 border border-c-border-strong rounded-lg p-2.5 text-c-text placeholder-c-text-faint focus:outline-none focus:ring-2 focus:ring-c-accent disabled:opacity-50 disabled:bg-c-surface-2/50 ${className}`}
     />
 ));
 FormInput.displayName = 'FormInput';
@@ -18,18 +18,18 @@ export const FormSelect = React.forwardRef<HTMLSelectElement, React.SelectHTMLAt
         <select
             ref={ref}
             {...props}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-brand-orange"
+            className="w-full bg-c-surface-2 border border-c-border-strong rounded-lg p-2.5 text-c-text appearance-none focus:outline-none focus:ring-2 focus:ring-c-accent"
         >
             {children}
         </select>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500 pointer-events-none" />
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-c-text-faint pointer-events-none" />
     </div>
 ));
 FormSelect.displayName = 'FormSelect';
 
 export const Toggle = ({ labelOn, labelOff, value, onChange }: { labelOn: string, labelOff: string, value: boolean, onChange: (newValue: boolean) => void }) => (
-    <div onClick={() => onChange(!value)} className="w-full bg-brand-dark rounded-xl p-1 flex cursor-pointer">
-        <span className={`w-1/2 text-center font-semibold p-2 rounded-lg transition-all ${value ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>{labelOn}</span>
-        <span className={`w-1/2 text-center font-semibold p-2 rounded-lg transition-all ${!value ? 'bg-zinc-700 text-white' : 'text-zinc-400'}`}>{labelOff}</span>
+    <div onClick={() => onChange(!value)} className="w-full bg-c-surface-2 rounded-xl p-1 flex cursor-pointer">
+        <span className={`w-1/2 text-center font-semibold p-2 rounded-lg transition-all ${value ? 'bg-c-surface text-c-text shadow-sm' : 'text-c-text-muted'}`}>{labelOn}</span>
+        <span className={`w-1/2 text-center font-semibold p-2 rounded-lg transition-all ${!value ? 'bg-c-surface text-c-text shadow-sm' : 'text-c-text-muted'}`}>{labelOff}</span>
     </div>
 );
