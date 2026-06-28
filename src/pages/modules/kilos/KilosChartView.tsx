@@ -23,19 +23,19 @@ export const KilosChartView: React.FC<KilosChartViewProps> = ({ analytics, onPoi
 
     if (!chartData || chartData.length === 0) {
         return (
-            <div className="h-full flex items-center justify-center text-zinc-500 text-sm">
+            <div className="h-full flex items-center justify-center text-c-text-faint text-sm">
                 No hay datos suficientes para graficar.
             </div>
         );
     }
 
     return (
-        <div className="h-full w-full pb-20 bg-black relative">
-            
+        <div className="h-full w-full pb-20 bg-c-bg relative">
+
             {/* Indicador de Población en el Gráfico (Overlay) */}
-            <div className="absolute top-4 right-4 z-10 bg-zinc-900/80 backdrop-blur-sm border border-zinc-800 px-2 py-1 rounded-md flex items-center gap-1.5 shadow-sm pointer-events-none">
-                <Users size={10} className="text-zinc-400" />
-                <span className="text-[10px] font-mono font-bold text-zinc-300">
+            <div className="absolute top-4 right-4 z-10 bg-c-surface/80 backdrop-blur-sm border border-c-border px-2 py-1 rounded-md flex items-center gap-1.5 shadow-sm pointer-events-none">
+                <Users size={10} className="text-c-text-muted" />
+                <span className="text-[10px] font-mono font-bold text-c-text-strong">
                     N = {kpis.totalAnimals}
                 </span>
             </div>
@@ -48,73 +48,73 @@ export const KilosChartView: React.FC<KilosChartViewProps> = ({ analytics, onPoi
                 >
                     <defs>
                         <linearGradient id="colorMain" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#2F843C" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#2F843C" stopOpacity={0}/>
                         </linearGradient>
                     </defs>
-                    
-                    <CartesianGrid 
-                        strokeDasharray="3 3" 
-                        stroke="#1f1f22" 
-                        vertical={false} 
+
+                    <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="#e2e8f0"
+                        vertical={false}
                     />
-                    
-                    <XAxis 
-                        dataKey="day" 
-                        type="number" 
-                        tick={{fontSize: 10, fill: '#52525b'}} 
-                        tickFormatter={(d) => `${d}d`} 
-                        axisLine={false} 
-                        tickLine={false} 
-                        domain={[0, 'dataMax']} 
+
+                    <XAxis
+                        dataKey="day"
+                        type="number"
+                        tick={{fontSize: 10, fill: '#64748b'}}
+                        tickFormatter={(d) => `${d}d`}
+                        axisLine={false}
+                        tickLine={false}
+                        domain={[0, 'dataMax']}
                         interval="preserveStartEnd"
                     />
-                    
-                    <YAxis 
-                        tick={{fontSize: 10, fill: '#52525b'}} 
-                        axisLine={false} 
-                        tickLine={false} 
-                        domain={[0, 'auto']} 
+
+                    <YAxis
+                        tick={{fontSize: 10, fill: '#64748b'}}
+                        axisLine={false}
+                        tickLine={false}
+                        domain={[0, 'auto']}
                     />
-                    
-                    <Tooltip 
-                        contentStyle={{ 
-                            backgroundColor: '#18181b', 
-                            borderColor: '#27272a', 
-                            borderRadius: '12px', 
-                            color: '#fff',
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)'
+
+                    <Tooltip
+                        contentStyle={{
+                            backgroundColor: '#ffffff',
+                            borderColor: '#e2e8f0',
+                            borderRadius: '12px',
+                            color: '#0f172a',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                         }}
                         itemStyle={{ fontSize: '12px', fontFamily: 'monospace' }}
                         labelFormatter={(label) => `Edad: ${label} días`}
                         formatter={(value: number, name: string) => [
-                            `${value} kg`, 
+                            `${value} kg`,
                             name === 'valueA' ? 'Promedio Real' : 'Meta Ideal'
                         ]}
-                        cursor={{ stroke: '#52525b', strokeWidth: 1, strokeDasharray: '4 4' }}
+                        cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }}
                     />
-                    
+
                     {/* Línea de Meta (Punteada) */}
-                    <Line 
-                        type="monotone" 
-                        dataKey="meta" 
-                        stroke="#3f3f46" 
-                        strokeWidth={1} 
-                        strokeDasharray="4 4" 
-                        dot={false} 
-                        activeDot={false} 
+                    <Line
+                        type="monotone"
+                        dataKey="meta"
+                        stroke="#cbd5e1"
+                        strokeWidth={1}
+                        strokeDasharray="4 4"
+                        dot={false}
+                        activeDot={false}
                         name="meta"
                     />
-                    
-                    {/* Área de Datos Reales (Azul Stocks) */}
-                    <Area 
-                        type="monotone" 
-                        dataKey="valueA" 
-                        stroke="#3b82f6" 
-                        strokeWidth={2} 
-                        fill="url(#colorMain)" 
-                        dot={false} 
-                        activeDot={{ r: 6, strokeWidth: 0, fill: '#fff' }} 
+
+                    {/* Área de Datos Reales (Crecimiento) */}
+                    <Area
+                        type="monotone"
+                        dataKey="valueA"
+                        stroke="#2F843C"
+                        strokeWidth={2}
+                        fill="url(#colorMain)"
+                        dot={false}
+                        activeDot={{ r: 6, strokeWidth: 0, fill: '#2F843C' }}
                         name="valueA"
                     />
                 </ComposedChart>
