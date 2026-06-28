@@ -7,7 +7,7 @@ import {
     AuthError
 } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
-import { AlertTriangle, Trash2 } from 'lucide-react';
+import { AlertTriangle, Trash2, Mail, Lock, LogIn, UserPlus } from 'lucide-react';
 import { Dexie } from 'dexie';
 // --- CAMBIO: Se importa el nuevo ícono que representa el OS ---
 import { GiGoat } from 'react-icons/gi'; 
@@ -74,72 +74,86 @@ export const LoginPage: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 font-sans">
-            <div className="w-full max-w-sm">
+        <div className="theme-light relative min-h-[100dvh] flex flex-col items-center justify-center p-6 font-sans bg-c-bg overflow-hidden">
+            {/* Glows decorativos (profundidad, sensación de campo fresco) */}
+            <div className="pointer-events-none absolute -top-28 -right-24 w-80 h-80 rounded-full bg-c-accent/20 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-28 -left-24 w-80 h-80 rounded-full bg-c-accent-sky/15 blur-3xl" />
+
+            <div className="relative w-full max-w-sm">
+                {/* Hero de marca */}
                 <div className="text-center mb-8">
-                    <div className="flex items-center justify-center space-x-3 mb-2">
-                        {/* --- CAMBIO DE MARCA --- */}
-                        <GiGoat className="w-12 h-12 text-brand-orange" />
-                        <h1 className="text-4xl font-bold text-white">GanaderoOS</h1>
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-c-accent/12 border border-c-accent/20 mb-4 shadow-sm">
+                        <GiGoat className="w-12 h-12 text-c-accent" />
                     </div>
-                    {/* --- CAMBIO DE ESLOGAN --- */}
-                    <p className="text-zinc-400">El sistema operativo para tu finca.</p>
+                    <h1 className="text-4xl font-extrabold tracking-tight text-c-text">GanaderoOS</h1>
+                    <p className="text-c-text-muted mt-1.5">El sistema operativo para tu finca.</p>
                 </div>
 
-                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-6 border border-brand-border">
-                    <div className="flex bg-zinc-900/80 rounded-xl p-1 w-full mb-6">
-                        <button onClick={() => setIsLoginView(true)} className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors ${isLoginView ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:bg-zinc-800/50'}`}>
+                {/* Tarjeta */}
+                <div className="bg-c-surface rounded-3xl p-6 border border-c-border shadow-xl shadow-black/5">
+                    <div className="flex bg-c-surface-2 rounded-xl p-1 w-full mb-6">
+                        <button onClick={() => setIsLoginView(true)} className={`w-1/2 rounded-lg py-2.5 text-sm font-semibold transition-all ${isLoginView ? 'bg-c-surface text-c-text shadow-sm' : 'text-c-text-muted hover:text-c-text'}`}>
                             Iniciar Sesión
                         </button>
-                        <button onClick={() => setIsLoginView(false)} className={`w-1/2 rounded-lg py-2 text-sm font-semibold transition-colors ${!isLoginView ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:bg-zinc-800/50'}`}>
+                        <button onClick={() => setIsLoginView(false)} className={`w-1/2 rounded-lg py-2.5 text-sm font-semibold transition-all ${!isLoginView ? 'bg-c-surface text-c-text shadow-sm' : 'text-c-text-muted hover:text-c-text'}`}>
                             Registrarse
                         </button>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="Correo electrónico"
-                            required
-                            className="w-full bg-zinc-800/80 text-white p-3 rounded-xl border border-transparent focus:border-brand-orange focus:ring-0 focus:outline-none placeholder-zinc-400"
-                        />
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Contraseña"
-                            required
-                            className="w-full bg-zinc-800/80 text-white p-3 rounded-xl border border-transparent focus:border-brand-orange focus:ring-0 focus:outline-none placeholder-zinc-400"
-                        />
+                        <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-c-text-faint pointer-events-none" />
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="Correo electrónico"
+                                required
+                                className="w-full bg-c-surface-2 text-c-text pl-12 pr-4 py-3.5 rounded-xl border border-c-border focus:border-c-accent focus:ring-2 focus:ring-c-accent/30 focus:outline-none placeholder-c-text-faint transition-colors"
+                            />
+                        </div>
+                        <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-c-text-faint pointer-events-none" />
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Contraseña"
+                                required
+                                className="w-full bg-c-surface-2 text-c-text pl-12 pr-4 py-3.5 rounded-xl border border-c-border focus:border-c-accent focus:ring-2 focus:ring-c-accent/30 focus:outline-none placeholder-c-text-faint transition-colors"
+                            />
+                        </div>
 
                         {error && (
-                            <div className="flex items-center space-x-2 p-3 rounded-lg text-sm bg-red-500/20 text-brand-red">
-                                <AlertTriangle size={18} />
+                            <div className="flex items-center space-x-2 p-3 rounded-lg text-sm bg-red-500/10 text-brand-red border border-red-500/20">
+                                <AlertTriangle size={18} className="flex-shrink-0" />
                                 <span>{error}</span>
                             </div>
                         )}
 
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             disabled={isLoading}
-                            className="w-full bg-brand-orange text-white font-bold py-3 rounded-xl transition-colors hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full flex items-center justify-center gap-2 bg-c-accent text-white font-bold py-3.5 rounded-xl shadow-lg shadow-c-accent/25 transition-all hover:bg-c-accent/90 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {isLoading ? 'Procesando...' : (isLoginView ? 'Iniciar Sesión' : 'Crear Cuenta')}
+                            {isLoading ? (
+                                <><span className="animate-spin h-5 w-5 border-2 border-white/40 border-t-white rounded-full" /> Procesando...</>
+                            ) : (
+                                <>{isLoginView ? <LogIn size={18} /> : <UserPlus size={18} />} {isLoginView ? 'Iniciar Sesión' : 'Crear Cuenta'}</>
+                            )}
                         </button>
                     </form>
                 </div>
-                
+
                 <div className="mt-6 text-center">
-                    <button 
+                    <button
                         onClick={handleForceDeleteDB}
-                        className="flex items-center justify-center gap-2 mx-auto bg-brand-red/20 text-brand-red font-semibold py-2 px-4 rounded-lg border border-brand-red/50 hover:bg-brand-red/30 transition-colors"
+                        className="inline-flex items-center justify-center gap-2 mx-auto text-brand-red/90 font-semibold text-sm py-2 px-4 rounded-lg border border-brand-red/30 hover:bg-brand-red/10 transition-colors"
                     >
-                        <Trash2 size={16} />
+                        <Trash2 size={15} />
                         Forzar Reinicio de DB Local
                     </button>
-                    <p className="text-xs text-zinc-600 mt-2">Si la app no carga, usa este botón.</p>
+                    <p className="text-xs text-c-text-faint mt-2">Si la app no carga, usa este botón.</p>
                 </div>
             </div>
         </div>

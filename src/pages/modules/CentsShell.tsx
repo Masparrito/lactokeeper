@@ -18,27 +18,27 @@ export default function CentsShell({ onSwitchModule }: CentsShellProps) {
 
     return (
         // --- CORRECCIÓN SCROLL: 'h-screen overflow-hidden' ---
-        <div className="h-full overflow-hidden animate-fade-in text-white flex flex-col bg-brand-dark">
+        <div className="theme-light h-full overflow-hidden animate-fade-in text-c-text flex flex-col bg-c-bg">
 
-            <header className="flex-shrink-0 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border pt-[env(safe-area-inset-top)]">
+            <header className="flex-shrink-0 bg-c-bg/95 backdrop-blur-lg border-b border-c-border pt-[env(safe-area-inset-top)]">
                 <div className="max-w-4xl mx-auto flex items-center justify-between px-4 h-16">
-                    <button onClick={() => onSwitchModule('rebano')} className="p-2 -ml-2 text-zinc-400 hover:text-white" aria-label="Salir del módulo">
+                    <button onClick={() => onSwitchModule('rebano')} className="p-2 -ml-2 text-c-text-muted hover:text-c-text" aria-label="Salir del módulo">
                         <ArrowLeft size={24} />
                     </button>
                     <div className="flex items-center gap-2">
-                        <DollarSign className="text-yellow-400" />
+                        <DollarSign className="text-c-accent-gold" />
                         <div>
-                            <h1 className="text-xl font-bold text-white leading-none">GanaderoOS</h1>
-                            <p className="text-xs text-zinc-400 leading-none">Cents</p>
+                            <h1 className="text-xl font-bold text-c-text leading-none">GanaderoOS</h1>
+                            <p className="text-xs text-c-text-muted leading-none">Cents</p>
                         </div>
                     </div>
                     {/* --- (NUEVO) Contenedor para iconos de header --- */}
                     <div className="flex items-center gap-4">
                         <SyncStatusIcon status={syncStatus} />
                         {/* --- (NUEVO) Botón de Módulos --- */}
-                        <button 
+                        <button
                             onClick={() => setIsModuleSwitcherOpen(true)}
-                            className="p-2 text-zinc-400 hover:text-white transition-colors"
+                            className="p-2 text-c-text-muted hover:text-c-text transition-colors"
                             title="Módulos"
                         >
                             <Grid size={20} />
