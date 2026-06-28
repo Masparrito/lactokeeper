@@ -418,29 +418,29 @@ export const BatchWeighingForm: React.FC<BatchWeighingFormProps> = ({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex-shrink-0 space-y-3 p-4 border-b border-brand-border">
+      <div className="flex-shrink-0 space-y-3 p-4 border-b border-c-border">
         <div className="flex justify-between items-start">
              <div className="space-y-1">
-                <p className="text-sm text-zinc-400">
+                <p className="text-sm text-c-text-muted">
                     {isImportMode ? `Procesando ${rows.length} registros.` : `Registro manual.`}
                 </p>
                 {/* Indicador de Filtros */}
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-c-text-faint">
                     {filter !== 'all' ? `Filtrando por: ${filter}` : 'Mostrando todos'}
                 </p>
              </div>
 
              {/* Total Calculado y Validación vs Papel (OCR) */}
              <div className="flex flex-col items-end">
-                 <div className="text-sm font-mono text-white font-bold">
+                 <div className="text-sm font-mono text-c-text font-bold">
                     Suma: {calculatedTotal.toFixed(2)} kg
                  </div>
-                 
+
                  {/* Aquí usamos ocrTotal, resolviendo el warning de variable no usada */}
                  {ocrTotal !== null && (
                     <div className={`text-xs font-mono flex items-center gap-1 mt-1 px-2 py-0.5 rounded ${
-                        Math.abs(calculatedTotal - ocrTotal) < 0.1 
-                        ? 'bg-green-500/20 text-green-400' 
+                        Math.abs(calculatedTotal - ocrTotal) < 0.1
+                        ? 'bg-c-accent/20 text-c-accent'
                         : 'bg-yellow-500/20 text-yellow-400'
                     }`}>
                         {Math.abs(calculatedTotal - ocrTotal) < 0.1 ? <CheckCircle size={10}/> : <AlertTriangle size={10}/>}
@@ -451,7 +451,7 @@ export const BatchWeighingForm: React.FC<BatchWeighingFormProps> = ({
         </div>
 
         {!isImportMode && (
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-zinc-800 text-white p-2 rounded-lg text-sm" />
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-c-surface-2 text-c-text p-2 rounded-lg text-sm" />
         )}
         
         {/* Filtros */}
@@ -480,22 +480,22 @@ export const BatchWeighingForm: React.FC<BatchWeighingFormProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="flex-shrink-0 p-4 border-t border-brand-border bg-ios-modal-bg">
+      <div className="flex-shrink-0 p-4 border-t border-c-border bg-c-surface">
         {lastDeletedRow && (
-            <div className="mb-3 flex justify-between p-3 rounded-lg text-sm bg-zinc-700 text-white">
+            <div className="mb-3 flex justify-between p-3 rounded-lg text-sm bg-c-surface-2 text-c-text">
                 <span>Eliminado: {lastDeletedRow.animalId}</span>
-                <button type="button" onClick={handleUndoDelete} className="text-blue-300 flex items-center gap-1"><Undo2 size={14}/> Deshacer</button>
+                <button type="button" onClick={handleUndoDelete} className="text-c-accent-sky flex items-center gap-1"><Undo2 size={14}/> Deshacer</button>
             </div>
         )}
         {message && (
-          <div className={`mb-3 p-3 rounded-lg text-sm flex items-center gap-2 ${message.type === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+          <div className={`mb-3 p-3 rounded-lg text-sm flex items-center gap-2 ${message.type === 'success' ? 'bg-c-accent/20 text-c-accent' : 'bg-red-500/20 text-brand-red'}`}>
             {message.type === 'success' ? <CheckCircle size={16}/> : <AlertTriangle size={16}/>}
             {message.text}
           </div>
         )}
         <div className="flex justify-end gap-3">
-            <button type="button" onClick={onCancel} className="px-5 py-2 bg-zinc-600 rounded-lg font-semibold">Cancelar</button>
-            <button type="submit" disabled={isLoading} className="px-5 py-2 bg-brand-green text-white font-bold rounded-lg flex items-center gap-2 disabled:opacity-50">
+            <button type="button" onClick={onCancel} className="px-5 py-2 bg-c-surface-2 rounded-lg font-semibold text-c-text">Cancelar</button>
+            <button type="submit" disabled={isLoading} className="px-5 py-2 bg-c-accent text-white font-bold rounded-lg flex items-center gap-2 disabled:opacity-50">
                 {isLoading ? <Loader2 className="animate-spin"/> : <Save size={18}/>} Guardar
             </button>
         </div>
@@ -524,10 +524,10 @@ const ValidatedRowComponent: React.FC<{ row: ValidatedRow, onIdChange: any, onWe
     <div className={`p-3 rounded-lg flex flex-col border transition-all ${getBorderColor()}`}>
         <div className="flex items-center gap-3">
             <div className="relative w-3/5">
-                <input 
+                <input
                     value={row.animalId}
                     onChange={(e) => onIdChange(row.key, e.target.value.toUpperCase())}
-                    className={`w-full bg-zinc-800/80 p-3 rounded-xl text-lg text-center font-mono text-white 
+                    className={`w-full bg-c-surface-2 p-3 rounded-xl text-lg text-center font-mono text-c-text
                         ${row.suggestedId ? 'border border-yellow-500/50' : ''}`}
                     placeholder="ID"
                 />
@@ -537,10 +537,10 @@ const ValidatedRowComponent: React.FC<{ row: ValidatedRow, onIdChange: any, onWe
                     </button>
                 )}
             </div>
-            <input 
+            <input
               value={row.weight}
               onChange={(e) => onWeightChange(row.key, e.target.value)}
-              className="w-2/5 bg-zinc-800/80 p-3 rounded-xl text-lg text-center font-mono text-white"
+              className="w-2/5 bg-c-surface-2 p-3 rounded-xl text-lg text-center font-mono text-c-text"
               placeholder="0.00"
             />
             <button type="button" onClick={() => onDeleteRow(row.key)} className="p-3 bg-red-600/20 text-red-400 rounded-lg">
@@ -548,11 +548,11 @@ const ValidatedRowComponent: React.FC<{ row: ValidatedRow, onIdChange: any, onWe
             </button>
         </div>
         
-        <div className="flex items-center gap-2 pt-2 mt-2 border-t border-zinc-700/50 min-h-[24px]">
+        <div className="flex items-center gap-2 pt-2 mt-2 border-t border-c-border-strong/50 min-h-[24px]">
             {row.message.length > 0 && (
                 <div className="flex-grow flex flex-wrap gap-2 text-xs">
                      {row.message.map((msg, idx) => (
-                         <span key={idx} className={`flex items-center gap-1 ${msg.includes('Primer') ? 'text-yellow-400 font-bold' : 'text-zinc-400'}`}>
+                         <span key={idx} className={`flex items-center gap-1 ${msg.includes('Primer') ? 'text-yellow-400 font-bold' : 'text-c-text-muted'}`}>
                             {msg.includes('Primer') ? <AlertTriangle size={12}/> : <Info size={12}/>}
                             {msg}
                          </span>
@@ -561,7 +561,7 @@ const ValidatedRowComponent: React.FC<{ row: ValidatedRow, onIdChange: any, onWe
                 </div>
             )}
             {isImportMode && (
-                <input type="date" value={row.date} onChange={(e) => onDateChange(row.key, e.target.value)} className="bg-zinc-800 text-white p-1 rounded text-xs w-[110px]" />
+                <input type="date" value={row.date} onChange={(e) => onDateChange(row.key, e.target.value)} className="bg-c-surface-2 text-c-text p-1 rounded text-xs w-[110px]" />
             )}
         </div>
     </div>
@@ -588,10 +588,10 @@ const FilterButton: React.FC<FilterButtonProps> = ({ label, count, isActive, onC
     const activeClass = activeClasses[color];
 
     return (
-        <button 
-            type="button" 
-            onClick={onClick} 
-            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors flex-shrink-0 ${isActive ? activeClass : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}
+        <button
+            type="button"
+            onClick={onClick}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors flex-shrink-0 ${isActive ? activeClass : 'bg-c-surface-2 text-c-text-muted hover:bg-c-surface-3'}`}
         >
             {label} ({count})
         </button>

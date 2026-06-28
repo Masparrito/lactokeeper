@@ -53,20 +53,20 @@ export const AddQuickParentModal = ({ type, onClose, onSave }: AddQuickParentMod
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-0 sm:p-4">
             
             {/* 2. TARJETA MODAL */}
-            <div className="bg-[#121214] border-t sm:border border-zinc-800 w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-6 space-y-6 shadow-2xl transform transition-all pb-10 sm:pb-6">
-                
+            <div className="bg-c-surface border-t sm:border border-c-border w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-6 space-y-6 shadow-2xl transform transition-all pb-10 sm:pb-6">
+
                 {/* Header */}
                 <div className="flex justify-between items-start">
                     <div>
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <h2 className="text-xl font-bold text-c-text flex items-center gap-2">
                             <UserPlus className={theme.text} />
                             {title}
                         </h2>
-                        <p className="text-sm text-zinc-400 mt-1">
+                        <p className="text-sm text-c-text-muted mt-1">
                             Crea una referencia rápida para el linaje.
                         </p>
                     </div>
-                    <button onClick={onClose} className="p-2 bg-zinc-800 rounded-full text-zinc-400 hover:text-white transition-colors">
+                    <button onClick={onClose} className="p-2 bg-c-surface-2 rounded-full text-c-text-muted hover:text-c-text transition-colors">
                         <X size={20} />
                     </button>
                 </div>
@@ -82,31 +82,31 @@ export const AddQuickParentModal = ({ type, onClose, onSave }: AddQuickParentMod
                 <div className="space-y-5">
                     {/* Input ID */}
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">ID del {role}</label>
+                        <label className="text-[10px] font-bold text-c-text-faint uppercase tracking-widest ml-1">ID del {role}</label>
                         <div className="relative">
-                            <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
-                            <input 
-                                type="text" 
+                            <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-c-text-faint" size={18} />
+                            <input
+                                type="text"
                                 value={id}
                                 onChange={(e) => setId(e.target.value)}
                                 placeholder="Ej: P001"
                                 autoFocus
-                                className={`w-full bg-black border border-zinc-800 rounded-xl py-4 pl-12 pr-4 text-white ${theme.borderFocus} ${theme.ring} focus:ring-1 outline-none transition-all text-lg font-mono uppercase placeholder:text-zinc-700`}
+                                className={`w-full bg-c-surface-2 border border-c-border rounded-xl py-4 pl-12 pr-4 text-c-text ${theme.borderFocus} ${theme.ring} focus:ring-1 outline-none transition-all text-lg font-mono uppercase placeholder:text-c-text-faint`}
                             />
                         </div>
                     </div>
 
                     {/* Input Nombre */}
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Nombre (Opcional)</label>
+                        <label className="text-[10px] font-bold text-c-text-faint uppercase tracking-widest ml-1">Nombre (Opcional)</label>
                         <div className="relative">
-                            <Type className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
-                            <input 
-                                type="text" 
+                            <Type className="absolute left-4 top-1/2 -translate-y-1/2 text-c-text-faint" size={18} />
+                            <input
+                                type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 placeholder="Ej: Sansón"
-                                className={`w-full bg-black border border-zinc-800 rounded-xl py-4 pl-12 pr-4 text-white ${theme.borderFocus} ${theme.ring} focus:ring-1 outline-none transition-all text-lg placeholder:text-zinc-700 capitalize`}
+                                className={`w-full bg-c-surface-2 border border-c-border rounded-xl py-4 pl-12 pr-4 text-c-text ${theme.borderFocus} ${theme.ring} focus:ring-1 outline-none transition-all text-lg placeholder:text-c-text-faint capitalize`}
                             />
                         </div>
                     </div>
