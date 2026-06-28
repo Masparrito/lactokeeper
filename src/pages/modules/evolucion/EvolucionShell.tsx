@@ -134,20 +134,20 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
   return (
     // --- (INICIO) CORRECCIÓN DE SCROLL ---
     // 1. Contenedor raíz con 'h-screen' y 'overflow-hidden'
-    <div className="font-sans text-gray-200 h-full overflow-hidden animate-fade-in flex flex-col bg-brand-dark">
+    <div className="theme-light font-sans text-c-text h-full overflow-hidden animate-fade-in flex flex-col bg-c-bg">
         {/* 2. Header con safe-area superior */}
-        <header className="flex-shrink-0 bg-gray-900/80 backdrop-blur-lg border-b border-brand-border pt-[env(safe-area-inset-top)]">
+        <header className="flex-shrink-0 bg-c-bg/95 backdrop-blur-lg border-b border-c-border pt-[env(safe-area-inset-top)]">
             <div className="max-w-4xl mx-auto flex items-center justify-between px-4 h-16">
                  <div className="flex items-center gap-2 min-w-0">
                     {activeView !== 'setup' && (
-                         <button onClick={() => handleViewChange('setup')} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors flex-shrink-0" aria-label="Volver a Configuración">
+                         <button onClick={() => handleViewChange('setup')} className="p-2 -ml-2 text-c-text-muted hover:text-c-text transition-colors flex-shrink-0" aria-label="Volver a Configuración">
                              <ArrowLeft size={24} />
                          </button>
                     )}
-                    <TrendingUp className={`text-indigo-400 ${activeView === 'setup' ? '' : 'hidden sm:block'} flex-shrink-0`} size={28}/>
+                    <TrendingUp className={`text-indigo-600 ${activeView === 'setup' ? '' : 'hidden sm:block'} flex-shrink-0`} size={28}/>
                     <div className="overflow-hidden">
-                        <h1 className="text-xl font-bold text-white leading-none truncate">GanaderoOS</h1>
-                        <p className="text-xs text-zinc-400 leading-none truncate">
+                        <h1 className="text-xl font-bold text-c-text leading-none truncate">GanaderoOS</h1>
+                        <p className="text-xs text-c-text-muted leading-none truncate">
                             Evolución - {
                                 activeView === 'setup' ? 'Configurar Simulación' :
                                 activeView === 'sim-results' ? 'Resultados Simulación' :
@@ -162,7 +162,7 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
                     {/* --- (NUEVO) Botón de Módulos --- */}
                     <button 
                         onClick={() => setIsModuleSwitcherOpen(true)}
-                        className="p-2 text-zinc-400 hover:text-white transition-colors"
+                        className="p-2 text-c-text-muted hover:text-c-text transition-colors"
                         title="Módulos"
                     >
                         <Grid size={20} />
@@ -189,7 +189,7 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
                 /> 
             )}
             
-            {activeView === 'sim-results' && !activeSimData && ( <div className="text-center p-10 text-zinc-400">Primero configura y corre una simulación.</div> )}
+            {activeView === 'sim-results' && !activeSimData && ( <div className="text-center p-10 text-c-text-muted">Primero configura y corre una simulación.</div> )}
             
             {activeView === 'real-results' && realConfig && ( 
                 <EvolucionRebanoPage 
@@ -200,7 +200,7 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
             )}
             
             {activeView === 'real-results' && !realConfig && isGlobalLoading && <LoadingOverlay />}
-            {activeView === 'real-results' && !realConfig && !isGlobalLoading && ( <div className="text-center p-10 text-zinc-400">No hay suficientes datos reales para una proyección.</div> )}
+            {activeView === 'real-results' && !realConfig && !isGlobalLoading && ( <div className="text-center p-10 text-c-text-muted">No hay suficientes datos reales para una proyección.</div> )}
             
             {activeView === 'genius-analysis' && realConfig && (
               <GanaGeniusPage
@@ -211,9 +211,9 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
             )}
             {activeView === 'genius-analysis' && !realConfig && isGlobalLoading && <LoadingOverlay />}
             {activeView === 'genius-analysis' && !realConfig && !isGlobalLoading && ( 
-                <div className="text-center p-10 text-zinc-400 max-w-sm mx-auto">
+                <div className="text-center p-10 text-c-text-muted max-w-sm mx-auto">
                     <Sparkles className="mx-auto text-sky-500" size={48} />
-                    <h2 className="text-lg font-semibold text-white mt-4">Asistente GanaGenius</h2>
+                    <h2 className="text-lg font-semibold text-c-text mt-4">Asistente GanaGenius</h2>
                     <p>GanaGenius requiere datos reales para funcionar. Registra partos, servicios y pesajes de leche para activar el "Switch de Realidad" en el Setup.</p>
                 </div> 
             )}
@@ -222,14 +222,14 @@ export default function EvolucionShell({ onSwitchModule }: EvolucionShellProps) 
         {/* --- (FIN) CORRECCIÓN DE SCROLL --- */}
 
          {/* 4. Nav con safe-area inferior */}
-         <nav className="flex-shrink-0 bg-zinc-900 border-t border-white/10 pb-[env(safe-area-inset-bottom)]">
+         <nav className="flex-shrink-0 bg-c-surface border-t border-c-border pb-[env(safe-area-inset-bottom)]">
           <div className="flex justify-around items-center h-16">
             {navItems.map((item) => {
                  const isDisabled = (item.view === 'sim-results' && !simConfig) || 
                                     (item.view === 'real-results' && !realConfig) ||
                                     (item.view === 'genius-analysis' && !realConfig);
                  const isActive = activeView === item.view;
-                 return ( <button key={item.view} onClick={() => handleViewChange(item.view)} disabled={isDisabled} className={`relative flex flex-col items-center justify-center pt-3 pb-2 w-full transition-colors ${ isActive ? 'text-indigo-400 font-semibold' : 'text-gray-500 hover:text-white'} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`} aria-current={isActive ? 'page' : undefined}> <item.icon className="w-6 h-6" /> <span className="text-xs font-semibold mt-1">{item.label}</span> </button> );
+                 return ( <button key={item.view} onClick={() => handleViewChange(item.view)} disabled={isDisabled} className={`relative flex flex-col items-center justify-center pt-3 pb-2 w-full transition-colors ${ isActive ? 'text-indigo-600 font-semibold' : 'text-c-text-faint hover:text-c-text'} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`} aria-current={isActive ? 'page' : undefined}> <item.icon className="w-6 h-6" /> <span className="text-xs font-semibold mt-1">{item.label}</span> </button> );
             })}
           </div>
          </nav>

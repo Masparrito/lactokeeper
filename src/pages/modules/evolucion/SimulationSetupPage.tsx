@@ -10,11 +10,11 @@ const SettingsGroup: React.FC<SettingsGroupProps> = ({ title, icon: Icon, childr
     const [isOpen, setIsOpen] = useState(defaultOpen);
     return (
         <div className="mb-4">
-            <button type="button" onClick={() => setIsOpen(!isOpen)} className="text-sm font-semibold text-zinc-400 uppercase tracking-wide flex items-center justify-between gap-2 mb-2 px-4 w-full">
+            <button type="button" onClick={() => setIsOpen(!isOpen)} className="text-sm font-semibold text-c-text-muted uppercase tracking-wide flex items-center justify-between gap-2 mb-2 px-4 w-full">
                 <span className="flex items-center gap-2"> <Icon size={16} /> {title}</span>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : 'rotate-0'}`}><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
             </button>
-            {isOpen && ( <div className="bg-brand-glass rounded-2xl border border-brand-border divide-y divide-brand-border overflow-hidden animate-fade-in">{children}</div> )}
+            {isOpen && ( <div className="bg-c-surface rounded-2xl border border-c-border divide-y divide-c-border overflow-hidden animate-fade-in">{children}</div> )}
         </div>
     );
 };
@@ -25,18 +25,18 @@ interface SettingsInputProps extends React.InputHTMLAttributes<HTMLInputElement>
   unit?: string; 
 }
 const SettingsInput = React.forwardRef<HTMLInputElement, SettingsInputProps>(({ label, unit, disabled, ...props }: SettingsInputProps, ref: ForwardedRef<HTMLInputElement>) => ( 
-  <div className={`p-3 bg-ios-modal-bg flex justify-between items-center ${disabled ? 'opacity-60' : ''}`}> 
-    <label htmlFor={props.id || props.name} className="text-white text-base">{label}</label> 
-    <div className="flex items-center gap-2"> 
-      <input 
-        ref={ref} 
-        {...props} 
+  <div className={`p-3 bg-c-surface flex justify-between items-center ${disabled ? 'opacity-60' : ''}`}>
+    <label htmlFor={props.id || props.name} className="text-c-text text-base">{label}</label>
+    <div className="flex items-center gap-2">
+      <input
+        ref={ref}
+        {...props}
         disabled={disabled}
-        className={`w-24 bg-zinc-700/80 rounded-lg p-2 text-white text-right font-mono text-base focus:outline-none focus:ring-2 focus:ring-brand-orange ${disabled ? 'text-zinc-400' : 'text-white'}`} 
-      /> 
-      {unit && <span className="text-zinc-400 w-8 text-left">{unit}</span>} 
-    </div> 
-  </div> 
+        className={`w-24 bg-c-surface-2/80 rounded-lg p-2 text-c-text text-right font-mono text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 ${disabled ? 'text-c-text-muted' : 'text-c-text'}`}
+      />
+      {unit && <span className="text-c-text-muted w-8 text-left">{unit}</span>}
+    </div>
+  </div>
 ));
 
 // --- Componente MonthSelector (V7.0: Añadido disabled) ---
@@ -55,16 +55,16 @@ const MonthSelector: React.FC<MonthSelectorProps> = ({ label, name, value, onCha
     onChange(name, selectedMonth === 0 ? undefined : selectedMonth); 
   }; 
   return ( 
-    <div className={`p-3 bg-ios-modal-bg flex justify-between items-center ${disabled ? 'opacity-60' : ''}`}> 
-      <label htmlFor={name} className="text-white text-base">{label}</label> 
-      <select 
-        id={name} 
-        name={name} 
-        value={value ?? 0} 
-        onChange={handleChange} 
+    <div className={`p-3 bg-c-surface flex justify-between items-center ${disabled ? 'opacity-60' : ''}`}>
+      <label htmlFor={name} className="text-c-text text-base">{label}</label>
+      <select
+        id={name}
+        name={name}
+        value={value ?? 0}
+        onChange={handleChange}
         disabled={disabled}
-        className={`w-28 bg-zinc-700/80 rounded-lg p-2 text-base focus:outline-none focus:ring-2 focus:ring-brand-orange appearance-none text-center ${disabled ? 'text-zinc-400' : 'text-white'}`}
-      > 
+        className={`w-28 bg-c-surface-2/80 rounded-lg p-2 text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none text-center ${disabled ? 'text-c-text-muted' : 'text-c-text'}`}
+      >
         {meses.map((mes, index) => ( <option key={index} value={index}>{mes}</option> ))} 
       </select> 
     </div> 
@@ -86,16 +86,16 @@ const SettingsSelector: React.FC<SettingsSelectorProps> = ({ label, name, value,
     onChange(name, parseInt(e.target.value, 10)); 
   }; 
   return ( 
-    <div className={`p-3 bg-ios-modal-bg flex justify-between items-center ${disabled ? 'opacity-60' : ''}`}> 
-      <label htmlFor={name} className="text-white text-base">{label}</label> 
-      <select 
-        id={name} 
-        name={name} 
-        value={value ?? ''} 
-        onChange={handleChange} 
+    <div className={`p-3 bg-c-surface flex justify-between items-center ${disabled ? 'opacity-60' : ''}`}>
+      <label htmlFor={name} className="text-c-text text-base">{label}</label>
+      <select
+        id={name}
+        name={name}
+        value={value ?? ''}
+        onChange={handleChange}
         disabled={disabled}
-        className={`w-40 bg-zinc-700/80 rounded-lg p-2 text-base focus:outline-none focus:ring-2 focus:ring-brand-orange appearance-none text-center ${disabled ? 'text-zinc-400' : 'text-white'}`}
-      > 
+        className={`w-40 bg-c-surface-2/80 rounded-lg p-2 text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none text-center ${disabled ? 'text-c-text-muted' : 'text-c-text'}`}
+      >
         {options.map((opt) => ( 
           <option key={opt.value} value={opt.value}>{opt.label}</option> 
         ))} 
@@ -114,14 +114,14 @@ interface SettingsSwitchProps {
   disabled?: boolean;
 }
 const SettingsSwitch: React.FC<SettingsSwitchProps> = ({ label, description, icon: Icon, isChecked, onToggle, disabled = false }) => (
-  <div className={`p-4 bg-brand-glass rounded-2xl border border-brand-border flex items-center justify-between ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
+  <div className={`p-4 bg-c-surface rounded-2xl border border-c-border flex items-center justify-between ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
     <div className="flex items-center gap-3">
-      <div className="p-2 rounded-lg bg-gray-700 text-sky-400">
+      <div className="p-2 rounded-lg bg-c-surface-2 text-indigo-600">
         <Icon size={20} />
       </div>
       <div>
-        <p className="text-base font-semibold text-white">{label}</p>
-        <p className="text-sm text-gray-400">{description}</p>
+        <p className="text-base font-semibold text-c-text">{label}</p>
+        <p className="text-sm text-c-text-muted">{description}</p>
       </div>
     </div>
     <button
@@ -130,8 +130,8 @@ const SettingsSwitch: React.FC<SettingsSwitchProps> = ({ label, description, ico
       aria-checked={isChecked}
       onClick={() => !disabled && onToggle(!isChecked)}
       disabled={disabled}
-      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-        isChecked ? 'bg-sky-500' : 'bg-gray-600'
+      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-c-bg ${
+        isChecked ? 'bg-indigo-600' : 'bg-c-surface-3'
       } ${disabled ? 'cursor-not-allowed' : ''}`}
     >
       <span
@@ -239,7 +239,7 @@ export const SimulationSetupPage: React.FC<SimulationSetupPageProps> = ({ initia
 
     return (
         <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in p-4 pb-32">
-            <header className="text-center mb-6"> <h1 className="text-3xl font-bold tracking-tight text-white">Modo Simulación</h1> <p className="text-lg text-zinc-400">Define tus parámetros de partida</p> </header>
+            <header className="text-center mb-6"> <h1 className="text-3xl font-bold tracking-tight text-c-text-strong">Modo Simulación</h1> <p className="text-lg text-c-text-muted">Define tus parámetros de partida</p> </header>
 
             {/* --- V7.0: "SWITCH DE REALIDAD" AÑADIDO --- */}
             <SettingsSwitch
@@ -260,7 +260,7 @@ export const SimulationSetupPage: React.FC<SimulationSetupPageProps> = ({ initia
                 <SettingsInput label="Crías H (0-3m)" type="number" name="initialCriaH" value={config.initialCriaH ?? ''} onChange={handleChange} min="0" step="1" unit="N°" disabled={useRealData} />
                 <SettingsInput label="Crías M (0-3m)" type="number" name="initialCriaM" value={config.initialCriaM ?? ''} onChange={handleChange} min="0" step="1" unit="N°" disabled={useRealData} />
                 <SettingsInput label="Reproductores (>12m)" type="number" name="initialPadres" value={config.initialPadres ?? ''} onChange={handleChange} min="1" step="1" unit="N°" disabled={useRealData} />
-                {!useRealData && <p className="text-xs text-zinc-500 px-3 py-2 text-center">Nota: Reproductores calculados (1/30 hembras).</p>}
+                {!useRealData && <p className="text-xs text-c-text-faint px-3 py-2 text-center">Nota: Reproductores calculados (1/30 hembras).</p>}
                 <SettingsInput label="Compras Vientres/Año" type="number" name="comprasVientresAnual" value={config.comprasVientresAnual ?? ''} onChange={handleChange} min="0" step="1" unit="N°" disabled={useRealData} />
             </SettingsGroup>
             
@@ -329,11 +329,11 @@ export const SimulationSetupPage: React.FC<SimulationSetupPageProps> = ({ initia
             </SettingsGroup>
 
             {/* Botón de Envío Fijo (V7.0: Texto dinámico) */}
-            <div className="fixed bottom-16 left-0 right-0 p-4 bg-brand-dark/80 backdrop-blur-lg border-t border-brand-border z-10" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
-                 <button 
-                   type="submit" 
-                   className="w-full max-w-2xl mx-auto bg-brand-orange text-black font-bold py-4 rounded-xl text-lg flex items-center justify-center gap-2 hover:bg-orange-400 transition-colors"
-                 > 
+            <div className="fixed bottom-16 left-0 right-0 p-4 bg-c-bg/80 backdrop-blur-lg border-t border-c-border z-10" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+                 <button
+                   type="submit"
+                   className="w-full max-w-2xl mx-auto bg-indigo-600 text-white font-bold py-4 rounded-xl text-lg flex items-center justify-center gap-2 hover:bg-indigo-500 transition-colors"
+                 >
                     <TrendingUp size={20} /> 
                     {useRealData ? 'Correr Simulación (con Datos Reales)' : 'Correr Simulación (Manual)'}
                  </button>

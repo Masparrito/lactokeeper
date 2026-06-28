@@ -141,35 +141,35 @@ export const GanaGeniusOptimizer: React.FC<GanaGeniusOptimizerProps> = ({
 
     return (
       <div className="text-center">
-        <CheckCircle size={48} className="mx-auto text-green-400" />
-        <h3 className="mt-4 text-lg font-medium text-white">Diagnóstico Completo</h3>
-        <p className="mt-2 text-sm text-gray-300">
+        <CheckCircle size={48} className="mx-auto text-c-accent" />
+        <h3 className="mt-4 text-lg font-medium text-c-text-strong">Diagnóstico Completo</h3>
+        <p className="mt-2 text-sm text-c-text-muted">
           Tu **{bestKpi.kpi}** es tu eslabón más débil (y tu mayor oportunidad).
         </p>
 
         <div className="my-4 space-y-2 text-left">
           {report.impacts.map((item: SensitivityImpact) => (
-            <div 
-              key={item.kpi} 
-              className={`p-3 rounded-lg border ${item.kpi === bestKpi.kpi ? 'bg-green-900/50 border-green-700' : 'bg-gray-800 border-gray-700'}`}
+            <div
+              key={item.kpi}
+              className={`p-3 rounded-lg border ${item.kpi === bestKpi.kpi ? 'bg-c-accent/10 border-c-accent/40' : 'bg-c-surface-2 border-c-border'}`}
             >
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-white">{item.kpi}</span>
-                <span className={`font-bold ${item.kpi === bestKpi.kpi ? 'text-green-400' : 'text-gray-300'}`}>
+                <span className="font-semibold text-c-text-strong">{item.kpi}</span>
+                <span className={`font-bold ${item.kpi === bestKpi.kpi ? 'text-c-accent' : 'text-c-text-muted'}`}>
                   + {formatCurrency(item.impact, currency, 0)}
                 </span>
               </div>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-c-text-muted">
                 {item.kpi === 'Mortalidad' ? 'Reduciendo mortalidad' : `Mejorando a ${formatNumber(item.newValue, 0)}%`}
               </p>
             </div>
           ))}
         </div>
 
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-c-text-muted">
           **Recomendación:** Tu prioridad #1 debe ser mejorar tu **{bestKpi.kpi}**.
         </p>
-        
+
         <button
           type="button"
           onClick={() => handleApplySensitivity(bestKpi)}
@@ -178,16 +178,16 @@ export const GanaGeniusOptimizer: React.FC<GanaGeniusOptimizerProps> = ({
           <Check size={16} className="inline-block -mt-1 mr-2" />
           Aplicar y re-simular con este KPI
         </button>
-        
-        <hr className="border-gray-700 my-4" />
-        
-        <p className="text-sm text-gray-300 mb-2">
+
+        <hr className="border-c-border my-4" />
+
+        <p className="text-sm text-c-text-muted mb-2">
           **Paso 2 (Opcional):** Optimizar flujo de caja.
         </p>
         <button
           type="button"
           onClick={handleStartLinearityOptimization}
-          className="w-full rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-sky-500"
+          className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500"
         >
           <BarChart size={16} className="inline-block -mt-1 mr-2" />
           Optimizar Linealidad
@@ -214,27 +214,27 @@ export const GanaGeniusOptimizer: React.FC<GanaGeniusOptimizerProps> = ({
 
     return (
       <div className="text-center">
-        <CheckCircle size={48} className={`mx-auto ${isBetter ? 'text-green-400' : 'text-sky-400'}`} />
-        <h3 className="mt-4 text-lg font-medium text-white">Optimización de Linealidad Completa</h3>
-        
+        <CheckCircle size={48} className={`mx-auto ${isBetter ? 'text-c-accent' : 'text-indigo-600'}`} />
+        <h3 className="mt-4 text-lg font-medium text-c-text-strong">Optimización de Linealidad Completa</h3>
+
         {isBetter ? (
           <>
-            <p className="mt-2 text-sm text-gray-300">
+            <p className="mt-2 text-sm text-c-text-muted">
               ¡Mejora de flujo de caja encontrada!
             </p>
             <div className="flex justify-center gap-4 my-4">
-              <div className="p-3 bg-gray-800 rounded-lg">
-                <p className="text-xs text-red-400">CV Actual</p>
-                <p className="text-2xl font-bold text-white">{formatNumber(baseCV, 1)}%</p>
+              <div className="p-3 bg-c-surface-2 rounded-lg">
+                <p className="text-xs text-brand-red">CV Actual</p>
+                <p className="text-2xl font-bold text-c-text-strong">{formatNumber(baseCV, 1)}%</p>
               </div>
-              <div className="p-3 bg-green-900/50 border border-green-700 rounded-lg">
-                <p className="text-xs text-green-400">CV Óptimo</p>
-                <p className="text-2xl font-bold text-white">{formatNumber(bestCV, 1)}%</p>
+              <div className="p-3 bg-c-accent/10 border border-c-accent/40 rounded-lg">
+                <p className="text-xs text-c-accent">CV Óptimo</p>
+                <p className="text-2xl font-bold text-c-text-strong">{formatNumber(bestCV, 1)}%</p>
               </div>
             </div>
             {/* V8.2: Texto actualizado */}
-            <p className="text-sm text-gray-300">Sugerencia: Distribuir los cupos de monta de cabras:</p>
-            <p className="text-base font-semibold text-green-400 bg-gray-800 p-2 rounded-md mt-2">
+            <p className="text-sm text-c-text-muted">Sugerencia: Distribuir los cupos de monta de cabras:</p>
+            <p className="text-base font-semibold text-c-accent bg-c-surface-2 p-2 rounded-md mt-2">
               {suggestion}
             </p>
             <button
@@ -248,14 +248,14 @@ export const GanaGeniusOptimizer: React.FC<GanaGeniusOptimizerProps> = ({
           </>
         ) : (
           <>
-            <p className="mt-2 text-sm text-gray-300">
-              ¡Buen trabajo! Tu escenario actual (CV: {formatNumber(baseCV, 1)}%) 
+            <p className="mt-2 text-sm text-c-text-muted">
+              ¡Buen trabajo! Tu escenario actual (CV: {formatNumber(baseCV, 1)}%)
               ya es el más lineal encontrado. No se requiere optimización.
             </p>
             <button
               type="button"
               onClick={handleCloseModal}
-              className="mt-6 w-full rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-sky-500"
+              className="mt-6 w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500"
             >
               Entendido
             </button>
@@ -271,9 +271,9 @@ export const GanaGeniusOptimizer: React.FC<GanaGeniusOptimizerProps> = ({
     if (error) {
       return (
         <div className="p-6 text-center">
-          <h3 className="text-lg font-medium text-red-400">Error en GanaGenius</h3>
-          <p className="mt-2 text-sm text-gray-400">{error}</p>
-          <button type="button" onClick={handleCloseModal} className="mt-6 w-full rounded-md bg-gray-600 px-4 py-2 text-sm font-medium text-white">
+          <h3 className="text-lg font-medium text-brand-red">Error en GanaGenius</h3>
+          <p className="mt-2 text-sm text-c-text-muted">{error}</p>
+          <button type="button" onClick={handleCloseModal} className="mt-6 w-full rounded-md bg-c-surface-2 px-4 py-2 text-sm font-medium text-c-text-strong">
             Cerrar
           </button>
         </div>
@@ -284,9 +284,9 @@ export const GanaGeniusOptimizer: React.FC<GanaGeniusOptimizerProps> = ({
     if (isDiagnosing) {
       return (
         <div className="p-6 text-center">
-          <Cpu size={48} className="mx-auto text-sky-400 animate-pulse" />
-          <h3 className="mt-4 text-lg font-medium text-white">GanaGenius está diagnosticando...</h3>
-          <p className="mt-2 text-sm text-gray-400">
+          <Cpu size={48} className="mx-auto text-indigo-600 animate-pulse" />
+          <h3 className="mt-4 text-lg font-medium text-c-text-strong">GanaGenius está diagnosticando...</h3>
+          <p className="mt-2 text-sm text-c-text-muted">
             Analizando el impacto de tus KPIs... (Corriendo 4 simulaciones)
           </p>
         </div>
@@ -297,18 +297,18 @@ export const GanaGeniusOptimizer: React.FC<GanaGeniusOptimizerProps> = ({
     if (isOptimizing) {
        return (
         <div className="p-6 text-center">
-          <Cpu size={48} className="mx-auto text-sky-400 animate-pulse" />
-          <h3 className="mt-4 text-lg font-medium text-white">GanaGenius está optimizando...</h3>
-          <p className="mt-2 text-sm text-gray-400">
+          <Cpu size={48} className="mx-auto text-indigo-600 animate-pulse" />
+          <h3 className="mt-4 text-lg font-medium text-c-text-strong">GanaGenius está optimizando...</h3>
+          <p className="mt-2 text-sm text-c-text-muted">
             Analizando {Math.round(linearityProgress * 200)} / 200 escenarios de montas.
           </p>
-          <div className="w-full bg-gray-700 rounded-full h-2.5 mt-4">
-            <div 
-              className="bg-sky-500 h-2.5 rounded-full transition-all" 
+          <div className="w-full bg-c-surface-2 rounded-full h-2.5 mt-4">
+            <div
+              className="bg-indigo-600 h-2.5 rounded-full transition-all"
               style={{ width: `${linearityProgress * 100}%` }}
             ></div>
           </div>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-c-text-faint">
               CV Actual: {formatNumber(baseCV, 1)}%
               {bestCV && baseCV && bestCV < baseCV ? ` | Mejor: ${formatNumber(bestCV, 1)}%` : ''}
           </p>
@@ -330,14 +330,14 @@ export const GanaGeniusOptimizer: React.FC<GanaGeniusOptimizerProps> = ({
     return (
       <div className="p-6 text-center">
         <Lightbulb size={48} className="mx-auto text-yellow-400" />
-        <h3 className="mt-4 text-lg font-medium text-white">Asistente Zootécnico GanaGenius</h3>
-        <p className="mt-2 text-sm text-gray-400">
+        <h3 className="mt-4 text-lg font-medium text-c-text-strong">Asistente Zootécnico GanaGenius</h3>
+        <p className="mt-2 text-sm text-c-text-muted">
           GanaGenius analizará tu simulación para identificar tu eslabón más débil y te ofrecerá optimizar tu flujo de caja.
         </p>
         <button
           type="button"
           onClick={handleStartDiagnosis}
-          className="mt-6 w-full rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-sky-500"
+          className="mt-6 w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500"
         >
           <TrendingUp size={16} className="inline-block -mt-1 mr-2" />
           Iniciar Diagnóstico Zootécnico
@@ -354,7 +354,7 @@ export const GanaGeniusOptimizer: React.FC<GanaGeniusOptimizerProps> = ({
         onClick={handleOpenModal}
         disabled={!baseConfig} // Deshabilitado si no hay config
         title="GanaGenius: Asistente Zootécnico"
-        className="p-2 text-gray-500 rounded-full transition-colors hover:bg-gray-800 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+        className="p-2 text-c-text-faint rounded-full transition-colors hover:bg-c-surface-2 hover:text-c-text disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Sparkles size={20} />
       </button>
@@ -366,15 +366,15 @@ export const GanaGeniusOptimizer: React.FC<GanaGeniusOptimizerProps> = ({
           onClick={handleCloseModal}
         >
           <div
-            className="relative w-full max-w-md bg-gray-900 border border-brand-border rounded-2xl shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()} 
+            className="relative w-full max-w-md bg-c-surface border border-c-border rounded-2xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Botón de Cerrar (dentro del modal) */}
             {!isLoading && (
               <button
                 onClick={handleCloseModal}
                 title="Cerrar"
-                className="absolute top-3 right-3 p-2 text-gray-500 rounded-full transition-colors hover:bg-gray-800 hover:text-white"
+                className="absolute top-3 right-3 p-2 text-c-text-faint rounded-full transition-colors hover:bg-c-surface-2 hover:text-c-text"
               >
                 <X size={20} />
               </button>
