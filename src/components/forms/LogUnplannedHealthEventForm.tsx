@@ -22,7 +22,7 @@ const BasicAnimalSelector = ({ animals, selectedAnimalIds, onChange }: {
             multiple
             value={selectedAnimalIds}
             onChange={handleSelectionChange}
-            className="w-full h-40 bg-zinc-800 p-3 rounded-xl font-mono text-white" // h-40, font-mono
+            className="w-full h-40 bg-c-surface-2 p-3 rounded-xl font-mono text-c-text" // h-40, font-mono
         >
             {animals.map(animal => {
                 // --- CAMBIO: Preparar nombre formateado ---
@@ -137,13 +137,13 @@ export const LogUnplannedHealthEventForm: React.FC<LogUnplannedHealthEventFormPr
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                <label className="block text-sm font-medium text-zinc-400 mb-1">Animal(es) (mantén Ctrl/Cmd para seleccionar varios)</label>
+                <label className="block text-sm font-medium text-c-text-muted mb-1">Animal(es) (mantén Ctrl/Cmd para seleccionar varios)</label>
                 <BasicAnimalSelector
                     animals={activeAnimals} // Pasamos los animales activos
                     selectedAnimalIds={selectedAnimalIds}
                     onChange={setSelectedAnimalIds}
                 />
-                 <p className="text-xs text-zinc-500 mt-1">{selectedAnimalIds.length} animal(es) seleccionado(s).</p>
+                 <p className="text-xs text-c-text-faint mt-1">{selectedAnimalIds.length} animal(es) seleccionado(s).</p>
             </div>
             
             <input
@@ -151,26 +151,26 @@ export const LogUnplannedHealthEventForm: React.FC<LogUnplannedHealthEventFormPr
                 value={activityType}
                 onChange={e => setActivityType(e.target.value)}
                 placeholder="Tipo de Actividad (Ej: Tratamiento por Neumonía)"
-                className="w-full bg-zinc-800 p-3 rounded-xl"
+                className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl"
                 required
             />
 
-            <select value={productId || ''} onChange={e => setProductId(e.target.value)} className="w-full bg-zinc-800 p-3 rounded-xl">
+            <select value={productId || ''} onChange={e => setProductId(e.target.value)} className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl">
                 <option value="">Seleccionar Producto (Opcional)...</option>
                 {products.map(p => <option key={p.id} value={p.id!}>{p.name}</option>)}
             </select>
-            
+
             <div>
-                <label htmlFor="unplanned-date" className="block text-sm font-medium text-zinc-400 mb-1">Fecha de Aplicación</label>
-                <input id="unplanned-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-zinc-800 p-3 rounded-xl"/>
+                <label htmlFor="unplanned-date" className="block text-sm font-medium text-c-text-muted mb-1">Fecha de Aplicación</label>
+                <input id="unplanned-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl"/>
             </div>
 
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notas (Opcional)" rows={3} className="w-full bg-zinc-800 p-3 rounded-xl"/>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notas (Opcional)" rows={3} className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl"/>
 
             {error && (<div className="flex items-center space-x-2 p-3 rounded-lg text-sm bg-red-500/20 text-brand-red"><AlertTriangle size={18} /><span>{error}</span></div>)}
 
             <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={onCancel} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg">Cancelar</button>
+                <button type="button" onClick={onCancel} className="px-5 py-2 bg-c-surface-2 text-c-text hover:bg-c-surface-3 font-semibold rounded-lg">Cancelar</button>
                 <button type="submit" disabled={isLoading} className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg disabled:opacity-50 flex items-center gap-2">
                     {isLoading && <Loader2 size={18} className="animate-spin" />}
                     {isLoading ? 'Guardando...' : 'Registrar Evento'}

@@ -110,44 +110,44 @@ export const SireLotForm: React.FC<SireLotFormProps> = ({
     <>
       <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
         
-        <div className="bg-zinc-800/50 p-4 rounded-2xl border border-zinc-700/50">
-            <label className="block text-sm font-bold text-zinc-300 mb-3 flex items-center gap-2">
-                <Dna size={16} className="text-brand-blue"/>
+        <div className="bg-c-surface-2/50 p-4 rounded-2xl border border-c-border-strong/50">
+            <label className="block text-sm font-bold text-c-text-strong mb-3 flex items-center gap-2">
+                <Dna size={16} className="text-c-accent-sky"/>
                 Seleccionar Reproductor
             </label>
-            
+
             <div className="flex gap-2">
                 <button
                     type="button"
                     onClick={() => !editingLot && setIsSelectorOpen(true)}
                     disabled={!!editingLot}
-                    className={`flex-1 bg-black/40 border border-zinc-600 rounded-xl py-4 px-4 text-left flex items-center justify-between transition-all ${!editingLot ? 'hover:border-brand-blue hover:bg-zinc-900' : 'opacity-70 cursor-not-allowed'}`}
+                    className={`flex-1 bg-c-surface-2 border border-c-border-strong rounded-xl py-4 px-4 text-left flex items-center justify-between transition-all ${!editingLot ? 'hover:border-c-accent-sky hover:bg-c-surface-3' : 'opacity-70 cursor-not-allowed'}`}
                 >
                     {sireId ? (
-                        <span className="font-bold text-white truncate">{selectedSireName}</span>
+                        <span className="font-bold text-c-text truncate">{selectedSireName}</span>
                     ) : (
-                        <span className="text-zinc-500 italic">Toca para elegir...</span>
+                        <span className="text-c-text-faint italic">Toca para elegir...</span>
                     )}
-                    <ChevronRight size={20} className="text-zinc-500" />
+                    <ChevronRight size={20} className="text-c-text-faint" />
                 </button>
 
                 {!editingLot && (
-                    <button 
-                        type="button" 
-                        onClick={() => setIsFatherModalOpen(true)} 
-                        className="flex-shrink-0 p-4 bg-brand-blue/10 hover:bg-brand-blue/20 text-brand-blue border border-brand-blue/30 rounded-xl transition-colors active:scale-95"
+                    <button
+                        type="button"
+                        onClick={() => setIsFatherModalOpen(true)}
+                        className="flex-shrink-0 p-4 bg-c-accent-sky/10 hover:bg-c-accent-sky/20 text-c-accent-sky border border-c-accent-sky/30 rounded-xl transition-colors active:scale-95"
                         title="Registrar Nuevo Padre Externo"
                     >
                         <Plus size={24} />
                     </button>
                 )}
             </div>
-            
-             <p className="text-[10px] text-zinc-500 mt-2 px-1">
+
+             <p className="text-[10px] text-c-text-faint mt-2 px-1">
                 Solo se muestran machos con categoría "Reproductor" (Activos) y padres externos.
             </p>
         </div>
-        
+
         {error && (
           <div className="flex items-center space-x-2 p-4 rounded-xl text-sm bg-red-500/10 text-red-400 border border-red-500/20 animate-shake">
             <AlertTriangle size={18} className="flex-shrink-0" />
@@ -156,13 +156,13 @@ export const SireLotForm: React.FC<SireLotFormProps> = ({
         )}
 
         <div className="flex gap-3 pt-2">
-          <button type="button" onClick={onCancel} className="flex-1 px-5 py-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold rounded-xl transition-colors">
+          <button type="button" onClick={onCancel} className="flex-1 px-5 py-4 bg-c-surface-2 hover:bg-c-surface-3 text-c-text font-bold rounded-xl transition-colors">
             Cancelar
           </button>
-          <button 
-            type="submit" 
-            disabled={isLoading || !sireId} 
-            className="flex-1 px-5 py-4 bg-brand-blue hover:bg-blue-600 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-900/20 transition-all active:scale-[0.98]"
+          <button
+            type="submit"
+            disabled={isLoading || !sireId}
+            className="flex-1 px-5 py-4 bg-c-accent-sky hover:bg-c-accent-sky/90 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-c-accent-sky/20 transition-all active:scale-[0.98]"
           >
             {editingLot 
                 ? (isLoading ? 'Actualizando...' : 'Guardar Cambios') 
@@ -177,13 +177,13 @@ export const SireLotForm: React.FC<SireLotFormProps> = ({
           <div className="space-y-4 h-[60vh] flex flex-col">
               {/* Buscador */}
               <div className="relative flex-shrink-0">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
-                  <input 
-                    type="text" 
-                    placeholder="Buscar por nombre o ID..." 
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-c-text-faint" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Buscar por nombre o ID..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-zinc-900 border border-zinc-700 rounded-xl pl-10 pr-4 py-3 text-white focus:border-brand-blue outline-none"
+                    className="w-full bg-c-surface-2 border border-c-border-strong rounded-xl pl-10 pr-4 py-3 text-c-text focus:border-c-accent-sky outline-none"
                     autoFocus
                   />
               </div>
@@ -196,33 +196,33 @@ export const SireLotForm: React.FC<SireLotFormProps> = ({
                             key={sire.id}
                             onClick={() => handleSelectSire(sire)}
                             className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all group active:scale-95 ${
-                                sireId === sire.id 
-                                    ? 'bg-brand-blue/20 border-brand-blue' 
-                                    : 'bg-zinc-900/50 border-zinc-800 hover:bg-zinc-800'
+                                sireId === sire.id
+                                    ? 'bg-c-accent-sky/20 border-c-accent-sky'
+                                    : 'bg-c-surface-2/50 border-c-border hover:bg-c-surface-2'
                             }`}
                           >
                               <div className="flex items-center gap-3 overflow-hidden">
                                   <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
-                                      (sire as any).isExternal 
-                                        ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' 
-                                        : 'bg-brand-blue/20 text-brand-blue border border-brand-blue/30'
+                                      (sire as any).isExternal
+                                        ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                                        : 'bg-c-accent-sky/20 text-c-accent-sky border border-c-accent-sky/30'
                                   }`}>
                                       {(sire as any).isExternal ? 'EXT' : 'INT'}
                                   </div>
                                   <div className="text-left min-w-0">
-                                      <p className="font-bold text-white truncate text-sm">{formatAnimalDisplay(sire)}</p>
-                                      <p className="text-[10px] text-zinc-500 font-mono">{sire.id}</p>
+                                      <p className="font-bold text-c-text truncate text-sm">{formatAnimalDisplay(sire)}</p>
+                                      <p className="text-[10px] text-c-text-faint font-mono">{sire.id}</p>
                                   </div>
                               </div>
                               {sireId === sire.id ? (
-                                <CheckCircle2 size={20} className="text-brand-blue" />
+                                <CheckCircle2 size={20} className="text-c-accent-sky" />
                               ) : (
-                                <ChevronRight size={18} className="text-zinc-600 group-hover:text-white" />
+                                <ChevronRight size={18} className="text-c-text-faint group-hover:text-c-text" />
                               )}
                           </button>
                       ))
                   ) : (
-                      <div className="text-center py-10 text-zinc-500">
+                      <div className="text-center py-10 text-c-text-faint">
                           <Dna size={32} className="mx-auto mb-2 opacity-50"/>
                           <p>No se encontraron reproductores activos.</p>
                           <p className="text-xs mt-1">Verifica que el animal tenga categoría "Reproductor".</p>

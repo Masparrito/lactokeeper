@@ -101,25 +101,25 @@ export const LogHealthEventForm: React.FC<LogHealthEventFormProps> = ({ task, on
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                <p className="font-semibold text-zinc-400 text-sm">Animal:</p>
-                <p className="font-mono font-semibold text-lg text-white truncate">{animal.id.toUpperCase()}</p>
+                <p className="font-semibold text-c-text-muted text-sm">Animal:</p>
+                <p className="font-mono font-semibold text-lg text-c-text truncate">{animal.id.toUpperCase()}</p>
                 {formattedName && (
-                    <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+                    <p className="text-sm font-normal text-c-text-strong truncate">{formattedName}</p>
                 )}
             </div>
-            
+
             <div>
-                <p><span className="font-semibold text-zinc-400 text-sm">Actividad:</span> <span className="font-bold text-base text-white">{activity.name}</span></p>
-                {product && <p><span className="font-semibold text-zinc-400 text-sm">Producto:</span> <span className="font-bold text-base text-white">{product.name}</span></p>}
+                <p><span className="font-semibold text-c-text-muted text-sm">Actividad:</span> <span className="font-bold text-base text-c-text">{activity.name}</span></p>
+                {product && <p><span className="font-semibold text-c-text-muted text-sm">Producto:</span> <span className="font-bold text-base text-c-text">{product.name}</span></p>}
             </div>
 
-            <div className="p-4 bg-black/20 rounded-xl space-y-2">
-                <h3 className="font-semibold text-white">Detalles del Registro</h3>
+            <div className="p-4 bg-c-surface-2/40 rounded-xl space-y-2">
+                <h3 className="font-semibold text-c-text">Detalles del Registro</h3>
                 {latestWeight ? (
                     <div>
-                        <p className="text-sm text-zinc-300">Basado en el último peso registrado de <span className="font-bold text-white">{latestWeight.kg} kg</span>.</p>
-                        {doseApplied !== undefined && <p className="text-sm text-zinc-300">Dosis Calculada: <span className="font-bold text-teal-400">{doseApplied} ml</span></p>}
-                        {calculatedCost !== undefined && <p className="text-sm text-zinc-300">Costo Estimado: <span className="font-bold text-amber-400">${calculatedCost.toFixed(2)}</span></p>}
+                        <p className="text-sm text-c-text-strong">Basado en el último peso registrado de <span className="font-bold text-c-text">{latestWeight.kg} kg</span>.</p>
+                        {doseApplied !== undefined && <p className="text-sm text-c-text-strong">Dosis Calculada: <span className="font-bold text-teal-400">{doseApplied} ml</span></p>}
+                        {calculatedCost !== undefined && <p className="text-sm text-c-text-strong">Costo Estimado: <span className="font-bold text-amber-400">${calculatedCost.toFixed(2)}</span></p>}
                     </div>
                 ) : (
                     <p className="text-sm text-amber-400">Advertencia: No se encontró un peso reciente para este animal. La dosis y el costo no se pueden calcular automáticamente.</p>
@@ -127,20 +127,20 @@ export const LogHealthEventForm: React.FC<LogHealthEventFormProps> = ({ task, on
             </div>
 
             <div>
-                <label htmlFor="date" className="block text-sm font-medium text-zinc-400 mb-1">Fecha de Aplicación</label>
-                <input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-zinc-800 p-3 rounded-xl"/>
+                <label htmlFor="date" className="block text-sm font-medium text-c-text-muted mb-1">Fecha de Aplicación</label>
+                <input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl"/>
             </div>
 
             <div>
-                <label htmlFor="notes" className="block text-sm font-medium text-zinc-400 mb-1">Notas (Opcional)</label>
-                <textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anotaciones sobre la aplicación, etc." rows={3} className="w-full bg-zinc-800 p-3 rounded-xl"/>
+                <label htmlFor="notes" className="block text-sm font-medium text-c-text-muted mb-1">Notas (Opcional)</label>
+                <textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anotaciones sobre la aplicación, etc." rows={3} className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl"/>
             </div>
 
             {error && (<div className="flex items-center space-x-2 p-3 rounded-lg text-sm bg-red-500/20 text-brand-red"><AlertTriangle size={18} /><span>{error}</span></div>)}
 
             <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={onCancel} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg">Cancelar</button>
-                <button type="submit" disabled={isLoading} className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg disabled:opacity-50 flex items-center gap-2">
+                <button type="button" onClick={onCancel} className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-3 text-c-text font-semibold rounded-lg">Cancelar</button>
+                <button type="submit" disabled={isLoading} className="px-5 py-2 bg-c-accent hover:bg-c-accent/90 text-white font-bold rounded-lg disabled:opacity-50 flex items-center gap-2">
                     {isLoading && <Loader2 size={18} className="animate-spin" />}
                     {isLoading ? 'Guardando...' : 'Confirmar Registro'}
                 </button>

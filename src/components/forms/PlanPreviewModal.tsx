@@ -60,8 +60,8 @@ export const PlanPreviewModal: React.FC<PlanPreviewModalProps> = ({ isOpen, onCl
             >
                 {/* --- ENCABEZADO REDISEÑADO --- */}
                 <div className="mb-4">
-                    <h2 className="text-3xl sm:text-4xl font-bold text-white leading-none">Previsualización del Plan</h2>
-                    <p className="text-zinc-400 mt-2">
+                    <h2 className="text-3xl sm:text-4xl font-bold text-c-text-strong leading-none">Previsualización del Plan</h2>
+                    <p className="text-c-text-muted mt-2">
                         {targetGroup === 'Maternidad'
                             ? 'Este calendario simula las fechas de las actividades asumiendo un nacimiento el día de hoy.'
                             : 'Este calendario muestra la distribución de las actividades a lo largo del año actual.'}
@@ -69,7 +69,7 @@ export const PlanPreviewModal: React.FC<PlanPreviewModalProps> = ({ isOpen, onCl
                 </div>
                 
                 {/* Asegúrate de que tus estilos del calendario (CalendarStyles.css) se importen globalmente */}
-                <div className="h-[55vh] sm:h-[60vh] text-white">
+                <div className="h-[55vh] sm:h-[60vh] text-c-text">
                     <FullCalendar
                         plugins={[dayGridPlugin]}
                         initialView="dayGridMonth"
@@ -84,7 +84,7 @@ export const PlanPreviewModal: React.FC<PlanPreviewModalProps> = ({ isOpen, onCl
                     />
                 </div>
                  <div className="flex justify-end mt-6">
-                    <button onClick={onClose} className="px-6 py-3 bg-brand-blue text-white font-bold rounded-xl w-full sm:w-auto">
+                    <button onClick={onClose} className="px-6 py-3 bg-teal-600 text-white font-bold rounded-xl w-full sm:w-auto">
                         Cerrar
                     </button>
                 </div>

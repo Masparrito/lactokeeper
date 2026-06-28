@@ -11,12 +11,12 @@ interface BreedingSeasonFormProps {
 // Componente de Input Reutilizable para consistencia visual
 const InputField = ({ label, icon: Icon, ...props }: any) => (
     <div className="space-y-1.5">
-        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Icon size={14} className="text-brand-orange" /> {label}
+        <label className="text-[10px] font-bold text-c-text-muted uppercase tracking-wider flex items-center gap-1.5">
+            <Icon size={14} className="text-c-accent-gold" /> {label}
         </label>
-        <input 
+        <input
             {...props}
-            className="w-full bg-black/40 border border-zinc-700/50 focus:border-brand-orange/50 rounded-xl p-3 text-white placeholder-zinc-600 outline-none transition-all text-sm font-medium focus:bg-black/60"
+            className="w-full bg-c-surface-2 border border-c-border-strong/50 focus:border-c-accent-gold/50 rounded-xl p-3 text-c-text placeholder-c-text-faint outline-none transition-all text-sm font-medium focus:bg-c-surface-3"
         />
     </div>
 );
@@ -128,7 +128,7 @@ export const BreedingSeasonForm: React.FC<BreedingSeasonFormProps> = ({ onSave, 
     <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
         
         {/* Sección General */}
-        <div className="bg-zinc-800/30 p-4 rounded-2xl border border-zinc-700/50 space-y-4">
+        <div className="bg-c-surface-2/30 p-4 rounded-2xl border border-c-border-strong/50 space-y-4">
             <InputField 
                 label="Nombre Identificador" 
                 icon={Type}
@@ -162,18 +162,18 @@ export const BreedingSeasonForm: React.FC<BreedingSeasonFormProps> = ({ onSave, 
         <div 
             className={`rounded-2xl border transition-all duration-300 overflow-hidden ${
                 requiresLightTreatment 
-                    ? 'bg-yellow-500/10 border-yellow-500/40 shadow-[0_0_15px_rgba(234,179,8,0.1)]' 
-                    : 'bg-zinc-800/30 border-zinc-700/50 hover:border-zinc-600'
+                    ? 'bg-yellow-500/10 border-yellow-500/40 shadow-[0_0_15px_rgba(234,179,8,0.1)]'
+                    : 'bg-c-surface-2/30 border-c-border-strong/50 hover:border-c-border-strong'
             }`}
         >
             <label className="flex items-center justify-between p-4 cursor-pointer select-none">
                 <div className="flex items-center gap-3">
-                    <div className={`p-2.5 rounded-xl transition-colors ${requiresLightTreatment ? 'bg-yellow-500 text-black' : 'bg-zinc-700 text-zinc-400'}`}>
+                    <div className={`p-2.5 rounded-xl transition-colors ${requiresLightTreatment ? 'bg-yellow-500 text-black' : 'bg-c-surface-3 text-c-text-muted'}`}>
                         <Sun size={20} fill={requiresLightTreatment ? "currentColor" : "none"} />
                     </div>
                     <div>
-                        <p className={`text-sm font-bold transition-colors ${requiresLightTreatment ? 'text-yellow-400' : 'text-white'}`}>Tratamiento de Luz Previo</p>
-                        <p className="text-[10px] text-zinc-400">Fotoperiodo artificial para sincronizar celos.</p>
+                        <p className={`text-sm font-bold transition-colors ${requiresLightTreatment ? 'text-yellow-400' : 'text-c-text'}`}>Tratamiento de Luz Previo</p>
+                        <p className="text-[10px] text-c-text-muted">Fotoperiodo artificial para sincronizar celos.</p>
                     </div>
                 </div>
                  <div className="relative">
@@ -183,7 +183,7 @@ export const BreedingSeasonForm: React.FC<BreedingSeasonFormProps> = ({ onSave, 
                         checked={requiresLightTreatment}
                         onChange={(e) => setRequiresLightTreatment(e.target.checked)}
                     />
-                    <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
+                    <div className="w-11 h-6 bg-c-surface-3 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
                 </div>
             </label>
 
@@ -205,7 +205,7 @@ export const BreedingSeasonForm: React.FC<BreedingSeasonFormProps> = ({ onSave, 
                                 type="date" 
                                 value={lightStartDate} 
                                 onChange={e => setLightStartDate(e.target.value)} 
-                                className="w-full bg-black/30 border border-yellow-500/30 p-3 rounded-xl text-white text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition-all" 
+                                className="w-full bg-c-surface-2 border border-yellow-500/30 p-3 rounded-xl text-c-text text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition-all"
                             />
                         </div>
                         <div>
@@ -216,7 +216,7 @@ export const BreedingSeasonForm: React.FC<BreedingSeasonFormProps> = ({ onSave, 
                                 type="number" 
                                 value={lightDuration} 
                                 onChange={e => setLightDuration(e.target.value)} 
-                                className="w-full bg-black/30 border border-yellow-500/30 p-3 rounded-xl text-white text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition-all" 
+                                className="w-full bg-c-surface-2 border border-yellow-500/30 p-3 rounded-xl text-c-text text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition-all"
                             />
                         </div>
                     </div>
@@ -232,13 +232,13 @@ export const BreedingSeasonForm: React.FC<BreedingSeasonFormProps> = ({ onSave, 
       )}
 
       <div className="flex gap-3 pt-2">
-        <button type="button" onClick={onCancel} className="flex-1 px-5 py-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold rounded-xl transition-colors">
+        <button type="button" onClick={onCancel} className="flex-1 px-5 py-4 bg-c-surface-2 hover:bg-c-surface-3 text-c-text font-bold rounded-xl transition-colors">
           Cancelar
         </button>
-        <button 
-            type="submit" 
-            disabled={isLoading} 
-            className="flex-1 px-5 py-4 bg-brand-green hover:bg-green-600 text-white font-bold rounded-xl disabled:opacity-50 shadow-lg shadow-green-900/20 transition-all active:scale-[0.98]"
+        <button
+            type="submit"
+            disabled={isLoading}
+            className="flex-1 px-5 py-4 bg-c-accent hover:bg-c-accent/90 text-white font-bold rounded-xl disabled:opacity-50 shadow-lg shadow-c-accent/20 transition-all active:scale-[0.98]"
         >
           {isLoading ? 'Guardando...' : existingSeason ? 'Actualizar' : 'Crear Temporada'}
         </button>
