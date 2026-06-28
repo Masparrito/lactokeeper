@@ -33,18 +33,18 @@ const CustomTooltip: React.FC<any> = ({ active, payload }) => {
     const totalHembras = payload.reduce((sum: number, entry: any) => sum + entry.value, 0);
 
     return (
-      <div className="bg-gray-900/80 p-3 rounded-lg border border-white/10 shadow-lg backdrop-blur-md animate-fade-in">
-        <p className="text-sm font-bold text-white">{data.periodLabel}</p>
-        <p className="text-lg font-mono text-white">Total Hembras: {formatNumber(totalHembras, 0)}</p>
-        <hr className="border-white/10 my-1.5" />
+      <div className="bg-c-surface/95 p-3 rounded-lg border border-c-border shadow-lg backdrop-blur-md animate-fade-in">
+        <p className="text-sm font-bold text-c-text-strong">{data.periodLabel}</p>
+        <p className="text-lg font-mono text-c-text-strong">Total Hembras: {formatNumber(totalHembras, 0)}</p>
+        <hr className="border-c-border my-1.5" />
         <div className="space-y-1">
           {payload.slice().reverse().map((entry: any, index: number) => (
             <div key={index} className="flex justify-between items-center gap-3">
               <div className="flex items-center gap-1.5">
                 <span style={{ backgroundColor: entry.color }} className="w-2.5 h-2.5 rounded-full" />
-                <span className="text-xs text-gray-300">{entry.name}</span>
+                <span className="text-xs text-c-text-muted">{entry.name}</span>
               </div>
-              <span className="text-xs font-mono text-white">{formatNumber(entry.value, 0)}</span>
+              <span className="text-xs font-mono text-c-text-strong">{formatNumber(entry.value, 0)}</span>
             </div>
           ))}
         </div>
@@ -69,7 +69,7 @@ interface ChartFilterControlsProps {
 
 const ChartFilterControls: React.FC<ChartFilterControlsProps> = ({ visibleCategories, onToggleCategory }) => {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2 px-4 py-2 border-b border-brand-border">
+    <div className="flex flex-wrap items-center justify-center gap-2 px-4 py-2 border-b border-c-border">
       {CATEGORIES.map(cat => {
         const isVisible = visibleCategories.includes(cat.key as keyof MonthlyEvolutionStep);
         return (
@@ -77,9 +77,9 @@ const ChartFilterControls: React.FC<ChartFilterControlsProps> = ({ visibleCatego
             key={cat.key}
             onClick={() => onToggleCategory(cat.key as keyof MonthlyEvolutionStep)}
             className={`flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-              isVisible 
-                ? 'bg-gray-700 text-white' 
-                : 'bg-gray-800 text-gray-500 hover:bg-gray-700 hover:text-gray-400'
+              isVisible
+                ? 'bg-c-surface-2 text-c-text-strong'
+                : 'bg-c-surface text-c-text-faint hover:bg-c-surface-2 hover:text-c-text-muted'
             }`}
           >
             <span style={{ backgroundColor: cat.color }} className="w-2.5 h-2.5 rounded-full" />
@@ -114,9 +114,9 @@ const PeriodChartComponent: React.FC<{
             ))}
           </defs>
           
-          <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} vertical={false} />
-          <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} padding={{ left: 10, right: 10 }} />
-          <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} tickFormatter={formatYAxis} width={40} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+          <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} tickLine={false} axisLine={false} padding={{ left: 10, right: 10 }} />
+          <YAxis tick={{ fontSize: 12, fill: '#64748b' }} tickLine={false} axisLine={false} tickFormatter={formatYAxis} width={40} />
 
           <Tooltip content={<CustomTooltip />} />
           
@@ -133,7 +133,7 @@ const PeriodChartComponent: React.FC<{
                 stroke={cat.color}
                 strokeWidth={2}
                 fill={`url(#${cat.gradientId})`}
-                activeDot={{ r: 6, stroke: 'white', strokeWidth: 2, fill: cat.color }}
+                activeDot={{ r: 6, stroke: '#ffffff', strokeWidth: 2, fill: cat.color }}
               />
             );
           })}
@@ -214,36 +214,36 @@ export const PeriodChartModal: React.FC<PeriodChartModalProps> = ({
     >
       {/* Panel del Modal (V7.1: Más Ancho) */}
       <div
-        className="relative flex flex-col w-full h-full max-w-6xl max-h-[90vh] bg-gray-900 border border-brand-border rounded-2xl shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()} 
+        className="relative flex flex-col w-full h-full max-w-6xl max-h-[90vh] bg-c-surface border border-c-border rounded-2xl shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Cabecera del Modal */}
-        <header className="flex items-center justify-between p-4 border-b border-brand-border flex-shrink-0">
-          <h1 className="text-xl font-bold text-white">Evolución de Hembras: {periodData.periodLabel}</h1>
+        <header className="flex items-center justify-between p-4 border-b border-c-border flex-shrink-0">
+          <h1 className="text-xl font-bold text-c-text-strong">Evolución de Hembras: {periodData.periodLabel}</h1>
           <button
             onClick={onClose}
             title="Cerrar"
-            className="p-2 text-gray-500 rounded-full transition-colors hover:bg-gray-800 hover:text-white"
+            className="p-2 text-c-text-faint rounded-full transition-colors hover:bg-c-surface-2 hover:text-c-text"
           >
             <X size={20} />
           </button>
         </header>
 
         {/* V7.1: Barra de Filtros */}
-        <ChartFilterControls 
+        <ChartFilterControls
           visibleCategories={visibleCategories}
           onToggleCategory={handleToggleCategory}
         />
 
         {/* Contenido Principal: El gráfico */}
-        <main className="flex-1 overflow-hidden bg-gray-900/50 flex items-center justify-center">
+        <main className="flex-1 overflow-hidden bg-c-surface flex items-center justify-center">
           {periodMonthlyData.length > 0 ? (
-            <PeriodChartComponent 
-              data={periodMonthlyData} 
-              visibleCategories={visibleCategories} 
+            <PeriodChartComponent
+              data={periodMonthlyData}
+              visibleCategories={visibleCategories}
             />
           ) : (
-            <p className="text-gray-400">No hay datos para mostrar el gráfico.</p>
+            <p className="text-c-text-muted">No hay datos para mostrar el gráfico.</p>
           )}
         </main>
       </div>
