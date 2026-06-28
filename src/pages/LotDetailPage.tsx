@@ -39,18 +39,18 @@ const SelectableAnimalRow = ({ animal, isSelected, onSelect }: {
     return (
         <div
             onClick={() => onSelect(animal.id)}
-            className={`w-full text-left bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border flex justify-between items-center transition-all cursor-pointer min-h-[80px] ${
-                isSelected ? 'border-brand-orange ring-2 ring-brand-orange/50' : 'border-brand-border'
+            className={`w-full text-left bg-c-surface backdrop-blur-xl rounded-2xl p-3 border flex justify-between items-center transition-all cursor-pointer min-h-[80px] ${
+                isSelected ? 'border-c-accent ring-2 ring-c-accent/50' : 'border-c-border'
             }`}
         >
             <div className="flex items-center gap-3">
-                {isSelected ? <CheckSquare className="text-brand-orange flex-shrink-0" size={20} /> : <Square className="text-zinc-500 flex-shrink-0" size={20} />}
+                {isSelected ? <CheckSquare className="text-c-accent flex-shrink-0" size={20} /> : <Square className="text-c-text-faint flex-shrink-0" size={20} />}
                 <div className="min-w-0">
-                    <p className="font-mono font-semibold text-base text-white truncate">{animal.id.toUpperCase()}</p>
+                    <p className="font-mono font-semibold text-base text-c-text truncate">{animal.id.toUpperCase()}</p>
                     {formattedName && (
-                      <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+                      <p className="text-sm font-normal text-c-text-strong truncate">{formattedName}</p>
                     )}
-                    <div className="text-xs text-zinc-500 mt-1 min-h-[1rem] truncate">
+                    <div className="text-xs text-c-text-faint mt-1 min-h-[1rem] truncate">
                         <span>{animal.sex} | {animal.formattedAge}</span>
                     </div>
                 </div>
@@ -209,19 +209,19 @@ export default function LotDetailPage({
                     // 'height' y 'overflow' eliminados
                 }}
             >
-                <header className="flex items-center justify-between p-4 sticky top-0 bg-brand-dark z-10 border-b border-brand-border">
-                    <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
+                <header className="flex items-center justify-between p-4 sticky top-0 bg-c-surface z-10 border-b border-c-border">
+                    <button onClick={onBack} className="p-2 -ml-2 text-c-text-muted hover:text-c-text transition-colors"><ArrowLeft size={24} /></button>
                     <div className="text-center">
-                        <h1 className="text-3xl font-bold tracking-tight text-white">{lotName}</h1>
-                        <p className="text-lg text-zinc-400">{animalsInLot.length} {animalsInLot.length === 1 ? 'animal' : 'animales'}</p>
+                        <h1 className="text-3xl font-bold tracking-tight text-c-text">{lotName}</h1>
+                        <p className="text-lg text-c-text-muted">{animalsInLot.length} {animalsInLot.length === 1 ? 'animal' : 'animales'}</p>
                     </div>
-                    {isEditing ? (<button onClick={() => { setIsEditing(false); setSelectedAnimals(new Set()); }} className="text-brand-orange font-semibold px-2 py-1">Listo</button>)
-                    : (<button onClick={() => setIsEditing(true)} className="p-2 -mr-2 text-zinc-400 hover:text-white"><Edit size={20} /></button>)}
+                    {isEditing ? (<button onClick={() => { setIsEditing(false); setSelectedAnimals(new Set()); }} className="text-c-accent font-semibold px-2 py-1">Listo</button>)
+                    : (<button onClick={() => setIsEditing(true)} className="p-2 -mr-2 text-c-text-muted hover:text-c-text"><Edit size={20} /></button>)}
                 </header>
 
                 {!isEditing && (
                     <div className="px-4 pt-4">
-                        <button onClick={() => setSelectorOpen(true)} className="w-full flex items-center justify-center gap-2 bg-brand-orange hover:bg-orange-600 text-white font-bold py-4 px-4 rounded-xl transition-colors text-lg"><Plus size={20} /> Añadir Animales</button>
+                        <button onClick={() => setSelectorOpen(true)} className="w-full flex items-center justify-center gap-2 bg-c-accent hover:bg-c-accent/90 text-white font-bold py-4 px-4 rounded-xl transition-colors text-lg"><Plus size={20} /> Añadir Animales</button>
                     </div>
                 )}
 
@@ -264,16 +264,16 @@ export default function LotDetailPage({
                                 );
                             })}
                         </div>
-                    ) : ( <div className="text-center py-10 bg-brand-glass rounded-2xl mx-4"><p className="text-zinc-500">Este lote está vacío.</p></div> )}
+                    ) : ( <div className="text-center py-10 bg-c-surface rounded-2xl mx-4"><p className="text-c-text-faint">Este lote está vacío.</p></div> )}
                 </div>
             </div>
 
             {/* Barra de edición (Sin cambios) */}
             {isEditing && selectedAnimals.size > 0 && (
-                <div className="fixed bottom-16 left-0 right-0 bg-ios-modal-bg p-4 border-t border-brand-border animate-slide-up z-20">
+                <div className="fixed bottom-16 left-0 right-0 bg-c-surface p-4 border-t border-c-border animate-slide-up z-20">
                     <div className="max-w-2xl mx-auto flex gap-4">
                         <button onClick={handleRemoveFromLot} className="flex-1 flex items-center justify-center gap-2 bg-brand-red text-white font-bold py-3 rounded-xl"><Trash2 size={18} /> Quitar del Lote</button>
-                        <button onClick={() => setIsTransferModalOpen(true)} className="flex-1 flex items-center justify-center gap-2 bg-brand-blue text-white font-bold py-3 rounded-xl"><MoveRight size={18} /> Transferir</button>
+                        <button onClick={() => setIsTransferModalOpen(true)} className="flex-1 flex items-center justify-center gap-2 bg-c-accent-sky text-white font-bold py-3 rounded-xl"><MoveRight size={18} /> Transferir</button>
                     </div>
                 </div>
             )}

@@ -74,7 +74,7 @@ const SettingsGroup: React.FC<{ title: string, icon: React.ElementType, children
         <div className="mb-4">
             <button 
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex justify-between items-center text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-2 px-4"
+                className="w-full flex justify-between items-center text-sm font-semibold text-c-text-muted uppercase tracking-wide mb-2 px-4"
             >
                 <span className="flex items-center gap-2">
                     <Icon size={16} />
@@ -86,7 +86,7 @@ const SettingsGroup: React.FC<{ title: string, icon: React.ElementType, children
                 />
             </button>
             {isOpen && (
-                <div className="bg-brand-glass rounded-2xl border border-brand-border divide-y divide-brand-border overflow-hidden animate-fade-in">
+                <div className="bg-c-surface rounded-2xl border border-c-border divide-y divide-c-border overflow-hidden animate-fade-in">
                     {children}
                 </div>
             )}
@@ -102,13 +102,13 @@ interface SettingsInputProps extends React.InputHTMLAttributes<HTMLInputElement>
 }
 
 const SettingsInput = React.forwardRef<HTMLInputElement, SettingsInputProps>(({ label, unit, sublabel, ...props }, ref) => (
-    <div className={`p-3 bg-ios-modal-bg flex justify-between items-center ${props.disabled ? 'opacity-50' : ''}`}>
+    <div className={`p-3 bg-c-surface flex justify-between items-center ${props.disabled ? 'opacity-50' : ''}`}>
         <div className="flex-1 pr-2">
-            <label htmlFor={props.id || props.name} className="text-white text-base">
+            <label htmlFor={props.id || props.name} className="text-c-text-strong text-base">
                 {label}
             </label>
             {sublabel && (
-                <p className="text-xs text-zinc-400 mt-0.5">{sublabel}</p>
+                <p className="text-xs text-c-text-muted mt-0.5">{sublabel}</p>
             )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -117,9 +117,9 @@ const SettingsInput = React.forwardRef<HTMLInputElement, SettingsInputProps>(({ 
                 {...props}
                 type={props.type === 'number' ? 'text' : props.type}
                 inputMode={props.type === 'number' ? 'decimal' : 'text'}
-                className={`w-20 bg-zinc-700/80 rounded-lg p-2 text-right font-mono text-base focus:outline-none focus:ring-2 focus:ring-brand-orange ${props.type === 'text' ? 'font-sans' : ''} ${props.disabled ? 'text-zinc-400' : 'text-white'}`}
+                className={`w-20 bg-c-surface-2 rounded-lg p-2 text-right font-mono text-base focus:outline-none focus:ring-2 focus:ring-c-accent ${props.type === 'text' ? 'font-sans' : ''} ${props.disabled ? 'text-c-text-muted' : 'text-c-text-strong'}`}
             />
-            {unit && <span className="text-zinc-400 w-12 text-left">{unit}</span>}
+            {unit && <span className="text-c-text-muted w-12 text-left">{unit}</span>}
         </div>
     </div>
 ));
@@ -133,11 +133,11 @@ interface SettingsToggleProps {
 }
 
 const SettingsToggle: React.FC<SettingsToggleProps & { disabled?: boolean }> = ({ label, value, onChange, sublabel, disabled = false }) => (
-    <div className={`p-3 bg-ios-modal-bg flex justify-between items-center ${disabled ? 'opacity-50' : ''}`}>
+    <div className={`p-3 bg-c-surface flex justify-between items-center ${disabled ? 'opacity-50' : ''}`}>
         <div className="flex-1 pr-2">
-            <label className="text-white text-base">{label}</label>
+            <label className="text-c-text-strong text-base">{label}</label>
             {sublabel && (
-                <p className="text-xs text-zinc-400 mt-0.5">{sublabel}</p>
+                <p className="text-xs text-c-text-muted mt-0.5">{sublabel}</p>
             )}
         </div>
         <button
@@ -146,7 +146,7 @@ const SettingsToggle: React.FC<SettingsToggleProps & { disabled?: boolean }> = (
             aria-checked={value}
             onClick={() => !disabled && onChange(!value)}
             disabled={disabled}
-            className={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${value ? 'bg-brand-green' : 'bg-zinc-700'} ${disabled ? 'cursor-not-allowed' : ''}`}
+            className={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${value ? 'bg-c-accent' : 'bg-c-surface-2'} ${disabled ? 'cursor-not-allowed' : ''}`}
         >
             <span
                 aria-hidden="true"
@@ -218,24 +218,24 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
     };
 
     if (isLoadingConfig) {
-         return <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Cargando configuración...</h1></div>;
+         return <div className="text-center p-10"><h1 className="text-2xl text-c-text-muted">Cargando configuración...</h1></div>;
     }
 
     return (
         <div className="w-full max-w-2xl mx-auto flex flex-col">
             
-            <header className="flex-shrink-0 flex items-center justify-between pt-4 pb-4 px-4 sticky top-0 bg-brand-dark/80 backdrop-blur-lg z-10">
-                <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors">
+            <header className="flex-shrink-0 flex items-center justify-between pt-4 pb-4 px-4 sticky top-0 bg-c-surface/80 backdrop-blur-lg z-10">
+                <button onClick={onBack} className="p-2 -ml-2 text-c-text-muted hover:text-c-text transition-colors">
                     <ArrowLeft size={24} />
                 </button>
-                <h1 className="text-xl font-bold tracking-tight text-white">Configuración</h1>
+                <h1 className="text-xl font-bold tracking-tight text-c-text-strong">Configuración</h1>
                 <button
                     onClick={handleSave}
                     disabled={saveStatus !== 'idle'}
                     className={`px-4 py-2 rounded-xl font-bold transition-colors text-base flex items-center gap-2 ${
-                        saveStatus === 'idle' ? 'bg-brand-orange text-black' :
-                        saveStatus === 'saving' ? 'bg-zinc-600 text-white' :
-                        'bg-brand-green text-white'
+                        saveStatus === 'idle' ? 'bg-c-accent text-white' :
+                        saveStatus === 'saving' ? 'bg-c-surface-2 text-c-text-strong' :
+                        'bg-c-accent text-white'
                     }`}
                 >
                     {saveStatus === 'idle' && <Save size={16} />}
@@ -247,8 +247,8 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
 
             <main className="pb-24 pt-4 px-4">
                 
-                <div className="bg-brand-glass rounded-2xl border border-brand-border p-4 mb-6">
-                    <label htmlFor="nombreFinca" className="text-sm font-medium text-zinc-400">
+                <div className="bg-c-surface rounded-2xl border border-c-border p-4 mb-6">
+                    <label htmlFor="nombreFinca" className="text-sm font-medium text-c-text-muted">
                         Nombre de la Finca
                     </label>
                     <input
@@ -257,7 +257,7 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
                         name="nombreFinca"
                         value={String(formState.nombreFinca)}
                         onChange={handleChange}
-                        className="w-full bg-transparent text-2xl font-bold text-white p-0 border-0 focus:outline-none focus:ring-0"
+                        className="w-full bg-transparent text-2xl font-bold text-c-text-strong p-0 border-0 focus:outline-none focus:ring-0"
                     />
                 </div>
 
@@ -291,7 +291,7 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
                 </SettingsGroup>
 
                 <SettingsGroup title="Lógica de Categorías Zootécnicas" icon={Users}>
-                    <p className="text-sm text-zinc-400 px-3 pb-2 text-center">
+                    <p className="text-sm text-c-text-muted px-3 pb-2 text-center">
                         La categoría de un animal se define por su registro (si es importado) o por sus eventos (si es nativo).
                     </p>
                 </SettingsGroup>

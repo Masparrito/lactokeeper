@@ -37,20 +37,20 @@ export const DeleteSessionModal: React.FC<DeleteSessionModalProps> = ({
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Confirmar Eliminación">
-            <div className="space-y-4 text-white">
+            <div className="space-y-4 text-c-text">
                 <div className="text-center space-y-2">
                     <AlertTriangle className="mx-auto h-12 w-12 text-brand-red" />
                     <p className="text-lg font-semibold">
                         ¿Eliminar todos los pesajes del <span className="font-bold">{formattedDate}</span>?
                     </p>
-                    <p className="text-sm text-zinc-400">
+                    <p className="text-sm text-c-text-muted">
                         Esta acción es irreversible y eliminará {dateToDelete ? 'permanentemente' : ''} todos los registros de esta fecha.
                     </p>
                 </div>
 
                 <div>
-                    <label htmlFor="confirmDateInput" className="block text-sm font-medium text-zinc-400 mb-1">
-                        Para confirmar, escribe la fecha: <strong className="text-zinc-200">{dateToDelete}</strong>
+                    <label htmlFor="confirmDateInput" className="block text-sm font-medium text-c-text-muted mb-1">
+                        Para confirmar, escribe la fecha: <strong className="text-c-text-strong">{dateToDelete}</strong>
                     </label>
                     <input
                         id="confirmDateInput"
@@ -58,17 +58,17 @@ export const DeleteSessionModal: React.FC<DeleteSessionModalProps> = ({
                         value={confirmDate}
                         onChange={(e) => setConfirmDate(e.target.value)}
                         placeholder="YYYY-MM-DD"
-                        className={`w-full bg-zinc-800 p-3 rounded-xl text-lg text-center font-mono border-2 ${
-                            confirmDate && !isMatch ? 'border-red-500' : 'border-zinc-700'
+                        className={`w-full bg-c-surface-2 p-3 rounded-xl text-lg text-center font-mono border-2 ${
+                            confirmDate && !isMatch ? 'border-red-500' : 'border-c-border-strong'
                         } focus:border-brand-red focus:ring-0`}
                     />
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-brand-border">
-                    <button 
+                <div className="flex justify-end gap-3 pt-4 border-t border-c-border">
+                    <button
                         type="button"
-                        onClick={onClose} 
-                        className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg"
+                        onClick={onClose}
+                        className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-2 font-semibold rounded-lg"
                     >
                         Cancelar
                     </button>

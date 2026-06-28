@@ -44,28 +44,28 @@ export const AddLotModal: React.FC<AddLotModalProps> = ({ isOpen, onClose, editi
     return (
         <Modal isOpen={isOpen} onClose={handleClose} title="Crear Nuevo Lote">
             <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-4">
-                <p className="text-sm text-zinc-400">
+                <p className="text-sm text-c-text-muted">
                     Introduce el nombre de la nueva ubicación o lote en tu finca.
                 </p>
                 <div>
-                    <label htmlFor="lotName" className="block text-sm font-medium text-zinc-400 mb-1">Nombre del Lote</label>
+                    <label htmlFor="lotName" className="block text-sm font-medium text-c-text-muted mb-1">Nombre del Lote</label>
                     <input 
                         id="lotName"
                         type="text"
                         value={lotName}
                         onChange={(e) => setLotName(e.target.value)}
                         placeholder="Ej: Galpón 1"
-                        className="w-full bg-zinc-800 text-white p-3 rounded-xl focus:border-brand-orange focus:ring-0"
+                        className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl focus:border-c-accent focus:ring-0"
                     />
                 </div>
 
                 <div>
-                    <label htmlFor="parentLot" className="block text-sm font-medium text-zinc-400 mb-1">Sub-lote de (Opcional)</label>
+                    <label htmlFor="parentLot" className="block text-sm font-medium text-c-text-muted mb-1">Sub-lote de (Opcional)</label>
                     <select
                         id="parentLot"
                         value={parentLotId}
                         onChange={(e) => setParentLotId(e.target.value)}
-                        className="w-full bg-zinc-800 text-white p-3 rounded-xl focus:border-brand-orange focus:ring-0"
+                        className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl focus:border-c-accent focus:ring-0"
                     >
                         <option value="">Ninguno (Es un Lote Principal)</option>
                         {availableParentLots.map(lot => (

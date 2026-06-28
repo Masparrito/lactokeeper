@@ -38,7 +38,7 @@ export const WeighingOptionsMenu: React.FC<WeighingOptionsMenuProps> = ({
         {/* Sección para unirse a una sesión reciente */}
         {recentSessions.length > 0 && (
           <div className="space-y-3">
-            <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-400">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-c-text-muted">
               <History size={16} />
               Añadir a una Sesión Reciente
             </h3>
@@ -47,10 +47,10 @@ export const WeighingOptionsMenu: React.FC<WeighingOptionsMenuProps> = ({
                 <button
                   key={date}
                   onClick={() => onSelectSession(date)}
-                  className="w-full text-left bg-zinc-800/80 p-4 rounded-xl hover:bg-zinc-700 transition-colors flex items-center gap-3"
+                  className="w-full text-left bg-c-surface-2 p-4 rounded-xl hover:bg-c-surface-2 transition-colors flex items-center gap-3"
                 >
-                  <Calendar size={20} className="text-zinc-500" />
-                  <span className="text-lg font-semibold text-white">
+                  <Calendar size={20} className="text-c-text-faint" />
+                  <span className="text-lg font-semibold text-c-text">
                     {new Date(date + 'T00:00:00').toLocaleDateString('es-VE', {
                       year: 'numeric',
                       month: 'long',
@@ -65,20 +65,20 @@ export const WeighingOptionsMenu: React.FC<WeighingOptionsMenuProps> = ({
 
         {/* Sección para crear una nueva sesión */}
         <div className="space-y-3">
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-400">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-c-text-muted">
             <PlusCircle size={16} />
             Iniciar una Nueva Sesión de Pesaje
           </h3>
           <button
             onClick={onCreateNew}
-            className="w-full text-left bg-brand-orange/20 border border-brand-orange/80 p-4 rounded-xl hover:bg-brand-orange/30 transition-colors flex items-center gap-3"
+            className="w-full text-left bg-c-accent/15 border border-c-accent/80 p-4 rounded-xl hover:bg-c-accent/30 transition-colors flex items-center gap-3"
           >
-            <PlusCircle size={20} className="text-brand-orange" />
-            <span className="text-lg font-bold text-white">
+            <PlusCircle size={20} className="text-c-accent" />
+            <span className="text-lg font-bold text-c-text">
               Crear Nueva Sesión...
             </span>
           </button>
-           <p className="text-xs text-zinc-500 text-center px-4">
+           <p className="text-xs text-c-text-faint text-center px-4">
               Esto te permitirá seleccionar un grupo de animales y registrar sus pesos en una sola tanda.
             </p>
         </div>

@@ -51,20 +51,20 @@ export const DeclareDryOffModal = ({ isOpen, onClose, animal }: DeclareDryOffMod
     return (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-0 sm:p-4">
             
-            <div className="bg-[#121214] border-t sm:border border-zinc-800 w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-6 space-y-6 shadow-2xl transform transition-all pb-10 sm:pb-6 relative overflow-hidden">
+            <div className="bg-c-surface border-t sm:border border-c-border w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-6 space-y-6 shadow-2xl transform transition-all pb-10 sm:pb-6 relative overflow-hidden">
                 <style>{calendarCss}</style>
-                
+
                 <div className="flex justify-between items-start">
                     <div>
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <h2 className="text-xl font-bold text-c-text flex items-center gap-2">
                             <Droplets className="text-cyan-400" />
                             Declarar Secado
                         </h2>
-                        <p className="text-sm text-zinc-400 mt-1">
-                            Finalizar lactancia de <span className="text-white font-mono font-bold">{animal.id.toUpperCase()}</span>.
+                        <p className="text-sm text-c-text-muted mt-1">
+                            Finalizar lactancia de <span className="text-c-text font-mono font-bold">{animal.id.toUpperCase()}</span>.
                         </p>
                     </div>
-                    <button onClick={onClose} className="p-2 bg-zinc-800 rounded-full text-zinc-400 hover:text-white transition-colors">
+                    <button onClick={onClose} className="p-2 bg-c-surface-2 rounded-full text-c-text-muted hover:text-c-text transition-colors">
                         <X size={20} />
                     </button>
                 </div>
@@ -79,20 +79,20 @@ export const DeclareDryOffModal = ({ isOpen, onClose, animal }: DeclareDryOffMod
                 <div className="space-y-5">
                     {/* Fecha */}
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Fecha de Secado</label>
+                        <label className="text-[10px] font-bold text-c-text-faint uppercase tracking-widest ml-1">Fecha de Secado</label>
                         <div className="relative">
-                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
-                            <button 
+                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-c-text-faint" size={18} />
+                            <button
                                 type="button"
                                 onClick={() => setShowCalendar(!showCalendar)}
-                                className="w-full bg-black border border-zinc-800 rounded-xl py-4 pl-12 pr-4 text-left text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all text-base"
+                                className="w-full bg-c-surface-2 border border-c-border rounded-xl py-4 pl-12 pr-4 text-left text-c-text focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all text-base"
                             >
                                 {date.toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric' })}
                             </button>
                         </div>
                         
                         {showCalendar && (
-                            <div className="mt-2 p-2 bg-black border border-zinc-800 rounded-xl animate-fade-in flex justify-center">
+                            <div className="mt-2 p-2 bg-c-surface-2 border border-c-border rounded-xl animate-fade-in flex justify-center">
                                 <DayPicker
                                     mode="single"
                                     selected={date}
@@ -111,11 +111,11 @@ export const DeclareDryOffModal = ({ isOpen, onClose, animal }: DeclareDryOffMod
                     {/* Motivo */}
                     {!showCalendar && (
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Motivo</label>
-                            <select 
+                            <label className="text-[10px] font-bold text-c-text-faint uppercase tracking-widest ml-1">Motivo</label>
+                            <select
                                 value={reason}
                                 onChange={(e) => setReason(e.target.value)}
-                                className="w-full bg-black border border-zinc-800 rounded-xl py-4 px-4 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all appearance-none text-base"
+                                className="w-full bg-c-surface-2 border border-c-border rounded-xl py-4 px-4 text-c-text focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all appearance-none text-base"
                             >
                                 <option value="Fin de Lactancia">Fin de Lactancia (Natural)</option>
                                 <option value="Baja Producción">Baja Producción</option>

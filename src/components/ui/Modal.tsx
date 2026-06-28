@@ -21,7 +21,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
   const modalSizeClasses = {
     default: 'max-w-md m-4 rounded-2xl',
     large: 'max-w-xl m-4 rounded-2xl',
-    fullscreen: 'w-full h-[95vh] rounded-t-2xl flex flex-col',
+    fullscreen: 'w-full h-[92dvh] max-h-[92dvh] rounded-t-2xl flex flex-col',
   };
 
   return (
@@ -40,7 +40,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
           </button>
         </header>
         {/* --- CAMBIO CLAVE: Contenido con scroll interno y altura máxima --- */}
-        <div className={size === 'fullscreen' ? 'flex-1 overflow-y-auto p-4' : 'overflow-y-auto max-h-[85vh] p-6'}>
+        <div className={size === 'fullscreen' ? 'flex-1 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]' : 'overflow-y-auto max-h-[80dvh] p-6'}>
           {children}
         </div>
       </div>

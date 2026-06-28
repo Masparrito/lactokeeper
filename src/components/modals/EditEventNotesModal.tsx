@@ -49,16 +49,16 @@ export const EditEventNotesModal: React.FC<EditEventNotesModalProps> = ({
     <Modal isOpen={true} onClose={onClose} title={`Editar Notas: ${event.type}`}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-zinc-400 mb-1">
+          <label className="block text-sm font-medium text-c-text-muted mb-1">
             Detalles del Evento (No editable)
           </label>
-          <p className="w-full bg-zinc-800 p-3 rounded-xl text-sm text-zinc-300">
+          <p className="w-full bg-c-surface-2 p-3 rounded-xl text-sm text-c-text-strong">
             {event.details}
           </p>
         </div>
 
         <div>
-          <label htmlFor="eventNotes" className="block text-sm font-medium text-zinc-400 mb-1">
+          <label htmlFor="eventNotes" className="block text-sm font-medium text-c-text-muted mb-1">
             Notas Adicionales
           </label>
           <textarea
@@ -66,30 +66,30 @@ export const EditEventNotesModal: React.FC<EditEventNotesModalProps> = ({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={4}
-            className="w-full bg-zinc-800 p-3 rounded-xl text-lg text-white"
+            className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-c-text"
             placeholder="Añade notas o correcciones aquí..."
           />
         </div>
 
         {message && (
-          <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-brand-green' : 'bg-red-500/20 text-brand-red'}`}>
+          <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-c-accent/15 text-c-accent' : 'bg-red-500/20 text-brand-red'}`}>
             {message.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
             <span>{message.text}</span>
           </div>
         )}
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-brand-border">
+        <div className="flex justify-end gap-3 pt-4 border-t border-c-border">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg text-white"
+            className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-3 font-semibold rounded-lg text-c-text"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={isLoading}
-            className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg disabled:opacity-50 flex items-center justify-center min-w-[100px]"
+            className="px-5 py-2 bg-c-accent hover:bg-c-accent text-white font-bold rounded-lg disabled:opacity-50 flex items-center justify-center min-w-[100px]"
           >
             {isLoading ? <Loader2 className="animate-spin" size={20} /> : 'Guardar'}
           </button>

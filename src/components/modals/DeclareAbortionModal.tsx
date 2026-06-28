@@ -90,20 +90,20 @@ export const DeclareAbortionModal: React.FC<DeclareAbortionModalProps> = ({
     >
       <form onSubmit={handleSubmit} className="space-y-4">
           <div className="text-center mb-4">
-              <p className="font-mono font-semibold text-xl text-white truncate">{animal.id.toUpperCase()}</p>
+              <p className="font-mono font-semibold text-xl text-c-text truncate">{animal.id.toUpperCase()}</p>
               {formattedName && (
-                  <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+                  <p className="text-sm font-normal text-c-text-strong truncate">{formattedName}</p>
               )}
           </div>
-          
+
           {/* Date Input */}
           <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1">Fecha del Aborto</label>
+              <label className="block text-sm font-medium text-c-text-muted mb-1">Fecha del Aborto</label>
               <input
                   type="date"
                   value={date}
                   onChange={e => setDate(e.target.value)}
-                  className="w-full bg-zinc-800 p-3 rounded-xl text-lg text-white"
+                  className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-c-text"
                   required
                   max={new Date().toISOString().split('T')[0]}
                />
@@ -111,13 +111,13 @@ export const DeclareAbortionModal: React.FC<DeclareAbortionModalProps> = ({
 
           {/* --- CORRECCIÓN: Selector de Padre (Semental) --- */}
           <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1">Padre (Semental Involucrado)</label>
+              <label className="block text-sm font-medium text-c-text-muted mb-1">Padre (Semental Involucrado)</label>
               {/* --- CORRECCIÓN: 'flex' y 'gap-2' eliminados del div --- */}
               <div>
                   <select
                       value={sireId}
                       onChange={e => setSireId(e.target.value)}
-                      className="w-full bg-zinc-800 p-3 rounded-xl text-lg text-white appearance-none"
+                      className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-c-text appearance-none"
                       required
                   >
                       <option value="">Seleccionar Padre...</option>
@@ -143,32 +143,32 @@ export const DeclareAbortionModal: React.FC<DeclareAbortionModalProps> = ({
           </div>
 
           {/* Induced Lactation Checkbox */}
-          <div className="bg-black/20 rounded-xl p-3 border border-zinc-700 flex items-center justify-between">
-              <label htmlFor="inducedLactation" className="text-sm font-medium text-zinc-300">¿Se iniciará lactancia post-aborto?</label>
+          <div className="bg-c-surface-2 rounded-xl p-3 border border-c-border-strong flex items-center justify-between">
+              <label htmlFor="inducedLactation" className="text-sm font-medium text-c-text-strong">¿Se iniciará lactancia post-aborto?</label>
               <input
                   id="inducedLactation"
                   type="checkbox"
                   checked={inducedLactation}
                   onChange={(e) => setInducedLactation(e.target.checked)}
-                  className="form-checkbox h-5 w-5 bg-zinc-700 border-zinc-600 rounded text-brand-orange focus:ring-brand-orange focus:ring-offset-0"
+                  className="form-checkbox h-5 w-5 bg-c-surface-2 border-c-border-strong rounded text-c-accent focus:ring-c-accent focus:ring-offset-0"
               />
           </div>
-          <p className="text-xs text-zinc-500 text-center px-4">
+          <p className="text-xs text-c-text-faint text-center px-4">
               Marcar esta opción iniciará una lactancia "atípica" para poder registrar los pesajes.
           </p>
 
           {message && (
-              <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-brand-green' : 'bg-red-500/20 text-brand-red'}`}>
+              <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-c-accent' : 'bg-red-500/20 text-brand-red'}`}>
                   {message.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
                   <span>{message.text}</span>
               </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-brand-border">
+          <div className="flex justify-end gap-3 pt-4 border-t border-c-border">
               <button
                   type="button"
                   onClick={onCancel}
-                  className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg text-white"
+                  className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-2 font-semibold rounded-lg text-c-text"
               >
                   Cancelar
               </button>

@@ -32,8 +32,8 @@ export const formatAnimalDisplay = (animal: Animal | Father | { id: string, name
 const CurrentCurveTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
         return (
-            <div className="bg-zinc-800/80 backdrop-blur-md p-3 rounded-lg border border-zinc-700 text-white shadow-xl">
-                <p className="label text-zinc-400 text-sm font-medium mb-1">DEL: {label}</p>
+            <div className="bg-c-surface-2/80 backdrop-blur-md p-3 rounded-lg border border-c-border-strong text-c-text shadow-xl">
+                <p className="label text-c-text-muted text-sm font-medium mb-1">DEL: {label}</p>
                 {/* Asegurarse de que el color funcione si no hay 'stroke' (e.g., Area) */}
                 <p className="font-semibold text-base" style={{ color: payload[0].stroke || payload[0].payload?.stroke || payload[0].fill }}>
                     {payload[0].name}: {payload[0].value.toFixed(2)} Kg
@@ -118,7 +118,7 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
     }, [allLactations]);
 
     // --- 3. RETORNO TEMPRANO ---
-    if (isLoading) { return <div className="text-center p-10"><h1 className="text-2xl text-zinc-400">Cargando perfil...</h1></div>; }
+    if (isLoading) { return <div className="text-center p-10"><h1 className="text-2xl text-c-text-muted">Cargando perfil...</h1></div>; }
 
 
     // --- 4. RESTO DE LA LÓGICA Y HANDLERS ---
@@ -200,7 +200,7 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
         if (isCurrentAnimalPrimipara && type === 'PRIMIPARAS_AVG') ringClass = 'ring-2 ring-amber-400';
         if (!isCurrentAnimalPrimipara && type === 'MULTIPARAS_AVG') ringClass = 'ring-2 ring-amber-400';
         return `px-2 py-1 text-xs rounded-md transition-colors ${
-            isActive ? 'bg-amber-500 text-black font-semibold' : 'bg-zinc-700/50 text-zinc-300 hover:bg-zinc-600/50'
+            isActive ? 'bg-amber-500 text-black font-semibold' : 'bg-c-surface-2/50 text-c-text-strong hover:bg-c-surface-2'
         } ${ringClass}`;
     };
 
@@ -209,78 +209,78 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
     return (
         <>
             <div className="w-full max-w-4xl mx-auto space-y-4 animate-fade-in px-4 pb-12">
-                <header className="flex items-center pt-8 pb-4 sticky top-0 z-10 bg-brand-dark/80 backdrop-blur-md -mx-4 px-4 border-b border-brand-border/50 mb-4">
-                    <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
+                <header className="flex items-center pt-8 pb-4 sticky top-0 z-10 bg-c-surface/80 backdrop-blur-md -mx-4 px-4 border-b border-c-border/50 mb-4">
+                    <button onClick={onBack} className="p-2 -ml-2 text-c-text-muted hover:text-c-text transition-colors"><ArrowLeft size={24} /></button>
                     <div className="text-center flex-grow">
-                        <h1 className="text-3xl font-bold tracking-tight text-white">{animalId}</h1>
-                        <p className="text-lg text-zinc-400">Perfil de Lactancia</p>
+                        <h1 className="text-3xl font-bold tracking-tight text-c-text-strong">{animalId}</h1>
+                        <p className="text-lg text-c-text-muted">Perfil de Lactancia</p>
                     </div>
-                    <button onClick={() => navigateTo({ name: 'rebano-profile', animalId })} className="p-2 -mr-2 text-zinc-400 hover:text-white transition-colors" title="Ir a la ficha general del animal"><FileText size={24} /></button>
+                    <button onClick={() => navigateTo({ name: 'rebano-profile', animalId })} className="p-2 -mr-2 text-c-text-muted hover:text-c-text transition-colors" title="Ir a la ficha general del animal"><FileText size={24} /></button>
                 </header>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left">
-                        <div className="flex items-center space-x-2 text-zinc-400 font-semibold mb-1 text-xs uppercase"><Droplet size={14} /><span>Promedio Actual</span></div>
-                        <p className="text-2xl font-bold text-white">{currentLactation?.averageProduction.toFixed(2) || 'N/A'} <span className="text-lg text-zinc-400">Kg</span></p>
+                    <div className="bg-c-surface backdrop-blur-xl rounded-2xl p-3 border border-c-border text-left">
+                        <div className="flex items-center space-x-2 text-c-text-muted font-semibold mb-1 text-xs uppercase"><Droplet size={14} /><span>Promedio Actual</span></div>
+                        <p className="text-2xl font-bold text-c-text">{currentLactation?.averageProduction.toFixed(2) || 'N/A'} <span className="text-lg text-c-text-muted">Kg</span></p>
                     </div>
-                    <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left">
-                        <div className="flex items-center space-x-2 text-zinc-400 font-semibold mb-1 text-xs uppercase"><TrendingUp size={14} /><span>Pico Prod. Actual</span></div>
-                        <p className="text-2xl font-bold text-white">{currentLactation?.peakProduction.kg.toFixed(2) || 'N/A'} <span className="text-lg text-zinc-400">Kg</span></p>
+                    <div className="bg-c-surface backdrop-blur-xl rounded-2xl p-3 border border-c-border text-left">
+                        <div className="flex items-center space-x-2 text-c-text-muted font-semibold mb-1 text-xs uppercase"><TrendingUp size={14} /><span>Pico Prod. Actual</span></div>
+                        <p className="text-2xl font-bold text-c-text">{currentLactation?.peakProduction.kg.toFixed(2) || 'N/A'} <span className="text-lg text-c-text-muted">Kg</span></p>
                     </div>
-                    <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left">
-                        <div className="flex items-center space-x-2 text-zinc-400 font-semibold mb-1 text-xs uppercase"><CalendarDays size={14} /><span>DEL Actual</span></div>
-                        <p className="text-2xl font-bold text-white">{currentDEL}</p>
+                    <div className="bg-c-surface backdrop-blur-xl rounded-2xl p-3 border border-c-border text-left">
+                        <div className="flex items-center space-x-2 text-c-text-muted font-semibold mb-1 text-xs uppercase"><CalendarDays size={14} /><span>DEL Actual</span></div>
+                        <p className="text-2xl font-bold text-c-text">{currentDEL}</p>
                     </div>
-                    <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left">
-                        <div className="flex items-center space-x-2 text-zinc-400 font-semibold mb-1 text-xs uppercase"><Repeat size={14} /><span>Últ. Int. Partos</span></div>
-                        <p className="text-2xl font-bold text-white">{latestInterval || 'N/A'} <span className="text-lg text-zinc-400">días</span></p>
+                    <div className="bg-c-surface backdrop-blur-xl rounded-2xl p-3 border border-c-border text-left">
+                        <div className="flex items-center space-x-2 text-c-text-muted font-semibold mb-1 text-xs uppercase"><Repeat size={14} /><span>Últ. Int. Partos</span></div>
+                        <p className="text-2xl font-bold text-c-text">{latestInterval || 'N/A'} <span className="text-lg text-c-text-muted">días</span></p>
                     </div>
                     <button
                         onClick={() => openLactationModal(currentLactation)}
                         disabled={!currentLactation || currentLactation.weighings.length === 0}
-                        className="bg-brand-glass backdrop-blur-xl rounded-2xl p-3 border border-brand-border text-left hover:border-brand-amber transition-colors col-span-2 md:col-span-1 disabled:opacity-50 disabled:cursor-not-allowed relative group"
+                        className="bg-c-surface backdrop-blur-xl rounded-2xl p-3 border border-c-border text-left hover:border-brand-amber transition-colors col-span-2 md:col-span-1 disabled:opacity-50 disabled:cursor-not-allowed relative group"
                     >
-                       <div className="flex items-center space-x-2 text-zinc-400 font-semibold mb-1 text-xs uppercase"><CalendarCheck2 size={14} /><span>Últ. Pesaje</span></div>
-                        <p className="text-2xl font-bold text-white">{lastWeighingKg?.toFixed(2) ?? 'N/A'} <span className="text-lg text-zinc-400">Kg</span></p>
-                        <p className="text-xs text-zinc-500 mt-0.5">{lastWeighingDate ? new Date(lastWeighingDate + 'T00:00:00').toLocaleDateString() : ''}</p>
-                        <div className="absolute top-3 right-3 text-zinc-500 group-hover:text-brand-amber transition-colors">
+                       <div className="flex items-center space-x-2 text-c-text-muted font-semibold mb-1 text-xs uppercase"><CalendarCheck2 size={14} /><span>Últ. Pesaje</span></div>
+                        <p className="text-2xl font-bold text-c-text">{lastWeighingKg?.toFixed(2) ?? 'N/A'} <span className="text-lg text-c-text-muted">Kg</span></p>
+                        <p className="text-xs text-c-text-faint mt-0.5">{lastWeighingDate ? new Date(lastWeighingDate + 'T00:00:00').toLocaleDateString() : ''}</p>
+                        <div className="absolute top-3 right-3 text-c-text-faint group-hover:text-brand-amber transition-colors">
                             <BarChart2 size={18} />
                         </div>
                     </button>
                 </div>
 
-                <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border relative">
-                    <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-brand-border pb-2 mb-4 gap-2">
-                        <h3 className="text-zinc-400 font-semibold text-xs uppercase">Historial de Lactancias</h3>
+                <div className="bg-c-surface backdrop-blur-xl rounded-2xl p-4 border border-c-border relative">
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-c-border pb-2 mb-4 gap-2">
+                        <h3 className="text-c-text-muted font-semibold text-xs uppercase">Historial de Lactancias</h3>
                         <div className="flex items-center space-x-2 self-end sm:self-center">
                             {isZoomActive && (
                                 <button
                                     onClick={() => handleLactationClick(null)}
-                                    className="text-xs font-semibold text-zinc-400 hover:text-white animate-fade-in flex items-center gap-1 bg-zinc-700/50 px-2 py-1 rounded-md"
+                                    className="text-xs font-semibold text-c-text-muted hover:text-c-text animate-fade-in flex items-center gap-1 bg-c-surface-2/50 px-2 py-1 rounded-md"
                                     title="Quitar zoom"
                                 >
                                     <XCircle size={14} />
                                     Ver Todo
                                 </button>
                             )}
-                            <span className="text-xs font-semibold text-zinc-300">Comparar:</span>
-                            <button onClick={handleCompareToggle} className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isComparing ? 'bg-amber-500' : 'bg-zinc-700'}`}>
+                            <span className="text-xs font-semibold text-c-text-strong">Comparar:</span>
+                            <button onClick={handleCompareToggle} className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isComparing ? 'bg-amber-500' : 'bg-c-surface-2'}`}>
                                 <span aria-hidden="true" className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isComparing ? 'translate-x-5' : 'translate-x-0'}`}/>
                             </button>
                         </div>
                     </div>
 
                     {isComparing && (
-                        <div className="flex flex-wrap items-center gap-2 mb-4 animate-fade-in p-2 bg-black/20 rounded-lg">
-                            <span className="text-xs font-semibold text-zinc-300 w-full sm:w-auto">Grupos:</span>
+                        <div className="flex flex-wrap items-center gap-2 mb-4 animate-fade-in p-2 bg-c-surface-2 rounded-lg">
+                            <span className="text-xs font-semibold text-c-text-strong w-full sm:w-auto">Grupos:</span>
                             <button onClick={() => handleComparisonSelect('PRIMIPARAS_AVG')} className={getCompareButtonStyle('PRIMIPARAS_AVG')}>vs Primíparas</button>
                             <button onClick={() => handleComparisonSelect('MULTIPARAS_AVG')} className={getCompareButtonStyle('MULTIPARAS_AVG')}>vs Multíparas</button>
                             <button onClick={() => handleComparisonSelect('HERD_AVG')} className={getCompareButtonStyle('HERD_AVG')}>vs Rebaño</button>
                             <button onClick={() => handleComparisonSelect('PEERS_AVG')} className={getCompareButtonStyle('PEERS_AVG')}>vs Pares</button>
-                            <span className="text-xs font-semibold text-zinc-300 w-full sm:w-auto pt-2 sm:pt-0">Familia:</span>
+                            <span className="text-xs font-semibold text-c-text-strong w-full sm:w-auto pt-2 sm:pt-0">Familia:</span>
                             <button onClick={() => handleComparisonSelect('DAM')} className={getCompareButtonStyle('DAM')} disabled={!currentAnimal?.motherId}>Madre</button>
                             <button onClick={() => handleComparisonSelect('PROGENY_AVG')} className={getCompareButtonStyle('PROGENY_AVG')}>Prom. Hijas</button>
-                            <span className="text-xs font-semibold text-zinc-300 w-full sm:w-auto pt-2 sm:pt-0">Propias:</span>
+                            <span className="text-xs font-semibold text-c-text-strong w-full sm:w-auto pt-2 sm:pt-0">Propias:</span>
                             {previousLactations.map((lact, index) => (
                                 <button
                                     key={lact.parturitionDate}
@@ -299,7 +299,7 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                         onLactationClick={handleLactationClick}
                     />
                     {isComparativeLoading && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-xl text-white">
+                        <div className="absolute inset-0 flex items-center justify-center bg-c-surface/60 backdrop-blur-sm rounded-xl text-c-text">
                             <Loader2 className="animate-spin mr-2" /> Calculando comparación...
                         </div>
                     )}
@@ -315,7 +315,7 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
 
                 {previousLactations.length > 0 && (
                     <div className="space-y-3 pt-4">
-                        <h3 className="text-lg font-semibold text-zinc-300 px-1">Lactancias Anteriores</h3>
+                        <h3 className="text-lg font-semibold text-c-text-strong px-1">Lactancias Anteriores</h3>
                         {previousLactations.map((lact, index) => (
                             <LactationSummaryCard
                                 key={lact.parturitionDate}
@@ -328,21 +328,21 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                 )}
 
                 {currentLactationData?.id && currentLactationData.status !== 'finalizada' && (
-                     <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-4 border border-brand-border">
-                        <h3 className="text-zinc-400 font-semibold text-xs uppercase mb-3">Gestión de Lactancia Actual</h3>
+                     <div className="bg-c-surface backdrop-blur-xl rounded-2xl p-4 border border-c-border">
+                        <h3 className="text-c-text-muted font-semibold text-xs uppercase mb-3">Gestión de Lactancia Actual</h3>
                         <div className="flex flex-col sm:flex-row gap-4">
                             {currentLactationData.status === 'activa' && (
-                                <button onClick={() => startDryingProcess(currentLactationData.id!)} className="w-full flex items-center justify-center space-x-2 bg-blue-600/80 hover:bg-blue-500/80 text-white font-semibold py-3 px-4 rounded-xl transition-colors"><Wind size={20} /><span>Iniciar Proceso de Secado</span></button>
+                                <button onClick={() => startDryingProcess(currentLactationData.id!)} className="w-full flex items-center justify-center space-x-2 bg-c-accent-sky hover:bg-c-accent-sky/90 text-white font-semibold py-3 px-4 rounded-xl transition-colors"><Wind size={20} /><span>Iniciar Proceso de Secado</span></button>
                             )}
                             {(currentLactationData.status === 'activa' || currentLactationData.status === 'en-secado') && (
-                                <button onClick={() => setLactationAsDry(currentLactationData.id!)} className="w-full flex items-center justify-center space-x-2 bg-gray-600/80 hover:bg-gray-500/80 text-white font-semibold py-3 px-4 rounded-xl transition-colors"><Archive size={20} /><span>Declarar Lactancia como Seca</span></button>
+                                <button onClick={() => setLactationAsDry(currentLactationData.id!)} className="w-full flex items-center justify-center space-x-2 bg-c-surface-2 hover:bg-c-surface-3 text-c-text-strong font-semibold py-3 px-4 rounded-xl transition-colors"><Archive size={20} /><span>Declarar Lactancia como Seca</span></button>
                             )}
                             {currentLactationData.status === 'seca' && (
-                                <div className="w-full text-center p-3 bg-black/20 rounded-xl"><p className="font-semibold text-green-400">Esta lactancia ha finalizado.</p></div>
+                                <div className="w-full text-center p-3 bg-c-surface-2 rounded-xl"><p className="font-semibold text-green-400">Esta lactancia ha finalizado.</p></div>
                             )}
                         </div>
                         {currentLactationData.status === 'en-secado' && (
-                             <p className="text-center text-xs text-zinc-400 mt-2">El animal está en su período de secado.</p>
+                             <p className="text-center text-xs text-c-text-muted mt-2">El animal está en su período de secado.</p>
                         )}
                     </div>
                 )}
@@ -359,21 +359,21 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                                         <stop offset="95%" stopColor="#FBBF24" stopOpacity={0.0}/>
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" vertical={false} />
                                 <XAxis
                                     dataKey="del"
                                     type="number"
                                     domain={['dataMin', 'dataMax']}
-                                    tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }}
+                                    tick={{ fill: '#94a3b8', fontSize: 12 }}
                                     tickLine={false}
-                                    axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                                    axisLine={{ stroke: '#94a3b8' }}
                                 />
                                 <YAxis
                                     orientation="right"
                                     tickFormatter={(value) => `${value.toFixed(1)} Kg`}
-                                    tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }}
+                                    tick={{ fill: '#94a3b8', fontSize: 12 }}
                                     tickLine={false}
-                                    axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                                    axisLine={{ stroke: '#94a3b8' }}
                                 />
                                 <Tooltip content={<CurrentCurveTooltip />} />
                                 <Area
@@ -390,7 +390,7 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                         </ResponsiveContainer>
                     </div>
                 ) : (
-                    <p className="text-center text-zinc-400 py-8">No hay datos para mostrar la curva seleccionada.</p>
+                    <p className="text-center text-c-text-muted py-8">No hay datos para mostrar la curva seleccionada.</p>
                 )}
             </Modal>
         </>

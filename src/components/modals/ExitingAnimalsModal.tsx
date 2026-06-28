@@ -54,30 +54,30 @@ export const ExitingAnimalsModal: React.FC<ExitingAnimalsModalProps> = ({
                                     onSelectAnimal(animalData.id);
                                     onClose();
                                 }}
-                                className="w-full text-left p-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors flex justify-between items-center group"
+                                className="w-full text-left p-3 bg-c-surface-2 hover:bg-c-surface-3 rounded-lg transition-colors flex justify-between items-center group"
                             >
                                 {/* --- INICIO: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
                                 <div className="min-w-0 pr-3">
                                     {/* ID (Protagonista) - Fuente y tamaño aplicados */}
-                                    <p className="font-mono font-semibold text-base text-white truncate">{animalData.id.toUpperCase()}</p>
-                                    
+                                    <p className="font-mono font-semibold text-base text-c-text truncate">{animalData.id.toUpperCase()}</p>
+
                                     {/* Nombre (Secundario, si existe) */}
                                     {formattedName && (
-                                      <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+                                      <p className="text-sm font-normal text-c-text-strong truncate">{formattedName}</p>
                                     )}
                                 </div>
                                 {/* --- FIN: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
-                                <ChevronRight className="text-zinc-500 group-hover:text-white transition-colors flex-shrink-0" />
+                                <ChevronRight className="text-c-text-faint group-hover:text-c-text transition-colors flex-shrink-0" />
                             </button>
                         );
                     })
                 ) : (
-                    <p className="text-center text-zinc-500 py-4">No hay animales que hayan salido en este período.</p>
+                    <p className="text-center text-c-text-faint py-4">No hay animales que hayan salido en este período.</p>
                 )}
             </div>
             {/* Botón de Cerrar */}
-            <div className="flex justify-end mt-4 pt-4 border-t border-brand-border">
-                 <button onClick={onClose} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg text-white">Cerrar</button>
+            <div className="flex justify-end mt-4 pt-4 border-t border-c-border">
+                 <button onClick={onClose} className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-3 font-semibold rounded-lg text-c-text">Cerrar</button>
             </div>
         </Modal>
     );

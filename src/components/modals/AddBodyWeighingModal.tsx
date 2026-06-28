@@ -68,36 +68,36 @@ export const AddBodyWeighingModal: React.FC<AddBodyWeighingModalProps> = ({
         
         {/* --- CAMBIO: Mostrar ID y Nombre aquí --- */}
         <div className="text-center">
-            <p className="font-mono font-semibold text-xl text-white truncate">{animal.id.toUpperCase()}</p>
+            <p className="font-mono font-semibold text-xl text-c-text truncate">{animal.id.toUpperCase()}</p>
             {formattedName && (
-                <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+                <p className="text-sm font-normal text-c-text-strong truncate">{formattedName}</p>
             )}
         </div>
         
         {/* Date and Weight Inputs */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="weighingDate" className="block text-sm font-medium text-zinc-400 mb-1">Fecha</label>
-            <input id="weighingDate" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg text-white" required />
+            <label htmlFor="weighingDate" className="block text-sm font-medium text-c-text-muted mb-1">Fecha</label>
+            <input id="weighingDate" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-c-text" required />
           </div>
           <div>
-            <label htmlFor="weighingKg" className="block text-sm font-medium text-zinc-400 mb-1">Peso (Kg)</label>
-            <input id="weighingKg" type="number" step="0.1" value={kg} onChange={(e) => setKg(e.target.value)} placeholder="Ej: 32.5" autoFocus className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg text-white" required />
+            <label htmlFor="weighingKg" className="block text-sm font-medium text-c-text-muted mb-1">Peso (Kg)</label>
+            <input id="weighingKg" type="number" step="0.1" value={kg} onChange={(e) => setKg(e.target.value)} placeholder="Ej: 32.5" autoFocus className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-c-text" required />
           </div>
         </div>
 
         {/* Message Display */}
         {message && (
-          <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-brand-green' : 'bg-red-500/20 text-brand-red'}`}>
+          <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-c-accent/15 text-c-accent' : 'bg-red-500/20 text-brand-red'}`}>
             {message.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
             <span>{message.text}</span>
           </div>
         )}
 
         {/* Action Buttons */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-brand-border">
-          <button type="button" onClick={onCancel} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg text-white">Cancelar</button>
-          <button type="submit" disabled={isLoading} className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg disabled:opacity-50 flex items-center gap-2">
+        <div className="flex justify-end gap-3 pt-4 border-t border-c-border">
+          <button type="button" onClick={onCancel} className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-2 font-semibold rounded-lg text-c-text">Cancelar</button>
+          <button type="submit" disabled={isLoading} className="px-5 py-2 bg-c-accent hover:bg-c-accent text-white font-bold rounded-lg disabled:opacity-50 flex items-center gap-2">
             <Save size={18}/> Guardar
           </button>
         </div>

@@ -62,33 +62,33 @@ export const DeleteBodyWeighingSessionModal: React.FC<DeleteBodyWeighingSessionM
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="text-center p-4 bg-red-900/40 border border-brand-red rounded-lg">
           <AlertTriangle className="w-12 h-12 text-brand-red mx-auto" />
-          <h3 className="mt-2 text-xl font-bold text-white">¿Estás seguro?</h3>
-          <p className="mt-2 text-sm text-zinc-300">
+          <h3 className="mt-2 text-xl font-bold text-c-text">¿Estás seguro?</h3>
+          <p className="mt-2 text-sm text-c-text-strong">
             Esta acción es irreversible. Se eliminarán **todos** los registros de pesaje corporal
-            para la fecha <strong className="text-white">{formattedDate}</strong>.
+            para la fecha <strong className="text-c-text">{formattedDate}</strong>.
           </p>
         </div>
 
         <div>
-          <label htmlFor="confirmationDate" className="block text-sm font-medium text-zinc-400 mb-1">
-            Para confirmar, escribe la fecha: <strong className="text-white">{formattedDate}</strong>
+          <label htmlFor="confirmationDate" className="block text-sm font-medium text-c-text-muted mb-1">
+            Para confirmar, escribe la fecha: <strong className="text-c-text">{formattedDate}</strong>
           </label>
           <input
             id="confirmationDate"
             type="text"
             value={confirmationText}
             onChange={(e) => setConfirmationText(e.target.value)}
-            className="w-full bg-zinc-800 p-3 rounded-xl text-lg text-white font-mono text-center"
+            className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-c-text font-mono text-center"
             placeholder="dd/mm/yyyy"
             autoComplete="off"
           />
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-brand-border">
+        <div className="flex justify-end gap-3 pt-4 border-t border-c-border">
           <button
             type="button"
             onClick={handleClose}
-            className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg text-white"
+            className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-2 font-semibold rounded-lg text-c-text"
           >
             Cancelar
           </button>

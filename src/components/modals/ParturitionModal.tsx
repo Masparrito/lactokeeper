@@ -197,23 +197,23 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
     return (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-0 sm:p-4">
             
-            <div className="bg-[#121214] border-t sm:border border-zinc-800 w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl flex flex-col shadow-2xl h-[95vh] sm:h-auto sm:max-h-[90vh]">
-                
+            <div className="bg-c-surface border-t sm:border border-c-border w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl flex flex-col shadow-2xl h-[95vh] sm:h-auto sm:max-h-[90vh]">
+
                 {/* Header */}
-                <header className="flex-shrink-0 flex items-center justify-between p-6 border-b border-zinc-800">
+                <header className="flex-shrink-0 flex items-center justify-between p-6 border-b border-c-border">
                     {step > 1 && step < 4 ? (
-                        <button onClick={handlePrevStep} className="p-2 -ml-2 text-zinc-400 hover:text-white rounded-full hover:bg-zinc-800 transition-colors">
+                        <button onClick={handlePrevStep} className="p-2 -ml-2 text-c-text-muted hover:text-c-text rounded-full hover:bg-c-surface-2 transition-colors">
                             <ArrowLeft size={24} />
                         </button>
                     ) : <div className="w-10" />}
-                    
-                    <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+
+                    <h1 className="text-xl font-bold tracking-tight text-c-text flex items-center gap-2">
                         <Baby className="text-pink-500" />
                         {step === 4 ? '¡Parto Registrado!' : 'Registrar Parto'}
                     </h1>
-                    
+
                     {step < 4 ? (
-                        <button onClick={onClose} className="p-2 -mr-2 text-zinc-400 hover:text-white rounded-full hover:bg-zinc-800 transition-colors">
+                        <button onClick={onClose} className="p-2 -mr-2 text-c-text-muted hover:text-c-text rounded-full hover:bg-c-surface-2 transition-colors">
                             <X size={24} />
                         </button>
                     ) : <div className="w-10" />}
@@ -224,46 +224,46 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
                     {step === 1 && (
                         <div className="space-y-6">
                             {/* Madre Info */}
-                            <div className="flex items-center gap-4 bg-zinc-900 p-4 rounded-2xl border border-zinc-800">
+                            <div className="flex items-center gap-4 bg-c-surface p-4 rounded-2xl border border-c-border">
                                 <div className="p-3 bg-pink-500/10 rounded-full text-pink-500 border border-pink-500/20">
                                     <Baby size={24} />
                                 </div>
                                 <div>
-                                    <p className="font-mono font-bold text-xl text-white leading-none tracking-tight">{motherId.toUpperCase()}</p>
-                                    <p className="text-sm text-zinc-400 mt-1">{formattedMotherName || 'Madre'}</p>
+                                    <p className="font-mono font-bold text-xl text-c-text leading-none tracking-tight">{motherId.toUpperCase()}</p>
+                                    <p className="text-sm text-c-text-muted mt-1">{formattedMotherName || 'Madre'}</p>
                                 </div>
                             </div>
 
                             {/* Input Fecha */}
                             <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Fecha del Parto</label>
-                                <button type="button" onClick={() => setDatePickerOpen(true)} className="w-full bg-black border border-zinc-800 p-4 rounded-xl text-left flex justify-between items-center text-white hover:border-zinc-600 transition-colors">
+                                <label className="text-[10px] font-bold text-c-text-faint uppercase tracking-widest ml-1">Fecha del Parto</label>
+                                <button type="button" onClick={() => setDatePickerOpen(true)} className="w-full bg-c-surface-2 border border-c-border p-4 rounded-xl text-left flex justify-between items-center text-c-text hover:border-c-border-strong transition-colors">
                                     <span className="text-lg">{parturitionDate ? new Date(parturitionDate + 'T00:00:00Z').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : 'Seleccionar Fecha'}</span>
-                                    <Calendar className="text-zinc-500" size={20} />
+                                    <Calendar className="text-c-text-faint" size={20} />
                                 </button>
                             </div>
 
                             {/* Input Padre */}
                             <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Padre (Opcional)</label>
+                                <label className="text-[10px] font-bold text-c-text-faint uppercase tracking-widest ml-1">Padre (Opcional)</label>
                                 <div className="flex gap-2">
-                                    <button 
-                                        type="button" 
-                                        onClick={() => setIsSireSelectorOpen(true)} 
-                                        className="flex-1 text-left bg-black border border-zinc-800 p-4 rounded-xl flex justify-between items-center text-white hover:border-zinc-600 transition-colors"
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsSireSelectorOpen(true)}
+                                        className="flex-1 text-left bg-c-surface-2 border border-c-border p-4 rounded-xl flex justify-between items-center text-c-text hover:border-c-border-strong transition-colors"
                                     >
-                                        <span className={`text-lg truncate ${sireId ? 'text-white' : 'text-zinc-500'}`}>
+                                        <span className={`text-lg truncate ${sireId ? 'text-c-text' : 'text-c-text-faint'}`}>
                                             {selectedFather ? formatAnimalDisplay(selectedFather) : 'Seleccionar Reproductor...'}
                                         </span>
-                                        <Search size={20} className="text-zinc-500 shrink-0" />
+                                        <Search size={20} className="text-c-text-faint shrink-0" />
                                     </button>
-                                    <button type="button" onClick={() => setIsFatherModalOpen(true)} className="p-4 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white rounded-xl transition-colors">
+                                    <button type="button" onClick={() => setIsFatherModalOpen(true)} className="p-4 bg-c-surface-2 hover:bg-c-surface-2 border border-c-border-strong text-c-text rounded-xl transition-colors">
                                         <Plus size={24} />
                                     </button>
                                 </div>
                             </div>
 
-                            <button onClick={handleNextStep} disabled={!parturitionDate} className="w-full mt-4 bg-brand-orange hover:bg-orange-600 text-white font-bold py-4 rounded-xl text-lg disabled:opacity-50 shadow-[0_4px_20px_rgba(249,115,22,0.3)] transition-all">
+                            <button onClick={handleNextStep} disabled={!parturitionDate} className="w-full mt-4 bg-c-accent hover:bg-c-accent/90 text-white font-bold py-4 rounded-xl text-lg disabled:opacity-50 shadow-[0_4px_20px_rgba(249,115,22,0.3)] transition-all">
                                 Siguiente: Crías
                             </button>
                         </div>
@@ -271,15 +271,15 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
 
                     {step === 2 && (
                         <div className="space-y-6 text-center">
-                            <h2 className="text-2xl font-bold text-white">¿Cuántas crías nacieron?</h2>
-                            <p className="text-zinc-400 text-sm -mt-4">Selecciona el número de crías del parto.</p>
-                            
+                            <h2 className="text-2xl font-bold text-c-text">¿Cuántas crías nacieron?</h2>
+                            <p className="text-c-text-muted text-sm -mt-4">Selecciona el número de crías del parto.</p>
+
                             <div className="grid grid-cols-2 gap-4">
-                                {parturitionTypes.map(pt => ( 
-                                    <button 
-                                        key={pt.count} 
-                                        onClick={() => handleOffspringCountSelect(pt.count)} 
-                                        className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-brand-orange text-white font-bold py-6 rounded-2xl text-xl transition-all"
+                                {parturitionTypes.map(pt => (
+                                    <button
+                                        key={pt.count}
+                                        onClick={() => handleOffspringCountSelect(pt.count)}
+                                        className="bg-c-surface hover:bg-c-surface-2 border border-c-border hover:border-c-accent text-c-text font-bold py-6 rounded-2xl text-xl transition-all"
                                     >
                                         {pt.name}
                                     </button> 
@@ -290,58 +290,58 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
 
                     {step === 3 && (
                         <div className="space-y-5">
-                             <div className="bg-zinc-900/50 p-3 rounded-xl border border-zinc-800 text-center">
-                                <p className="text-xs text-zinc-500 uppercase tracking-wider font-bold">Madre</p>
-                                <p className="font-mono font-bold text-lg text-white">{motherAnimal?.id.toUpperCase()}</p>
+                             <div className="bg-c-surface/50 p-3 rounded-xl border border-c-border text-center">
+                                <p className="text-xs text-c-text-faint uppercase tracking-wider font-bold">Madre</p>
+                                <p className="font-mono font-bold text-lg text-c-text">{motherAnimal?.id.toUpperCase()}</p>
                             </div>
 
                             {offspring.map((kid, index) => {
                                 const isStillborn = kid.status === 'Mortinato';
                                 return (
-                                    <div key={kid.id} className={`bg-black border rounded-2xl p-5 transition-all ${isStillborn ? 'border-red-900/50 bg-red-900/5' : 'border-zinc-800'}`}>
-                                        
+                                    <div key={kid.id} className={`bg-c-surface-2 border rounded-2xl p-5 transition-all ${isStillborn ? 'border-red-900/50 bg-red-900/5' : 'border-c-border'}`}>
+
                                         <div className="flex justify-between items-center mb-4">
                                             <div className="flex items-center gap-2">
-                                                <span className="bg-zinc-800 text-white w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold">{index + 1}</span>
-                                                <p className="font-bold text-white">Datos de la Cría</p>
+                                                <span className="bg-c-surface-2 text-c-text w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold">{index + 1}</span>
+                                                <p className="font-bold text-c-text">Datos de la Cría</p>
                                             </div>
-                                            
+
                                             {/* Toggle Status */}
-                                            <div className="flex bg-zinc-900 rounded-lg p-1 border border-zinc-800">
-                                                <button type="button" onClick={() => handleOffspringChange(index, 'status', 'Viva')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${!isStillborn ? 'bg-green-600 text-white shadow-sm':'text-zinc-500 hover:text-zinc-300'}`}>Viva</button>
-                                                <button type="button" onClick={() => handleOffspringChange(index, 'status', 'Mortinato')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${isStillborn ? 'bg-red-600 text-white shadow-sm':'text-zinc-500 hover:text-zinc-300'}`}>Muerta</button>
+                                            <div className="flex bg-c-surface rounded-lg p-1 border border-c-border">
+                                                <button type="button" onClick={() => handleOffspringChange(index, 'status', 'Viva')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${!isStillborn ? 'bg-green-600 text-white shadow-sm':'text-c-text-faint hover:text-c-text-strong'}`}>Viva</button>
+                                                <button type="button" onClick={() => handleOffspringChange(index, 'status', 'Mortinato')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${isStillborn ? 'bg-red-600 text-white shadow-sm':'text-c-text-faint hover:text-c-text-strong'}`}>Muerta</button>
                                             </div>
                                         </div>
 
                                         {/* Toggle Sexo */}
-                                        <div className="flex bg-zinc-900 rounded-xl p-1 border border-zinc-800 mb-4">
-                                            <button type="button" onClick={() => handleOffspringChange(index, 'sex', 'Hembra')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${kid.sex==='Hembra'?'bg-pink-600 text-white shadow-md':'text-zinc-500 hover:text-zinc-300'}`}>Hembra</button>
-                                            <button type="button" onClick={() => handleOffspringChange(index, 'sex', 'Macho')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${kid.sex==='Macho'?'bg-blue-600 text-white shadow-md':'text-zinc-500 hover:text-zinc-300'}`}>Macho</button>
+                                        <div className="flex bg-c-surface rounded-xl p-1 border border-c-border mb-4">
+                                            <button type="button" onClick={() => handleOffspringChange(index, 'sex', 'Hembra')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${kid.sex==='Hembra'?'bg-pink-600 text-white shadow-md':'text-c-text-faint hover:text-c-text-strong'}`}>Hembra</button>
+                                            <button type="button" onClick={() => handleOffspringChange(index, 'sex', 'Macho')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${kid.sex==='Macho'?'bg-blue-600 text-white shadow-md':'text-c-text-faint hover:text-c-text-strong'}`}>Macho</button>
                                         </div>
 
                                         <div className={`grid grid-cols-2 gap-4 ${isStillborn ? 'opacity-50 pointer-events-none' : ''}`}>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">ID Cría</label>
-                                                <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-xl px-3 h-12">
-                                                    <span className="font-mono text-zinc-500 mr-1">{kid.sex === 'Macho' ? 'X' : (selectedFather?.name?.charAt(0).toUpperCase() || '?')}</span>
-                                                    <input 
-                                                        autoFocus={index === 0} 
-                                                        value={kid.correlative} 
-                                                        onChange={e => handleOffspringChange(index, 'correlative', e.target.value.toUpperCase())} 
-                                                        placeholder="001" 
-                                                        className="w-full bg-transparent text-white font-mono text-lg outline-none placeholder:text-zinc-700"
+                                                <label className="text-[10px] font-bold text-c-text-faint uppercase tracking-wider">ID Cría</label>
+                                                <div className="flex items-center bg-c-surface border border-c-border rounded-xl px-3 h-12">
+                                                    <span className="font-mono text-c-text-faint mr-1">{kid.sex === 'Macho' ? 'X' : (selectedFather?.name?.charAt(0).toUpperCase() || '?')}</span>
+                                                    <input
+                                                        autoFocus={index === 0}
+                                                        value={kid.correlative}
+                                                        onChange={e => handleOffspringChange(index, 'correlative', e.target.value.toUpperCase())}
+                                                        placeholder="001"
+                                                        className="w-full bg-transparent text-c-text font-mono text-lg outline-none placeholder:text-c-text-faint"
                                                     />
                                                 </div>
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Peso (Kg)</label>
-                                                <input 
-                                                    value={kid.birthWeight} 
-                                                    onChange={e => handleOffspringChange(index, 'birthWeight', e.target.value)} 
-                                                    placeholder="0.0" 
-                                                    type="number" 
-                                                    step="0.1" 
-                                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 h-12 text-white font-mono text-lg outline-none focus:border-brand-orange transition-colors placeholder:text-zinc-700"
+                                                <label className="text-[10px] font-bold text-c-text-faint uppercase tracking-wider">Peso (Kg)</label>
+                                                <input
+                                                    value={kid.birthWeight}
+                                                    onChange={e => handleOffspringChange(index, 'birthWeight', e.target.value)}
+                                                    placeholder="0.0"
+                                                    type="number"
+                                                    step="0.1"
+                                                    className="w-full bg-c-surface border border-c-border rounded-xl px-4 h-12 text-c-text font-mono text-lg outline-none focus:border-c-accent transition-colors placeholder:text-c-text-faint"
                                                 />
                                             </div>
                                         </div>
@@ -356,10 +356,10 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
                                 </div>
                             )}
 
-                            <button 
-                                onClick={handleSubmit} 
-                                disabled={isLoading || offspring.some(k => k.status === 'Viva' && (!k.correlative || !k.birthWeight))} 
-                                className="w-full mt-2 bg-brand-green hover:bg-green-600 text-white font-bold py-4 rounded-xl text-lg disabled:opacity-50 shadow-[0_4px_20px_rgba(34,197,94,0.3)] flex items-center justify-center gap-2 transition-all"
+                            <button
+                                onClick={handleSubmit}
+                                disabled={isLoading || offspring.some(k => k.status === 'Viva' && (!k.correlative || !k.birthWeight))}
+                                className="w-full mt-2 bg-c-accent hover:bg-c-accent/90 text-white font-bold py-4 rounded-xl text-lg disabled:opacity-50 shadow-[0_4px_20px_rgba(34,197,94,0.3)] flex items-center justify-center gap-2 transition-all"
                             >
                                 {isLoading ? <Loader2 size={20} className="animate-spin"/> : <><Save size={20} /> Guardar Todo</>}
                             </button>
@@ -371,8 +371,8 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
                             <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center mb-6">
                                 <CheckCircle size={64} className="text-green-500 animate-bounce"/>
                             </div>
-                            <h2 className="text-3xl font-bold text-white mb-2">¡Parto Registrado!</h2>
-                            <p className="text-zinc-400">
+                            <h2 className="text-3xl font-bold text-c-text mb-2">¡Parto Registrado!</h2>
+                            <p className="text-c-text-muted">
                                 Se ha registrado el parto y creado las crías exitosamente.
                             </p>
                         </div>

@@ -32,11 +32,11 @@ const MilestoneWidget = ({ label, target, actual, status, subLabel }: {
     subLabel?: string;
 }) => {
     const colors = {
-        met: { text: 'text-brand-green', bg: 'bg-brand-green/10', border: 'border-brand-green/20', icon: CheckCircle },
+        met: { text: 'text-c-accent', bg: 'bg-c-accent/10', border: 'border-c-accent/20', icon: CheckCircle },
         missed: { text: 'text-brand-red', bg: 'bg-brand-red/10', border: 'border-brand-red/20', icon: XCircle },
         close: { text: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', icon: AlertCircle },
-        pending: { text: 'text-zinc-500', bg: 'bg-zinc-800/50', border: 'border-zinc-700/50', icon: MinusCircle },
-        'no-data': { text: 'text-zinc-400', bg: 'bg-zinc-800', border: 'border-zinc-700', icon: FileQuestion }
+        pending: { text: 'text-c-text-faint', bg: 'bg-c-surface-2/50', border: 'border-c-border-strong/50', icon: MinusCircle },
+        'no-data': { text: 'text-c-text-muted', bg: 'bg-c-surface-2', border: 'border-c-border-strong', icon: FileQuestion }
     };
     const style = colors[status] || colors.pending;
     const Icon = style.icon;
@@ -45,14 +45,14 @@ const MilestoneWidget = ({ label, target, actual, status, subLabel }: {
     return (
         <div className={`flex flex-col justify-between p-3 rounded-xl border ${style.border} ${style.bg} backdrop-blur-md h-24 relative group transition-all`}>
             <div className="flex justify-between items-start">
-                <span className="text-xs font-bold uppercase tracking-wider opacity-70 text-zinc-300">{label}</span>
+                <span className="text-xs font-bold uppercase tracking-wider opacity-70 text-c-text-strong">{label}</span>
                 <Icon size={15} className={style.text} />
             </div>
             <div>
                 <span className={`${valueTextSize} font-bold ${style.text} tracking-tight tabular-nums block truncate`}>{actual}</span>
                 <div className="flex items-center justify-between mt-1">
-                    <span className="text-xs text-zinc-500 font-medium">Meta: {target}</span>
-                    {subLabel && <span className="text-[10px] text-zinc-400 bg-zinc-900/40 px-1.5 py-0.5 rounded text-right font-mono">{subLabel}</span>}
+                    <span className="text-xs text-c-text-faint font-medium">Meta: {target}</span>
+                    {subLabel && <span className="text-[10px] text-c-text-muted bg-c-surface/40 px-1.5 py-0.5 rounded text-right font-mono">{subLabel}</span>}
                 </div>
             </div>
         </div>
@@ -62,12 +62,12 @@ const MilestoneWidget = ({ label, target, actual, status, subLabel }: {
 const ScoreBar = ({ label, value, total, colorClass }: any) => (
     <div className="py-1">
         <div className="flex justify-between items-end mb-2">
-            <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{label}</span>
+            <span className="text-xs font-bold text-c-text-muted uppercase tracking-wider">{label}</span>
             <span className={`text-2xl font-bold ${colorClass} tabular-nums leading-none tracking-tight`}>
-                {value.toFixed(1)} <span className="text-xs font-medium text-zinc-600 align-top ml-0.5">/ {total}</span>
+                {value.toFixed(1)} <span className="text-xs font-medium text-c-text-faint align-top ml-0.5">/ {total}</span>
             </span>
         </div>
-        <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+        <div className="w-full bg-c-surface-2 rounded-full h-1.5 overflow-hidden">
             <div className={`h-full rounded-full ${colorClass} transition-all duration-1000 ease-out shadow-[0_0_12px_currentColor] opacity-90`} style={{ width: `${Math.min(Math.max((value / total) * 100, 0), 100)}%`, backgroundColor: 'currentColor' }}></div>
         </div>
     </div>
@@ -76,15 +76,15 @@ const ScoreBar = ({ label, value, total, colorClass }: any) => (
 const HeaderKpi = ({ label, value, unit, icon: Icon, highlight, subValue, isMain }: any) => (
     <div className="flex flex-col justify-between h-full py-1 px-1">
         <div className="flex items-center gap-1.5 mb-1 opacity-70">
-            <Icon size={13} className="text-zinc-400" />
-            <span className="text-[11px] uppercase text-zinc-400 font-bold tracking-widest">{label}</span>
+            <Icon size={13} className="text-c-text-muted" />
+            <span className="text-[11px] uppercase text-c-text-muted font-bold tracking-widest">{label}</span>
         </div>
         <div className="flex flex-col">
              <div className="flex items-baseline gap-1">
-                <span className={`${isMain ? 'text-4xl' : 'text-2xl'} font-bold ${highlight ? 'text-brand-green' : 'text-white'} tracking-tighter tabular-nums leading-none`}>
+                <span className={`${isMain ? 'text-4xl' : 'text-2xl'} font-bold ${highlight ? 'text-c-accent' : 'text-c-text'} tracking-tighter tabular-nums leading-none`}>
                     {value}
                 </span>
-                {unit && <span className={`text-xs font-medium text-zinc-500 ${isMain ? 'mb-1' : ''}`}>{unit}</span>}
+                {unit && <span className={`text-xs font-medium text-c-text-faint ${isMain ? 'mb-1' : ''}`}>{unit}</span>}
             </div>
             <div className="mt-2 h-5 flex items-center">
                 {subValue || <span className="opacity-0">-</span>}
@@ -95,46 +95,46 @@ const HeaderKpi = ({ label, value, unit, icon: Icon, highlight, subValue, isMain
 
 const GrowthIndexCard = ({ score, weightGap, targetWeight, currentWeight }: any) => {
     const getScoreColor = (s: number) => {
-        if (s >= 9.0) return 'text-brand-green';
+        if (s >= 9.0) return 'text-c-accent';
         if (s >= 7.0) return 'text-yellow-400';
         return 'text-brand-red';
     };
     const scoreColor = getScoreColor(score);
-    const gapColor = weightGap >= -0.5 ? 'text-brand-green' : 'text-brand-red';
+    const gapColor = weightGap >= -0.5 ? 'text-c-accent' : 'text-brand-red';
     const gapSign = weightGap > 0 ? '+' : '';
 
     return (
-        <div className="bg-brand-glass backdrop-blur-xl rounded-2xl p-5 border border-brand-border/30 shadow-sm">
-            <div className="flex items-center gap-2 mb-6 border-b border-white/5 pb-3">
-                <div className="p-1.5 bg-brand-blue/10 rounded-lg">
-                    <Activity size={16} className="text-brand-blue" />
+        <div className="bg-c-surface backdrop-blur-xl rounded-2xl p-5 border border-c-border/30 shadow-sm">
+            <div className="flex items-center gap-2 mb-6 border-b border-c-border pb-3">
+                <div className="p-1.5 bg-c-accent-sky/10 rounded-lg">
+                    <Activity size={16} className="text-c-accent-sky" />
                 </div>
-                <h3 className="text-sm font-bold text-zinc-200">Desempeño vs. Meta</h3>
+                <h3 className="text-sm font-bold text-c-text-strong">Desempeño vs. Meta</h3>
             </div>
             <div className="space-y-6">
                 <ScoreBar label="Puntaje de Desarrollo" value={score} total={10} unit="Pts" colorClass={scoreColor} />
                 <div className="grid grid-cols-2 gap-8 pt-2">
                     <div className="flex flex-col justify-end">
-                        <p className="text-xs uppercase text-zinc-500 font-bold tracking-wider mb-1">Brecha Peso</p>
+                        <p className="text-xs uppercase text-c-text-faint font-bold tracking-wider mb-1">Brecha Peso</p>
                         <div className="flex items-baseline gap-1">
                             <p className={`text-3xl font-bold ${gapColor} tabular-nums tracking-tight`}>
                                 {gapSign}{weightGap.toFixed(1)}
                             </p>
-                            <span className="text-sm text-zinc-500 font-medium">Kg</span>
+                            <span className="text-sm text-c-text-faint font-medium">Kg</span>
                         </div>
-                        <p className="text-xs text-zinc-500 mt-1">Diferencia vs Ideal</p>
+                        <p className="text-xs text-c-text-faint mt-1">Diferencia vs Ideal</p>
                     </div>
-                    <div className="flex flex-col gap-3 border-l border-white/5 pl-6">
+                    <div className="flex flex-col gap-3 border-l border-c-border pl-6">
                         <div>
-                            <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wide block mb-0.5">Meta Hoy</span>
-                            <span className="font-mono font-medium text-sm text-zinc-300 block">
-                                {targetWeight.toFixed(1)} <span className="text-xs text-zinc-500 font-sans">Kg</span>
+                            <span className="text-[10px] text-c-text-faint uppercase font-bold tracking-wide block mb-0.5">Meta Hoy</span>
+                            <span className="font-mono font-medium text-sm text-c-text-strong block">
+                                {targetWeight.toFixed(1)} <span className="text-xs text-c-text-faint font-sans">Kg</span>
                             </span>
                         </div>
                         <div>
-                            <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wide block mb-0.5">Peso Real</span>
+                            <span className="text-[10px] text-c-text-faint uppercase font-bold tracking-wide block mb-0.5">Peso Real</span>
                             <span className={`font-mono font-bold text-lg block leading-none ${gapColor}`}>
-                                {currentWeight.toFixed(1)} <span className="text-xs text-zinc-500 font-sans">Kg</span>
+                                {currentWeight.toFixed(1)} <span className="text-xs text-c-text-faint font-sans">Kg</span>
                             </span>
                         </div>
                     </div>
@@ -308,7 +308,7 @@ export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePag
         }
     };
 
-    if (!animalData) return <div className="text-center p-10 text-zinc-400">Cargando perfil...</div>;
+    if (!animalData) return <div className="text-center p-10 text-c-text-muted">Cargando perfil...</div>;
 
     const { animal, gdp, formattedAgeDays, latestWeight, lastDiff, milestones, specialMilestones, combinedChartData, targets, birthDateFormatted, score, weightGap, targetWeightToday } = animalData;
     const hasEnoughData = combinedChartData.length >= 2;
@@ -317,8 +317,8 @@ export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePag
         <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in pb-12 overflow-x-hidden px-4 pt-4">
             
             <div className="flex items-center justify-between mb-2">
-                <button onClick={onBack} className="text-zinc-400 hover:text-white p-1 -ml-2 transition-colors"><ArrowLeft /></button>
-                <h1 className="text-base font-bold text-white tracking-tight opacity-90">{formatAnimalDisplay(animal)}</h1>
+                <button onClick={onBack} className="text-c-text-muted hover:text-c-text p-1 -ml-2 transition-colors"><ArrowLeft /></button>
+                <h1 className="text-base font-bold text-c-text tracking-tight opacity-90">{formatAnimalDisplay(animal)}</h1>
                 <div className="w-8" />
             </div>
 

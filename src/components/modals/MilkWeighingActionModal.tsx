@@ -58,23 +58,23 @@ export const MilkWeighingActionModal: React.FC<MilkWeighingActionModalProps> = (
         // --- CAMBIO: Título genérico ---
         title="Acción Requerida"
       >
-        <div className="text-center space-y-4 text-white">
+        <div className="text-center space-y-4 text-c-text">
           <AlertTriangle className="mx-auto h-12 w-12 text-amber-400" />
           {/* --- INICIO: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
           <div className="text-center">
-                <p className="font-mono font-semibold text-xl text-white truncate">{animal.id.toUpperCase()}</p>
+                <p className="font-mono font-semibold text-xl text-c-text truncate">{animal.id.toUpperCase()}</p>
                 {formattedName && (
-                    <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+                    <p className="text-sm font-normal text-c-text-strong truncate">{formattedName}</p>
                 )}
           </div>
           {/* --- FIN: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
           <h3 className="text-lg font-medium">Animal sin Parto Activo</h3>
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-c-text-muted">
             Para registrar un pesaje o gestionar el secado, el animal debe tener un parto activo.
           </p>
           <button
             onClick={() => setParturitionModalOpen(true)}
-            className="w-full flex items-center justify-center gap-2 bg-brand-orange hover:bg-orange-600 font-bold py-3 px-4 rounded-xl transition-colors text-base"
+            className="w-full flex items-center justify-center gap-2 bg-c-accent hover:bg-c-accent font-bold py-3 px-4 rounded-xl transition-colors text-base"
           >
             <Baby size={18} /> Declarar Parto Ahora
           </button>
@@ -105,58 +105,58 @@ export const MilkWeighingActionModal: React.FC<MilkWeighingActionModalProps> = (
       <div className="space-y-6">
         {/* --- INICIO: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
         <div className="text-center mb-2">
-            <p className="font-mono font-semibold text-xl text-white truncate">{animal.id.toUpperCase()}</p>
+            <p className="font-mono font-semibold text-xl text-c-text truncate">{animal.id.toUpperCase()}</p>
             {formattedName && (
-                <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+                <p className="text-sm font-normal text-c-text-strong truncate">{formattedName}</p>
             )}
         </div>
         {/* --- FIN: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
 
         {/* Sección de sesiones recientes */}
         <div>
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-400 mb-2"><History size={16} />Añadir a Sesión Reciente</h3>
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-c-text-muted mb-2"><History size={16} />Añadir a Sesión Reciente</h3>
           {recentSessions.length > 0 ? (
             <div className="space-y-2">
               {recentSessions.map((date) => (
                 <button
                     key={date}
                     onClick={() => onLogToSession(date)}
-                    className="w-full text-left bg-zinc-800/80 p-3 rounded-xl hover:bg-zinc-700 transition-colors flex justify-between items-center group"
+                    className="w-full text-left bg-c-surface-2 p-3 rounded-xl hover:bg-c-surface-2 transition-colors flex justify-between items-center group"
                 >
                   <div className="flex items-center gap-3">
-                    <Calendar size={18} className="text-zinc-500" />
-                    <span className="text-base font-semibold text-white">
+                    <Calendar size={18} className="text-c-text-faint" />
+                    <span className="text-base font-semibold text-c-text">
                       {new Date(date + 'T00:00:00Z').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })}
                     </span>
                   </div>
-                  <ChevronRight size={20} className="text-zinc-600 group-hover:text-white transition-colors" />
+                  <ChevronRight size={20} className="text-c-text-faint group-hover:text-c-text transition-colors" />
                 </button>
               ))}
             </div>
           ) : (
-            <p className="text-center text-sm text-zinc-500 py-4">No hay sesiones recientes.</p>
+            <p className="text-center text-sm text-c-text-faint py-4">No hay sesiones recientes.</p>
           )}
         </div>
 
         {/* Sección de nueva sesión */}
         <div>
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-400 mb-2"><PlusCircle size={16} />Iniciar Nueva Sesión de Pesaje</h3>
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-c-text-muted mb-2"><PlusCircle size={16} />Iniciar Nueva Sesión de Pesaje</h3>
           <button
             onClick={onStartNewSession}
-            className="w-full text-left bg-brand-orange/20 border border-brand-orange/80 p-4 rounded-xl hover:bg-brand-orange/30 transition-colors flex justify-between items-center group"
+            className="w-full text-left bg-c-accent/15 border border-c-accent/80 p-4 rounded-xl hover:bg-c-accent/30 transition-colors flex justify-between items-center group"
           >
-            <span className="text-lg font-bold text-white">Construir Carga Masiva...</span>
-            <ChevronRight size={20} className="text-brand-orange group-hover:text-orange-300 transition-colors" />
+            <span className="text-lg font-bold text-c-text">Construir Carga Masiva...</span>
+            <ChevronRight size={20} className="text-c-accent group-hover:text-c-accent transition-colors" />
           </button>
-           <p className="text-xs text-zinc-500 text-center px-4 mt-2">
+           <p className="text-xs text-c-text-faint text-center px-4 mt-2">
               Esto te permitirá seleccionar un grupo de animales y registrar sus pesajes.
             </p>
         </div>
 
         {/* Acciones de Secado */}
         {activeParturition && (
-            <div className="pt-4 border-t border-brand-border">
-                <h3 className="text-sm font-semibold text-zinc-400 mb-2">Acciones de Lactancia</h3>
+            <div className="pt-4 border-t border-c-border">
+                <h3 className="text-sm font-semibold text-c-text-muted mb-2">Acciones de Lactancia</h3>
                 <div className="flex flex-col sm:flex-row gap-2">
                     <button
                         type="button"
@@ -176,7 +176,7 @@ export const MilkWeighingActionModal: React.FC<MilkWeighingActionModalProps> = (
                     </button>
                 </div>
                 {activeParturition.status === 'en-secado' && (
-                     <p className="text-center text-xs text-zinc-400 mt-2">El animal está en su período de secado.</p>
+                     <p className="text-center text-xs text-c-text-muted mt-2">El animal está en su período de secado.</p>
                  )}
             </div>
         )}

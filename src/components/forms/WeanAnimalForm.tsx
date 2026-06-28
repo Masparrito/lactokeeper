@@ -92,20 +92,20 @@ export const WeanAnimalForm: React.FC<WeanAnimalFormProps> = ({
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-0 sm:p-4">
         <style>{calendarCss}</style>
         
-        <div className="bg-[#121214] border-t sm:border border-zinc-800 w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-6 space-y-5 shadow-2xl transform transition-all pb-10 sm:pb-6 relative overflow-hidden">
-            
+        <div className="bg-c-surface border-t sm:border border-c-border w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-6 space-y-5 shadow-2xl transform transition-all pb-10 sm:pb-6 relative overflow-hidden">
+
             {/* Header */}
             <div className="flex justify-between items-start">
                 <div>
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-c-text flex items-center gap-2">
                         <Award className="text-yellow-500" />
                         Registrar Destete
                     </h2>
-                    <p className="text-sm text-zinc-400 mt-1">
-                        Cierra la lactancia para <span className="text-white font-mono font-bold">{animalId.toUpperCase()}</span>.
+                    <p className="text-sm text-c-text-muted mt-1">
+                        Cierra la lactancia para <span className="text-c-text font-mono font-bold">{animalId.toUpperCase()}</span>.
                     </p>
                 </div>
-                <button onClick={onCancel} className="p-2 bg-zinc-800 rounded-full text-zinc-400 hover:text-white transition-colors">
+                <button onClick={onCancel} className="p-2 bg-c-surface-2 rounded-full text-c-text-muted hover:text-c-text transition-colors">
                     <X size={20} />
                 </button>
             </div>
@@ -121,20 +121,20 @@ export const WeanAnimalForm: React.FC<WeanAnimalFormProps> = ({
                 
                 {/* Input Fecha */}
                 <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Fecha de Destete</label>
+                    <label className="text-[10px] font-bold text-c-text-faint uppercase tracking-widest ml-1">Fecha de Destete</label>
                     <div className="relative">
-                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
-                        <button 
+                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-c-text-faint" size={18} />
+                        <button
                             type="button"
                             onClick={() => setShowCalendar(!showCalendar)}
-                            className="w-full bg-black border border-zinc-800 rounded-xl py-4 pl-12 pr-4 text-left text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition-all text-base"
+                            className="w-full bg-c-surface-2 border border-c-border rounded-xl py-4 pl-12 pr-4 text-left text-c-text focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition-all text-base"
                         >
                             {weaningDate.toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric' })}
                         </button>
                     </div>
 
                     {showCalendar && (
-                        <div className="mt-2 p-2 bg-black border border-zinc-800 rounded-xl animate-fade-in flex justify-center">
+                        <div className="mt-2 p-2 bg-c-surface-2 border border-c-border rounded-xl animate-fade-in flex justify-center">
                             <DayPicker
                                 mode="single"
                                 selected={weaningDate}
@@ -153,16 +153,16 @@ export const WeanAnimalForm: React.FC<WeanAnimalFormProps> = ({
                 {/* Input Peso */}
                 {!showCalendar && (
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Peso al Destete (Kg)</label>
+                        <label className="text-[10px] font-bold text-c-text-faint uppercase tracking-widest ml-1">Peso al Destete (Kg)</label>
                         <div className="relative">
-                            <Weight className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
-                            <input 
-                                type="number" 
+                            <Weight className="absolute left-4 top-1/2 -translate-y-1/2 text-c-text-faint" size={18} />
+                            <input
+                                type="number"
                                 step="0.1"
                                 value={weaningWeight}
                                 onChange={(e) => setWeaningWeight(e.target.value)}
                                 placeholder="Ej: 15.5"
-                                className="w-full bg-black border border-zinc-800 rounded-xl py-4 pl-12 pr-4 text-white font-mono text-xl focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition-all"
+                                className="w-full bg-c-surface-2 border border-c-border rounded-xl py-4 pl-12 pr-4 text-c-text font-mono text-xl focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition-all"
                             />
                         </div>
                     </div>
@@ -187,16 +187,16 @@ export const WeanAnimalForm: React.FC<WeanAnimalFormProps> = ({
                         </button>
 
                         <div className="relative flex py-2 items-center">
-                            <div className="flex-grow border-t border-zinc-800"></div>
-                            <span className="flex-shrink-0 mx-4 text-zinc-600 text-[10px] font-bold uppercase tracking-widest">O SI NO TIENES EL DATO</span>
-                            <div className="flex-grow border-t border-zinc-800"></div>
+                            <div className="flex-grow border-t border-c-border"></div>
+                            <span className="flex-shrink-0 mx-4 text-c-text-faint text-[10px] font-bold uppercase tracking-widest">O SI NO TIENES EL DATO</span>
+                            <div className="flex-grow border-t border-c-border"></div>
                         </div>
 
-                        <button 
-                            type="button" 
+                        <button
+                            type="button"
                             onClick={handleNoData}
                             disabled={isLoading}
-                            className="w-full bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 hover:text-white font-medium py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2 border border-zinc-800 hover:border-zinc-700 text-sm"
+                            className="w-full bg-c-surface-2 hover:bg-c-surface-2 text-c-text-muted hover:text-c-text font-medium py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2 border border-c-border hover:border-c-border-strong text-sm"
                         >
                             <FileX size={16} />
                             Declarar sin peso (Cerrar Alerta)

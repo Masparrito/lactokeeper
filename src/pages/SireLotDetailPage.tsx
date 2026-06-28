@@ -51,18 +51,18 @@ const AssignedFemaleCard = ({ animal, services, onClick, onOpenActions }: Assign
     return (
         <div 
             onClick={onClick}
-            className={`bg-zinc-900/50 border rounded-2xl p-3.5 mb-2 flex justify-between items-center transition-all active:scale-[0.99] cursor-pointer group relative overflow-hidden ${isServed ? 'border-pink-500/30 bg-pink-500/5' : 'border-zinc-800 hover:border-zinc-600'}`}
+            className={`bg-c-surface/50 border rounded-2xl p-3.5 mb-2 flex justify-between items-center transition-all active:scale-[0.99] cursor-pointer group relative overflow-hidden ${isServed ? 'border-pink-500/30 bg-pink-500/5' : 'border-c-border hover:border-c-border-strong'}`}
         >
             {/* Efecto de "Corazón Iluminado" sutil de fondo si está servida */}
             {isServed && <div className="absolute -left-4 -top-4 w-20 h-20 bg-pink-500/10 blur-2xl rounded-full pointer-events-none"></div>}
 
             <div className="flex items-center gap-3 min-w-0 relative z-10">
-                <div className={`w-10 h-10 rounded-full border flex items-center justify-center font-bold text-xs shrink-0 transition-colors ${isServed ? 'bg-black border-pink-500/50 text-pink-400' : 'bg-black border-zinc-800 text-zinc-400 group-hover:border-zinc-600'}`}>
+                <div className={`w-10 h-10 rounded-full border flex items-center justify-center font-bold text-xs shrink-0 transition-colors ${isServed ? 'bg-black border-pink-500/50 text-pink-400' : 'bg-c-surface-2 border-c-border text-c-text-muted group-hover:border-c-border-strong'}`}>
                     {isServed ? <Heart size={16} className="fill-pink-500/20" /> : animal.id.substring(0, 2)}
                 </div>
                 <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                        <p className={`font-mono font-bold text-base truncate leading-tight ${isServed ? 'text-white' : 'text-zinc-200'}`}>{animal.id}</p>
+                        <p className={`font-mono font-bold text-base truncate leading-tight ${isServed ? 'text-c-text' : 'text-c-text-strong'}`}>{animal.id}</p>
                         {/* Indicador de última fecha de servicio */}
                         {isServed && animalServices[0] && (
                              <span className="text-[9px] text-pink-400/80 flex items-center gap-0.5 bg-pink-900/20 px-1.5 py-0.5 rounded">
@@ -71,7 +71,7 @@ const AssignedFemaleCard = ({ animal, services, onClick, onOpenActions }: Assign
                              </span>
                         )}
                     </div>
-                    {formattedName && <p className="text-xs text-zinc-500 truncate mt-0.5 font-medium">{formattedName}</p>}
+                    {formattedName && <p className="text-xs text-c-text-faint truncate mt-0.5 font-medium">{formattedName}</p>}
                 </div>
             </div>
 
@@ -79,17 +79,17 @@ const AssignedFemaleCard = ({ animal, services, onClick, onOpenActions }: Assign
                 <div className="text-right">
                     {/* Estado Reproductivo (Badge Dinámico) */}
                     <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border tracking-wide ${
-                        currentStatus === 'Preñada' ? 'text-brand-green border-brand-green/30 bg-brand-green/10' :
+                        currentStatus === 'Preñada' ? 'text-c-accent border-c-accent/30 bg-c-accent/10' :
                         isServed ? 'text-pink-400 border-pink-500/40 bg-pink-500/10 shadow-[0_0_10px_rgba(236,72,153,0.1)]' :
                         currentStatus === 'En Servicio' ? 'text-blue-400 border-blue-400/30 bg-blue-400/10' :
-                        'text-zinc-500 border-zinc-700 bg-zinc-800'
+                        'text-c-text-faint border-c-border-strong bg-c-surface-2'
                     }`}>
                         {statusLabel}
                     </span>
                 </div>
                 <button 
                     onClick={(e) => { e.stopPropagation(); onOpenActions(animal); }}
-                    className="p-2 text-zinc-500 hover:text-white bg-zinc-800/50 hover:bg-zinc-700 rounded-xl transition-colors"
+                    className="p-2 text-c-text-faint hover:text-c-text bg-c-surface-2/50 hover:bg-c-surface-2 rounded-xl transition-colors"
                 >
                     <MoreHorizontal size={18} />
                 </button>
@@ -232,19 +232,19 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
 
     return (
         <>
-            <div className="w-full max-w-2xl mx-auto h-screen flex flex-col bg-black">
-                
+            <div className="w-full max-w-2xl mx-auto h-screen flex flex-col bg-c-bg">
+
                 {/* Header */}
-                <header className="flex-shrink-0 pt-8 pb-4 px-4 bg-black border-b border-zinc-800 z-20">
+                <header className="flex-shrink-0 pt-8 pb-4 px-4 bg-c-bg border-b border-c-border z-20">
                     <div className="flex items-center justify-between mb-4">
-                        <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={24} /></button>
+                        <button onClick={onBack} className="p-2 -ml-2 text-c-text-muted hover:text-c-text transition-colors"><ArrowLeft size={24} /></button>
                         <div className="text-center">
-                            <p className="text-[10px] text-brand-blue font-bold uppercase tracking-wider mb-0.5">Lote de Monta</p>
-                            <h1 className="text-lg font-bold text-white truncate max-w-[200px] leading-tight">{sireName}</h1>
+                            <p className="text-[10px] text-c-accent-sky font-bold uppercase tracking-wider mb-0.5">Lote de Monta</p>
+                            <h1 className="text-lg font-bold text-c-text truncate max-w-[200px] leading-tight">{sireName}</h1>
                         </div>
-                        <button 
-                            onClick={() => setSelectorOpen(true)} 
-                            className="p-2 -mr-2 bg-brand-blue text-white rounded-lg shadow-lg shadow-blue-900/20 active:scale-90 transition-transform"
+                        <button
+                            onClick={() => setSelectorOpen(true)}
+                            className="p-2 -mr-2 bg-c-accent-sky text-white rounded-lg shadow-lg shadow-blue-900/20 active:scale-90 transition-transform"
                             title="Añadir Hembras"
                         >
                             <Plus size={24} />
@@ -253,13 +253,13 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
 
                     {/* Buscador Integrado */}
                     <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-c-text-faint" />
                         <input
                             type="text"
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                             placeholder={`Buscar entre ${assignedFemales.length} hembras...`}
-                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:border-brand-blue outline-none transition-all placeholder-zinc-600"
+                            className="w-full bg-c-surface-2 border border-c-border rounded-xl pl-10 pr-4 py-3 text-sm text-c-text focus:border-c-accent-sky outline-none transition-all placeholder-c-text-faint"
                         />
                     </div>
                 </header>
@@ -277,10 +277,10 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
                             />
                         ))
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
+                        <div className="flex flex-col items-center justify-center h-64 text-c-text-faint">
                             <HeartHandshake size={48} className="opacity-20 mb-4" />
                             <p className="text-sm font-medium">No hay hembras asignadas.</p>
-                            <button onClick={() => setSelectorOpen(true)} className="mt-3 text-brand-blue font-bold text-xs uppercase tracking-wide hover:underline">
+                            <button onClick={() => setSelectorOpen(true)} className="mt-3 text-c-accent-sky font-bold text-xs uppercase tracking-wide hover:underline">
                                 + Asignar ahora
                             </button>
                         </div>

@@ -92,7 +92,7 @@ export const DeclareServiceModal: React.FC<DeclareServiceModalProps> = ({
                         <HeartHandshake size={24} />
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-white">Servicio Confirmado</h3>
+                        <h3 className="text-lg font-bold text-c-text">Servicio Confirmado</h3>
                         <p className="text-sm text-pink-200/80 leading-relaxed">
                             Registra una monta efectiva para <strong>{formatAnimalDisplay(animal)}</strong>. Esto actualizará su estado y las estadísticas del semental.
                         </p>
@@ -104,20 +104,20 @@ export const DeclareServiceModal: React.FC<DeclareServiceModalProps> = ({
                     
                     {/* Selector de Semental */}
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <Dna size={14} className="text-brand-blue" /> Semental / Lote
+                        <label className="text-[10px] font-bold text-c-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                            <Dna size={14} className="text-c-accent-sky" /> Semental / Lote
                         </label>
-                        
+
                         {animal.sireLotId ? (
                             // CASO A: Ya tiene lote asignado (Solo lectura visual)
-                            <div className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl p-3 flex items-center justify-between">
+                            <div className="w-full bg-c-surface-2 border border-c-border-strong rounded-xl p-3 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center text-brand-blue font-bold text-xs">
+                                    <div className="w-8 h-8 rounded-full bg-c-surface flex items-center justify-center text-c-accent-sky font-bold text-xs">
                                         P
                                     </div>
                                     <div>
-                                        <p className="text-sm font-bold text-white">{getSireName(animal.sireLotId)}</p>
-                                        <p className="text-[10px] text-zinc-500 uppercase">Lote Asignado</p>
+                                        <p className="text-sm font-bold text-c-text">{getSireName(animal.sireLotId)}</p>
+                                        <p className="text-[10px] text-c-text-faint uppercase">Lote Asignado</p>
                                     </div>
                                 </div>
                                 <CheckCircle2 size={18} className="text-green-500" />
@@ -128,7 +128,7 @@ export const DeclareServiceModal: React.FC<DeclareServiceModalProps> = ({
                                 <select
                                     value={selectedSireLotId}
                                     onChange={(e) => setSelectedSireLotId(e.target.value)}
-                                    className="w-full bg-black/40 border border-zinc-700 rounded-xl p-3 text-white appearance-none focus:border-brand-blue outline-none"
+                                    className="w-full bg-c-surface-2 border border-c-border-strong rounded-xl p-3 text-c-text appearance-none focus:border-c-accent-sky outline-none"
                                 >
                                     <option value="">Seleccionar Semental Activo...</option>
                                     {activeLots.map(lot => (
@@ -138,7 +138,7 @@ export const DeclareServiceModal: React.FC<DeclareServiceModalProps> = ({
                                     ))}
                                 </select>
                                 {/* Flecha custom */}
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500">
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-c-text-faint">
                                     ▼
                                 </div>
                             </div>
@@ -152,14 +152,14 @@ export const DeclareServiceModal: React.FC<DeclareServiceModalProps> = ({
 
                     {/* Fecha */}
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <Calendar size={14} className="text-brand-orange" /> Fecha del Servicio
+                        <label className="text-[10px] font-bold text-c-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                            <Calendar size={14} className="text-c-accent" /> Fecha del Servicio
                         </label>
-                        <input 
+                        <input
                             type="date"
                             value={serviceDate}
                             onChange={(e) => setServiceDate(e.target.value)}
-                            className="w-full bg-black/40 border border-zinc-700 rounded-xl p-3 text-white focus:border-brand-orange outline-none"
+                            className="w-full bg-c-surface-2 border border-c-border-strong rounded-xl p-3 text-c-text focus:border-c-accent outline-none"
                         />
                     </div>
 
@@ -173,7 +173,7 @@ export const DeclareServiceModal: React.FC<DeclareServiceModalProps> = ({
                 )}
 
                 <div className="flex gap-3 pt-2">
-                    <button onClick={onClose} className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold rounded-xl transition-colors">
+                    <button onClick={onClose} className="flex-1 py-3 bg-c-surface-2 hover:bg-c-surface-2 text-c-text-strong font-bold rounded-xl transition-colors">
                         Cancelar
                     </button>
                     <button 

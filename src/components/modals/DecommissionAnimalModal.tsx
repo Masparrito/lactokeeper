@@ -79,12 +79,12 @@ export const DecommissionAnimalModal: React.FC<DecommissionAnimalModalProps> = (
         onClose={onCancel}
         title={title} // Título dinámico
     >
-      <div className="space-y-4 text-white">
+      <div className="space-y-4 text-c-text">
         {/* --- INICIO: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
         <div className="text-center mb-4">
-            <p className="font-mono font-semibold text-xl text-white truncate">{animal.id.toUpperCase()}</p>
+            <p className="font-mono font-semibold text-xl text-c-text truncate">{animal.id.toUpperCase()}</p>
             {formattedName && (
-                <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+                <p className="text-sm font-normal text-c-text-strong truncate">{formattedName}</p>
             )}
         </div>
         {/* --- FIN: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
@@ -93,12 +93,12 @@ export const DecommissionAnimalModal: React.FC<DecommissionAnimalModalProps> = (
         
         {/* Date Input (Common to all reasons) */}
         <div className="animate-fade-in">
-            <label className="block text-sm font-medium text-zinc-400 mb-1">Fecha del Evento</label>
+            <label className="block text-sm font-medium text-c-text-muted mb-1">Fecha del Evento</label>
             <input
                 type="date"
                 value={date}
                 onChange={e => setDate(e.target.value)}
-                className="w-full bg-zinc-800 p-3 rounded-xl text-lg text-white"
+                className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-c-text"
                 max={new Date().toISOString().split('T')[0]}
                 required
              />
@@ -107,9 +107,9 @@ export const DecommissionAnimalModal: React.FC<DecommissionAnimalModalProps> = (
         {/* Conditional Inputs based on selected 'reason' */}
         {reason === 'Venta' && (
             <div className="space-y-4 animate-fade-in">
-                <input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} placeholder="Precio de Venta (Opcional)" className="w-full bg-zinc-800 p-3 rounded-xl text-lg text-white" />
-                <input type="text" value={buyer} onChange={e => setBuyer(e.target.value)} placeholder="Comprador (Opcional)" className="w-full bg-zinc-800 p-3 rounded-xl text-lg text-white" />
-                <select value={purpose} onChange={e => setPurpose(e.target.value as 'Cría' | 'Carne')} className="w-full bg-zinc-800 p-3 rounded-xl text-lg text-white appearance-none">
+                <input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} placeholder="Precio de Venta (Opcional)" className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-c-text" />
+                <input type="text" value={buyer} onChange={e => setBuyer(e.target.value)} placeholder="Comprador (Opcional)" className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-c-text" />
+                <select value={purpose} onChange={e => setPurpose(e.target.value as 'Cría' | 'Carne')} className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-c-text appearance-none">
                     <option value="Cría">Para Cría</option>
                     <option value="Carne">Para Carne</option>
                 </select>
@@ -117,25 +117,25 @@ export const DecommissionAnimalModal: React.FC<DecommissionAnimalModalProps> = (
         )}
         {reason === 'Muerte' && (
             <div className="animate-fade-in">
-                <textarea value={deathReason} onChange={e => setDeathReason(e.target.value)} placeholder="Causa / Descripción de la muerte..." className="w-full bg-zinc-800 p-3 rounded-xl text-lg text-white" rows={3}></textarea>
+                <textarea value={deathReason} onChange={e => setDeathReason(e.target.value)} placeholder="Causa / Descripción de la muerte..." className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-c-text" rows={3}></textarea>
             </div>
         )}
         {reason === 'Descarte' && (
             <div className="space-y-4 animate-fade-in">
-                <select value={cullReason || ''} onChange={e => setCullReason(e.target.value as Animal['cullReason'])} className="w-full bg-zinc-800 p-3 rounded-xl text-lg text-white appearance-none">
+                <select value={cullReason || ''} onChange={e => setCullReason(e.target.value as Animal['cullReason'])} className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-c-text appearance-none">
                     <option value="">Seleccione una causa...</option>
                     {cullOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
                 {cullReason === 'Sospecha de otras enfermedades' && (
-                    <input type="text" value={cullDetails} onChange={e => setCullDetails(e.target.value)} placeholder="Especificar sospecha o síntomas..." className="w-full bg-zinc-800 p-3 rounded-xl text-lg text-white" />
+                    <input type="text" value={cullDetails} onChange={e => setCullDetails(e.target.value)} placeholder="Especificar sospecha o síntomas..." className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-c-text" />
                 )}
             </div>
         )}
 
-        <p className="text-xs text-zinc-500 text-center pt-2">El animal será movido a "Referencia".</p>
+        <p className="text-xs text-c-text-faint text-center pt-2">El animal será movido a "Referencia".</p>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-brand-border">
-          <button onClick={onCancel} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg text-white">Cancelar</button>
+        <div className="flex justify-end gap-3 pt-4 border-t border-c-border">
+          <button onClick={onCancel} className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-3 font-semibold rounded-lg text-c-text">Cancelar</button>
           <button onClick={handleConfirmClick} className="px-5 py-2 bg-brand-red hover:bg-red-700 text-white font-bold rounded-lg">Confirmar Baja</button>
         </div>
       </div>

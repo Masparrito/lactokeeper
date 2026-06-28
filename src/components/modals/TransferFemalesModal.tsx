@@ -110,34 +110,34 @@ export const TransferFemalesModal: React.FC<TransferFemalesModalProps> = ({
   // --- RENDERIZADO DEL MODAL ---
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex justify-center items-center z-50 animate-fade-in p-4" onClick={onClose}>
-      <div className="bg-ios-modal-bg w-full max-w-lg rounded-2xl flex flex-col animate-slide-up max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-c-surface w-full max-w-lg rounded-2xl flex flex-col animate-slide-up max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <header className="flex-shrink-0 p-4 border-b border-brand-border">
-          <h2 className="text-xl font-semibold text-white tracking-tight">Transferir Animales</h2>
-          <p className="text-sm text-zinc-400">Desde la Temporada: {originSeason?.name || 'Cargando...'}</p>
+        <header className="flex-shrink-0 p-4 border-b border-c-border">
+          <h2 className="text-xl font-semibold text-c-text tracking-tight">Transferir Animales</h2>
+          <p className="text-sm text-c-text-muted">Desde la Temporada: {originSeason?.name || 'Cargando...'}</p>
         </header>
 
         {/* Main content area (scrollable) */}
         <main className="p-6 space-y-4 overflow-y-auto">
           {/* Section for selecting animals */}
           <div>
-            <label className="block text-sm font-medium text-zinc-400 mb-2">
+            <label className="block text-sm font-medium text-c-text-muted mb-2">
               Animales a transferir ({selectedFemaleIds.size}/{femalesData.length})
             </label>
-            <div className="max-h-48 overflow-y-auto space-y-2 p-2 bg-black/20 rounded-lg border border-zinc-700">
+            <div className="max-h-48 overflow-y-auto space-y-2 p-2 bg-c-surface-2 rounded-lg border border-c-border-strong">
               {femalesData.length > 0 ? (
                 femalesData.map(female => {
                     // --- CAMBIO: Preparar nombre formateado ---
                     const formattedName = female.name ? String(female.name).toUpperCase().trim() : '';
                     return (
-                        <div key={female.id} onClick={() => handleToggleSelection(female.id)} className="flex items-center gap-3 p-2 rounded-md hover:bg-zinc-700 cursor-pointer transition-colors">
-                            {selectedFemaleIds.has(female.id) ? <CheckSquare className="text-brand-orange flex-shrink-0" /> : <Square className="text-zinc-500 flex-shrink-0" />}
-                            
+                        <div key={female.id} onClick={() => handleToggleSelection(female.id)} className="flex items-center gap-3 p-2 rounded-md hover:bg-c-surface-2 cursor-pointer transition-colors">
+                            {selectedFemaleIds.has(female.id) ? <CheckSquare className="text-c-accent flex-shrink-0" /> : <Square className="text-c-text-faint flex-shrink-0" />}
+
                             {/* --- INICIO: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
                             <div className="min-w-0">
-                                <p className="font-mono font-semibold text-base text-white truncate">{female.id.toUpperCase()}</p>
+                                <p className="font-mono font-semibold text-base text-c-text truncate">{female.id.toUpperCase()}</p>
                                 {formattedName && (
-                                    <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+                                    <p className="text-sm font-normal text-c-text-strong truncate">{formattedName}</p>
                                 )}
                             </div>
                             {/* --- FIN: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
@@ -145,18 +145,18 @@ export const TransferFemalesModal: React.FC<TransferFemalesModalProps> = ({
                     );
                 })
               ) : (
-                <p className="text-sm text-zinc-500 text-center py-2">No hay animales para transferir.</p>
+                <p className="text-sm text-c-text-faint text-center py-2">No hay animales para transferir.</p>
               )}
             </div>
           </div>
           {/* Section for selecting destination SEASON */}
           <div>
-            <label htmlFor="destination" className="block text-sm font-medium text-zinc-400 mb-1">Transferir a la Temporada:</label>
+            <label htmlFor="destination" className="block text-sm font-medium text-c-text-muted mb-1">Transferir a la Temporada:</label>
             <select
               id="destination"
               value={destinationSeasonId}
               onChange={e => setDestinationSeasonId(e.target.value)}
-              className="w-full bg-zinc-800 p-3 rounded-xl text-white appearance-none"
+              className="w-full bg-c-surface-2 p-3 rounded-xl text-c-text appearance-none"
             >
               <option value="">Seleccionar temporada de destino...</option>
               {destinationSeasons.map(season =>
@@ -176,12 +176,12 @@ export const TransferFemalesModal: React.FC<TransferFemalesModalProps> = ({
         </main>
 
         {/* Footer with action buttons */}
-        <footer className="flex-shrink-0 flex justify-end gap-4 p-4 border-t border-brand-border">
-          <button onClick={onClose} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg text-white">Cancelar</button>
+        <footer className="flex-shrink-0 flex justify-end gap-4 p-4 border-t border-c-border">
+          <button onClick={onClose} className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-3 font-semibold rounded-lg text-c-text">Cancelar</button>
           <button
             onClick={handleConfirm}
             disabled={isLoading || selectedFemaleIds.size === 0 || !destinationSeasonId}
-            className="px-5 py-2 bg-brand-blue hover:bg-blue-700 text-white font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-5 py-2 bg-c-accent-sky hover:bg-c-accent-sky text-white font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Transfiriendo...' : `Transferir ${selectedFemaleIds.size} Animal(es)`}
           </button>

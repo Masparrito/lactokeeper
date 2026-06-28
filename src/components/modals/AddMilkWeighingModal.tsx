@@ -110,9 +110,9 @@ export const AddMilkWeighingModal: React.FC<AddMilkWeighingModalProps> = ({
         <div className="space-y-4">
           {/* --- CAMBIO: Mostrar ID y Nombre aquí --- */}
           <div className="text-center">
-            <p className="font-mono font-semibold text-xl text-white truncate">{animal.id.toUpperCase()}</p>
+            <p className="font-mono font-semibold text-xl text-c-text truncate">{animal.id.toUpperCase()}</p>
             {formattedName && (
-                <p className="text-sm font-normal text-zinc-300 truncate">{formattedName}</p>
+                <p className="text-sm font-normal text-c-text-strong truncate">{formattedName}</p>
             )}
           </div>
 
@@ -121,35 +121,35 @@ export const AddMilkWeighingModal: React.FC<AddMilkWeighingModalProps> = ({
               {/* Date and DEL display */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="weighingDateMilk" className="block text-sm font-medium text-zinc-400 mb-1">Fecha</label>
-                  <input id="weighingDateMilk" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg text-white" required />
+                  <label htmlFor="weighingDateMilk" className="block text-sm font-medium text-c-text-muted mb-1">Fecha</label>
+                  <input id="weighingDateMilk" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-c-text" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-zinc-400 mb-1">Días en Leche (DEL)</label>
-                  <div className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg text-center font-bold text-white">{del ?? 'N/A'}</div>
+                  <label className="block text-sm font-medium text-c-text-muted mb-1">Días en Leche (DEL)</label>
+                  <div className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-center font-bold text-c-text">{del ?? 'N/A'}</div>
                 </div>
               </div>
 
               {/* Milk Production Input */}
               <div>
-                <label htmlFor="weighingKgMilk" className="block text-sm font-medium text-zinc-400 mb-1">Producción (Kg)</label>
-                <input id="weighingKgMilk" type="number" step="0.1" value={kg} onChange={(e) => setKg(e.target.value)} placeholder="Ej: 3.5" autoFocus className="w-full bg-zinc-800/80 p-3 rounded-xl text-lg text-white" required />
+                <label htmlFor="weighingKgMilk" className="block text-sm font-medium text-c-text-muted mb-1">Producción (Kg)</label>
+                <input id="weighingKgMilk" type="number" step="0.1" value={kg} onChange={(e) => setKg(e.target.value)} placeholder="Ej: 3.5" autoFocus className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-c-text" required />
               </div>
 
               {message && (
-                <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/20 text-brand-green' : 'bg-red-500/20 text-brand-red'}`}>
+                <div className={`flex items-center space-x-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-c-accent/15 text-c-accent' : 'bg-red-500/20 text-brand-red'}`}>
                   {message.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
                   <span>{message.text}</span>
                 </div>
               )}
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-brand-border">
-                <button type="button" onClick={onCancel} className="px-5 py-2 bg-zinc-600 hover:bg-zinc-500 font-semibold rounded-lg text-white">Cancelar</button>
-                <button type="submit" disabled={isLoading} className="px-5 py-2 bg-brand-green hover:bg-green-600 text-white font-bold rounded-lg disabled:opacity-50 flex items-center gap-2"><Save size={18}/> Guardar Pesaje</button>
+              <div className="flex justify-end gap-3 pt-4 border-t border-c-border">
+                <button type="button" onClick={onCancel} className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-2 font-semibold rounded-lg text-c-text">Cancelar</button>
+                <button type="submit" disabled={isLoading} className="px-5 py-2 bg-c-accent hover:bg-c-accent text-white font-bold rounded-lg disabled:opacity-50 flex items-center gap-2"><Save size={18}/> Guardar Pesaje</button>
               </div>
 
-              <div className="space-y-2 pt-4 border-t border-brand-border">
-                  <h4 className="text-sm font-semibold text-zinc-400">Otras Acciones de Lactancia</h4>
+              <div className="space-y-2 pt-4 border-t border-c-border">
+                  <h4 className="text-sm font-semibold text-c-text-muted">Otras Acciones de Lactancia</h4>
                   <div className="flex flex-col sm:flex-row gap-2">
                       <button
                           type="button"
@@ -175,11 +175,11 @@ export const AddMilkWeighingModal: React.FC<AddMilkWeighingModalProps> = ({
             // --- CAMBIO: Vista de fallback actualizada ---
             <div className="text-center space-y-4">
               <AlertTriangle className="mx-auto h-12 w-12 text-amber-400" />
-              <h3 className="text-lg font-medium text-white">Animal sin Parto Activo</h3>
-              <p className="text-sm text-zinc-400">
+              <h3 className="text-lg font-medium text-c-text">Animal sin Parto Activo</h3>
+              <p className="text-sm text-c-text-muted">
                 Para registrar un pesaje o gestionar el secado, debe tener un parto activo.
               </p>
-              <button onClick={() => setParturitionModalOpen(true)} className="w-full flex items-center justify-center gap-2 bg-brand-orange hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-xl transition-colors text-base">
+              <button onClick={() => setParturitionModalOpen(true)} className="w-full flex items-center justify-center gap-2 bg-c-accent hover:bg-c-accent text-white font-bold py-3 px-4 rounded-xl transition-colors text-base">
                 <Baby size={18} /> Declarar Parto
               </button>
             </div>

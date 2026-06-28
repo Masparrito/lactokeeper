@@ -87,31 +87,31 @@ export const QuickActionAnimalSelector = ({ isOpen, onClose, actionType, onAnima
     return (
         // Estructura Mobile First (Bottom Sheet)
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-0 sm:p-4">
-            
-            <div className="bg-[#121214] border-t sm:border border-zinc-800 w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl h-[85vh] sm:h-[600px] flex flex-col shadow-2xl transition-all">
-                
+
+            <div className="bg-c-surface border-t sm:border border-c-border w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl h-[85vh] sm:h-[600px] flex flex-col shadow-2xl transition-all">
+
                 {/* Header */}
-                <div className="p-4 border-b border-zinc-800 flex justify-between items-center shrink-0">
+                <div className="p-4 border-b border-c-border flex justify-between items-center shrink-0">
                     <div>
-                        <h2 className="text-lg font-bold text-white">{getTitle()}</h2>
-                        <p className="text-xs text-zinc-400">Selecciona el animal ({filteredAnimals.length} disponibles)</p>
+                        <h2 className="text-lg font-bold text-c-text">{getTitle()}</h2>
+                        <p className="text-xs text-c-text-muted">Selecciona el animal ({filteredAnimals.length} disponibles)</p>
                     </div>
-                    <button onClick={onClose} className="p-2 bg-zinc-800 rounded-full text-zinc-400 hover:text-white transition-colors">
+                    <button onClick={onClose} className="p-2 bg-c-surface-2 rounded-full text-c-text-muted hover:text-c-text transition-colors">
                         <X size={20} />
                     </button>
                 </div>
 
                 {/* Search Bar Sticky */}
-                <div className="p-4 pb-2 shrink-0 bg-[#121214]">
+                <div className="p-4 pb-2 shrink-0 bg-c-surface">
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
-                        <input 
-                            type="text" 
-                            placeholder="Buscar ID o Nombre..." 
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-c-text-faint" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Buscar ID o Nombre..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             autoFocus
-                            className="w-full bg-black border border-zinc-800 rounded-xl py-3 pl-10 pr-4 text-white focus:border-brand-blue focus:ring-1 focus:ring-brand-blue outline-none transition-all placeholder:text-zinc-600 text-base"
+                            className="w-full bg-c-surface-2 border border-c-border rounded-xl py-3 pl-10 pr-4 text-c-text focus:border-c-accent-sky focus:ring-1 focus:ring-c-accent-sky outline-none transition-all placeholder:text-c-text-faint text-base"
                         />
                     </div>
                 </div>
@@ -122,22 +122,22 @@ export const QuickActionAnimalSelector = ({ isOpen, onClose, actionType, onAnima
                         <button 
                             key={animal.id}
                             onClick={() => onAnimalSelect(animal)}
-                            className="w-full flex items-center justify-between p-3.5 bg-zinc-900/40 border border-zinc-800/50 rounded-xl hover:bg-zinc-800 hover:border-zinc-700 active:scale-[0.98] transition-all group text-left"
+                            className="w-full flex items-center justify-between p-3.5 bg-c-surface/40 border border-c-border/50 rounded-xl hover:bg-c-surface-2 hover:border-c-border-strong active:scale-[0.98] transition-all group text-left"
                         >
                             <div>
-                                <span className="font-mono font-bold text-white text-base block">{animal.id}</span>
-                                <span className="text-xs text-zinc-500 font-medium flex gap-2">
+                                <span className="font-mono font-bold text-c-text text-base block">{animal.id}</span>
+                                <span className="text-xs text-c-text-faint font-medium flex gap-2">
                                     <span>{animal.name || 'Sin Nombre'}</span>
-                                    <span className="text-zinc-700">•</span>
-                                    <span className="text-brand-blue">{animal.lifecycleStage}</span>
+                                    <span className="text-c-text-faint">•</span>
+                                    <span className="text-c-accent-sky">{animal.lifecycleStage}</span>
                                 </span>
                             </div>
-                            <ChevronRight className="text-zinc-600 group-hover:text-white transition-colors" size={20} />
+                            <ChevronRight className="text-c-text-faint group-hover:text-c-text transition-colors" size={20} />
                         </button>
                     ))}
                     
                     {filteredAnimals.length === 0 && (
-                        <div className="flex flex-col items-center justify-center py-12 text-zinc-500 gap-2">
+                        <div className="flex flex-col items-center justify-center py-12 text-c-text-faint gap-2">
                             <Search size={32} className="opacity-20" />
                             <p className="text-sm font-medium">No hay animales aptos.</p>
                             <p className="text-xs opacity-60 text-center px-4">

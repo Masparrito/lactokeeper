@@ -95,20 +95,20 @@ export const DeclareServiceWeightModal = ({ isOpen, onClose, animal, currentWeig
     return (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-0 sm:p-4">
             
-            <div className="bg-[#121214] border-t sm:border border-zinc-800 w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-6 space-y-5 shadow-2xl transform transition-all pb-10 sm:pb-6 relative">
-                
+            <div className="bg-c-surface border-t sm:border border-c-border w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-6 space-y-5 shadow-2xl transform transition-all pb-10 sm:pb-6 relative">
+
                 {/* Header */}
                 <div className="flex justify-between items-start">
                     <div>
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <h2 className="text-xl font-bold text-c-text flex items-center gap-2">
                             <CheckCircle2 className="text-pink-500" />
                             Habilitar para Servicio
                         </h2>
-                        <p className="text-sm text-zinc-400 mt-1">
-                            Confirma que <span className="text-white font-mono font-bold">{animal.id}</span> está lista para reproducción.
+                        <p className="text-sm text-c-text-muted mt-1">
+                            Confirma que <span className="text-c-text font-mono font-bold">{animal.id}</span> está lista para reproducción.
                         </p>
                     </div>
-                    <button onClick={onClose} className="p-2 bg-zinc-800 rounded-full text-zinc-400 hover:text-white transition-colors">
+                    <button onClick={onClose} className="p-2 bg-c-surface-2 rounded-full text-c-text-muted hover:text-c-text transition-colors">
                         <X size={20} />
                     </button>
                 </div>
@@ -125,13 +125,13 @@ export const DeclareServiceWeightModal = ({ isOpen, onClose, animal, currentWeig
                     
                     {/* Input Fecha (Botón) */}
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Fecha del Evento</label>
+                        <label className="text-[10px] font-bold text-c-text-faint uppercase tracking-widest ml-1">Fecha del Evento</label>
                         <div className="relative">
-                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
-                            <button 
+                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-c-text-faint" size={18} />
+                            <button
                                 type="button"
                                 onClick={() => setIsDatePickerOpen(true)}
-                                className="w-full bg-black border border-zinc-800 rounded-xl py-4 pl-12 pr-4 text-left text-white focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none transition-all text-base"
+                                className="w-full bg-c-surface-2 border border-c-border rounded-xl py-4 pl-12 pr-4 text-left text-c-text focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none transition-all text-base"
                             >
                                 {new Date(date + 'T00:00:00').toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric' })}
                             </button>
@@ -145,16 +145,16 @@ export const DeclareServiceWeightModal = ({ isOpen, onClose, animal, currentWeig
 
                     {/* Input Peso */}
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Peso Alcanzado (Kg)</label>
+                        <label className="text-[10px] font-bold text-c-text-faint uppercase tracking-widest ml-1">Peso Alcanzado (Kg)</label>
                         <div className="relative">
-                            <Weight className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
-                            <input 
-                                type="number" 
+                            <Weight className="absolute left-4 top-1/2 -translate-y-1/2 text-c-text-faint" size={18} />
+                            <input
+                                type="number"
                                 value={weight}
                                 onChange={(e) => setWeight(e.target.value)}
                                 step="0.1"
                                 placeholder="Ej: 30.5"
-                                className="w-full bg-black border border-zinc-800 rounded-xl py-4 pl-12 pr-4 text-white font-mono text-xl focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none transition-all"
+                                className="w-full bg-c-surface-2 border border-c-border rounded-xl py-4 pl-12 pr-4 text-c-text font-mono text-xl focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none transition-all"
                             />
                         </div>
                     </div>
@@ -176,16 +176,16 @@ export const DeclareServiceWeightModal = ({ isOpen, onClose, animal, currentWeig
                         </button>
 
                         <div className="relative flex py-2 items-center">
-                            <div className="flex-grow border-t border-zinc-800"></div>
-                            <span className="flex-shrink-0 mx-4 text-zinc-600 text-[10px] font-bold uppercase tracking-widest">O SI NO TIENES EL DATO</span>
-                            <div className="flex-grow border-t border-zinc-800"></div>
+                            <div className="flex-grow border-t border-c-border"></div>
+                            <span className="flex-shrink-0 mx-4 text-c-text-faint text-[10px] font-bold uppercase tracking-widest">O SI NO TIENES EL DATO</span>
+                            <div className="flex-grow border-t border-c-border"></div>
                         </div>
 
-                        <button 
+                        <button
                             type="button"
                             onClick={handleNoData}
                             disabled={isSubmitting}
-                            className="w-full bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 hover:text-white font-medium py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2 border border-zinc-800 hover:border-zinc-700 text-sm"
+                            className="w-full bg-c-surface-2 hover:bg-c-surface-2 text-c-text-muted hover:text-c-text font-medium py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2 border border-c-border hover:border-c-border-strong text-sm"
                         >
                             <FileX size={16} />
                             Habilitar sin peso (Cerrar Alerta)
@@ -197,7 +197,7 @@ export const DeclareServiceWeightModal = ({ isOpen, onClose, animal, currentWeig
             {/* --- SUB-MODAL CALENDARIO --- */}
             <Modal isOpen={isDatePickerOpen} onClose={() => setIsDatePickerOpen(false)} title="Seleccionar Fecha">
                 <style>{calendarCss}</style>
-                <div className="flex justify-center p-4 bg-black rounded-xl">
+                <div className="flex justify-center p-4 bg-c-surface-2 rounded-xl">
                     <DayPicker
                         mode="single"
                         selected={new Date(date + 'T00:00:00')}

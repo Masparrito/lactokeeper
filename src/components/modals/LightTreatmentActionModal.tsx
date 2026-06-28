@@ -100,15 +100,15 @@ export const LightTreatmentActionModal: React.FC<LightTreatmentActionModalProps>
     const renderHeader = () => {
         if (isLateStart) {
             return (
-                <div className="p-4 rounded-xl border border-orange-500/30 bg-orange-500/10 flex items-start gap-4">
-                    <div className="p-3 rounded-full bg-orange-500/20 text-orange-500">
+                <div className="p-4 rounded-xl border border-c-accent/30 bg-c-accent/10 flex items-start gap-4">
+                    <div className="p-3 rounded-full bg-c-accent/20 text-c-accent">
                         <AlertTriangle size={32} />
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-orange-400">
+                        <h3 className="text-lg font-bold text-c-accent">
                             Confirmar Inicio Pasado
                         </h3>
-                        <p className="text-sm text-zinc-300 mt-1 leading-relaxed">
+                        <p className="text-sm text-c-text-strong mt-1 leading-relaxed">
                             El tratamiento estaba programado para el <strong>{new Date(selectedDate).toLocaleDateString('es-VE', {day: 'numeric', month: 'long'})}</strong>. 
                             <br/>Confirma abajo si iniciaste en esa fecha.
                         </p>
@@ -123,10 +123,10 @@ export const LightTreatmentActionModal: React.FC<LightTreatmentActionModalProps>
                     {isStart ? <Sun size={32} /> : <Moon size={32} />}
                 </div>
                 <div>
-                    <h3 className="text-lg font-bold text-white">
+                    <h3 className="text-lg font-bold text-c-text">
                         {isStart ? 'Encender Luces' : 'Apagar Sistema'}
                     </h3>
-                    <p className="text-sm text-zinc-400 mt-1 leading-relaxed">
+                    <p className="text-sm text-c-text-muted mt-1 leading-relaxed">
                         {isStart 
                             ? `Es hora de iniciar el tratamiento para "${season.name}". El protocolo indica 4 horas extra al atardecer.`
                             : `Se han cumplido los días de tratamiento para "${season.name}". Es momento de retirar la luz artificial.`
@@ -149,24 +149,24 @@ export const LightTreatmentActionModal: React.FC<LightTreatmentActionModalProps>
                 {renderHeader()}
 
                 {/* 2. Selector de Fecha Unificado (Reemplaza las cajas estáticas) */}
-                <div className="bg-[#27272a] p-4 rounded-xl border border-zinc-700">
-                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">
+                <div className="bg-c-surface-2 p-4 rounded-xl border border-c-border-strong">
+                    <label className="block text-xs font-bold text-c-text-faint uppercase tracking-wider mb-2">
                         {isStart ? 'Fecha de Inicio Real' : 'Fecha de Finalización'}
                     </label>
-                    
+
                     <div className="relative flex items-center">
-                        <div className="absolute left-0 pl-3 pointer-events-none text-zinc-400">
+                        <div className="absolute left-0 pl-3 pointer-events-none text-c-text-muted">
                             <Calendar size={20} />
                         </div>
-                        <input 
-                            type="date" 
+                        <input
+                            type="date"
                             value={selectedDate}
                             onChange={(e) => setSelectedDate(e.target.value)}
-                            className="w-full bg-zinc-800 text-white font-medium border border-zinc-600 rounded-lg py-3 pl-10 pr-4 focus:ring-2 focus:ring-brand-orange focus:border-transparent outline-none transition-all cursor-pointer"
+                            className="w-full bg-c-surface-2 text-c-text font-medium border border-c-border-strong rounded-lg py-3 pl-10 pr-4 focus:ring-2 focus:ring-c-accent focus:border-transparent outline-none transition-all cursor-pointer"
                             style={{ colorScheme: 'dark' }} // Truco para que el calendario nativo sea oscuro
                         />
                     </div>
-                    <p className="text-xs text-zinc-500 mt-2">
+                    <p className="text-xs text-c-text-faint mt-2">
                         {isLateStart 
                             ? 'Puedes corregir la fecha si iniciaste otro día.' 
                             : 'Verifica la fecha antes de confirmar.'}
@@ -179,9 +179,9 @@ export const LightTreatmentActionModal: React.FC<LightTreatmentActionModalProps>
                         onClick={handleConfirm}
                         disabled={isLoading || !selectedDate}
                         className={`w-full py-4 rounded-xl font-bold text-black shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 ${
-                            isStart 
-                                ? 'bg-brand-orange hover:bg-orange-500 shadow-orange-900/20' 
-                                : 'bg-brand-blue hover:bg-blue-500 text-white shadow-blue-900/20'
+                            isStart
+                                ? 'bg-c-accent hover:bg-c-accent shadow-orange-900/20'
+                                : 'bg-c-accent-sky hover:bg-c-accent-sky text-white shadow-blue-900/20'
                         }`}
                     >
                         {isLoading ? (
@@ -200,7 +200,7 @@ export const LightTreatmentActionModal: React.FC<LightTreatmentActionModalProps>
 
                     <button 
                         onClick={onClose}
-                        className="w-full py-3 bg-transparent hover:bg-zinc-800 text-zinc-400 font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
+                        className="w-full py-3 bg-transparent hover:bg-c-surface-2 text-c-text-muted font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
                     >
                         Cancelar / Reprogramar después
                     </button>
