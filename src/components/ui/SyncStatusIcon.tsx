@@ -1,6 +1,7 @@
 // src/components/ui/SyncStatusIcon.tsx
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Cloud, CloudCog, CloudOff, RefreshCw, CheckCircle2, UploadCloud, X } from 'lucide-react';
 import { SyncStatus, useData } from '../../context/DataContext';
 
@@ -47,7 +48,7 @@ export const SyncStatusIcon: React.FC<SyncStatusIconProps> = ({ status }) => {
         )}
       </button>
 
-      {open && (
+      {open && createPortal(
         <div className="fixed inset-0 z-[120] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center animate-fade-in" onClick={() => setOpen(false)}>
           <div className="w-full max-w-sm bg-c-surface rounded-t-2xl sm:rounded-2xl shadow-2xl m-0 sm:m-4 p-5 animate-slide-up" onClick={(e) => e.stopPropagation()} style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1.25rem)' }}>
             <div className="flex items-center justify-between mb-4">
@@ -93,7 +94,8 @@ export const SyncStatusIcon: React.FC<SyncStatusIconProps> = ({ status }) => {
               {effective === 'syncing' ? 'Sincronizando…' : 'Sincronizar ahora'}
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
