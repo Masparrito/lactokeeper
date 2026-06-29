@@ -5,6 +5,7 @@ import { getAnimalZootecnicCategory } from '../../../utils/calculations';
 import { getCleanId } from '../../../utils/formatting';
 import { FamachaScore, FamachaAccion } from '../../../db/local';
 import { calcularAccion, tratadoYNoMejora } from '../../../utils/famachaLogic';
+import { useToastUndo } from '../../../context/ToastUndoContext';
 
 const getDispositivo = (): string => {
     let d = localStorage.getItem('ganaderoOS_dispositivo');
@@ -32,7 +33,8 @@ const accionText: Record<FamachaAccion, { label: string; cls: string }> = {
 };
 
 export function FamachaCapturePage() {
-    const { animals, famachaRevs, products, parturitions, appConfig, addFamachaRev, addAnimal } = useData();
+    const { animals, famachaRevs, products, parturitions, appConfig, addFamachaRev, deleteFamachaRev, addAnimal } = useData();
+    const { showUndo } = useToastUndo();
 
     const today = new Date().toISOString().split('T')[0];
     const [fecha, setFecha] = useState<string>(today);
@@ -67,10 +69,18 @@ export function FamachaCapturePage() {
 
     const handleScore = async (animalId: string, arete: string, score: FamachaScore) => {
         setSavingId(animalId);
+        // Estado previo de la revisión (para "Deshacer").
+        const prevRev = famachaRevs.find(r => r.animalId === animalId && r.fecha === fecha);
         try {
             const accion = calcularAccion(famachaRevs, animalId, fecha, score);
             const dosis = accion === '+' || accion === '+ separar';
-            await addFamachaRev({ animalId, arete, fecha, score, accion, dosis, producto: dosis ? productoDelDia : '', dispositivo: getDispositivo() });
+            const { revId } = await addFamachaRev({ animalId, arete, fecha, score, accion, dosis, producto: dosis ? productoDelDia : '', dispositivo: getDispositivo() });
+            showUndo(`Famacha de ${arete}: ${score}`, () => {
+                if (prevRev) {
+                    return addFamachaRev({ animalId: prevRev.animalId, arete: prevRev.arete, fecha: prevRev.fecha, score: prevRev.score, accion: prevRev.accion, dosis: prevRev.dosis, producto: prevRev.producto, dispositivo: prevRev.dispositivo }).then(() => {});
+                }
+                return deleteFamachaRev(revId);
+            });
         } catch (e) {
             console.error('Error al guardar revisión Famacha:', e);
         } finally {

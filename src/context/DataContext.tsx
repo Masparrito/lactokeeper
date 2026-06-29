@@ -85,6 +85,7 @@ interface IDataContext {
   deletePlanActivity: (activityId: string) => Promise<void>;
   addHealthEvent: (eventData: Omit<HealthEvent, 'id' | 'userId' | '_synced'>) => Promise<void>;
   addFamachaRev: (revData: Omit<FamachaRev, 'id' | 'userId' | '_synced'>) => Promise<{ revId: string }>;
+  deleteFamachaRev: (revId: string) => Promise<void>;
 
   deleteEvent: (eventId: string) => Promise<void>;
   updateEventNotes: (eventId: string, notes: string) => Promise<void>;
@@ -1345,6 +1346,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { revId };
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
+    const deleteFamachaRev = useCallback(async (revId: string) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        await localDb.famachaRevs.delete(revId);
+        await fetchDataFromLocalDb();
+        await recordDeletions([{ collection: "famachaRevs", id: revId }]);
+    }, [currentUser, recordDeletions, fetchDataFromLocalDb]);
+
     const deleteEvent = useCallback(async (eventId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
 
@@ -1489,7 +1498,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addParturition, addFather,
         addProduct, updateProduct, deleteProduct, addHealthPlanWithActivities, updateHealthPlan, deleteHealthPlan,
         addPlanActivity, updatePlanActivity, deletePlanActivity, addHealthEvent,
-        addFamachaRev,
+        addFamachaRev, deleteFamachaRev,
 
         deleteEvent,
         updateEventNotes,
@@ -1513,7 +1522,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addParturition, addFather,
         addProduct, updateProduct, deleteProduct, addHealthPlanWithActivities, updateHealthPlan, deleteHealthPlan,
         addPlanActivity, updatePlanActivity, deletePlanActivity, addHealthEvent,
-        addFamachaRev,
+        addFamachaRev, deleteFamachaRev,
 
         deleteEvent,
         updateEventNotes,
