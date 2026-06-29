@@ -3,6 +3,7 @@ import { AlertTriangle, Loader2, Calendar, Weight, Award, FileX, X } from 'lucid
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { es } from 'date-fns/locale';
+import { dayPickerCss } from '../input/dayPickerTheme';
 
 interface WeanAnimalFormProps {
   isOpen: boolean;
@@ -14,10 +15,7 @@ interface WeanAnimalFormProps {
   defaultWeight?: number;
 }
 
-const calendarCss = `
-  .rdp { --rdp-accent-color: #EAB308; --rdp-background-color: transparent; --rdp-accent-color-dark: #EAB308; --rdp-background-color-dark: transparent; --rdp-outline: 2px solid var(--rdp-accent-color); --rdp-border-radius: 12px; color: #FFF; margin: 0 auto; }
-  .rdp-caption_label { color: #FFF; font-weight: bold; } .rdp-nav_button { color: #EAB308; } .rdp-head_cell { color: #8e8e93; } .rdp-day { color: #e4e4e7; } .rdp-day_today { font-weight: bold; color: #EAB308; } .rdp-day_selected { background-color: var(--rdp-accent-color); color: #000; font-weight: bold; }
-`;
+const calendarCss = dayPickerCss;
 
 export const WeanAnimalForm: React.FC<WeanAnimalFormProps> = ({ 
   isOpen,

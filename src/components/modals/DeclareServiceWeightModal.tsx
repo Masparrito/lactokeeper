@@ -6,6 +6,7 @@ import { Modal } from '../ui/Modal';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { es } from 'date-fns/locale';
+import { dayPickerCss } from '../input/dayPickerTheme';
 
 interface DeclareServiceWeightModalProps {
     isOpen: boolean;
@@ -15,10 +16,7 @@ interface DeclareServiceWeightModalProps {
     suggestedDate?: string;
 }
 
-const calendarCss = `
-  .rdp { --rdp-accent-color: #DB2777; --rdp-background-color: transparent; --rdp-accent-color-dark: #DB2777; --rdp-background-color-dark: transparent; --rdp-outline: 2px solid var(--rdp-accent-color); --rdp-border-radius: 12px; color: #FFF; margin: 0 auto; }
-  .rdp-caption_label { color: #FFF; font-weight: bold; } .rdp-nav_button { color: #DB2777; } .rdp-head_cell { color: #8e8e93; } .rdp-day { color: #e4e4e7; } .rdp-day_today { font-weight: bold; color: #DB2777; } .rdp-day_selected { background-color: var(--rdp-accent-color); color: #fff; font-weight: bold; }
-`;
+const calendarCss = dayPickerCss;
 
 export const DeclareServiceWeightModal = ({ isOpen, onClose, animal, currentWeight, suggestedDate }: DeclareServiceWeightModalProps) => {
     const { updateAnimal, addEvent } = useData();

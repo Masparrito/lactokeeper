@@ -9,6 +9,7 @@ import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { es } from 'date-fns/locale';
 import { formatAnimalDisplay } from '../../utils/formatting';
+import { dayPickerCss } from '../input/dayPickerTheme';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -26,23 +27,6 @@ const parturitionTypes = [
 ];
 const MIN_DAYS_BETWEEN_PARTURITIONS = 140;
 const MAX_BIRTH_WEIGHT_KG = 7.0;
-
-const calendarCss = `
-  .rdp {
-    --rdp-cell-size: 40px; --rdp-accent-color: #EC4899; --rdp-background-color: transparent;
-    --rdp-accent-color-dark: #EC4899; --rdp-background-color-dark: transparent;
-    --rdp-outline: 2px solid var(--rdp-accent-color); --rdp-border-radius: 12px; color: #FFF; margin: 1em auto;
-  }
-  .rdp-caption_label { color: #FFF; font-weight: bold;}
-  .rdp-nav_button { color: #EC4899; }
-  .rdp-head_cell { color: #8e8e93; font-size: 0.8em; }
-  .rdp-day { color: #FFF;}
-  .rdp-day_selected { background-color: var(--rdp-accent-color); color: #fff; font-weight: bold; }
-  .rdp-day_today { font-weight: bold; color: #EC4899; }
-  .rdp-day_disabled { color: #505054; }
-  .rdp-day_outside { color: #505054; }
-   .rdp-dropdown { background-color: #333; border: 1px solid #555; color: #FFF; padding: 4px 8px; border-radius: 6px; }
-`;
 
 interface ParturitionModalProps {
     isOpen: boolean;
@@ -383,7 +367,7 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
             {/* --- MODALES AUXILIARES --- */}
 
             <Modal isOpen={isDatePickerOpen} onClose={() => setDatePickerOpen(false)} title="Seleccionar Fecha">
-                <style>{calendarCss}</style>
+                <style>{dayPickerCss}</style>
                 <div className="flex justify-center p-4">
                     <DayPicker
                         mode="single"

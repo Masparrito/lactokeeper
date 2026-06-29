@@ -5,6 +5,7 @@ import { es } from 'date-fns/locale';
 import { X, Calendar, Droplets, Save, Loader2, AlertCircle } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { Animal } from '../../db/local';
+import { dayPickerCss } from '../input/dayPickerTheme';
 
 interface DeclareDryOffModalProps {
     isOpen: boolean;
@@ -12,10 +13,7 @@ interface DeclareDryOffModalProps {
     animal: Animal;
 }
 
-const calendarCss = `
-  .rdp { --rdp-accent-color: #06B6D4; --rdp-background-color: transparent; --rdp-accent-color-dark: #06B6D4; --rdp-background-color-dark: transparent; --rdp-outline: 2px solid var(--rdp-accent-color); --rdp-border-radius: 12px; color: #FFF; margin: 0 auto; }
-  .rdp-caption_label { color: #FFF; font-weight: bold; } .rdp-nav_button { color: #06B6D4; } .rdp-head_cell { color: #8e8e93; } .rdp-day { color: #e4e4e7; } .rdp-day_today { font-weight: bold; color: #06B6D4; } .rdp-day_selected { background-color: var(--rdp-accent-color); color: #fff; font-weight: bold; }
-`;
+const calendarCss = dayPickerCss;
 
 export const DeclareDryOffModal = ({ isOpen, onClose, animal }: DeclareDryOffModalProps) => {
     const { updateAnimal, addEvent } = useData();

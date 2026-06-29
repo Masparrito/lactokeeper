@@ -791,7 +791,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const addParturition = useCallback(async (data: any) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
-        const upperCaseMotherId = data.motherId.toUpperCase();
+        // El modal envía la madre como `goatId`; aceptamos también `motherId` por compatibilidad.
+        const rawMotherId = data.goatId ?? data.motherId;
+        if (!rawMotherId) throw new Error("Falta el ID de la madre para registrar el parto.");
+        const upperCaseMotherId = String(rawMotherId).toUpperCase();
         const lactationStatus: Parturition['status'] = (data.parturitionOutcome === 'Aborto' && !data.inducedLactation) ? 'finalizada' : 'activa';
         const newParturitionId = uuidv4();
         
