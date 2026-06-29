@@ -313,9 +313,11 @@ export default function PhysicalLotsView({ navigateTo }: { navigateTo: (page: Pa
         return parentLots.sort((a, b) => a.name.localeCompare(b.name));
     }, [activeAnimals, lots]);
 
-    // Animales activos sin lote asignado (location vacío).
+    // Animales activos sin lote asignado. Usamos EXACTAMENTE el mismo criterio que
+    // el detalle del lote (location vacío O igual al literal 'Sin Asignar'), para
+    // que el conteo coincida con el listado que se abre.
     const unassignedCount = useMemo(
-        () => activeAnimals.filter(a => !a.location).length,
+        () => activeAnimals.filter(a => (a.location || 'Sin Asignar') === 'Sin Asignar').length,
         [activeAnimals]
     );
 
