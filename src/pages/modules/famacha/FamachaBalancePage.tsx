@@ -226,7 +226,7 @@ export function FamachaBalancePage() {
                 </label>
                 {importInfo && <p className="text-xs text-c-text-muted mt-2 text-center">{importInfo}</p>}
                 <p className="text-[11px] text-c-text-faint mt-2 text-center">
-                    Por defecto se compara con el respaldo cargado el {FAMACHA_INVENTORY_SNAPSHOT.length === 92 ? '25/06/2026' : 'inicial'}.
+                    Por defecto se compara con la evaluación Famacha del 27/06/2026 ({FAMACHA_INVENTORY_SNAPSHOT.length} animales).
                 </p>
             </div>
         </div>
