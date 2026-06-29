@@ -8,6 +8,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ModulePrefsProvider } from './context/ModulePrefsContext';
 import { ShortcutsProvider } from './context/ShortcutsContext';
+import { ToastUndoProvider } from './context/ToastUndoContext';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -16,7 +17,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <ShortcutsProvider>
           <AuthProvider>
             <DataProvider>
-              <App />
+              <ToastUndoProvider>
+                <App />
+              </ToastUndoProvider>
             </DataProvider>
           </AuthProvider>
         </ShortcutsProvider>

@@ -44,6 +44,7 @@ import { usePedigree } from '../hooks/usePedigree';
 import { useAnimalIndicators } from '../hooks/useAnimalIndicators';
 import { getStatusDisplayFlags } from '../hooks/useAnimalStatus';
 import { useShortcuts } from '../context/ShortcutsContext';
+import { useToastUndo } from '../context/ToastUndoContext';
 import { exportPedigreeToPDF } from '../utils/pdfExporter';
 import {
     getAnimalZootecnicCategory, 
@@ -88,6 +89,7 @@ export default function RebanoProfilePage({
 
     const animal = useMemo(() => animals.find(a => a.id === animalId), [animals, animalId]);
     const { recordView, toggleFavorite, isFavorite } = useShortcuts();
+    const { showUndo } = useToastUndo();
     useEffect(() => { if (animal?.id) recordView(animal.id); }, [animal?.id, recordView]);
     const animalEvents = useEvents(animal ? animal.id : undefined); 
     const pedigreeRoot = usePedigree(animalId);
@@ -275,16 +277,27 @@ export default function RebanoProfilePage({
     };
 
     const handleCancel = () => { setIsEditing(false); setEditedData({}); };
-    const handleUpdateLocation = async () => { if (!animal) return; await updateAnimal(animal.id, { location: selectedNewLot }); setLotChangeModalOpen(false); };
-    
+    const handleUpdateLocation = async () => {
+        if (!animal) return;
+        const prevLocation = animal.location || '';
+        const id = animal.id;
+        await updateAnimal(id, { location: selectedNewLot });
+        setLotChangeModalOpen(false);
+        showUndo(`${id} movido a ${selectedNewLot || 'Sin Asignar'}`, () => updateAnimal(id, { location: prevLocation }));
+    };
+
     const handleDecommissionConfirm = async (details: DecommissionDetails) => {
         if (!animal || !decommissionReason) return;
+        const id = animal.id;
+        const prev = { status: animal.status, isReference: animal.isReference, endDate: animal.endDate, reproductiveStatus: animal.reproductiveStatus };
         const dataToUpdate: Partial<Animal> = { status: decommissionReason, isReference: true, endDate: details.date };
         if (decommissionReason === 'Venta') { Object.assign(dataToUpdate, { salePrice: details.salePrice, saleBuyer: details.saleBuyer, salePurpose: details.salePurpose }); }
         if (decommissionReason === 'Muerte') { dataToUpdate.deathReason = details.deathReason; }
         if (decommissionReason === 'Descarte') { Object.assign(dataToUpdate, { cullReason: details.cullReason, cullReasonDetails: details.cullReasonDetails }); }
-        await updateAnimal(animal.id, dataToUpdate);
-        setDecommissionSheetOpen(false); setIsDecommissionModalOpen(false); onBack();
+        await updateAnimal(id, dataToUpdate);
+        setDecommissionSheetOpen(false); setIsDecommissionModalOpen(false);
+        showUndo(`${id} dado de baja (${decommissionReason})`, () => updateAnimal(id, { status: prev.status || 'Activo', isReference: prev.isReference ?? false, endDate: prev.endDate, reproductiveStatus: prev.reproductiveStatus }));
+        onBack();
     };
     
     const handleReintegrate = async () => { if (!animal) return; await updateAnimal(animal.id, { isReference: false, status: 'Activo', endDate: undefined }); setIsReferenceActionsOpen(false); };

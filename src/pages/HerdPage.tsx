@@ -4,6 +4,7 @@ import { useSearch } from '../hooks/useSearch';
 import { useHerdAnalytics } from '../hooks/useHerdAnalytics'; 
 import { PredictiveSearchHeader } from '../components/ui/PredictiveSearchHeader';
 import { useShortcuts } from '../context/ShortcutsContext';
+import { useToastUndo } from '../context/ToastUndoContext';
 import { 
     Edit, X, Droplets, Scale, 
     Baby, Archive,
@@ -290,6 +291,7 @@ export default function HerdPage({
             .map(a => ({ id: a.id, name: a.name }));
     }, [searchTerm, animalsWithUIProperties, selectedSearchSet]);
 
+    const { showUndo } = useToastUndo();
     // Atajos: recientes y favoritos, mapeados a animales existentes.
     const { recents, favorites } = useShortcuts();
     const animalById = useMemo(() => new Map(animalsWithUIProperties.map(a => [a.id, a])), [animalsWithUIProperties]);
@@ -388,13 +390,18 @@ export default function HerdPage({
         { label: "Por Descarte", icon: Ban, onClick: () => { setDecommissionReason('Descarte'); setActiveModal('decommission'); }, color: 'text-brand-red' },
     ];
 
-    const handleDecommissionConfirm = async (details: DecommissionDetails) => { 
-        if (!actionSheetAnimal) return; 
-        const dataToUpdate: Partial<Animal> = { status: details.reason, isReference: true, endDate: details.date }; 
-        if (details.reason === 'Venta') Object.assign(dataToUpdate, { salePrice: details.salePrice, saleBuyer: details.saleBuyer, salePurpose: details.salePurpose }); 
-        if (details.reason === 'Muerte') dataToUpdate.deathReason = details.deathReason; 
-        if (details.reason === 'Descarte') Object.assign(dataToUpdate, { cullReason: details.cullReason, cullReasonDetails: details.cullReasonDetails }); 
-        try { await updateAnimal(actionSheetAnimal.id, dataToUpdate); closeModal(); navigateTo({name: 'lots-dashboard'}); } 
+    const handleDecommissionConfirm = async (details: DecommissionDetails) => {
+        if (!actionSheetAnimal) return;
+        const a = actionSheetAnimal;
+        const prev = { status: a.status, isReference: a.isReference, endDate: a.endDate, reproductiveStatus: a.reproductiveStatus };
+        const dataToUpdate: Partial<Animal> = { status: details.reason, isReference: true, endDate: details.date };
+        if (details.reason === 'Venta') Object.assign(dataToUpdate, { salePrice: details.salePrice, saleBuyer: details.saleBuyer, salePurpose: details.salePurpose });
+        if (details.reason === 'Muerte') dataToUpdate.deathReason = details.deathReason;
+        if (details.reason === 'Descarte') Object.assign(dataToUpdate, { cullReason: details.cullReason, cullReasonDetails: details.cullReasonDetails });
+        try {
+            await updateAnimal(a.id, dataToUpdate); closeModal(); navigateTo({name: 'lots-dashboard'});
+            showUndo(`${a.id} dado de baja (${details.reason})`, () => updateAnimal(a.id, { status: prev.status || 'Activo', isReference: prev.isReference ?? false, endDate: prev.endDate, reproductiveStatus: prev.reproductiveStatus }));
+        }
         catch (error) { console.error("Error al dar de baja:", error); closeModal(); }
     };
 
@@ -441,25 +448,34 @@ export default function HerdPage({
         return actions;
     }, [animalsInSelection]);
 
-    const handleBatchDecommissionConfirm = async () => { 
+    const handleBatchDecommissionConfirm = async () => {
         if (selectedAnimals.size === 0 || !batchDecommissionReason) return;
         const date = new Date().toISOString().split('T')[0];
+        const ids = Array.from(selectedAnimals);
+        // Estado previo de cada animal para poder deshacer.
+        const prev = ids.map(id => { const a = animals.find(x => x.id === id); return { id, status: a?.status, isReference: a?.isReference, endDate: a?.endDate, reproductiveStatus: a?.reproductiveStatus }; });
         const dataToUpdate: Partial<Animal> = { status: batchDecommissionReason, isReference: true, endDate: date };
         try {
-            const updatePromises = Array.from(selectedAnimals).map(animalId => updateAnimal(animalId, dataToUpdate));
-            await Promise.all(updatePromises);
+            await Promise.all(ids.map(animalId => updateAnimal(animalId, dataToUpdate)));
             closeModal();
             handleCancelSelection();
+            showUndo(`${ids.length} ${ids.length === 1 ? 'animal dado' : 'animales dados'} de baja`, async () => {
+                await Promise.all(prev.map(p => updateAnimal(p.id, { status: p.status || 'Activo', isReference: p.isReference ?? false, endDate: p.endDate, reproductiveStatus: p.reproductiveStatus })));
+            });
         } catch (error) { console.error("Error al dar de baja en lote:", error); closeModal(); }
     };
 
     const handleBatchMoveConfirm = async (destinationLot: string) => {
         if (selectedAnimals.size === 0) return;
+        const ids = Array.from(selectedAnimals);
+        const prev = ids.map(id => ({ id, location: animals.find(x => x.id === id)?.location || '' }));
         try {
-            const updatePromises = Array.from(selectedAnimals).map(animalId => updateAnimal(animalId, { location: destinationLot }));
-            await Promise.all(updatePromises);
+            await Promise.all(ids.map(animalId => updateAnimal(animalId, { location: destinationLot })));
             closeModal();
             handleCancelSelection();
+            showUndo(`${ids.length} ${ids.length === 1 ? 'animal movido' : 'animales movidos'} a ${destinationLot || 'Sin Asignar'}`, async () => {
+                await Promise.all(prev.map(p => updateAnimal(p.id, { location: p.location })));
+            });
         } catch (error) { console.error("Error al mover en lote:", error); closeModal(); }
     };
 
