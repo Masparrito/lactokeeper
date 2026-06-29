@@ -33,7 +33,7 @@ export const FAMACHA_INVENTORY_SNAPSHOT: FamachaInventoryItem[] = [
   { arete: "Q345", lastScore: 3, lastFecha: "2026-06-27", revCount: 1 },
   { arete: "Q122", lastScore: 4, lastFecha: "2026-06-27", revCount: 3 },
   { arete: "A349", lastScore: 3, lastFecha: "2026-06-27", revCount: 2 },
-  { arete: "Q346", lastScore: 3, lastFecha: "2026-06-27", revCount: 1 },
+  { arete: "A346", lastScore: 3, lastFecha: "2026-06-27", revCount: 1 }, // corregido: en la lista decía Q346 (no existe), es A346
   { arete: "Q201", lastScore: 3, lastFecha: "2026-06-27", revCount: 3 },
   { arete: "V605", lastScore: 3, lastFecha: "2026-06-27", revCount: 2 },
   { arete: "V603", lastScore: 2, lastFecha: "2026-06-27", revCount: 2 },
@@ -89,7 +89,7 @@ export const FAMACHA_INVENTORY_SNAPSHOT: FamachaInventoryItem[] = [
   { arete: "V507", lastScore: 1, lastFecha: "2026-06-27", revCount: 3 },
   { arete: "Q226", lastScore: 4, lastFecha: "2026-06-27", revCount: 3 },
   { arete: "711Q", lastScore: 4, lastFecha: "2026-06-27", revCount: 3 },
-  { arete: "Q013", lastScore: 5, lastFecha: "2026-06-27", revCount: 1 },
+  { arete: "Q213", lastScore: 5, lastFecha: "2026-06-27", revCount: 1 }, // corregido: en la lista decía Q013 (no existe), es Q213
   { arete: "R063", lastScore: 5, lastFecha: "2026-06-27", revCount: 3 },
   { arete: "N306", lastScore: 3, lastFecha: "2026-06-27", revCount: 3 },
   { arete: "A208", lastScore: 3, lastFecha: "2026-06-27", revCount: 3 },
