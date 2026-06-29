@@ -73,33 +73,33 @@ export const DataHealer = () => {
     };
 
     return (
-        <div className="p-6 bg-zinc-900 border border-zinc-700 rounded-xl my-6 shadow-xl">
-            <h3 className="text-white font-bold text-lg mb-2 flex items-center gap-2">
-                <RefreshCcw className={isHealing ? "animate-spin text-brand-blue" : "text-brand-blue"} size={24}/> 
+        <div className="p-6 bg-c-surface border border-c-border rounded-2xl my-6 shadow-sm">
+            <h3 className="text-c-text-strong font-bold text-lg mb-2 flex items-center gap-2">
+                <RefreshCcw className={isHealing ? "animate-spin text-c-accent-sky" : "text-c-accent-sky"} size={24}/>
                 Saneador de Rebaño Activo
             </h3>
-            <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
+            <p className="text-c-text-muted text-sm mb-6 leading-relaxed">
                 Esta herramienta verifica solo a los animales <strong>ACTIVOS</strong> y corrige su categoría.
                 <br/>
                 Ignorará animales vendidos, muertos o de referencia.
             </p>
-            
-            <button 
+
+            <button
                 onClick={handleHealData}
                 disabled={isHealing}
-                className={`w-full py-4 rounded-lg flex items-center justify-center gap-3 font-bold text-white transition-all
-                    ${isHealing ? 'bg-zinc-700 cursor-not-allowed' : 'bg-brand-blue hover:bg-blue-600 shadow-lg shadow-blue-900/20 active:scale-95'}
+                className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 font-bold text-white transition-all
+                    ${isHealing ? 'bg-c-surface-2 text-c-text-muted cursor-not-allowed' : 'bg-c-accent-sky hover:bg-c-accent-sky/90 shadow-lg shadow-c-accent-sky/20 active:scale-95'}
                 `}
             >
                 {isHealing ? 'Analizando...' : 'Sanear Solo Activos'}
             </button>
 
             {report.length > 0 && (
-                <div className="mt-6 bg-black p-4 rounded-lg border border-zinc-800 max-h-80 overflow-y-auto">
-                    <h4 className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-2 sticky top-0 bg-black py-1">Reporte:</h4>
+                <div className="mt-6 bg-c-surface-2 p-4 rounded-xl border border-c-border max-h-80 overflow-y-auto">
+                    <h4 className="text-c-text-muted text-xs font-bold uppercase tracking-wider mb-2 sticky top-0 bg-c-surface-2 py-1">Reporte:</h4>
                     <div className="font-mono text-xs space-y-1">
                         {report.map((line, i) => (
-                            <div key={i} className={line.includes('Error') ? 'text-red-400' : 'text-green-400 border-b border-zinc-900 pb-1'}>
+                            <div key={i} className={line.includes('Error') ? 'text-brand-red' : 'text-c-accent border-b border-c-border pb-1'}>
                                 {line}
                             </div>
                         ))}

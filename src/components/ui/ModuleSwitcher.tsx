@@ -4,6 +4,7 @@ import { Droplets, Scale, HeartPulse, X, DollarSign, TrendingUp, Eye, Sun, Moon 
 import { GiGoat } from 'react-icons/gi';
 import { AppModule } from '../../types/navigation';
 import { useTheme } from '../../context/ThemeContext';
+import { useModulePrefs } from '../../context/ModulePrefsContext';
 
 const modules = [
     { id: 'rebano', name: 'Rebaño', icon: GiGoat, color: 'text-amber-600' },
@@ -26,6 +27,7 @@ interface ModuleSwitcherProps {
 
 export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ isOpen, onClose, onSwitchModule }) => {
     const { theme, toggleTheme } = useTheme();
+    const { isEnabled } = useModulePrefs();
 
     const handleModuleSelect = (moduleId: AppModule) => {
         onClose(); // Cerrar el modal
@@ -81,20 +83,25 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ isOpen, onClose,
 
                 {/* 3. Rejilla de Módulos (en lugar de la lista flotante) */}
                 <div className="grid grid-cols-3 gap-4">
-                    {modules.map((module) => (
-                        <button
-                            key={module.id}
-                            onClick={() => handleModuleSelect(module.id as AppModule)}
-                            className="flex flex-col items-center justify-center p-4 bg-c-surface-2 hover:bg-c-border/40 border border-c-border rounded-2xl transition-colors"
-                            aria-label={`Cambiar al módulo ${module.name}`}
-                        >
-                            {/* Icono con fondo de color */}
-                            <div className={`flex items-center justify-center w-14 h-14 rounded-full ${module.color} bg-opacity-20 mb-2`}>
-                                <module.icon size={28} className={module.color} />
-                            </div>
-                            <span className="text-c-text font-semibold text-sm">{module.name}</span>
-                        </button>
-                    ))}
+                    {modules.map((module) => {
+                        const enabled = isEnabled(module.id as AppModule);
+                        return (
+                            <button
+                                key={module.id}
+                                onClick={() => enabled && handleModuleSelect(module.id as AppModule)}
+                                disabled={!enabled}
+                                aria-disabled={!enabled}
+                                className={`flex flex-col items-center justify-center p-4 bg-c-surface-2 border border-c-border rounded-2xl transition-all ${enabled ? 'hover:bg-c-border/40' : 'opacity-40 grayscale cursor-not-allowed'}`}
+                                aria-label={enabled ? `Cambiar al módulo ${module.name}` : `Módulo ${module.name} desactivado`}
+                            >
+                                {/* Icono con fondo de color */}
+                                <div className={`flex items-center justify-center w-14 h-14 rounded-full ${module.color} bg-opacity-20 mb-2`}>
+                                    <module.icon size={28} className={module.color} />
+                                </div>
+                                <span className="text-c-text font-semibold text-sm">{module.name}</span>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
         </div>

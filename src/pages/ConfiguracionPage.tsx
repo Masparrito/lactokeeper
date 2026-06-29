@@ -5,20 +5,32 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import {
     Save, CheckCircle, Loader2, Baby, Milk,
-    TrendingUp, Cog, ArrowLeft,
+    TrendingUp, ArrowLeft,
     ChevronDown,
     LogOut,
     Users,
     Heart,
     Target,
-    DollarSign
+    DollarSign,
+    LayoutGrid, Droplets, Scale, HeartPulse, Eye
 } from 'lucide-react';
-import type { PageState } from '../types/navigation';
+import type { PageState, AppModule } from '../types/navigation';
 import { AppConfig, DEFAULT_CONFIG } from '../types/config';
 import { auth } from '../firebaseConfig';
+import { useModulePrefs } from '../context/ModulePrefsContext';
 
 // --- IMPORTACIÓN DEL SANEADOR ---
 import { DataHealer } from '../components/DataHealer';
+
+// Módulos que se pueden activar/desactivar (Rebaño es el núcleo, siempre activo).
+const MODULE_LIST: { id: AppModule; name: string; icon: React.ElementType }[] = [
+    { id: 'lactokeeper', name: 'LactoKeeper', icon: Droplets },
+    { id: 'kilos', name: 'Kilos', icon: Scale },
+    { id: 'salud', name: 'StockCare', icon: HeartPulse },
+    { id: 'famacha', name: 'Famacha', icon: Eye },
+    { id: 'cents', name: 'Cents', icon: DollarSign },
+    { id: 'evolucion', name: 'Evolución', icon: TrendingUp },
+];
 
 // --- (Helpers: configToFormState, formStateToConfig - Sin cambios) ---
 const configToFormState = (config: AppConfig): Record<string, string | boolean> => {
@@ -166,7 +178,8 @@ interface ConfiguracionPageProps {
 
 export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
     const { appConfig: savedConfig, updateAppConfig, isLoadingConfig } = useData();
-    
+    const { isEnabled, setModule } = useModulePrefs();
+
     const [formState, setFormState] = useState(configToFormState(savedConfig || DEFAULT_CONFIG));
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
 
@@ -189,10 +202,6 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
             ...prev,
             [name]: processedValue
         }));
-    };
-
-    const handleThemeChange = (isDark: boolean) => {
-        setFormState(prev => ({ ...prev, theme: isDark ? 'dark' : 'light' }));
     };
 
     const handleSave = async () => {
@@ -261,12 +270,20 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
                     />
                 </div>
 
-                <SettingsGroup title="General" icon={Cog}>
-                    <SettingsToggle 
-                        label="Modo Oscuro"
-                        value={formState.theme === 'dark'}
-                        onChange={(isDark) => handleThemeChange(isDark)}
-                    />
+                <SettingsGroup title="Módulos" icon={LayoutGrid} startOpen>
+                    <div className="px-3 pt-3 pb-1">
+                        <p className="text-sm text-c-text-muted">
+                            Activa o desactiva los módulos. Los desactivados aparecerán atenuados en el menú de módulos. Rebaño es el núcleo y siempre está activo.
+                        </p>
+                    </div>
+                    {MODULE_LIST.map((m) => (
+                        <SettingsToggle
+                            key={m.id}
+                            label={m.name}
+                            value={isEnabled(m.id)}
+                            onChange={(val) => setModule(m.id, val)}
+                        />
+                    ))}
                 </SettingsGroup>
                 
                 <SettingsGroup title="Manejo Reproductivo" icon={Baby}>
