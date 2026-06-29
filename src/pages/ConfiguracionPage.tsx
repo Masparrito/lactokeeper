@@ -212,9 +212,9 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
             await updateAppConfig(configToSave); 
             
             setSaveStatus('success');
+            // Permanecer en Configuración tras guardar (antes saltaba a Rebaño con onBack()).
             setTimeout(() => {
                 setSaveStatus('idle');
-                onBack(); 
             }, 1500);
         } catch (error) {
             console.error("Error al guardar configuración:", error);
