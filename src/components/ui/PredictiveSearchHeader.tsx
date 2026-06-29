@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { Search, X } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Search, X, Star, Clock } from 'lucide-react';
 
 export interface AnimalSuggestion {
     id: string;
@@ -17,6 +17,8 @@ interface PredictiveSearchHeaderProps {
     onAdd: (id: string) => void;
     onRemove: (id: string) => void;
     onClearAll: () => void;
+    recents?: AnimalSuggestion[];    // acceso rápido (cuando el campo está vacío)
+    favorites?: AnimalSuggestion[];
 }
 
 // Barra de búsqueda predecible con selección múltiple por chips.
@@ -24,8 +26,12 @@ interface PredictiveSearchHeaderProps {
 // chip (visible y removible) y la lista muestra las tarjetas seleccionadas.
 export const PredictiveSearchHeader: React.FC<PredictiveSearchHeaderProps> = ({
     title, subtitle, isSticky, query, setQuery, suggestions, selectedIds, onAdd, onRemove, onClearAll,
+    recents = [], favorites = [],
 }) => {
     const inputRef = useRef<HTMLInputElement>(null);
+    const [focused, setFocused] = useState(false);
+
+    const showQuickAccess = focused && query.trim() === '' && (recents.length > 0 || favorites.length > 0);
 
     const headerClasses = [
         'pt-4 pb-3 relative',
@@ -74,6 +80,8 @@ export const PredictiveSearchHeader: React.FC<PredictiveSearchHeaderProps> = ({
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         onKeyDown={handleKeyDown}
+                        onFocus={() => setFocused(true)}
+                        onBlur={() => setTimeout(() => setFocused(false), 150)}
                         placeholder={selectedIds.length > 0 ? 'Agregar otro…' : 'Buscar por ID o nombre…'}
                         className="flex-1 min-w-[90px] bg-transparent text-c-text placeholder-c-text-faint outline-none py-1"
                     />
@@ -88,6 +96,34 @@ export const PredictiveSearchHeader: React.FC<PredictiveSearchHeaderProps> = ({
                         </button>
                     )}
                 </div>
+
+                {/* Acceso rápido: favoritos y recientes (campo vacío y enfocado) */}
+                {showQuickAccess && (
+                    <div className="absolute left-0 right-0 mt-1 z-30 bg-c-surface border border-c-border rounded-xl shadow-xl max-h-72 overflow-y-auto py-1">
+                        {favorites.length > 0 && (
+                            <>
+                                <p className="flex items-center gap-1.5 px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-c-text-faint"><Star size={11} className="text-c-accent-gold" /> Favoritos</p>
+                                {favorites.slice(0, 8).map((s) => (
+                                    <button key={`f-${s.id}`} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => onAdd(s.id)} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-c-surface-2 transition-colors">
+                                        <span className="font-mono font-bold text-c-text">{s.id}</span>
+                                        {s.name && <span className="text-sm text-c-text-muted truncate">{s.name}</span>}
+                                    </button>
+                                ))}
+                            </>
+                        )}
+                        {recents.length > 0 && (
+                            <>
+                                <p className="flex items-center gap-1.5 px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-c-text-faint"><Clock size={11} /> Recientes</p>
+                                {recents.slice(0, 8).map((s) => (
+                                    <button key={`r-${s.id}`} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => onAdd(s.id)} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-c-surface-2 transition-colors">
+                                        <span className="font-mono font-bold text-c-text">{s.id}</span>
+                                        {s.name && <span className="text-sm text-c-text-muted truncate">{s.name}</span>}
+                                    </button>
+                                ))}
+                            </>
+                        )}
+                    </div>
+                )}
 
                 {/* Lista predecible de sugerencias */}
                 {query.trim() !== '' && (

@@ -7,16 +7,19 @@ import { DataProvider } from './context/DataContext';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ModulePrefsProvider } from './context/ModulePrefsContext';
+import { ShortcutsProvider } from './context/ShortcutsContext';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider>
       <ModulePrefsProvider>
-        <AuthProvider>
-          <DataProvider>
-            <App />
-          </DataProvider>
-        </AuthProvider>
+        <ShortcutsProvider>
+          <AuthProvider>
+            <DataProvider>
+              <App />
+            </DataProvider>
+          </AuthProvider>
+        </ShortcutsProvider>
       </ModulePrefsProvider>
     </ThemeProvider>
   </React.StrictMode>,

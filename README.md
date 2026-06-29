@@ -226,6 +226,31 @@ src/
 
 ---
 
+## ✨ Hoja de ruta de usabilidad (UX)
+
+Mejoras para hacer GanaderoOS más amigable y fácil de usar, para ir abordándolas poco a poco. Marcamos `[x]` lo entregado.
+
+**Búsqueda y navegación**
+- [x] **1. Búsqueda predecible con selección múltiple** (chips): sugerencias al escribir, varios animales a la vez, removibles. *(Rebaño)*
+- [x] **2. Acciones sobre la selección de búsqueda**: con varios chips, botones rápidos (Mover a lote, Pesar, etc.) sobre ese grupo.
+- [x] **3. Recientes / favoritos**: animales vistos recientemente o marcados, para volver en un toque.
+- [ ] **1b. Búsqueda global** desde cualquier módulo (animal, lote, evento, reproductor).
+
+**Captura de datos en campo**
+- [ ] **4. Modo "sesión" rápido** de pesaje/revisión (arete → registrar → siguiente, sin salir).
+- [ ] **5. Deshacer** acciones (mover, baja, registrar) con toast de 5 s.
+- [ ] **6. Entrada por voz** del arete y peso.
+
+**Claridad y confianza**
+- [ ] **7. Estado de sincronización más visible** (qué falta subir, última sync).
+- [ ] **8. Onboarding/tooltips** la primera vez en cada módulo (íconos de estado, acciones).
+- [x] **9. Panel "para hoy"**: qué hacer hoy (partos próximos, secados, pesajes/alertas pendientes).
+
+**Consistencia visual**
+- [ ] **10. Unificar** tarjetas, chips, modales y estados vacíos entre módulos.
+
+---
+
 ## 🩺 Estado y pendientes conocidos
 
 La aplicación es funcional y los módulos comparten correctamente los datos vía `DataContext`. Lo siguiente es un mapa honesto de mejoras pendientes, priorizado, para planificar el trabajo.

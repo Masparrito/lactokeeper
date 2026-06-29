@@ -5,8 +5,8 @@ import {
     ArrowLeft, Edit, Save, X, Droplets, Scale, Syringe, Replace,
     Baby, Archive,
     DollarSign, HeartCrack, Ban, RefreshCw, Trash2, Award,
-    Printer, CheckCircle2, PlusCircle, BarChart2, Heart // Importado Heart
-} from 'lucide-react'; 
+    Printer, CheckCircle2, PlusCircle, BarChart2, Heart, Star // Importado Heart
+} from 'lucide-react';
 
 // --- Modales y UI Esenciales ---
 import { Modal } from '../components/ui/Modal';
@@ -43,6 +43,7 @@ import { useEvents } from '../hooks/useEvents';
 import { usePedigree } from '../hooks/usePedigree';
 import { useAnimalIndicators } from '../hooks/useAnimalIndicators';
 import { getStatusDisplayFlags } from '../hooks/useAnimalStatus';
+import { useShortcuts } from '../context/ShortcutsContext';
 import { exportPedigreeToPDF } from '../utils/pdfExporter';
 import {
     getAnimalZootecnicCategory, 
@@ -86,6 +87,8 @@ export default function RebanoProfilePage({
     } = useData();
 
     const animal = useMemo(() => animals.find(a => a.id === animalId), [animals, animalId]);
+    const { recordView, toggleFavorite, isFavorite } = useShortcuts();
+    useEffect(() => { if (animal?.id) recordView(animal.id); }, [animal?.id, recordView]);
     const animalEvents = useEvents(animal ? animal.id : undefined); 
     const pedigreeRoot = usePedigree(animalId);
     
@@ -384,7 +387,16 @@ export default function RebanoProfilePage({
                                 <button onClick={handleSave} disabled={saveStatus !== 'idle'} className="bg-c-accent hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 disabled:opacity-50 min-w-[100px] justify-center">{saveStatus === 'saving' ? <span className="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full" /> : <Save size={18} />}</button>
                             </>
                         ) : (
-                            <button onClick={() => setIsEditing(true)} className={`bg-c-accent/15 hover:bg-c-accent/25 text-c-accent font-bold py-2 px-4 rounded-lg flex items-center gap-2`}><Edit size={16} /><span>Editar</span></button>
+                            <>
+                                <button
+                                    onClick={() => toggleFavorite(animal.id)}
+                                    title={isFavorite(animal.id) ? 'Quitar de favoritos' : 'Marcar como favorito'}
+                                    className={`p-2 rounded-lg transition-colors ${isFavorite(animal.id) ? 'text-c-accent-gold bg-c-accent-gold/15' : 'text-c-text-faint hover:text-c-text hover:bg-c-surface-2'}`}
+                                >
+                                    <Star size={18} className={isFavorite(animal.id) ? 'fill-current' : ''} />
+                                </button>
+                                <button onClick={() => setIsEditing(true)} className={`bg-c-accent/15 hover:bg-c-accent/25 text-c-accent font-bold py-2 px-4 rounded-lg flex items-center gap-2`}><Edit size={16} /><span>Editar</span></button>
+                            </>
                         )}
                     </div>
                 </header>

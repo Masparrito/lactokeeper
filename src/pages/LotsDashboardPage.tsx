@@ -16,6 +16,7 @@ import { useData } from '../context/DataContext';
 import { BreedingSeason } from '../db/local';
 import { BreedingSeasonForm } from '../components/forms/BreedingSeasonForm';
 import { formatAnimalDisplay } from '../utils/formatting';
+import { TodayPanel } from '../components/ui/TodayPanel';
 
 
 // --- SUB-COMPONENTES ESTILIZADOS ---
@@ -166,6 +167,9 @@ export default function LotsDashboardPage({ navigateTo, initialTab }: LotsDashbo
         <>
             <div className="w-full max-w-lg mx-auto"> 
                 
+                {/* Panel "Para hoy" (pendientes de manejo) */}
+                {activeTab === 'physical' && <TodayPanel navigateTo={navigateTo} />}
+
                 {/* KPIs Hero & Chips (SOLO EN LOTES FÍSICOS) */}
                 {activeTab === 'physical' && (
                     <div className="pt-4 animate-fade-in">

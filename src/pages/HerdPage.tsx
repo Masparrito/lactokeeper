@@ -3,6 +3,7 @@ import { useData } from '../context/DataContext';
 import { useSearch } from '../hooks/useSearch';
 import { useHerdAnalytics } from '../hooks/useHerdAnalytics'; 
 import { PredictiveSearchHeader } from '../components/ui/PredictiveSearchHeader';
+import { useShortcuts } from '../context/ShortcutsContext';
 import { 
     Edit, X, Droplets, Scale, 
     Baby, Archive,
@@ -289,6 +290,16 @@ export default function HerdPage({
             .map(a => ({ id: a.id, name: a.name }));
     }, [searchTerm, animalsWithUIProperties, selectedSearchSet]);
 
+    // Atajos: recientes y favoritos, mapeados a animales existentes.
+    const { recents, favorites } = useShortcuts();
+    const animalById = useMemo(() => new Map(animalsWithUIProperties.map(a => [a.id, a])), [animalsWithUIProperties]);
+    const recentSuggestions = useMemo(() => recents
+        .filter(id => animalById.has(id) && !selectedSearchSet.has(id))
+        .map(id => ({ id, name: animalById.get(id)!.name })), [recents, animalById, selectedSearchSet]);
+    const favoriteSuggestions = useMemo(() => favorites
+        .filter(id => animalById.has(id) && !selectedSearchSet.has(id))
+        .map(id => ({ id, name: animalById.get(id)!.name })), [favorites, animalById, selectedSearchSet]);
+
     const addSearchId = (id: string) => { setSelectedSearchIds(prev => prev.includes(id) ? prev : [...prev, id]); setSearchTerm(''); };
     const removeSearchId = (id: string) => setSelectedSearchIds(prev => prev.filter(x => x !== id));
     const clearSearch = () => { setSelectedSearchIds([]); setSearchTerm(''); };
@@ -411,7 +422,14 @@ export default function HerdPage({
             return newSet;
         });
     };
-    const handleCancelSelection = () => { setIsSelectionMode(false); setSelectedAnimals(new Set()); };
+    const handleCancelSelection = () => { setIsSelectionMode(false); setSelectedAnimals(new Set()); setSelectedSearchIds([]); };
+
+    // Punto 2: aplicar acciones por lote sobre los animales seleccionados en la búsqueda (chips).
+    const openSearchActions = () => {
+        if (selectedSearchIds.length === 0) return;
+        setSelectedAnimals(new Set(selectedSearchIds));
+        setIsBatchActionSheetOpen(true);
+    };
     
     const animalsInSelection = useMemo(() => animalsWithUIProperties.filter(a => selectedAnimals.has(a.id)), [selectedAnimals, animalsWithUIProperties]);
     
@@ -476,6 +494,8 @@ export default function HerdPage({
                     onAdd={addSearchId}
                     onRemove={removeSearchId}
                     onClearAll={clearSearch}
+                    recents={recentSuggestions}
+                    favorites={favoriteSuggestions}
                     isSticky={true}
                 />
                 
@@ -597,6 +617,26 @@ export default function HerdPage({
                     )}
                 </div>
             </div>
+
+            {/* Punto 2: barra de acciones sobre la selección de búsqueda (chips). */}
+            {selectedSearchIds.length > 0 && !isSelectionMode && (
+                <div
+                    className="fixed left-0 right-0 z-40 px-4 animate-slide-up"
+                    style={{ bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
+                >
+                    <div className="max-w-2xl mx-auto bg-c-surface border border-c-border rounded-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.12)] p-2 flex items-center gap-2">
+                        <button onClick={clearSearch} className="px-3 py-2.5 text-sm font-semibold text-c-text-muted hover:text-c-text rounded-xl">
+                            Limpiar
+                        </button>
+                        <button
+                            onClick={openSearchActions}
+                            className="flex-1 flex items-center justify-center gap-2 bg-c-accent text-white font-bold py-2.5 rounded-xl active:scale-[0.99] transition-transform"
+                        >
+                            <ListChecks size={18} /> Acciones · {selectedSearchIds.length} {selectedSearchIds.length === 1 ? 'animal' : 'animales'}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <ActionSheetModal isOpen={isActionSheetOpen} onClose={closeModal} title={`Acciones para ${formatAnimalDisplay(actionSheetAnimal)}`} actions={getActionsForAnimal(actionSheetAnimal)} />
             <ActionSheetModal
