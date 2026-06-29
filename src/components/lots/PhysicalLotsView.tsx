@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useData } from '../../context/DataContext';
 import type { PageState } from '../../types/navigation';
 // (CORREGIDO) Importar AlertTriangle, eliminar X
-import { Trash2, Edit, GripVertical, Layers, AlertTriangle } from 'lucide-react'; 
+import { Trash2, Edit, GripVertical, Layers, AlertTriangle, ChevronRight } from 'lucide-react';
 import { Reorder, motion, useAnimation, useDragControls } from 'framer-motion';
 import { Modal } from '../ui/Modal';
 import { GiBarn } from 'react-icons/gi';
@@ -273,13 +273,17 @@ export default function PhysicalLotsView({ navigateTo }: { navigateTo: (page: Pa
     const [deleteConfirmation, setDeleteConfirmation] = useState<LotWithCount | null>(null);
     const [alertModal, setAlertModal] = useState<{ title: string, message: string } | null>(null);
 
+    // Solo contamos animales del rebaño activo (no referencias), para que el
+    // conteo de cada lote coincida con lo que muestra el detalle del lote.
+    const activeAnimals = useMemo(() => (animals || []).filter(a => !a.isReference), [animals]);
+
     const lotsSummary = useMemo((): LotWithCount[] => {
         const lotCounts = new Map<string, number>();
         lots.forEach(lot => lotCounts.set(lot.name, 0));
-        
-        (animals || []).forEach(animal => { 
-            const location = animal.location || 'Sin Asignar'; 
-            lotCounts.set(location, (lotCounts.get(location) || 0) + 1); 
+
+        activeAnimals.forEach(animal => {
+            const location = animal.location || 'Sin Asignar';
+            lotCounts.set(location, (lotCounts.get(location) || 0) + 1);
         });
 
         const allLotsSummary: LotWithCount[] = lots.map(lot => ({
@@ -304,20 +308,16 @@ export default function PhysicalLotsView({ navigateTo }: { navigateTo: (page: Pa
                 ...lot,
                 subLots: (subLotMap.get(lot.id) || []).sort((a, b) => a.name.localeCompare(b.name))
             }));
-            
-        const unassignedCount = lotCounts.get('Sin Asignar') || 0;
-        if (unassignedCount > 0 || (parentLots.length === 0 && unassignedCount > 0)) {
-            parentLots.push({
-                id: 'unassigned', 
-                name: 'Sin Asignar', 
-                count: unassignedCount, 
-                parentLotId: undefined,
-                subLots: [] 
-            });
-        }
 
+        // "Sin Asignar" ya no es una tarjeta: se muestra como texto accionable aparte.
         return parentLots.sort((a, b) => a.name.localeCompare(b.name));
-    }, [animals, lots]);
+    }, [activeAnimals, lots]);
+
+    // Animales activos sin lote asignado (location vacío).
+    const unassignedCount = useMemo(
+        () => activeAnimals.filter(a => !a.location).length,
+        [activeAnimals]
+    );
 
     const [orderedLots, setOrderedLots] = useState(lotsSummary);
     useEffect(() => { setOrderedLots(lotsSummary); }, [lotsSummary]);
@@ -354,7 +354,17 @@ export default function PhysicalLotsView({ navigateTo }: { navigateTo: (page: Pa
     // (CORREGIDO) Esta función ya no es necesaria, se pasa 'updateLot' directamente
     // const handleSaveRename = async (lotId: string, newName: string) => { ... };
 
-    if (orderedLots.length === 0) {
+    const unassignedLink = unassignedCount > 0 && (
+        <button
+            onClick={() => navigateTo({ name: 'lot-detail', lotName: 'Sin Asignar' })}
+            className="w-full flex items-center justify-center gap-1.5 px-4 py-3 text-c-accent font-semibold hover:underline active:opacity-70 transition-opacity"
+        >
+            Ver {unassignedCount} {unassignedCount === 1 ? 'animal' : 'animales'} sin asignar
+            <ChevronRight size={16} />
+        </button>
+    );
+
+    if (orderedLots.length === 0 && unassignedCount === 0) {
         return (
             <div className="text-center py-10 bg-c-surface border border-c-border rounded-2xl flex flex-col items-center gap-2 mx-4">
                 <GiBarn size={32} className="text-c-text-faint" />
@@ -368,16 +378,18 @@ export default function PhysicalLotsView({ navigateTo }: { navigateTo: (page: Pa
         <>
             <Reorder.Group as="div" axis="y" values={orderedLots} onReorder={setOrderedLots} className="space-y-3 px-4 pt-4">
                 {orderedLots.map((lot) => (
-                    <ReorderableLotItem 
-                        key={lot.id} 
-                        lot={lot} 
-                        navigateTo={navigateTo} 
+                    <ReorderableLotItem
+                        key={lot.id}
+                        lot={lot}
+                        navigateTo={navigateTo}
                         onEdit={(lotToEdit) => setRenameModal(lotToEdit)}
                         onDelete={(lotToDelete) => handleDeleteRequest(lotToDelete)}
                     />
                 ))}
             </Reorder.Group>
-            
+
+            {unassignedLink}
+
             <ConfirmationModal 
                 isOpen={!!deleteConfirmation} 
                 onClose={() => setDeleteConfirmation(null)} 
