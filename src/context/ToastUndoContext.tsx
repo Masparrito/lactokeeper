@@ -36,7 +36,7 @@ export const ToastUndoProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }, durationMs);
     }, []);
 
-    const showUndo = useCallback((message: string, onUndo: () => void | Promise<void>, durationMs = 5000) => {
+    const showUndo = useCallback((message: string, onUndo: () => void | Promise<void>, durationMs = 15000) => {
         present(message, onUndo, durationMs);
     }, [present]);
 
@@ -51,6 +51,23 @@ export const ToastUndoProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         dismiss();
         if (fn) { try { await fn(); } catch (e) { console.error('Error al deshacer:', e); } }
     };
+
+    // Ctrl+Z / Cmd+Z (escritorio) deshace la acción mientras el toast está activo.
+    useEffect(() => {
+        if (!toast?.onUndo) return;
+        const handler = (e: KeyboardEvent) => {
+            const isUndo = (e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z');
+            if (!isUndo) return;
+            const el = document.activeElement as HTMLElement | null;
+            const tag = el?.tagName;
+            const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || !!el?.isContentEditable;
+            if (typing) return; // respetar el "deshacer" nativo dentro de campos de texto
+            e.preventDefault();
+            handleUndo();
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [toast]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
         <ToastUndoContext.Provider value={{ showUndo, showToast }}>

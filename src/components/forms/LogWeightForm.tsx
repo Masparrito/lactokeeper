@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { AlertTriangle, CheckCircle, Loader2 } from 'lucide-react'; // Import Loader2
 import { Animal } from '../../db/local'; // Import Animal type
+import { useToastUndo } from '../../context/ToastUndoContext';
 
 interface LogWeightFormProps {
   animalId: string;
@@ -21,7 +22,8 @@ export const LogWeightForm: React.FC<LogWeightFormProps> = ({
     sessionDate
 }) => {
   // --- CAMBIO: Obtener animals y addBodyWeighing/addWeighing ---
-  const { addBodyWeighing, addWeighing, animals } = useData();
+  const { addBodyWeighing, addWeighing, deleteBodyWeighing, deleteWeighing, animals } = useData();
+  const { showUndo } = useToastUndo();
   
   const [date, setDate] = useState(sessionDate || new Date().toISOString().split('T')[0]);
   const [kg, setKg] = useState('');
@@ -63,9 +65,11 @@ export const LogWeightForm: React.FC<LogWeightFormProps> = ({
 
     try {
       if (weightType === 'corporal') {
-        await addBodyWeighing({ animalId, date, kg: weightValue });
+        const newId = await addBodyWeighing({ animalId, date, kg: weightValue });
+        showUndo(`Peso corporal de ${animalId} (${weightValue} Kg)`, () => deleteBodyWeighing(newId));
       } else {
-        await addWeighing({ goatId: animalId, date, kg: weightValue });
+        const newId = await addWeighing({ goatId: animalId, date, kg: weightValue });
+        showUndo(`Pesaje de leche de ${animalId} (${weightValue} Kg)`, () => deleteWeighing(newId));
       }
       setMessage({ type: 'success', text: `Pesaje de ${animalId} guardado con éxito.` });
       setTimeout(() => {

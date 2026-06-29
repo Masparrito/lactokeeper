@@ -7,6 +7,7 @@ import { AlertTriangle, CheckCircle, Save, Wind, Archive, Baby } from 'lucide-re
 import { Modal } from '../ui/Modal';
 import { ParturitionModal } from './ParturitionModal'; // Modal to declare parturition
 import { calculateDEL } from '../../utils/calculations'; // DEL calculation utility
+import { useToastUndo } from '../../context/ToastUndoContext';
 // formatAnimalDisplay ya no se usa aquí
 
 // Props definition for the component
@@ -21,7 +22,8 @@ export const AddMilkWeighingModal: React.FC<AddMilkWeighingModalProps> = ({
   onSaveSuccess,
   onCancel,
 }) => {
-  const { parturitions, addWeighing, startDryingProcess, setLactationAsDry } = useData();
+  const { parturitions, addWeighing, deleteWeighing, startDryingProcess, setLactationAsDry } = useData();
+  const { showUndo } = useToastUndo();
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [kg, setKg] = useState('');
@@ -61,9 +63,10 @@ export const AddMilkWeighingModal: React.FC<AddMilkWeighingModalProps> = ({
     }
 
     try {
-      await addWeighing({ goatId: animal.id, date, kg: weightValue });
+      const newId = await addWeighing({ goatId: animal.id, date, kg: weightValue });
       // --- CAMBIO: Mensaje de éxito actualizado ---
       setMessage({ type: 'success', text: `Pesaje de ${animal.id.toUpperCase()} guardado.` });
+      showUndo(`Pesaje de leche de ${animal.id.toUpperCase()} (${weightValue} Kg)`, () => deleteWeighing(newId));
       setTimeout(onSaveSuccess, 1500);
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'No se pudo guardar el pesaje.' });

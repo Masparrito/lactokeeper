@@ -65,8 +65,10 @@ interface IDataContext {
   
   addEvent: (eventData: Omit<Event, 'id' | 'userId' | '_synced'>) => void; 
 
-  addWeighing: (weighing: Omit<Weighing, 'id' | 'userId' | '_synced'>) => Promise<void>;
-  addBodyWeighing: (weighing: Omit<BodyWeighing, 'id' | 'userId' | '_synced'>) => Promise<void>;
+  addWeighing: (weighing: Omit<Weighing, 'id' | 'userId' | '_synced'>) => Promise<string>;
+  addBodyWeighing: (weighing: Omit<BodyWeighing, 'id' | 'userId' | '_synced'>) => Promise<string>;
+  deleteWeighing: (id: string) => Promise<void>;
+  deleteBodyWeighing: (id: string) => Promise<void>;
   deleteWeighingSession: (date: string) => Promise<void>;
   deleteBodyWeighingSession: (date: string) => Promise<void>;
   addParturition: (data: any) => Promise<void>;
@@ -825,6 +827,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         internalAddEvent({ animalId: weighing.goatId, date: weighing.date, type: 'Pesaje Lechero', details: `Registro de ${weighing.kg} Kg` });
         fetchDataFromLocalDb();
         enqueueSync(() => syncToFirestore("weighings", newWeighing.id, newWeighing));
+        return newWeighing.id;
     }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
 
     const addBodyWeighing = useCallback(async (weighing: Omit<BodyWeighing, 'id' | 'userId' | '_synced'>) => {
@@ -835,7 +838,45 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         internalAddEvent({ animalId: weighing.animalId, date: weighing.date, type: 'Pesaje Corporal', details: `Registro de ${weighing.kg} Kg` });
         fetchDataFromLocalDb();
         enqueueSync(() => syncToFirestore("bodyWeighings", newWeighing.id, newWeighing));
+        return newWeighing.id;
     }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
+
+    // Borrado de UN pesaje (para "Deshacer"). Elimina el registro y su evento asociado.
+    const deleteWeighing = useCallback(async (id: string) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        const w = await localDb.weighings.get(id);
+        if (!w) return;
+        const evs = await localDb.events
+            .where('date').equals(w.date)
+            .and(e => e.type === 'Pesaje Lechero' && e.animalId === w.goatId && e.details === `Registro de ${w.kg} Kg`)
+            .toArray();
+        const evIds = evs.map(e => e.id);
+        await localDb.transaction('rw', localDb.weighings, localDb.events, async () => {
+            await localDb.weighings.delete(id);
+            if (evIds.length) await localDb.events.bulkDelete(evIds);
+        });
+        await fetchDataFromLocalDb();
+        await recordDeletions([{ collection: "weighings", id }, ...evIds.map(eid => ({ collection: "events", id: eid }))]);
+    }, [currentUser, recordDeletions, fetchDataFromLocalDb]);
+
+    const deleteBodyWeighing = useCallback(async (id: string) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        const w = await localDb.bodyWeighings.get(id);
+        if (!w) return;
+        const evs = await localDb.events
+            .where('date').equals(w.date)
+            .and(e => e.type === 'Pesaje Corporal' && e.animalId === w.animalId && e.details === `Registro de ${w.kg} Kg`)
+            .toArray();
+        const evIds = evs.map(e => e.id);
+        await localDb.transaction('rw', localDb.bodyWeighings, localDb.events, async () => {
+            await localDb.bodyWeighings.delete(id);
+            if (evIds.length) await localDb.events.bulkDelete(evIds);
+        });
+        await fetchDataFromLocalDb();
+        await recordDeletions([{ collection: "bodyWeighings", id }, ...evIds.map(eid => ({ collection: "events", id: eid }))]);
+    }, [currentUser, recordDeletions, fetchDataFromLocalDb]);
 
     const deleteWeighingSession = useCallback(async (date: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -1443,7 +1484,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addBreedingSeason, updateBreedingSeason, 
         deleteBreedingSeason,
         addSireLot, updateSireLot, deleteSireLot, addServiceRecord,
-        addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighingSession, 
+        addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighing, deleteBodyWeighing, deleteWeighingSession,
         deleteBodyWeighingSession,
         addParturition, addFather,
         addProduct, updateProduct, deleteProduct, addHealthPlanWithActivities, updateHealthPlan, deleteHealthPlan,
@@ -1467,7 +1508,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addBreedingSeason, updateBreedingSeason, 
         deleteBreedingSeason,
         addSireLot, updateSireLot, deleteSireLot, addServiceRecord,
-        addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighingSession, 
+        addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighing, deleteBodyWeighing, deleteWeighingSession,
         deleteBodyWeighingSession,
         addParturition, addFather,
         addProduct, updateProduct, deleteProduct, addHealthPlanWithActivities, updateHealthPlan, deleteHealthPlan,

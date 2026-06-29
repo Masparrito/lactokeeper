@@ -238,7 +238,7 @@ Mejoras para hacer GanaderoOS más amigable y fácil de usar, para ir abordándo
 
 **Captura de datos en campo**
 - [ ] **4. Modo "sesión" rápido** de pesaje/revisión (arete → registrar → siguiente, sin salir).
-- [x] **5. Deshacer** acciones (mover y dar de baja, individual y por lote) con toast de 5 s.
+- [x] **5. Deshacer** acciones (mover, dar de baja y registrar pesajes leche/corporal, individual y por lote) con toast de 15 s y atajo **Ctrl/Cmd+Z** en escritorio.
 - [ ] **6. Entrada por voz** del arete y peso.
 
 **Claridad y confianza**

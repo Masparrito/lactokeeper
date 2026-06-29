@@ -5,6 +5,7 @@ import { useData } from '../../context/DataContext';
 import { Animal } from '../../db/local';
 import { AlertTriangle, CheckCircle, Save } from 'lucide-react';
 import { Modal } from '../ui/Modal';
+import { useToastUndo } from '../../context/ToastUndoContext';
 // formatAnimalDisplay ya no se usa aquí
 
 interface AddBodyWeighingModalProps {
@@ -18,7 +19,8 @@ export const AddBodyWeighingModal: React.FC<AddBodyWeighingModalProps> = ({
   onSaveSuccess,
   onCancel,
 }) => {
-  const { addBodyWeighing } = useData();
+  const { addBodyWeighing, deleteBodyWeighing } = useData();
+  const { showUndo } = useToastUndo();
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [kg, setKg] = useState('');
@@ -47,9 +49,10 @@ export const AddBodyWeighingModal: React.FC<AddBodyWeighingModalProps> = ({
     }
 
     try {
-      await addBodyWeighing({ animalId: animal.id, date, kg: weightValue });
+      const newId = await addBodyWeighing({ animalId: animal.id, date, kg: weightValue });
       // --- CAMBIO: Mensaje de éxito actualizado ---
       setMessage({ type: 'success', text: `Pesaje de ${animal.id.toUpperCase()} guardado.` });
+      showUndo(`Peso corporal de ${animal.id.toUpperCase()} (${weightValue} Kg)`, () => deleteBodyWeighing(newId));
       setTimeout(onSaveSuccess, 1500);
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'No se pudo guardar el pesaje.' });
