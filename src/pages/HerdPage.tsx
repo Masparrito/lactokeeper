@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { useData } from '../context/DataContext';
 import { useSearch } from '../hooks/useSearch';
 import { useHerdAnalytics } from '../hooks/useHerdAnalytics'; 
-import { SearchHeader } from '../components/ui/SearchHeader';
+import { PredictiveSearchHeader } from '../components/ui/PredictiveSearchHeader';
 import { 
     Edit, X, Droplets, Scale, 
     Baby, Archive,
@@ -275,15 +275,45 @@ export default function HerdPage({
 
     const { searchTerm, setSearchTerm, filteredItems } = useSearch(filteredByUI, ['id', 'name']);
 
+    // --- Búsqueda predecible con selección múltiple (chips) ---
+    const [selectedSearchIds, setSelectedSearchIds] = useState<string[]>([]);
+    const selectedSearchSet = useMemo(() => new Set(selectedSearchIds), [selectedSearchIds]);
+
+    const searchSuggestions = useMemo(() => {
+        const q = searchTerm.trim().toLowerCase();
+        if (!q) return [];
+        return animalsWithUIProperties
+            .filter(a => !selectedSearchSet.has(a.id) &&
+                (a.id.toLowerCase().includes(q) || (a.name || '').toLowerCase().includes(q)))
+            .slice(0, 8)
+            .map(a => ({ id: a.id, name: a.name }));
+    }, [searchTerm, animalsWithUIProperties, selectedSearchSet]);
+
+    const addSearchId = (id: string) => { setSelectedSearchIds(prev => prev.includes(id) ? prev : [...prev, id]); setSearchTerm(''); };
+    const removeSearchId = (id: string) => setSelectedSearchIds(prev => prev.filter(x => x !== id));
+    const clearSearch = () => { setSelectedSearchIds([]); setSearchTerm(''); };
+
+    // Lista a mostrar: si hay chips, mostramos esos animales; si no, la lista filtrada normal.
+    const displayItems = useMemo(() => {
+        if (selectedSearchIds.length > 0) {
+            const order = new Map(selectedSearchIds.map((id, i) => [id, i]));
+            return animalsWithUIProperties
+                .filter(a => selectedSearchSet.has(a.id))
+                .sort((a, b) => (order.get(a.id)! - order.get(b.id)!));
+        }
+        return filteredItems;
+    }, [selectedSearchIds, selectedSearchSet, animalsWithUIProperties, filteredItems]);
+
     // --- HANDLERS ---
     const resetAllFilters = () => { 
         setCategoryFilter('Todos'); 
         setIsLatestFilterActive(false); 
         setProductiveFilter('ALL'); 
         setReproductiveFilter('ALL'); 
-        setDecommissionFilter('all'); 
-        setSearchTerm(''); 
-        setProductiveFiltersVisible(false); 
+        setDecommissionFilter('all');
+        setSearchTerm('');
+        setSelectedSearchIds([]);
+        setProductiveFiltersVisible(false);
         setReproductiveFiltersVisible(false); 
     };
 
@@ -425,7 +455,7 @@ export default function HerdPage({
 
 
     const rowVirtualizer = useVirtualizer({
-        count: filteredItems.length,
+        count: displayItems.length,
         getScrollElement: () => scrollContainerRef.current,
         estimateSize: () => 112,
         overscan: 5
@@ -436,12 +466,17 @@ export default function HerdPage({
     return (
         <>
             <div ref={pageContentRef} className="w-full max-w-2xl mx-auto">
-                <SearchHeader 
+                <PredictiveSearchHeader
                     title={locationFilter || (kpiFilter ? `Filtro: ${kpiFilter.charAt(0).toUpperCase() + kpiFilter.slice(1)}` : "Mi Rebaño")}
-                    subtitle={isSelectionMode ? `${selectedAnimals.size} seleccionados` : `${filteredItems.length} animales en la vista`} 
-                    searchTerm={searchTerm} 
-                    setSearchTerm={setSearchTerm} 
-                    isSticky={true} 
+                    subtitle={isSelectionMode ? `${selectedAnimals.size} seleccionados` : `${displayItems.length} animales en la vista`}
+                    query={searchTerm}
+                    setQuery={setSearchTerm}
+                    suggestions={searchSuggestions}
+                    selectedIds={selectedSearchIds}
+                    onAdd={addSearchId}
+                    onRemove={removeSearchId}
+                    onClearAll={clearSearch}
+                    isSticky={true}
                 />
                 
                 {!isKpiView ? (
@@ -514,10 +549,10 @@ export default function HerdPage({
 
 
                 <div className="pt-4" style={{ height: 'auto', position: 'relative' }}>
-                    {filteredItems.length > 0 ? (
+                    {displayItems.length > 0 ? (
                         <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
                             {rowVirtualizer.getVirtualItems().map((virtualItem) => {
-                                const animal = filteredItems[virtualItem.index];
+                                const animal = displayItems[virtualItem.index];
                                 return (
                                     <div
                                         key={virtualItem.key}
