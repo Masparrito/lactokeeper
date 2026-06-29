@@ -85,7 +85,7 @@ export const SwipeableQuickActions: React.FC<SwipeableQuickActionsProps> = ({ on
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={() => setIsOpen(false)}
-                        className="fixed inset-0 bg-black/60 backdrop-blur-md z-40"
+                        className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60]"
                     />
                 )}
             </AnimatePresence>
@@ -103,7 +103,7 @@ export const SwipeableQuickActions: React.FC<SwipeableQuickActionsProps> = ({ on
                     closed: { y: "calc(100% - 24px)" } // Pestaña visible
                 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className={`fixed bottom-[calc(60px+env(safe-area-inset-bottom))] left-0 right-0 z-50 bg-c-surface rounded-t-[2rem] border-t border-c-border shadow-[0_-10px_40px_rgba(0,0,0,0.18)] flex flex-col ${isOpen ? 'h-auto pb-8' : 'h-auto'}`}
+                className={`fixed bottom-[calc(60px+env(safe-area-inset-bottom))] left-0 right-0 z-[70] bg-c-surface rounded-t-[2rem] border-t border-c-border shadow-[0_-10px_40px_rgba(0,0,0,0.18)] flex flex-col ${isOpen ? 'h-auto pb-8' : 'h-auto'}`}
             >
                 {/* MANEJADOR (HANDLE) */}
                 <div 
