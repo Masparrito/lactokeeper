@@ -237,7 +237,7 @@ Mejoras para hacer GanaderoOS más amigable y fácil de usar, para ir abordándo
 - [ ] **1b. Búsqueda global** desde cualquier módulo (animal, lote, evento, reproductor).
 
 **Captura de datos en campo**
-- [ ] **4. Modo "sesión" rápido** de pesaje/revisión (arete → registrar → siguiente, sin salir).
+- [x] **4. Modo "sesión" rápido** de pesaje: componente unificado (leche/corporal), guarda cada animal al instante con Deshacer, sugerencias predecibles del arete, contexto del animal y resumen en vivo. *(Pendiente: revisión Famacha y captura por escaneo/voz.)*
 - [x] **5. Deshacer** acciones (mover, dar de baja y registrar pesajes leche/corporal, individual y por lote) con toast de 15 s y atajo **Ctrl/Cmd+Z** en escritorio.
 - [ ] **6. Entrada por voz** del arete y peso.
 
