@@ -65,7 +65,7 @@ interface LactoKeeperDashboardProps {
 export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: LactoKeeperDashboardProps) {
   const { animals, weighings, parturitions, isLoading } = useData();
   const { totalVientres } = useHerdAnalytics();
-  const [chartView, setChartView] = useState<'current' | 'historical'>('current');
+  const [period, setPeriod] = useState<'1m' | '3m' | '6m' | '12m' | 'all'>('6m');
   const [isChartInfoModalOpen, setIsChartInfoModalOpen] = useState(false);
   const [isGaussInfoModalOpen, setIsGaussInfoModalOpen] = useState(false);
 
@@ -76,6 +76,7 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
     if (isLoading || !weighings.length || !animals.length) {
       return {
         herdAverage: 0, activeGoats: 0, woodChart: [], woodKpis: null, stageDist: [],
+        sampleSize: { weighings: 0, animals: 0 },
         gaussData: { distribution: [], mean: 0, stdDev: 0 }
       };
     }
@@ -84,23 +85,26 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
         const latestDate = weighings.reduce((max, w) => w.date > max ? w.date : max, weighings[0].date);
         animalsInLastWeighing = new Set(weighings.filter(w => w.date === latestDate).map(w => w.goatId)).size;
     }
-    let weighingsForChart = weighings;
-    if (chartView === 'current') {
-        const milkingAnimalIds = new Set(
-            parturitions.filter(p => p.status === 'activa').map(p => p.goatId)
-        );
-        weighingsForChart = weighings.filter((w: Weighing) => milkingAnimalIds.has(w.goatId));
-    }
+    // Filtrar los pesajes por período (ventana hacia atrás desde hoy).
+    const PERIOD_DAYS: Record<string, number | null> = { '1m': 30, '3m': 90, '6m': 182, '12m': 365, 'all': null };
+    const days = PERIOD_DAYS[period];
+    const cutoffMs = days ? Date.now() - days * 86400000 : null;
+    const weighingsForChart = cutoffMs
+        ? weighings.filter((w: Weighing) => new Date(w.date + 'T00:00:00').getTime() >= cutoffMs)
+        : weighings;
+
     // Puntos (DEL, kg) para ajustar la curva de lactancia del rebaño.
     const delPoints: { t: number; y: number }[] = [];
+    const curveAnimals = new Set<string>();
     weighingsForChart.forEach(w => {
         const parturitionForWeighing = parturitions
             .filter(p => p.goatId === w.goatId && new Date(w.date) >= new Date(p.parturitionDate))
             .sort((a, b) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime())[0];
         if (!parturitionForWeighing) return;
         const del = calculateDEL(parturitionForWeighing.parturitionDate, w.date);
-        if (del >= 1 && w.kg > 0) delPoints.push({ t: del, y: w.kg });
+        if (del >= 1 && w.kg > 0) { delPoints.push({ t: del, y: w.kg }); curveAnimals.add(w.goatId); }
     });
+    const sampleSize = { weighings: delPoints.length, animals: curveAnimals.size };
 
     const woodParams = fitWoodParams(delPoints);
     const observedMax = delPoints.reduce((m, p) => Math.max(m, p.t), 0);
@@ -184,8 +188,8 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
     }
     const gaussData = { distribution, mean, stdDev };
     const totalAverage = weighings.length > 0 ? weighings.reduce((sum,w) => sum + w.kg, 0) / weighings.length : 0;
-    return { herdAverage: totalAverage, activeGoats: animalsInLastWeighing, woodChart, woodKpis, stageDist, gaussData };
-  }, [animals, weighings, parturitions, isLoading, chartView]);
+    return { herdAverage: totalAverage, activeGoats: animalsInLastWeighing, woodChart, woodKpis, stageDist, sampleSize, gaussData };
+  }, [animals, weighings, parturitions, isLoading, period]);
 
   // --- (CORREGIDO) Handlers del flujo de importación ELIMINADOS ---
 
@@ -238,14 +242,16 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
                         </button>
                     </div>
                     <div className="flex bg-c-surface-2 rounded-lg p-0.5">
-                        <button onClick={() => setChartView('current')} className={`px-2 py-0.5 text-xs font-semibold rounded-md transition-colors ${chartView === 'current' ? 'bg-c-accent-sky text-white shadow-sm' : 'text-c-text-muted hover:text-c-text'}`}>
-                            Actual
-                        </button>
-                        <button onClick={() => setChartView('historical')} className={`px-2 py-0.5 text-xs font-semibold rounded-md transition-colors ${chartView === 'historical' ? 'bg-c-accent-sky text-white shadow-sm' : 'text-c-text-muted hover:text-c-text'}`}>
-                            Histórico
-                        </button>
+                        {([['1m','Mes'],['3m','Trim.'],['6m','Sem.'],['12m','Año'],['all','Todo']] as const).map(([val, lbl]) => (
+                            <button key={val} onClick={() => setPeriod(val)} className={`px-2 py-0.5 text-xs font-semibold rounded-md transition-colors ${period === val ? 'bg-c-accent-sky text-white shadow-sm' : 'text-c-text-muted hover:text-c-text'}`}>
+                                {lbl}
+                            </button>
+                        ))}
                     </div>
                 </div>
+                <p className="text-[11px] text-c-text-faint -mt-2 mb-3">
+                    Basada en <span className="font-semibold text-c-text-muted">{analytics.sampleSize.weighings}</span> pesajes de <span className="font-semibold text-c-text-muted">{analytics.sampleSize.animals}</span> animales{period !== 'all' ? ` (últimos ${period === '1m' ? '30 días' : period === '3m' ? '3 meses' : period === '6m' ? '6 meses' : '12 meses'})` : ''}.
+                </p>
                 {analytics.woodKpis && (
                     <div className="grid grid-cols-4 gap-2 mb-3">
                         {[
@@ -376,7 +382,7 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
                     <h4 className="font-semibold text-c-text mb-1">Los indicadores</h4>
                     <p className="text-sm"><strong>Día pico</strong> y <strong>Pico</strong>: cuándo y cuánto rinde el rebaño en su máximo. <strong>Persistencia</strong>: % del pico que aún se produce 100 días después (más alto = lactancia más sostenida). <strong>Proy. 305d</strong>: producción total estimada por lactancia.</p>
                 </div>
-                <p className="pt-2 border-t border-c-border text-sm">Usa <strong>Actual</strong> para ver solo los animales en ordeño hoy, o <strong>Histórico</strong> para toda la data acumulada.</p>
+                <p className="pt-2 border-t border-c-border text-sm">El <strong>selector de período</strong> (Mes/Trim./Sem./Año/Todo) define qué pesajes alimentan la curva. Debajo del título se indica <strong>cuántos pesajes y animales</strong> se usaron, para saber qué tan confiable es. Con pocos pesajes la curva puede no ajustarse: amplía el período.</p>
             </div>
         </Modal>
 

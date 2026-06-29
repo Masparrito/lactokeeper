@@ -272,9 +272,12 @@ export default function LotDetailPage({
                 </div>
             </div>
 
-            {/* Barra de edición (Sin cambios) */}
+            {/* Barra de edición: se ancla justo encima de la barra de navegación (60px + safe-area) para no quedar cortada. */}
             {isEditing && selectedAnimals.size > 0 && (
-                <div className="fixed bottom-16 left-0 right-0 bg-c-surface p-4 border-t border-c-border animate-slide-up z-20">
+                <div
+                    className="fixed left-0 right-0 bg-c-surface p-4 border-t border-c-border animate-slide-up z-40"
+                    style={{ bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
+                >
                     <div className="max-w-2xl mx-auto flex gap-4">
                         <button onClick={handleRemoveFromLot} className="flex-1 flex items-center justify-center gap-2 bg-brand-red text-white font-bold py-3 rounded-xl"><Trash2 size={18} /> Quitar del Lote</button>
                         <button onClick={() => setIsTransferModalOpen(true)} className="flex-1 flex items-center justify-center gap-2 bg-c-accent-sky text-white font-bold py-3 rounded-xl"><MoveRight size={18} /> Transferir</button>
