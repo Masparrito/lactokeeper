@@ -37,6 +37,9 @@ interface IDataContext {
   // --- Estado y Funciones ---
   isLoading: boolean;
   syncStatus: SyncStatus;
+  pendingSyncCount: number;        // cambios locales aún sin subir (incluye borrados)
+  lastSyncAt: number | null;       // timestamp de la última subida exitosa
+  syncNow: () => Promise<void>;    // forzar sincronización ahora
   addAnimal: (animalData: Omit<Animal, 'id' | '_synced' | 'userId' | 'createdAt'> & { id?: string }) => Promise<void>;
   updateAnimal: (animalId: string, dataToUpdate: Partial<Animal>) => Promise<void>;
   bulkUpdateAnimals: (updates: { id: string; changes: Partial<Animal> }[]) => Promise<void>;
@@ -167,6 +170,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Estados de Control
     const [isLoading, setIsLoading] = useState(true);
     const [syncStatus, setSyncStatus] = useState<SyncStatus>(navigator.onLine ? 'idle' : 'offline');
+    const [pendingDeletionsCount, setPendingDeletionsCount] = useState(0);
+    const [lastSyncAt, setLastSyncAt] = useState<number | null>(() => {
+        const s = localStorage.getItem('ganaderoOS_lastSyncAt');
+        return s ? Number(s) : null;
+    });
 
     // Estados de Configuración
     const [appConfig, setAppConfig] = useState<AppConfig>(DEFAULT_CONFIG);
@@ -243,6 +251,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setProducts(productsData); setHealthPlans(healthPlansData);
             setPlanActivities(planActivitiesData); setHealthEvents(healthEventsData);
             setFamachaRevs(famachaRevsData);
+            try { setPendingDeletionsCount(await localDb.pendingDeletions.count()); } catch { /* ignore */ }
         } catch (error) { console.error("Error al cargar datos locales:", error); }
         finally {
             setIsLoading(false);
@@ -313,8 +322,41 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             userId: currentUser?.uid,
         }));
         await localDb.pendingDeletions.bulkPut(tombstones);
+        try { setPendingDeletionsCount(await localDb.pendingDeletions.count()); } catch { /* ignore */ }
         syncPendingDeletions(); // intento inmediato (no-op si está offline)
     }, [currentUser, syncPendingDeletions]);
+
+    // Conteo de cambios locales pendientes de subir (registros + borrados).
+    const pendingSyncCount = useMemo(() => {
+        const arrays: any[][] = [animals, fathers, weighings, parturitions, lots, origins, breedingSeasons, sireLots, serviceRecords, events, feedingPlans, bodyWeighings, products, healthPlans, planActivities, healthEvents, famachaRevs];
+        let n = 0;
+        for (const arr of arrays) for (const r of arr) if (r && r._synced === false) n++;
+        return n + pendingDeletionsCount;
+    }, [animals, fathers, weighings, parturitions, lots, origins, breedingSeasons, sireLots, serviceRecords, events, feedingPlans, bodyWeighings, products, healthPlans, planActivities, healthEvents, famachaRevs, pendingDeletionsCount]);
+
+    // Fuerza una sincronización inmediata (barrido de pendientes + borrados + cola).
+    const syncNow = useCallback(async () => {
+        if (!navigator.onLine) { setSyncStatus('offline'); return; }
+        setSyncStatus('syncing');
+        await syncPendingRecords();
+        await syncPendingDeletions();
+        try { setPendingDeletionsCount(await getDB().pendingDeletions.count()); } catch { /* ignore */ }
+        processSyncQueue();
+    }, [syncPendingRecords, syncPendingDeletions, processSyncQueue]);
+
+    // Marca la última sincronización exitosa cuando la cola pasa de 'syncing' a 'idle'.
+    const prevSyncStatusRef = useRef<SyncStatus>(syncStatus);
+    useEffect(() => {
+        if (prevSyncStatusRef.current === 'syncing' && syncStatus === 'idle') {
+            const ts = Date.now();
+            setLastSyncAt(ts);
+            try { localStorage.setItem('ganaderoOS_lastSyncAt', String(ts)); } catch { /* ignore */ }
+            // Refrescar la data en memoria para que los flags _synced (y el contador
+            // de pendientes) reflejen lo recién subido.
+            fetchDataFromLocalDb();
+        }
+        prevSyncStatusRef.current = syncStatus;
+    }, [syncStatus, fetchDataFromLocalDb]);
 
     // --- useEffect (Hook de Sincronización Principal) ---
     useEffect(() => {
@@ -1484,7 +1526,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         products, healthPlans, planActivities, healthEvents, famachaRevs,
         appConfig,
         isLoadingConfig,
-        isLoading, syncStatus,
+        isLoading, syncStatus, pendingSyncCount, lastSyncAt, syncNow,
         fetchData: fetchDataFromLocalDb,
         addAnimal, updateAnimal, bulkUpdateAnimals, deleteAnimalPermanently, changeAnimalId, startDryingProcess, setLactationAsDry, addLot,
         updateLot,
@@ -1508,7 +1550,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }), [
         animals, fathers, weighings, parturitions, lots, origins, breedingSeasons, sireLots, serviceRecords, events, feedingPlans, bodyWeighings,
         products, healthPlans, planActivities, healthEvents, famachaRevs,
-        appConfig, isLoadingConfig, isLoading, syncStatus,
+        appConfig, isLoadingConfig, isLoading, syncStatus, pendingSyncCount, lastSyncAt, syncNow,
         fetchDataFromLocalDb,
         addAnimal, updateAnimal, bulkUpdateAnimals, deleteAnimalPermanently, changeAnimalId, startDryingProcess, setLactationAsDry, addLot,
         updateLot,

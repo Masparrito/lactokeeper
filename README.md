@@ -242,7 +242,7 @@ Mejoras para hacer GanaderoOS más amigable y fácil de usar, para ir abordándo
 - [ ] **6. Entrada por voz** del arete y peso.
 
 **Claridad y confianza**
-- [ ] **7. Estado de sincronización más visible** (qué falta subir, última sync).
+- [x] **7. Estado de sincronización más visible**: el ícono de nube muestra un badge con los cambios sin subir y, al tocarlo, un panel con conexión, pendientes, última subida y botón "Sincronizar ahora".
 - [ ] **8. Onboarding/tooltips** la primera vez en cada módulo (íconos de estado, acciones).
 - [x] **9. Panel "para hoy"**: qué hacer hoy (partos próximos, secados, pesajes/alertas pendientes).
 
