@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'; // (CORREGIDO) React sí se usa
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, BarChart, Bar, ReferenceLine, Tooltip, CartesianGrid } from 'recharts';
 import { useData } from '../../../context/DataContext';
+import { useHerdAnalytics } from '../../../hooks/useHerdAnalytics';
 import { calculateDEL } from '../../../utils/calculations';
 // (CORREGIDO) Eliminados Plus, Camera, FilePen
 import { Droplet, ActivitySquare, BarChart as BarChartIconLucide, Info } from 'lucide-react';
@@ -17,6 +18,7 @@ interface LactoKeeperDashboardProps {
 
 export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: LactoKeeperDashboardProps) {
   const { animals, weighings, parturitions, isLoading } = useData();
+  const { totalVientres } = useHerdAnalytics();
   const [chartView, setChartView] = useState<'current' | 'historical'>('current');
   const [isChartInfoModalOpen, setIsChartInfoModalOpen] = useState(false);
   const [isGaussInfoModalOpen, setIsGaussInfoModalOpen] = useState(false);
@@ -112,7 +114,13 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
                    className="bg-c-surface rounded-2xl p-4 border border-c-border shadow-sm text-left hover:border-c-accent-sky transition-colors active:scale-[0.99]"
                  >
                     <div className="flex items-center space-x-2 text-c-text-muted font-semibold mb-2 text-xs uppercase tracking-wider"><ActivitySquare size={14} className="text-c-accent-sky" /><span>Animales en Ordeño</span></div>
-                    <p className="text-4xl font-bold tracking-tight text-c-text">{analytics.activeGoats}</p>
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                        <p className="text-3xl font-bold tracking-tight text-c-text leading-none">{analytics.activeGoats}</p>
+                        <p className="text-sm font-medium text-c-text-muted">de {totalVientres} {totalVientres === 1 ? 'vientre' : 'vientres'}</p>
+                    </div>
+                    <p className="text-xs font-bold text-c-accent-sky mt-1.5">
+                        {totalVientres > 0 ? Math.round((analytics.activeGoats / totalVientres) * 100) : 0}% en ordeño
+                    </p>
                 </button>
             </div>
 
