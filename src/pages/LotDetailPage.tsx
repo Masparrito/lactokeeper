@@ -233,14 +233,15 @@ export default function LotDetailPage({
                                 return (
                                     <div
                                         key={virtualItem.key}
+                                        data-index={virtualItem.index}
+                                        ref={rowVirtualizer.measureElement}
                                         style={{
                                             position: 'absolute',
                                             top: 0,
                                             left: 0,
                                             width: '100%',
-                                            height: `${virtualItem.size}px`,
                                             transform: `translateY(${virtualItem.start}px)`,
-                                            padding: '0 1rem 1rem 1rem', 
+                                            padding: '0 1rem 0.75rem 1rem',
                                             boxSizing: 'border-box'
                                         }}
                                     >

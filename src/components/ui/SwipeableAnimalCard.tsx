@@ -24,7 +24,7 @@ export const SwipeableAnimalCard: React.FC<SwipeableAnimalCardProps> = ({
     const statuses = useAnimalStatus(animal);
 
     return (
-        <div className="relative mb-3 group">
+        <div className="relative group">
             <div 
                 onClick={() => onSelect(animal.id)}
                 className={`
