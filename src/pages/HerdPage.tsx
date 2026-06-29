@@ -14,7 +14,7 @@ import type { PageState } from '../types/navigation';
 import { Animal, Lot, BreedingSeason } from '../db/local'; 
 import { formatAge, getAnimalZootecnicCategory, getAnimalStatusObjects } from '../utils/calculations'; 
 import { formatAnimalDisplay } from '../utils/formatting';
-import { STATUS_DEFINITIONS, AnimalStatusKey } from '../hooks/useAnimalStatus';
+import { STATUS_DEFINITIONS, AnimalStatusKey, getStatusDisplayFlags } from '../hooks/useAnimalStatus';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ActionSheetModal, ActionSheetAction } from '../components/ui/ActionSheetModal';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
@@ -325,7 +325,11 @@ export default function HerdPage({
             ];
         }
         const actions: ActionSheetAction[] = [];
-        if (animal.sex === 'Hembra') {
+        // Solo las hembras aptas como vientre (ya parió o alcanza la edad mínima de
+        // Configuración) pueden registrar parto/aborto/leche/servicio. Las cabritas
+        // y cabritonas que aún no son vientres no muestran estas acciones.
+        const { showReproductive } = getStatusDisplayFlags(animal, parturitions, appConfig);
+        if (animal.sex === 'Hembra' && showReproductive) {
             actions.push({ label: 'Declarar Parto', icon: Baby, onClick: () => { setIsActionSheetOpen(false); setActiveModal('parturition'); }});
             actions.push({ label: 'Declarar Aborto', icon: HeartCrack, onClick: () => { setIsActionSheetOpen(false); setActiveModal('abortion'); }, color: 'text-yellow-400'});
             actions.push({ label: 'Acciones de Leche', icon: Droplets, onClick: () => { setIsActionSheetOpen(false); setActiveModal('milkWeighingAction'); }});

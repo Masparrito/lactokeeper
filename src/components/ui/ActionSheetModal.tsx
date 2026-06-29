@@ -22,13 +22,14 @@ export const ActionSheetModal: React.FC<ActionSheetModalProps> = ({ isOpen, onCl
 
     return (
         // Fondo translúcido con efecto blur
-        <div 
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-end sm:items-center z-50 animate-fade-in"
+        <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-end sm:items-center z-[120] animate-fade-in"
             onClick={onClose}
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 4.5rem)' }}
         >
             {/* Contenedor principal del modal, con el nuevo color de fondo y animación */}
             <div
-                className="w-full max-w-sm bg-c-surface rounded-t-2xl sm:rounded-2xl shadow-2xl text-c-text animate-slide-up"
+                className="w-full max-w-sm bg-c-surface rounded-2xl shadow-2xl text-c-text animate-slide-up mx-2"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Encabezado con el título */}

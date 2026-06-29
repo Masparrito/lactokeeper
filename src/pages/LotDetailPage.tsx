@@ -24,7 +24,7 @@ import { LogWeightForm } from '../components/forms/LogWeightForm';
 import { BatchWeighingForm } from '../components/forms/BatchWeighingForm';
 import { NewWeighingSessionFlow } from './modules/shared/NewWeighingSessionFlow';
 import { DeclareServiceModal } from '../components/modals/DeclareServiceModal';
-import { STATUS_DEFINITIONS, AnimalStatusKey } from '../hooks/useAnimalStatus';
+import { STATUS_DEFINITIONS, AnimalStatusKey, getStatusDisplayFlags } from '../hooks/useAnimalStatus';
 
 
 // --- SUB-COMPONENTES (Sin cambios) ---
@@ -164,7 +164,10 @@ export default function LotDetailPage({
     const getActionsForAnimal = (animal: Animal | null): ActionSheetAction[] => {
         if (!animal) return [];
         const actions: ActionSheetAction[] = [];
-        if (animal.sex === 'Hembra') {
+        // Solo vientres aptos (ya parió o alcanza la edad mínima de Configuración)
+        // pueden registrar parto/aborto/leche/servicio.
+        const { showReproductive } = getStatusDisplayFlags(animal, parturitions, appConfig);
+        if (animal.sex === 'Hembra' && showReproductive) {
             actions.push({ label: 'Declarar Parto', icon: Baby, onClick: () => { setIsActionSheetOpen(false); setActiveModal('parturition'); }});
             actions.push({ label: 'Declarar Aborto', icon: HeartCrack, onClick: () => { setIsActionSheetOpen(false); setActiveModal('abortion'); }, color: 'text-yellow-400'});
             actions.push({ label: 'Acciones de Leche', icon: Droplets, onClick: () => { setIsActionSheetOpen(false); setActiveModal('milkWeighingAction'); }});
