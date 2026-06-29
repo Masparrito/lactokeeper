@@ -79,7 +79,7 @@ export default function RebanoProfilePage({
     const pdfChartRef = useRef<HTMLDivElement>(null);
 
     const { 
-        animals, lots, origins, parturitions, updateAnimal, deleteAnimalPermanently, fathers, appConfig, 
+        animals, lots, origins, parturitions, updateAnimal, deleteAnimalPermanently, changeAnimalId, fathers, appConfig,
         bodyWeighings, addEvent, events,
         serviceRecords, sireLots, breedingSeasons,
         startDryingProcess, setLactationAsDry
@@ -248,9 +248,21 @@ export default function RebanoProfilePage({
             }
 
             if (newId && newId !== currentId) {
-                alert("Por seguridad e integridad de datos, el cambio de ID no está soportado en esta vista. Por favor contacte soporte o cree un nuevo animal.");
-                setSaveStatus('idle');
-                return;
+                if (appConfig.lockAnimalIdEditing !== false) {
+                    alert("La edición del ID está protegida. Para cambiarlo, ve a Configuración → Seguridad y desactiva \"Proteger ID del animal\".");
+                    setSaveStatus('idle');
+                    return;
+                }
+                const ok = window.confirm(`¿Cambiar el ID de "${currentId}" a "${newId}"?\n\nSe actualizarán TODAS las referencias (partos, pesajes, eventos, progenie, servicios). Asegúrate de que el nuevo ID es correcto.`);
+                if (!ok) { setSaveStatus('idle'); return; }
+                await changeAnimalId(currentId, newId);
+                // Aplicar el resto de cambios (nombre, raza, etc.) sobre el nuevo ID.
+                if (Object.keys(finalData).length > 0) await updateAnimal(newId, finalData);
+                setSaveStatus('success');
+                setTimeout(() => {
+                    setIsEditing(false); setSaveStatus('idle');
+                    navigateTo({ name: 'rebano-profile', animalId: newId });
+                }, 1200);
             } else {
                 await updateAnimal(animal.id, finalData);
                 setSaveStatus('success');
@@ -380,7 +392,7 @@ export default function RebanoProfilePage({
                 <main className="px-4 space-y-4 pb-32 flex-1">
                     {/* Identidad del animal (en el flujo, ya no fijo) */}
                     <div className="pt-4 space-y-2">
-                        {isEditing ? ( <FormInput type="text" value={displayId} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditedData(prev => ({ ...prev, id: e.target.value.toUpperCase() }))} placeholder="ID DEL ANIMAL" className="text-2xl font-mono font-bold tracking-tight text-c-text p-2" /> ) : ( <h1 className="text-2xl font-mono font-bold tracking-tight text-c-text truncate">{displayId}</h1> )}
+                        {isEditing ? ( <FormInput type="text" value={displayId} disabled={appConfig.lockAnimalIdEditing !== false} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditedData(prev => ({ ...prev, id: e.target.value.toUpperCase() }))} placeholder="ID DEL ANIMAL" title={appConfig.lockAnimalIdEditing !== false ? 'ID protegido. Actívalo en Configuración → Seguridad para editarlo.' : 'Edición de ID habilitada'} className={`text-2xl font-mono font-bold tracking-tight text-c-text p-2 ${appConfig.lockAnimalIdEditing !== false ? 'opacity-60' : ''}`} /> ) : ( <h1 className="text-2xl font-mono font-bold tracking-tight text-c-text truncate">{displayId}</h1> )}
                         {isEditing ? ( <FormInput type="text" value={displayFormattedName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditedData(prev => ({ ...prev, name: e.target.value.toUpperCase() }))} placeholder="Nombre del Animal" className="text-lg text-c-text-muted p-2" /> ) : ( <p className="text-lg text-c-text-muted truncate -mt-1">{displayFormattedName}</p> )}
                     </div>
 

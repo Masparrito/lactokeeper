@@ -41,6 +41,7 @@ interface IDataContext {
   updateAnimal: (animalId: string, dataToUpdate: Partial<Animal>) => Promise<void>;
   bulkUpdateAnimals: (updates: { id: string; changes: Partial<Animal> }[]) => Promise<void>;
   deleteAnimalPermanently: (animalId: string) => Promise<void>;
+  changeAnimalId: (oldId: string, newId: string) => Promise<void>;
   startDryingProcess: (parturitionId: string) => Promise<void>;
   setLactationAsDry: (parturitionId: string) => Promise<void>;
   addLot: (lotData: { name: string, parentLotId?: string }) => Promise<void>;
@@ -596,6 +597,106 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchDataFromLocalDb();
         await recordDeletions([{ collection: "animals", id: upperId }]);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+
+    // Cambia el ID (clave primaria) de un animal y reescribe TODAS las referencias
+    // en las demás colecciones. Operación delicada: solo debe invocarse cuando el
+    // usuario ha desactivado la protección de ID en Configuración. Es transaccional
+    // en local; la sincronización sube el nuevo registro, las referencias y un
+    // tombstone para el ID viejo.
+    const changeAnimalId = useCallback(async (oldId: string, newId: string) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        const from = oldId.toUpperCase().trim();
+        const to = newId.toUpperCase().trim();
+        if (!to) throw new Error("El nuevo ID no puede estar vacío.");
+        if (from === to) return;
+
+        const existingTarget = await localDb.animals.get(to);
+        if (existingTarget) throw new Error(`El ID "${to}" ya está en uso por otro animal.`);
+        const source = await localDb.animals.get(from);
+        if (!source) throw new Error(`No se encontró el animal "${from}".`);
+
+        // IDs de registros tocados por tabla, para sincronizar después.
+        const touched: Record<string, string[]> = {
+            animals: [], parturitions: [], weighings: [], bodyWeighings: [],
+            events: [], serviceRecords: [], healthEvents: [], sireLots: [],
+        };
+
+        await localDb.transaction('rw',
+            [localDb.animals, localDb.parturitions, localDb.weighings, localDb.bodyWeighings,
+             localDb.events, localDb.serviceRecords, localDb.healthEvents, localDb.sireLots],
+            async () => {
+                // 1. Crear el nuevo registro del animal con la nueva clave.
+                const moved: Animal = { ...source, id: to, _synced: false };
+                await localDb.animals.put(moved);
+
+                // 2. Reescribir referencias en otros animales (madre/padre).
+                const asParent = await localDb.animals
+                    .filter(a => a.motherId === from || a.fatherId === from).toArray();
+                for (const a of asParent) {
+                    const changes: Partial<Animal> = { _synced: false };
+                    if (a.motherId === from) changes.motherId = to;
+                    if (a.fatherId === from) changes.fatherId = to;
+                    await localDb.animals.update(a.id, changes);
+                    touched.animals.push(a.id);
+                }
+
+                // 3. Reescribir referencias en el resto de colecciones.
+                const parts = await localDb.parturitions
+                    .filter(p => p.goatId === from || p.sireId === from).toArray();
+                for (const p of parts) {
+                    const changes: any = { _synced: false };
+                    if (p.goatId === from) changes.goatId = to;
+                    if (p.sireId === from) changes.sireId = to;
+                    await localDb.parturitions.update(p.id, changes);
+                    touched.parturitions.push(p.id);
+                }
+
+                const weighs = await localDb.weighings.where('goatId').equals(from).toArray();
+                for (const w of weighs) { await localDb.weighings.update(w.id, { goatId: to, _synced: false }); touched.weighings.push(w.id); }
+
+                const bweighs = await localDb.bodyWeighings.where('animalId').equals(from).toArray();
+                for (const b of bweighs) { await localDb.bodyWeighings.update(b.id, { animalId: to, _synced: false }); touched.bodyWeighings.push(b.id); }
+
+                const evs = await localDb.events.where('animalId').equals(from).toArray();
+                for (const e of evs) { await localDb.events.update(e.id, { animalId: to, _synced: false }); touched.events.push(e.id); }
+
+                const srs = await localDb.serviceRecords.where('femaleId').equals(from).toArray();
+                for (const s of srs) { await localDb.serviceRecords.update(s.id, { femaleId: to, _synced: false }); touched.serviceRecords.push(s.id); }
+
+                const hevs = await localDb.healthEvents.where('animalId').equals(from).toArray();
+                for (const h of hevs) { await localDb.healthEvents.update(h.id, { animalId: to, _synced: false }); touched.healthEvents.push(h.id); }
+
+                const slots = await localDb.sireLots.filter(sl => sl.sireId === from).toArray();
+                for (const sl of slots) { await localDb.sireLots.update(sl.id, { sireId: to, _synced: false }); touched.sireLots.push(sl.id); }
+
+                // 4. Borrar el registro viejo del animal.
+                await localDb.animals.delete(from);
+            }
+        );
+
+        await fetchDataFromLocalDb();
+
+        // 5. Sincronizar: nuevo animal + todas las referencias tocadas + tombstone del viejo.
+        const movedAnimal = await localDb.animals.get(to);
+        if (movedAnimal) enqueueSync(() => syncToFirestore("animals", to, movedAnimal));
+
+        const syncTable = async (tableName: string, table: any, ids: string[]) => {
+            if (!ids.length) return;
+            const recs = await table.bulkGet(ids);
+            for (const r of recs) if (r) enqueueSync(() => syncToFirestore(tableName, r.id, r));
+        };
+        await syncTable("animals", localDb.animals, touched.animals);
+        await syncTable("parturitions", localDb.parturitions, touched.parturitions);
+        await syncTable("weighings", localDb.weighings, touched.weighings);
+        await syncTable("bodyWeighings", localDb.bodyWeighings, touched.bodyWeighings);
+        await syncTable("events", localDb.events, touched.events);
+        await syncTable("serviceRecords", localDb.serviceRecords, touched.serviceRecords);
+        await syncTable("healthEvents", localDb.healthEvents, touched.healthEvents);
+        await syncTable("sireLots", localDb.sireLots, touched.sireLots);
+
+        await recordDeletions([{ collection: "animals", id: from }]);
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, recordDeletions]);
 
     const startDryingProcess = useCallback(async (parturitionId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -1335,7 +1436,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoadingConfig,
         isLoading, syncStatus,
         fetchData: fetchDataFromLocalDb,
-        addAnimal, updateAnimal, bulkUpdateAnimals, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot,
+        addAnimal, updateAnimal, bulkUpdateAnimals, deleteAnimalPermanently, changeAnimalId, startDryingProcess, setLactationAsDry, addLot,
         updateLot,
         deleteLot, 
         addOrigin, deleteOrigin,
@@ -1359,7 +1460,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         products, healthPlans, planActivities, healthEvents, famachaRevs,
         appConfig, isLoadingConfig, isLoading, syncStatus,
         fetchDataFromLocalDb,
-        addAnimal, updateAnimal, bulkUpdateAnimals, deleteAnimalPermanently, startDryingProcess, setLactationAsDry, addLot,
+        addAnimal, updateAnimal, bulkUpdateAnimals, deleteAnimalPermanently, changeAnimalId, startDryingProcess, setLactationAsDry, addLot,
         updateLot,
         deleteLot, 
         addOrigin, deleteOrigin,

@@ -12,7 +12,7 @@ import {
     Heart,
     Target,
     DollarSign,
-    LayoutGrid, Droplets, Scale, HeartPulse, Eye
+    LayoutGrid, Droplets, Scale, HeartPulse, Eye, ShieldCheck
 } from 'lucide-react';
 import type { PageState, AppModule } from '../types/navigation';
 import { AppConfig, DEFAULT_CONFIG } from '../types/config';
@@ -285,7 +285,16 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
                         />
                     ))}
                 </SettingsGroup>
-                
+
+                <SettingsGroup title="Seguridad" icon={ShieldCheck}>
+                    <SettingsToggle
+                        label="Proteger ID del animal"
+                        sublabel="Impide editar el ID por error. Desactívalo solo para corregir un ID y vuélvelo a activar. (Recuerda Guardar.)"
+                        value={formState.lockAnimalIdEditing !== false}
+                        onChange={(val) => setFormState(prev => ({ ...prev, lockAnimalIdEditing: val }))}
+                    />
+                </SettingsGroup>
+
                 <SettingsGroup title="Manejo Reproductivo" icon={Baby}>
                     <SettingsInput label="Edad 1er Servicio" type="number" name="edadPrimerServicioMeses" value={String(formState.edadPrimerServicioMeses)} onChange={handleChange} unit="meses" sublabel="Edad para recibir servicio" />
                     <SettingsInput label="Peso 1er Servicio" type="number" name="pesoPrimerServicioKg" value={String(formState.pesoPrimerServicioKg)} onChange={handleChange} unit="Kg" sublabel="Peso para recibir servicio" />

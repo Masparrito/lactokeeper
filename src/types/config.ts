@@ -11,6 +11,12 @@ export interface AppConfig {
     nombreFinca: string;
     theme: 'light' | 'dark';
 
+    // --- Seguridad ---
+    // Protección del ID del animal. Cuando está activa (recomendado), el ID no se
+    // puede editar desde el perfil. El usuario puede desactivarla temporalmente
+    // en Configuración para corregir un ID y volver a activarla.
+    lockAnimalIdEditing: boolean;
+
     // --- Configuración Económica ---
     // (Liberado de valores hardcodeados: precio leche, símbolo de moneda y precios de venta)
     monedaSimbolo: string;
@@ -78,6 +84,9 @@ export const DEFAULT_CONFIG: AppConfig = {
     // General
     nombreFinca: "Mi Finca",
     theme: 'dark',
+
+    // Seguridad: protección del ID activa por defecto.
+    lockAnimalIdEditing: true,
 
     // Económico (defaults = valores previamente hardcodeados, no cambia el comportamiento actual)
     monedaSimbolo: "$",
