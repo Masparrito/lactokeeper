@@ -103,8 +103,11 @@ export const FAMACHA_INVENTORY_SNAPSHOT: FamachaInventoryItem[] = [
   { arete: "M611", lastScore: 1, lastFecha: "2026-06-27", revCount: 1 },
   { arete: "M615", lastScore: 1, lastFecha: "2026-06-27", revCount: 1 },
   // --- Reproductores ---
-  { arete: "Mercurio", lastScore: 2, lastFecha: "2026-06-27", revCount: 2 },
-  { arete: "Urano", lastScore: 1, lastFecha: "2026-06-27", revCount: 2 },
-  { arete: "Quantum", lastScore: 4, lastFecha: "2026-06-27", revCount: 2 },
+  // En Famacha se anotan por nombre; aquí se mapean al ID del sistema para que
+  // el cotejo los reconozca. Mapeo verificado contra el lote REPRODUCTORES.
+  { arete: "A1055TE", lastScore: 2, lastFecha: "2026-06-27", revCount: 2 }, // Mercurio
+  { arete: "AN01", lastScore: 1, lastFecha: "2026-06-27", revCount: 2 },    // Urano
+  { arete: "L210", lastScore: 4, lastFecha: "2026-06-27", revCount: 2 },    // Quantum
+  // Guanarito: NO aparece entre los reproductores activos del sistema (revisar).
   { arete: "Guanarito", lastScore: 2, lastFecha: "2026-06-27", revCount: 2 },
 ];
