@@ -103,7 +103,7 @@ export const SwipeableQuickActions: React.FC<SwipeableQuickActionsProps> = ({ on
                     closed: { y: "calc(100% - 24px)" } // Pestaña visible
                 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className={`fixed bottom-[calc(60px+env(safe-area-inset-bottom))] left-0 right-0 z-[70] bg-c-surface rounded-t-[2rem] border-t border-c-border shadow-[0_-10px_40px_rgba(0,0,0,0.18)] flex flex-col ${isOpen ? 'h-auto pb-8' : 'h-auto'}`}
+                className={`fixed bottom-[calc(60px+env(safe-area-inset-bottom))] left-0 right-0 z-[70] flex flex-col ${isOpen ? 'h-auto pb-8' : 'h-auto'}`}
             >
                 {/* MANEJADOR (HANDLE) */}
                 <div 
@@ -123,8 +123,8 @@ export const SwipeableQuickActions: React.FC<SwipeableQuickActionsProps> = ({ on
                             className="px-6"
                         >
                             <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-xl font-bold text-c-text">Acciones Rápidas</h3>
-                                <button onClick={() => setIsOpen(false)} className="p-2 bg-c-surface-2 rounded-full text-c-text-muted">
+                                <h3 className="text-xl font-bold text-white drop-shadow-md">Acciones Rápidas</h3>
+                                <button onClick={() => setIsOpen(false)} className="p-2 bg-white/15 backdrop-blur-sm rounded-full text-white hover:bg-white/25 transition-colors">
                                     <X size={20} />
                                 </button>
                             </div>
@@ -136,10 +136,10 @@ export const SwipeableQuickActions: React.FC<SwipeableQuickActionsProps> = ({ on
                                         onClick={() => handleItemClick(action)}
                                         className="flex flex-col items-center gap-3 group active:scale-95 transition-transform"
                                     >
-                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ${action.color}`}>
+                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl shadow-black/30 ${action.color}`}>
                                             <action.icon size={28} strokeWidth={2} />
                                         </div>
-                                        <span className="text-[11px] font-semibold text-c-text-muted text-center leading-tight">
+                                        <span className="text-[11px] font-semibold text-white/90 text-center leading-tight drop-shadow">
                                             {action.label}
                                         </span>
                                     </button>
