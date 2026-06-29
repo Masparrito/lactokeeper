@@ -42,6 +42,7 @@ import { Animal } from '../db/local';
 import { useEvents } from '../hooks/useEvents';
 import { usePedigree } from '../hooks/usePedigree';
 import { useAnimalIndicators } from '../hooks/useAnimalIndicators';
+import { getStatusDisplayFlags } from '../hooks/useAnimalStatus';
 import { exportPedigreeToPDF } from '../utils/pdfExporter';
 import {
     getAnimalZootecnicCategory, 
@@ -88,9 +89,13 @@ export default function RebanoProfilePage({
     const animalEvents = useEvents(animal ? animal.id : undefined); 
     const pedigreeRoot = usePedigree(animalId);
     
-    const statusObjects = useMemo(() => 
+    const statusObjects = useMemo(() =>
         getAnimalStatusObjects(animal, parturitions, serviceRecords, sireLots, breedingSeasons),
     [animal, parturitions, serviceRecords, sireLots, breedingSeasons]);
+
+    const { showReproductive, showLactation } = useMemo(() =>
+        getStatusDisplayFlags(animal, parturitions, appConfig),
+    [animal, parturitions, appConfig]);
 
     const { indicators, loading: indicatorsLoading } = useAnimalIndicators(animal, parturitions);
 
@@ -405,6 +410,8 @@ export default function RebanoProfilePage({
                                 mothers={mothers}
                                 navigateTo={navigateTo}
                                 statusObjects={statusObjects}
+                                showReproductive={showReproductive}
+                                showLactation={showLactation}
                                 onOpenPedigree={() => setIsPedigreeModalOpen(true)}
                                 onOpenLegend={() => setIsStatusLegendOpen(true)}
                                 indicators={indicators}

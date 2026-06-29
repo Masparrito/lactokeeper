@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
-import { Animal } from '../db/local';
+import { Animal, Parturition } from '../db/local';
 import { Baby, Heart, HeartHandshake, CircleOff, Wind, Archive, Waypoints, CalendarCheck } from 'lucide-react'; // Agregamos CalendarCheck
 import { GiUdder } from 'react-icons/gi';
-import { DEFAULT_CONFIG } from '../types/config';
+import { AppConfig, DEFAULT_CONFIG } from '../types/config';
 
 // Definición centralizada de iconos y colores
 export const STATUS_DEFINITIONS = {
@@ -34,6 +34,29 @@ const calculateAgeInMonths = (birthDate: string): number => {
     months -= birth.getMonth();
     months += today.getMonth();
     return months <= 0 ? 0 : months;
+};
+
+// Determina QUÉ familias de iconos de estado son relevantes para mostrar (el
+// "esqueleto" gris), según la etapa del animal:
+// - showLactation: solo hembras que ya parieron (En Ordeño / Secando / Seca).
+// - showReproductive: solo hembras aptas como vientre (Preñada / Servida /
+//   En Servicio / Vacía). Una cabritona es "vientre" si alcanza la edad mínima
+//   definida en Configuración, o si ya parió.
+// Las cabritas y cabritonas que aún no son vientres no muestran ninguno.
+export const getStatusDisplayFlags = (
+    animal: Animal | undefined | null,
+    parturitions: Parturition[],
+    appConfig?: AppConfig
+): { showReproductive: boolean; showLactation: boolean } => {
+    if (!animal || animal.sex !== 'Hembra') {
+        return { showReproductive: true, showLactation: true };
+    }
+    const hasCalved = parturitions.some(p => p.goatId === animal.id);
+    const config = appConfig || DEFAULT_CONFIG;
+    const ageInMonths = calculateAgeInMonths(animal.birthDate);
+    const minVientreAge = config.edadMinimaVientreMeses > 0 ? config.edadMinimaVientreMeses : 6;
+    const isVientre = hasCalved || (ageInMonths >= minVientreAge);
+    return { showReproductive: isVientre, showLactation: hasCalved };
 };
 
 export const useAnimalStatus = (animal: Animal) => {

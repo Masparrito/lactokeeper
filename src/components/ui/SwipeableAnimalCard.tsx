@@ -3,7 +3,8 @@ import { Animal } from '../../db/local';
 import { MoreHorizontal, MapPin, CheckCircle2 } from 'lucide-react';
 import { formatAge } from '../../utils/calculations';
 import { StatusIcons } from '../icons/StatusIcons';
-import { useAnimalStatus } from '../../hooks/useAnimalStatus';
+import { useAnimalStatus, getStatusDisplayFlags } from '../../hooks/useAnimalStatus';
+import { useData } from '../../context/DataContext';
 
 interface SwipeableAnimalCardProps {
     animal: Animal;
@@ -22,6 +23,8 @@ export const SwipeableAnimalCard: React.FC<SwipeableAnimalCardProps> = ({
 }) => {
     // Obtenemos los iconos de estado (Preñada, Seca, etc.) para mostrarlos limpios
     const statuses = useAnimalStatus(animal);
+    const { parturitions, appConfig } = useData();
+    const { showReproductive, showLactation } = getStatusDisplayFlags(animal, parturitions, appConfig);
 
     return (
         <div className="relative group">
@@ -103,7 +106,7 @@ export const SwipeableAnimalCard: React.FC<SwipeableAnimalCardProps> = ({
 
                         {/* Iconos de estado (Preñada, Ordeño, etc.) */}
                         <div className="mt-1">
-                            <StatusIcons statuses={statuses} sex={animal.sex} size={16} />
+                            <StatusIcons statuses={statuses} sex={animal.sex} size={16} showReproductive={showReproductive} showLactation={showLactation} />
                         </div>
                     </div>
                 </div>

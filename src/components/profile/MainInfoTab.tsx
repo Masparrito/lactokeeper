@@ -32,6 +32,8 @@ interface MainInfoTabProps {
     mothers: Animal[];
     navigateTo: (page: PageState) => void;
     statusObjects: any[];
+    showReproductive?: boolean;
+    showLactation?: boolean;
     onOpenPedigree: () => void;
     onOpenLegend: () => void;
     indicators: any;
@@ -54,9 +56,11 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
     allFathers, 
     mothers, 
     navigateTo,
-    statusObjects, 
-    onOpenPedigree, 
-    onOpenLegend, 
+    statusObjects,
+    showReproductive = true,
+    showLactation = true,
+    onOpenPedigree,
+    onOpenLegend,
     indicators, 
     indicatorsLoading, 
     onEditFather, 
@@ -104,7 +108,7 @@ export const MainInfoTab: React.FC<MainInfoTabProps> = ({
                 headerAccessory={!isEditing ? (
                     <div className="flex items-center gap-3">
                         {animal.sex === 'Hembra' && (
-                            <StatusIcons statuses={statusObjects} sex={animal.sex} size={16} />
+                            <StatusIcons statuses={statusObjects} sex={animal.sex} size={16} showReproductive={showReproductive} showLactation={showLactation} />
                         )}
                         <button onClick={onOpenLegend} title="Ver leyenda de estados" className="p-1 text-c-text-faint hover:text-c-text">
                             <Info size={16} />
