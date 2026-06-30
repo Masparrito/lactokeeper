@@ -71,6 +71,9 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
     const [productiveFilter, setProductiveFilter] = useState<string>('ALL');
     const [reproductiveFilter, setReproductiveFilter] = useState<string>('ALL');
     const [decommissionFilter, setDecommissionFilter] = useState<'all' | 'Venta' | 'Muerte' | 'Descarte'>('all');
+    // Búsqueda persistente (sobrevive ir al perfil de un animal y volver).
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedSearchIds, setSelectedSearchIds] = useState<string[]>([]);
 
     useEffect(() => {
         if (initialState && initialState.page) {
@@ -239,7 +242,7 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
             case 'lot-detail': return <LotDetailPage lotName={page.lotName} onBack={navigateBack} navigateTo={navigateTo} scrollContainerRef={mainScrollRef}/>;
             case 'breeding-season-detail': return <BreedingSeasonDetailPage seasonId={page.seasonId} onBack={navigateBack} navigateTo={navigateTo} />;
             case 'sire-lot-detail': return <SireLotDetailPage lotId={page.lotId} onBack={navigateBack} navigateTo={navigateTo} />;
-            case 'herd': return <HerdPage {...commonProps} locationFilter={page.locationFilter} kpiFilter={page.kpiFilter} scrollContainerRef={mainScrollRef} filterStates={{ viewMode, categoryFilter, productiveFilter, reproductiveFilter, decommissionFilter }} filterSetters={{ setViewMode, setCategoryFilter, setProductiveFilter, setReproductiveFilter, setDecommissionFilter }} />;
+            case 'herd': return <HerdPage {...commonProps} locationFilter={page.locationFilter} kpiFilter={page.kpiFilter} scrollContainerRef={mainScrollRef} filterStates={{ viewMode, categoryFilter, productiveFilter, reproductiveFilter, decommissionFilter, searchTerm, selectedSearchIds }} filterSetters={{ setViewMode, setCategoryFilter, setProductiveFilter, setReproductiveFilter, setDecommissionFilter, setSearchTerm, setSelectedSearchIds }} />;
             case 'manage-lots': return <ManageLotsPage onBack={() => handleNavClick(navItems.find(i => i.id === 'herd')!)} />;
             case 'management': return <ManagementPage navigateTo={navigateTo} onBack={navigateBack} />; 
             case 'add-animal': return <AddAnimalPage onBack={() => handleNavClick(navItems.find(i => i.id === 'herd')!)} />;

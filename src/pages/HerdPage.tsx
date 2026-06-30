@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useData } from '../context/DataContext';
-import { useSearch } from '../hooks/useSearch';
 import { useHerdAnalytics } from '../hooks/useHerdAnalytics'; 
 import { PredictiveSearchHeader } from '../components/ui/PredictiveSearchHeader';
 import { useShortcuts } from '../context/ShortcutsContext';
@@ -107,6 +106,8 @@ interface HerdPageProps {
         productiveFilter: string;
         reproductiveFilter: string;
         decommissionFilter: 'all' | 'Venta' | 'Muerte' | 'Descarte';
+        searchTerm: string;
+        selectedSearchIds: string[];
     };
     filterSetters: {
         setViewMode: React.Dispatch<React.SetStateAction<'Activos' | 'Referencia'>>;
@@ -114,6 +115,8 @@ interface HerdPageProps {
         setProductiveFilter: React.Dispatch<React.SetStateAction<string>>;
         setReproductiveFilter: React.Dispatch<React.SetStateAction<string>>;
         setDecommissionFilter: React.Dispatch<React.SetStateAction<'all' | 'Venta' | 'Muerte' | 'Descarte'>>;
+        setSearchTerm: React.Dispatch<React.SetStateAction<string>>;
+        setSelectedSearchIds: React.Dispatch<React.SetStateAction<string[]>>;
     };
 }
 
@@ -146,8 +149,8 @@ export default function HerdPage({
     const [bulkAnimals, setBulkAnimals] = useState<Animal[]>([]);
     const [bulkWeightType, setBulkWeightType] = useState<'leche' | 'corporal'>('corporal');
     
-    const { viewMode, categoryFilter, productiveFilter, reproductiveFilter, decommissionFilter } = filterStates;
-    const { setViewMode, setCategoryFilter, setProductiveFilter, setReproductiveFilter, setDecommissionFilter } = filterSetters;
+    const { viewMode, categoryFilter, productiveFilter, reproductiveFilter, decommissionFilter, searchTerm, selectedSearchIds } = filterStates;
+    const { setViewMode, setCategoryFilter, setProductiveFilter, setReproductiveFilter, setDecommissionFilter, setSearchTerm, setSelectedSearchIds } = filterSetters;
     
     const [isLatestFilterActive, setIsLatestFilterActive] = useState(false);
     const [productiveFiltersVisible, setProductiveFiltersVisible] = useState(false);
@@ -275,47 +278,59 @@ export default function HerdPage({
         return list;
     }, [animalsWithUIProperties, kpiFilter, isKpiView, locationFilter, viewMode, productiveFilter, reproductiveFilter, decommissionFilter, analytics.lists, isLatestFilterActive, bodyWeighings, appConfig, categoryFilter]);
 
-    const { searchTerm, setSearchTerm, filteredItems } = useSearch(filteredByUI, ['id', 'name']);
+    // Filtrado por texto en vivo (sustituye a useSearch para que el estado persista
+    // en el shell al navegar al perfil y volver).
+    const filteredItems = useMemo(() => {
+        const q = searchTerm.trim().toLowerCase();
+        if (!q) return filteredByUI;
+        return filteredByUI.filter(a => a.id.toLowerCase().includes(q) || (a.name || '').toLowerCase().includes(q));
+    }, [filteredByUI, searchTerm]);
 
     // --- Búsqueda predecible con selección múltiple (chips) ---
-    const [selectedSearchIds, setSelectedSearchIds] = useState<string[]>([]);
     const selectedSearchSet = useMemo(() => new Set(selectedSearchIds), [selectedSearchIds]);
+
+    // Alcance de la búsqueda: respeta la vista (Activos excluye referencia; Referencia solo baja).
+    const searchScope = useMemo(
+        () => animalsWithUIProperties.filter(a => (viewMode === 'Referencia' ? a.isReference : !a.isReference)),
+        [animalsWithUIProperties, viewMode]
+    );
 
     const searchSuggestions = useMemo(() => {
         const q = searchTerm.trim().toLowerCase();
         if (!q) return [];
-        return animalsWithUIProperties
+        return searchScope
             .filter(a => !selectedSearchSet.has(a.id) &&
                 (a.id.toLowerCase().includes(q) || (a.name || '').toLowerCase().includes(q)))
             .slice(0, 8)
             .map(a => ({ id: a.id, name: a.name }));
-    }, [searchTerm, animalsWithUIProperties, selectedSearchSet]);
+    }, [searchTerm, searchScope, selectedSearchSet]);
 
     const { showUndo } = useToastUndo();
     // Atajos: recientes y favoritos, mapeados a animales existentes.
     const { recents, favorites } = useShortcuts();
-    const animalById = useMemo(() => new Map(animalsWithUIProperties.map(a => [a.id, a])), [animalsWithUIProperties]);
+    // Recientes/favoritos solo dentro del alcance de la vista actual (activos vs referencia).
+    const scopeById = useMemo(() => new Map(searchScope.map(a => [a.id, a])), [searchScope]);
     const recentSuggestions = useMemo(() => recents
-        .filter(id => animalById.has(id) && !selectedSearchSet.has(id))
-        .map(id => ({ id, name: animalById.get(id)!.name })), [recents, animalById, selectedSearchSet]);
+        .filter(id => scopeById.has(id) && !selectedSearchSet.has(id))
+        .map(id => ({ id, name: scopeById.get(id)!.name })), [recents, scopeById, selectedSearchSet]);
     const favoriteSuggestions = useMemo(() => favorites
-        .filter(id => animalById.has(id) && !selectedSearchSet.has(id))
-        .map(id => ({ id, name: animalById.get(id)!.name })), [favorites, animalById, selectedSearchSet]);
+        .filter(id => scopeById.has(id) && !selectedSearchSet.has(id))
+        .map(id => ({ id, name: scopeById.get(id)!.name })), [favorites, scopeById, selectedSearchSet]);
 
     const addSearchId = (id: string) => { setSelectedSearchIds(prev => prev.includes(id) ? prev : [...prev, id]); setSearchTerm(''); };
     const removeSearchId = (id: string) => setSelectedSearchIds(prev => prev.filter(x => x !== id));
     const clearSearch = () => { setSelectedSearchIds([]); setSearchTerm(''); };
 
-    // Lista a mostrar: si hay chips, mostramos esos animales; si no, la lista filtrada normal.
+    // Lista a mostrar: si hay chips, mostramos esos animales (dentro del alcance de la vista); si no, la lista filtrada normal.
     const displayItems = useMemo(() => {
         if (selectedSearchIds.length > 0) {
             const order = new Map(selectedSearchIds.map((id, i) => [id, i]));
-            return animalsWithUIProperties
+            return searchScope
                 .filter(a => selectedSearchSet.has(a.id))
                 .sort((a, b) => (order.get(a.id)! - order.get(b.id)!));
         }
         return filteredItems;
-    }, [selectedSearchIds, selectedSearchSet, animalsWithUIProperties, filteredItems]);
+    }, [selectedSearchIds, selectedSearchSet, searchScope, filteredItems]);
 
     // --- HANDLERS ---
     const resetAllFilters = () => { 
