@@ -45,7 +45,7 @@ interface RebanoShellProps {
 }
 
 export default function RebanoShell({ initialState, onSwitchModule }: RebanoShellProps) {
-    const { syncStatus, updateAnimal, addEvent, addServiceRecord } = useData(); 
+    const { syncStatus, updateAnimal, addEvent } = useData(); 
     const [page, setPage] = useState<PageState>({ name: 'lots-dashboard' });
     const [history, setHistory] = useState<PageState[]>([]);
     const mainScrollRef = useRef<HTMLDivElement>(null);
@@ -215,16 +215,6 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
         setSelectedQuickAnimal(null);
     };
 
-    const handleQuickServiceSave = async (date: Date, sireLotId: string) => {
-        if (!selectedQuickAnimal) return;
-        await addServiceRecord({
-            femaleId: selectedQuickAnimal.id,
-            sireLotId: sireLotId,
-            serviceDate: date.toISOString().split('T')[0]
-        });
-        setIsQuickServiceModalOpen(false);
-        setSelectedQuickAnimal(null);
-    };
 
     // --- RENDERER ---
     const renderPage = () => {
@@ -335,7 +325,7 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
                         isOpen={isQuickServiceModalOpen}
                         onClose={() => { setIsQuickServiceModalOpen(false); setSelectedQuickAnimal(null); }}
                         animal={selectedQuickAnimal}
-                        onSave={handleQuickServiceSave}
+                        onSaved={() => { setIsQuickServiceModalOpen(false); setSelectedQuickAnimal(null); }}
                     />
                     <DeclareDryOffModal
                         isOpen={isQuickDryOffModalOpen}

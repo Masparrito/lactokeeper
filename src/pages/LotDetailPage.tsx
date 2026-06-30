@@ -76,7 +76,7 @@ export default function LotDetailPage({
 }: LotDetailPageProps) {
 
     // (CORREGIDO) Extraer 'appConfig' del hook useData
-    const { animals, parturitions, serviceRecords, breedingSeasons, sireLots, updateAnimal, addServiceRecord, startDryingProcess, setLactationAsDry, fathers, appConfig } = useData();
+    const { animals, parturitions, serviceRecords, breedingSeasons, sireLots, updateAnimal, startDryingProcess, setLactationAsDry, fathers, appConfig } = useData();
     const [isSelectorOpen, setSelectorOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [selectedAnimals, setSelectedAnimals] = useState<Set<string>>(new Set());
@@ -192,7 +192,6 @@ export default function LotDetailPage({
     const handleSetReadyForMating = async () => { if (actionSheetAnimal) { await updateAnimal(actionSheetAnimal.id, { reproductiveStatus: 'En Servicio' }); closeModal(); } };
     const handleAnimalsSelectedForBulk = (_selectedIds: string[], selectedAnimals: Animal[]) => { setBulkAnimals(selectedAnimals); setActiveModal('bulkWeighing'); };
     const handleBulkSaveSuccess = () => { closeModal(); };
-    const handleDeclareService = async (date: Date) => { if (!actionSheetAnimal || !actionSheetAnimal.sireLotId) { console.error("Missing animal or sireLotId."); closeModal(); return; } await addServiceRecord({ sireLotId: actionSheetAnimal.sireLotId, femaleId: actionSheetAnimal.id, serviceDate: date.toISOString().split('T')[0] }); closeModal(); };
     
     const handleStartDrying = (parturitionId: string) => { 
         startDryingProcess(parturitionId); 
@@ -328,7 +327,7 @@ export default function LotDetailPage({
                         />
                     )}
 
-                    {activeModal === 'service' && <DeclareServiceModal isOpen={true} onClose={closeModal} onSave={handleDeclareService} animal={actionSheetAnimal} />}
+                    {activeModal === 'service' && <DeclareServiceModal isOpen={true} onClose={closeModal} onSaved={closeModal} animal={actionSheetAnimal} />}
                     {activeModal === 'milkWeighingAction' && <MilkWeighingActionModal isOpen={true} animal={actionSheetAnimal} onClose={closeModal} onLogToSession={(date: string) => handleLogToSession(date, 'leche')} onStartNewSession={()=> handleStartNewSession('leche')} onStartDrying={handleStartDrying} onSetDry={handleSetDry}/>}
                     {activeModal === 'bodyWeighingAction' && <BodyWeighingActionModal isOpen={true} animal={actionSheetAnimal} onClose={closeModal} onLogToSession={(date: string) => handleLogToSession(date, 'corporal')} onStartNewSession={()=> handleStartNewSession('corporal')} onSetReadyForMating={handleSetReadyForMating}/>}
                     {activeModal === 'logSimpleMilk' && sessionDate && (<Modal isOpen={true} onClose={closeModal} title={`Añadir Pesaje Leche: ${formatAnimalDisplay(actionSheetAnimal)}`}><LogWeightForm animalId={actionSheetAnimal.id} weightType="leche" onSaveSuccess={closeModal} onCancel={closeModal} sessionDate={sessionDate} /></Modal>)}

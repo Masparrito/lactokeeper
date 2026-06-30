@@ -315,11 +315,6 @@ export default function RebanoProfilePage({
     const handleExportPedigree = async () => { if (!pdfChartRef.current || !animal) return; setIsExporting(true); await exportPedigreeToPDF(pdfChartRef.current, animal); setIsExporting(false); };
     const handleDecommissionSelect = (reason: 'Venta' | 'Muerte' | 'Descarte') => { setDecommissionReason(reason); setDecommissionSheetOpen(false); setIsDecommissionModalOpen(true); };
     
-    // Handler para servicio manual
-    const handleDeclareService = async () => { 
-        // No pasamos lógica aquí, el modal se encarga de todo
-        setIsServiceModalOpen(false); 
-    };
     
     // Handlers conectados
     const handleStartDrying = (id: string) => { startDryingProcess(id); setIsMilkModalOpen(false); };
@@ -520,7 +515,7 @@ export default function RebanoProfilePage({
             {isAbortionModalOpen && <DeclareAbortionModal animal={animal} onCancel={() => setIsAbortionModalOpen(false)} onSaveSuccess={() => setIsAbortionModalOpen(false)} />}
             
             {/* MODAL DE SERVICIO (Conectado) */}
-            {isServiceModalOpen && <DeclareServiceModal isOpen={true} onClose={() => setIsServiceModalOpen(false)} onSave={handleDeclareService} animal={animal} />}
+            {isServiceModalOpen && <DeclareServiceModal isOpen={true} onClose={() => setIsServiceModalOpen(false)} onSaved={() => setIsServiceModalOpen(false)} animal={animal} />}
             
             {/* Nuevo Menú de Peso */}
             <ActionSheetModal isOpen={isWeightMenuOpen} onClose={() => setIsWeightMenuOpen(false)} title="Gestión de Crecimiento" actions={getWeightMenuActions()} />

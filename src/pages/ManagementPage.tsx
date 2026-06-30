@@ -95,7 +95,7 @@ interface ManagementPageProps {
 }
 
 export default function ManagementPage({ navigateTo, onBack }: ManagementPageProps) {
-    const { animals, addServiceRecord, updateAnimal, addEvent } = useData();
+    const { animals, updateAnimal, addEvent } = useData();
     const allAlerts = useManagementAlerts();
 
     // --- ESTADOS PARA MODALES DE ACCIÓN ---
@@ -138,18 +138,6 @@ export default function ManagementPage({ navigateTo, onBack }: ManagementPagePro
         }
     };
 
-    // --- HANDLER: GUARDAR SERVICIO ---
-    const handleServiceSave = async (date: Date, sireLotId: string) => {
-        if (!selectedAnimal) return;
-        
-        await addServiceRecord({
-            femaleId: selectedAnimal.id,
-            sireLotId: sireLotId,
-            serviceDate: date.toISOString().split('T')[0]
-        });
-
-        closeModals();
-    };
 
     // --- HANDLER: GUARDAR DESTETE ---
     const handleWeanSave = async (data: { weaningDate: string, weaningWeight: number }) => {
@@ -247,7 +235,7 @@ export default function ManagementPage({ navigateTo, onBack }: ManagementPagePro
                     isOpen={true}
                     animal={selectedAnimal}
                     onClose={closeModals}
-                    onSave={handleServiceSave}
+                    onSaved={closeModals}
                 />
             )}
 

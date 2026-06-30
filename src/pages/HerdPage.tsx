@@ -131,7 +131,7 @@ export default function HerdPage({
     const { 
         animals, lots, parturitions, serviceRecords, breedingSeasons, sireLots, 
         isLoading, updateAnimal, startDryingProcess, setLactationAsDry, 
-        addServiceRecord, fathers, deleteAnimalPermanently, appConfig, 
+        fathers, deleteAnimalPermanently, appConfig, 
         bodyWeighings, addBreedingSeason, updateBreedingSeason 
     } = useData();
     
@@ -427,7 +427,6 @@ export default function HerdPage({
     const handleBulkSaveSuccess = () => { closeModal(); };
     const handleStartDrying = (parturitionId: string) => { startDryingProcess(parturitionId); closeModal(); };
     const handleSetDry = (parturitionId: string) => { setLactationAsDry(parturitionId); closeModal(); };
-    const handleDeclareService = async (date: Date) => { if (!actionSheetAnimal || !actionSheetAnimal.sireLotId) { console.error("Missing animal or sireLotId."); closeModal(); return; } await addServiceRecord({ sireLotId: actionSheetAnimal.sireLotId, femaleId: actionSheetAnimal.id, serviceDate: date.toISOString().split('T')[0] }); closeModal(); };
     const handleReintegrate = async () => { if (!actionSheetAnimal || !actionSheetAnimal.isReference) return; await updateAnimal(actionSheetAnimal.id, { isReference: false, status: 'Activo', endDate: undefined, reproductiveStatus: 'Vacía' }); setIsActionSheetOpen(false); setActionSheetAnimal(null); };
     const handlePermanentDelete = async () => { if (!actionSheetAnimal || !actionSheetAnimal.isReference) return; await deleteAnimalPermanently(actionSheetAnimal.id); setIsDeleteConfirmationOpen(false); setIsActionSheetOpen(false); setActionSheetAnimal(null); };
 
@@ -689,7 +688,7 @@ export default function HerdPage({
                             reason={decommissionReason}
                         />
                     )}
-                    {activeModal === 'service' && <DeclareServiceModal isOpen={true} onClose={closeModal} onSave={handleDeclareService} animal={actionSheetAnimal} />}
+                    {activeModal === 'service' && <DeclareServiceModal isOpen={true} onClose={closeModal} onSaved={closeModal} animal={actionSheetAnimal} />}
                     {activeModal === 'milkWeighingAction' && (<MilkWeighingActionModal 
                         isOpen={true} 
                         animal={actionSheetAnimal} 

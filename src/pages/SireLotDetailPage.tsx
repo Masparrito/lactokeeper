@@ -107,7 +107,7 @@ interface SireLotDetailPageProps {
 
 export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLotDetailPageProps) {
     // Importamos fetchData para forzar recarga
-    const { sireLots, fathers, animals, parturitions, serviceRecords, breedingSeasons, updateAnimal, addServiceRecord, startDryingProcess, setLactationAsDry, appConfig, fetchData } = useData();
+    const { sireLots, fathers, animals, parturitions, serviceRecords, breedingSeasons, updateAnimal, startDryingProcess, setLactationAsDry, appConfig, fetchData } = useData();
     const [isSelectorOpen, setSelectorOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -193,12 +193,6 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
         return actions;
     };
 
-    const handleDeclareService = async (date: Date) => {
-        if (!lot || !actionSheetAnimal) return;
-        await addServiceRecord({ sireLotId: lot.id, femaleId: actionSheetAnimal.id, serviceDate: date.toISOString().split('T')[0] });
-        closeModal();
-    };
-    
     const closeModal = () => { setActiveModal(null); setActionSheetAnimal(null); setSessionDate(null); setBulkAnimals([]); setDecommissionReason(null); setIsActionSheetOpen(false); };
     const handleDecommissionSelect = (reason: any) => { setDecommissionReason(reason); setActiveModal('decommission'); };
     
@@ -320,7 +314,7 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
 
             {actionSheetAnimal && (
                 <>
-                    {activeModal === 'service' && <DeclareServiceModal isOpen={true} onClose={closeModal} onSave={handleDeclareService} animal={actionSheetAnimal} />}
+                    {activeModal === 'service' && <DeclareServiceModal isOpen={true} onClose={closeModal} onSaved={closeModal} animal={actionSheetAnimal} />}
                     {activeModal === 'parturition' && <ParturitionModal isOpen={true} onClose={closeModal} motherId={actionSheetAnimal.id} />}
                     {activeModal === 'abortion' && <DeclareAbortionModal animal={actionSheetAnimal} onCancel={closeModal} onSaveSuccess={closeModal} />}
                     

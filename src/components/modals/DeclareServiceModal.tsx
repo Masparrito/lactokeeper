@@ -9,15 +9,15 @@ interface DeclareServiceModalProps {
     isOpen: boolean;
     onClose: () => void;
     animal: Animal;
-    // Ahora pasamos un onSave que recibe los datos completos
-    onSave?: (date: Date, sireLotId: string) => Promise<void>; 
+    // Hook opcional para limpieza/post-guardado (todas las vías guardan igual).
+    onSaved?: () => void;
 }
 
-export const DeclareServiceModal: React.FC<DeclareServiceModalProps> = ({ 
-    isOpen, 
-    onClose, 
+export const DeclareServiceModal: React.FC<DeclareServiceModalProps> = ({
+    isOpen,
+    onClose,
     animal,
-    onSave 
+    onSaved
 }) => {
     const { addServiceRecord, sireLots, fathers, animals, breedingSeasons, serviceRecords, parturitions } = useData();
     const [serviceDate, setServiceDate] = useState(new Date().toISOString().split('T')[0]);
@@ -95,17 +95,13 @@ export const DeclareServiceModal: React.FC<DeclareServiceModalProps> = ({
         }
         setIsLoading(true);
         try {
-            // Si el padre pasó un onSave personalizado (ej: QuickAction), úsalo
-            if (onSave) {
-                await onSave(new Date(serviceDate), selectedSireLotId);
-            } else {
-                // Si no, usa la lógica por defecto
-                await addServiceRecord({
-                    femaleId: animal.id,
-                    sireLotId: selectedSireLotId,
-                    serviceDate: serviceDate
-                });
-            }
+            // TODAS las vías guardan igual: registra el servicio con el macho seleccionado.
+            await addServiceRecord({
+                femaleId: animal.id,
+                sireLotId: selectedSireLotId,
+                serviceDate: serviceDate
+            });
+            onSaved?.();
             onClose();
         } catch (err) {
             console.error(err);
