@@ -1,7 +1,12 @@
 import { useMemo } from 'react';
+import { FileDown } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
-import { FamachaScore } from '../../../db/local';
-import { calcularIndice, famachaPeso } from '../../../utils/famachaLogic';
+import { FamachaScore, FamachaRev } from '../../../db/local';
+import {
+    calcularIndice, famachaPeso, ultimaJornada, jornadaAnterior, interpretarIndice,
+} from '../../../utils/famachaLogic';
+import { exportFamachaPDF } from '../../../utils/famachaPdf';
+import { TrendArrow } from '../../../components/famacha/FamachaTrend';
 
 const scoreBadge: Record<FamachaScore, string> = {
     1: 'bg-emerald-600',
@@ -27,8 +32,76 @@ export function FamachaIndexPage() {
         [famachaRevs, activeIds]
     );
 
+    // Resumen del último Famacha (jornada más reciente) + comparativa con la anterior.
+    const resumenUltimo = useMemo(() => {
+        const fecha = ultimaJornada(famachaRevs);
+        if (!fecha) return null;
+        const indiceDe = (revs: FamachaRev[]) => revs.length ? revs.reduce((s, r) => s + famachaPeso(r.score), 0) / revs.length : null;
+        const revsUlt = famachaRevs.filter(r => r.fecha === fecha);
+        const fechaPrev = jornadaAnterior(famachaRevs);
+        const revsPrev = fechaPrev ? famachaRevs.filter(r => r.fecha === fechaPrev) : [];
+        const indiceUlt = indiceDe(revsUlt);
+        const indicePrev = indiceDe(revsPrev);
+        const delta = indiceUlt !== null && indicePrev !== null ? indiceUlt - indicePrev : null;
+        // Menor índice = mejor → mejoró si delta < 0.
+        const tendencia = delta === null ? null : delta < -0.001 ? 'mejoro' : delta > 0.001 ? 'empeoro' : 'igual';
+        return {
+            fecha, fechaPrev, revisados: revsUlt.length, dosificados: revsUlt.filter(r => r.dosis).length,
+            indiceUlt, indicePrev, tendencia: tendencia as 'mejoro' | 'empeoro' | 'igual' | null,
+            interp: interpretarIndice(indiceUlt),
+        };
+    }, [famachaRevs]);
+
+    const fmtFecha = (f: string) => {
+        try { return new Date(f + 'T00:00:00Z').toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }); }
+        catch { return f; }
+    };
+
     return (
         <div className="w-full max-w-2xl mx-auto px-4 space-y-4">
+            {/* Último Famacha + descarga PDF */}
+            {resumenUltimo && (
+                <div className="bg-c-surface rounded-2xl border border-c-border p-4">
+                    <div className="flex items-start justify-between gap-3">
+                        <div>
+                            <h2 className="font-semibold text-c-text-strong flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-rose-500" /> Último Famacha
+                            </h2>
+                            <p className="text-xs text-c-text-muted mt-1">{fmtFecha(resumenUltimo.fecha)}</p>
+                        </div>
+                        <div className="text-right">
+                            <div className="flex items-center gap-1.5 justify-end">
+                                <span className="text-2xl font-bold" style={{ color: resumenUltimo.interp.color }}>
+                                    {resumenUltimo.indiceUlt === null ? '—' : resumenUltimo.indiceUlt.toFixed(2)}
+                                </span>
+                                {resumenUltimo.tendencia && <TrendArrow tendencia={resumenUltimo.tendencia} size={20} />}
+                            </div>
+                            <span className="text-[11px] font-bold uppercase" style={{ color: resumenUltimo.interp.color }}>{resumenUltimo.interp.estado}</span>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 mt-3">
+                        <div className="bg-c-surface-2 rounded-xl p-3 text-center">
+                            <div className="text-xl font-bold text-c-text-strong">{resumenUltimo.revisados}</div>
+                            <div className="text-[11px] text-c-text-muted uppercase tracking-wide">Revisados</div>
+                        </div>
+                        <div className="bg-c-surface-2 rounded-xl p-3 text-center">
+                            <div className="text-xl font-bold text-c-text-strong">{resumenUltimo.dosificados}</div>
+                            <div className="text-[11px] text-c-text-muted uppercase tracking-wide">Desparasitados</div>
+                        </div>
+                    </div>
+                    {resumenUltimo.indicePrev !== null && resumenUltimo.fechaPrev && (
+                        <p className="text-[11px] text-c-text-faint mt-2">
+                            Jornada anterior ({fmtFecha(resumenUltimo.fechaPrev)}): índice {resumenUltimo.indicePrev.toFixed(2)}.
+                        </p>
+                    )}
+                    <button
+                        onClick={() => exportFamachaPDF(famachaRevs)}
+                        className="mt-3 w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-3 rounded-xl"
+                    >
+                        <FileDown size={18} /> Descargar último Famacha (PDF)
+                    </button>
+                </div>
+            )}
             {/* Tabla de cálculo */}
             <div className="bg-c-surface rounded-2xl border border-c-border p-4">
                 <h2 className="font-semibold text-c-text-strong flex items-center gap-2">

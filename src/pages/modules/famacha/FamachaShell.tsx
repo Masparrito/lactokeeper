@@ -24,7 +24,7 @@ export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
     const navItems = [
         { view: 'revision', label: 'Revisión', icon: Zap },
         { view: 'animales', label: 'Animales', icon: ClipboardList },
-        { view: 'indice', label: 'Índice', icon: BarChart3 },
+        { view: 'indice', label: 'Análisis', icon: BarChart3 },
         { view: 'cotejo', label: 'Cotejo', icon: GitCompareArrows },
         { view: 'mas', label: 'Más', icon: Settings },
     ] as const;

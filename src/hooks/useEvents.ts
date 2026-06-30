@@ -36,7 +36,8 @@ export const useEvents = (animalId: string | undefined): TimelineEvent[] => {
         sireLots,
         events,
         healthEvents,
-        appConfig 
+        famachaRevs,
+        appConfig
     } = useData();
 
     const allFathers = useMemo(() => {
@@ -140,6 +141,19 @@ export const useEvents = (animalId: string | undefined): TimelineEvent[] => {
                 notes: e.notes,
                 lotName: e.lotName,
                 metaWeight: e.metaWeight
+            });
+        });
+
+        // 2b. REVISIONES FAMACHA (incluye si se aplicó o no desparasitante)
+        famachaRevs.filter(r => r.animalId === animal.id).forEach(r => {
+            const dosisTxt = r.dosis ? `Desparasitante aplicado${r.producto ? `: ${r.producto}` : ''}.` : 'Sin desparasitante.';
+            timeline.push({
+                id: r.id,
+                animalId: r.animalId,
+                date: r.fecha,
+                type: 'Famacha',
+                category: 'Manejo',
+                details: `Famacha ${r.score}/5. ${dosisTxt}`,
             });
         });
 
@@ -272,7 +286,8 @@ export const useEvents = (animalId: string | undefined): TimelineEvent[] => {
         appConfig,
         sireLots,
         events,
-        healthEvents
+        healthEvents,
+        famachaRevs
     ]);
 
     return animalEvents;

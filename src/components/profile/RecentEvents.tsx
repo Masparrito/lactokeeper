@@ -4,14 +4,14 @@ import { createPortal } from 'react-dom';
 import {
     Calendar, Syringe, Activity, Baby, Droplets, FileText,
     Heart, TrendingUp, ClipboardCheck, AlertCircle,
-    ArrowRightLeft, Ban, Award, Leaf, Trash2, X, AlertTriangle
+    ArrowRightLeft, Ban, Award, Leaf, Trash2, X, AlertTriangle, Eye
 } from 'lucide-react';
 import { TimelineEvent } from '../../hooks/useEvents';
 import { useData } from '../../context/DataContext';
 import { useToastUndo } from '../../context/ToastUndoContext';
 
 // --- DETERMINAR SI UN EVENTO ES ELIMINABLE Y CÓMO ---
-type DeleteKind = 'weighing' | 'bodyWeighing' | 'service' | 'event';
+type DeleteKind = 'weighing' | 'bodyWeighing' | 'service' | 'famacha' | 'event';
 
 const SYNTHETIC_SUFFIXES = ['_birth_syn', '_reg_syn', '_start_lac', '_dry', '_hito'];
 const isSynthetic = (id: string) => SYNTHETIC_SUFFIXES.some(s => id.endsWith(s));
@@ -22,6 +22,7 @@ const getDeleteKind = (event: TimelineEvent): DeleteKind | null => {
         case 'Pesaje Corporal': return 'bodyWeighing';
         case 'Pesaje Lechero': return 'weighing';
         case 'Servicio': return 'service';
+        case 'Famacha': return 'famacha';
         // Eventos sensibles o sin reversa segura: NO se permiten borrar desde aquí
         case 'Parto':
         case 'Aborto':
@@ -64,6 +65,7 @@ const getEventStyle = (type: string) => {
         case 'Hito de Peso': return { icon: TrendingUp, color: 'text-emerald-400', bg: 'bg-emerald-500/10' };
         case 'Pesaje Corporal': return { icon: TrendingUp, color: 'text-brand-green', bg: 'bg-brand-green/10' };
         case 'Pesaje Lechero': return { icon: Droplets, color: 'text-cyan-400', bg: 'bg-cyan-500/10' };
+        case 'Famacha': return { icon: Eye, color: 'text-rose-400', bg: 'bg-rose-500/10' };
 
         default: return { icon: FileText, color: 'text-c-text-muted', bg: 'bg-c-surface-2' };
     }
@@ -124,7 +126,7 @@ const MiniEventRow = ({ event, onDelete }: { event: TimelineEvent, onDelete?: (e
 
 // --- 3. COMPONENTE PRINCIPAL ---
 export const RecentEvents = ({ events }: { events: TimelineEvent[] }) => {
-    const { deleteWeighing, deleteBodyWeighing, deleteServiceRecord, deleteEvent } = useData();
+    const { deleteWeighing, deleteBodyWeighing, deleteServiceRecord, deleteFamachaRev, deleteEvent } = useData();
     const { showToast } = useToastUndo();
 
     const [pendingDelete, setPendingDelete] = useState<TimelineEvent | null>(null);
@@ -140,6 +142,7 @@ export const RecentEvents = ({ events }: { events: TimelineEvent[] }) => {
             if (kind === 'bodyWeighing') await deleteBodyWeighing(pendingDelete.id);
             else if (kind === 'weighing') await deleteWeighing(pendingDelete.id);
             else if (kind === 'service') await deleteServiceRecord(pendingDelete.id);
+            else if (kind === 'famacha') await deleteFamachaRev(pendingDelete.id);
             else await deleteEvent(pendingDelete.id);
 
             setPendingDelete(null);

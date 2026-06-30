@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
-import { Search, AlertTriangle, Plus, X } from 'lucide-react';
+import { Search, AlertTriangle, Plus, X, Check, Syringe } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { getAnimalZootecnicCategory } from '../../../utils/calculations';
 import { getCleanId } from '../../../utils/formatting';
-import { FamachaScore, FamachaAccion } from '../../../db/local';
-import { calcularAccion, tratadoYNoMejora } from '../../../utils/famachaLogic';
+import { FamachaScore, FamachaAccion, FamachaRev } from '../../../db/local';
+import { calcularAccion, tratadoYNoMejora, tendenciaFamacha, infoDosificacion } from '../../../utils/famachaLogic';
+import { TrendArrow } from '../../../components/famacha/FamachaTrend';
 import { useToastUndo } from '../../../context/ToastUndoContext';
 
 const getDispositivo = (): string => {
@@ -52,8 +53,8 @@ export function FamachaCapturePage() {
     const activos = useMemo(() => animals.filter(a => a.status === 'Activo' && !a.isReference), [animals]);
 
     const revsDelDia = useMemo(() => {
-        const map = new Map<string, { score: FamachaScore; accion: FamachaAccion }>();
-        for (const r of famachaRevs) if (r.fecha === fecha) map.set(r.animalId, { score: r.score, accion: r.accion });
+        const map = new Map<string, FamachaRev>();
+        for (const r of famachaRevs) if (r.fecha === fecha) map.set(r.animalId, r);
         return map;
     }, [famachaRevs, fecha]);
 
@@ -83,6 +84,26 @@ export function FamachaCapturePage() {
             });
         } catch (e) {
             console.error('Error al guardar revisión Famacha:', e);
+        } finally {
+            setSavingId(null);
+        }
+    };
+
+    // Toggle explícito de dosis: registra el precedente real de si se aplicó o no
+    // desparasitante, independiente de la sugerencia automática.
+    const handleToggleDose = async (animalId: string, arete: string) => {
+        const rev = revsDelDia.get(animalId);
+        if (!rev) return;
+        const nuevaDosis = !rev.dosis;
+        setSavingId(animalId);
+        try {
+            await addFamachaRev({
+                animalId, arete, fecha, score: rev.score, accion: rev.accion,
+                dosis: nuevaDosis, producto: nuevaDosis ? (rev.producto || productoDelDia) : '',
+                dispositivo: getDispositivo(),
+            });
+        } catch (e) {
+            console.error('Error al cambiar dosis Famacha:', e);
         } finally {
             setSavingId(null);
         }
@@ -162,36 +183,65 @@ export function FamachaCapturePage() {
                 {lista.map(({ animal, arete }) => {
                     const rev = revsDelDia.get(animal.id);
                     const alerta = tratadoYNoMejora(famachaRevs, animal.id);
+                    const dosisInfo = infoDosificacion(famachaRevs, animal.id, fecha);
+                    const tendencia = rev ? tendenciaFamacha(famachaRevs, animal.id, fecha, rev.score) : null;
+                    const dosisChipCls = dosisInfo.nivel === 'block' ? 'text-red-600' : dosisInfo.nivel === 'warn' ? 'text-amber-600' : 'text-c-text-faint';
                     return (
-                        <div key={animal.id} className="flex items-center gap-2 px-3 py-2.5">
-                            <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="font-bold text-c-text-strong truncate">{arete}</span>
-                                    {alerta && (
-                                        <span title="Tratado y no mejora">
-                                            <AlertTriangle size={14} className="text-amber-400 flex-shrink-0" />
+                        <div key={animal.id} className="px-3 py-2.5 space-y-2">
+                            <div className="flex items-center gap-2">
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="font-bold text-c-text-strong truncate">{arete}</span>
+                                        {tendencia && <TrendArrow tendencia={tendencia} size={15} />}
+                                        {alerta && (
+                                            <span title="Tratado y no mejora">
+                                                <AlertTriangle size={14} className="text-amber-400 flex-shrink-0" />
+                                            </span>
+                                        )}
+                                    </div>
+                                    {/* Precedente de dosis: cuántos días desde la última aplicación */}
+                                    {dosisInfo.ultimaDosisFecha && (
+                                        <span className={`text-[11px] ${dosisChipCls}`}>
+                                            💉 Dosis hace {dosisInfo.diasDesdeUltimaDosis}d{dosisInfo.nivel === 'block' ? ' · máx. alcanzado' : dosisInfo.nivel === 'warn' ? ' · espera 7d' : ''}
                                         </span>
                                     )}
                                 </div>
-                                {rev && <span className={`text-[11px] ${accionText[rev.accion].cls}`}>{accionText[rev.accion].label}</span>}
+                                <div className="flex gap-1 flex-shrink-0">
+                                    {([1, 2, 3, 4, 5] as FamachaScore[]).map(score => {
+                                        const selected = rev?.score === score;
+                                        return (
+                                            <button
+                                                key={score}
+                                                disabled={savingId === animal.id}
+                                                onClick={() => handleScore(animal.id, arete, score)}
+                                                className={`w-9 h-9 rounded-lg font-bold text-sm border transition-all disabled:opacity-50 ${
+                                                    selected ? `${scoreColor[score]} text-white scale-105` : 'bg-c-surface-2 border-c-border-strong text-c-text-muted hover:border-c-text-faint'
+                                                }`}
+                                            >
+                                                {score}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                            <div className="flex gap-1 flex-shrink-0">
-                                {([1, 2, 3, 4, 5] as FamachaScore[]).map(score => {
-                                    const selected = rev?.score === score;
-                                    return (
-                                        <button
-                                            key={score}
-                                            disabled={savingId === animal.id}
-                                            onClick={() => handleScore(animal.id, arete, score)}
-                                            className={`w-9 h-9 rounded-lg font-bold text-sm border transition-all disabled:opacity-50 ${
-                                                selected ? `${scoreColor[score]} text-white scale-105` : 'bg-c-surface-2 border-c-border-strong text-c-text-muted hover:border-c-text-faint'
-                                            }`}
-                                        >
-                                            {score}
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                            {/* Fila de decisión: sugerencia + toggle explícito de desparasitante */}
+                            {rev && (
+                                <div className="flex items-center gap-2 pl-0.5">
+                                    <span className={`text-[11px] font-semibold ${accionText[rev.accion].cls}`}>{accionText[rev.accion].label}</span>
+                                    <button
+                                        disabled={savingId === animal.id}
+                                        onClick={() => handleToggleDose(animal.id, arete)}
+                                        className={`ml-auto flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-lg border transition-all disabled:opacity-50 ${
+                                            rev.dosis
+                                                ? 'bg-orange-600 border-orange-600 text-white'
+                                                : 'bg-c-surface-2 border-c-border-strong text-c-text-muted'
+                                        }`}
+                                    >
+                                        {rev.dosis ? <Check size={14} /> : <Syringe size={14} />}
+                                        {rev.dosis ? 'Dosificado' : 'No dosificado'}
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     );
                 })}

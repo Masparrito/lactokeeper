@@ -131,3 +131,93 @@ export const MENSAJE_NO_MEJORA =
     'Lleva varias revisiones en Famacha 3+ habiendo sido tratado. NO repetir dosis ' +
     'automáticamente — revisar cojera, dientes, dentadura, otra enfermedad o ' +
     'tratamiento alterno. Consultar veterinario.';
+
+// --- Días entre dos fechas "YYYY-MM-DD" (helper local) ---
+const diasEntre = (a: string, b: string): number => {
+    if (!a || !b) return 0;
+    return Math.round(Math.abs(new Date(a + 'T00:00:00Z').getTime() - new Date(b + 'T00:00:00Z').getTime()) / 86400000);
+};
+
+// --- TENDENCIA: ¿mejoró, empeoró o quedó igual respecto a la revisión anterior? ---
+// En Famacha un score MENOR es mejor (1 = sano … 5 = anémico grave).
+export type Tendencia = 'mejoro' | 'empeoro' | 'igual' | null;
+
+/**
+ * Compara un score (el actual o uno hipotético) con la revisión ANTERIOR del animal.
+ * Devuelve null si no hay revisión previa con la cual comparar.
+ */
+export const tendenciaFamacha = (
+    revs: FamachaRev[],
+    animalId: string,
+    fecha: string,
+    score: FamachaScore
+): Tendencia => {
+    const prev = revisionAnterior(revs, animalId, fecha);
+    if (!prev) return null;
+    if (score < prev.score) return 'mejoro';
+    if (score > prev.score) return 'empeoro';
+    return 'igual';
+};
+
+// --- INFO DE DOSIFICACIÓN: control del intervalo y máximo de aplicaciones ---
+// Regla de manejo: máximo 2 aplicaciones de desparasitante separadas 7 días.
+// Esta función NO bloquea; informa para que el usuario decida en campo.
+export type NivelDosis = 'ok' | 'warn' | 'block';
+
+export interface InfoDosis {
+    ultimaDosisFecha: string | null;   // fecha de la última dosis previa
+    diasDesdeUltimaDosis: number | null;
+    dosisEnVentana: number;            // # de dosis en los últimos 14 días (antes de `fecha`)
+    nivel: NivelDosis;                 // ok = puede dosificar · warn = con cuidado · block = no aplicar
+    mensaje: string;                   // recomendación legible
+}
+
+export const VENTANA_TRATAMIENTO_DIAS = 14; // ~2 aplicaciones separadas 7 días
+export const INTERVALO_MIN_DIAS = 7;
+
+export const infoDosificacion = (
+    revs: FamachaRev[],
+    animalId: string,
+    fecha: string
+): InfoDosis => {
+    const dosisPrevias = revs
+        .filter(r => r.animalId === animalId && r.dosis && r.fecha < fecha)
+        .sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
+
+    const ultima = dosisPrevias[0] || null;
+    const dias = ultima ? diasEntre(fecha, ultima.fecha) : null;
+    const dosisEnVentana = dosisPrevias.filter(r => diasEntre(fecha, r.fecha) <= VENTANA_TRATAMIENTO_DIAS).length;
+
+    if (!ultima) {
+        return { ultimaDosisFecha: null, diasDesdeUltimaDosis: null, dosisEnVentana: 0, nivel: 'ok', mensaje: 'Sin dosis previas registradas.' };
+    }
+    if (dosisEnVentana >= 2) {
+        return {
+            ultimaDosisFecha: ultima.fecha, diasDesdeUltimaDosis: dias, dosisEnVentana, nivel: 'block',
+            mensaje: `Ya recibió ${dosisEnVentana} aplicaciones en ~2 semanas. No aplicar más; revisar manejo o consultar veterinario.`,
+        };
+    }
+    if (dias !== null && dias < INTERVALO_MIN_DIAS) {
+        return {
+            ultimaDosisFecha: ultima.fecha, diasDesdeUltimaDosis: dias, dosisEnVentana, nivel: 'warn',
+            mensaje: `Última dosis hace ${dias} día(s). Espera al menos 7 días entre aplicaciones.`,
+        };
+    }
+    return {
+        ultimaDosisFecha: ultima.fecha, diasDesdeUltimaDosis: dias, dosisEnVentana, nivel: 'ok',
+        mensaje: `Última dosis hace ${dias} día(s). Puede repetirse si el cuadro lo amerita.`,
+    };
+};
+
+/** Fecha de la jornada Famacha más reciente (cualquier animal). */
+export const ultimaJornada = (revs: FamachaRev[]): string | null => {
+    let max: string | null = null;
+    for (const r of revs) if (!max || r.fecha > max) max = r.fecha;
+    return max;
+};
+
+/** Penúltima jornada distinta a la última (para comparativas de índice). */
+export const jornadaAnterior = (revs: FamachaRev[]): string | null => {
+    const fechas = Array.from(new Set(revs.map(r => r.fecha))).sort((a, b) => (a < b ? 1 : -1));
+    return fechas[1] || null;
+};

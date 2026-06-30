@@ -28,6 +28,7 @@ export type EventType =
     | 'Inicio Lactancia'
     | 'Secado'
     | 'Baja de Rebaño'
+    | 'Famacha'
     | 'Manejo'; // Agregado 'Manejo' para eventos generales (Luz, etc)
 
 export const getEventCategory = (type: EventType): 'General' | 'Manejo' | 'Reproductivo' | 'Productivo' => {
@@ -46,6 +47,7 @@ export const getEventCategory = (type: EventType): 'General' | 'Manejo' | 'Repro
         case 'Hito de Crecimiento':
         case 'Actividad':
         case 'Cambio de Estado':
+        case 'Famacha':
         case 'Manejo': // Agregado
             return 'Manejo';
 

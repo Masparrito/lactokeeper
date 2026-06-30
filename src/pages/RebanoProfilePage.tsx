@@ -33,6 +33,7 @@ import { GeneticsTab } from '../components/profile/GeneticsTab';
 import { ProgenyTab } from '../components/profile/ProgenyTab';
 import { EventsTab } from '../components/profile/EventsTab';
 import { RecentEvents } from '../components/profile/RecentEvents';
+import { FamachaProfileBadge } from '../components/famacha/FamachaProfileBadge';
 import { HiddenPdfChart } from '../components/profile/HiddenPdfChart';
 import { PedigreeChart } from '../components/pedigree/PedigreeChart';
 
@@ -431,6 +432,7 @@ export default function RebanoProfilePage({
                     <div className="pt-4 space-y-2">
                         {isEditing ? ( <FormInput type="text" value={displayId} disabled={appConfig.lockAnimalIdEditing !== false} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditedData(prev => ({ ...prev, id: e.target.value.toUpperCase() }))} placeholder="ID DEL ANIMAL" title={appConfig.lockAnimalIdEditing !== false ? 'ID protegido. Actívalo en Configuración → Seguridad para editarlo.' : 'Edición de ID habilitada'} className={`text-2xl font-mono font-bold tracking-tight text-c-text p-2 ${appConfig.lockAnimalIdEditing !== false ? 'opacity-60' : ''}`} /> ) : ( <h1 className="text-2xl font-mono font-bold tracking-tight text-c-text truncate">{displayId}</h1> )}
                         {isEditing ? ( <FormInput type="text" value={displayFormattedName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditedData(prev => ({ ...prev, name: e.target.value.toUpperCase() }))} placeholder="Nombre del Animal" className="text-lg text-c-text-muted p-2" /> ) : ( <p className="text-lg text-c-text-muted truncate -mt-1">{displayFormattedName}</p> )}
+                        {!isEditing && <FamachaProfileBadge animalId={animal.id} />}
                     </div>
 
                     {/* Centro de alertas del animal */}
