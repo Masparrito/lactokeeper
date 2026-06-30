@@ -12,8 +12,8 @@ interface AddLotModalProps {
     forcedParentLotName?: string;
 }
 
-export const AddLotModal: React.FC<AddLotModalProps> = ({ isOpen, onClose, editingLotId, forcedParentLotId, forcedParentLotName }) => {
-    const { lots, addLot } = useData();
+export const AddLotModal: React.FC<AddLotModalProps> = ({ isOpen, onClose, forcedParentLotId, forcedParentLotName }) => {
+    const { addLot } = useData();
     const [lotName, setLotName] = useState('');
     const [parentLotId, setParentLotId] = useState<string>('');
     const [error, setError] = useState('');
@@ -47,7 +47,6 @@ export const AddLotModal: React.FC<AddLotModalProps> = ({ isOpen, onClose, editi
         onClose();
     };
 
-    const availableParentLots = lots.filter(lot => !lot.parentLotId && lot.id !== editingLotId);
 
     return (
         <Modal isOpen={isOpen} onClose={handleClose} title={isSubLotMode ? `Nuevo sub-lote en ${forcedParentLotName || ''}` : 'Crear Nuevo Lote'}>
@@ -68,19 +67,9 @@ export const AddLotModal: React.FC<AddLotModalProps> = ({ isOpen, onClose, editi
                 </div>
 
                 <div>
-                    <label htmlFor="parentLot" className="block text-sm font-medium text-c-text-muted mb-1" style={{ display: isSubLotMode ? 'none' : undefined }}>Sub-lote de (Opcional)</label>
-                    <select
-                        id="parentLot"
-                        value={parentLotId}
-                        style={{ display: isSubLotMode ? 'none' : undefined }}
-                        onChange={(e) => setParentLotId(e.target.value)}
-                        className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl focus:border-c-accent focus:ring-0"
-                    >
-                        <option value="">Ninguno (Es un Lote Principal)</option>
-                        {availableParentLots.map(lot => (
-                            <option key={lot.id} value={lot.id}>{lot.name}</option>
-                        ))}
-                    </select>
+                    {isSubLotMode && (
+                        <p className="text-xs text-c-text-faint">Se creará dentro de <span className="font-semibold text-c-accent">{forcedParentLotName}</span>.</p>
+                    )}
                 </div>
                 
                 {error && <p className="text-sm text-brand-red text-center">{error}</p>}

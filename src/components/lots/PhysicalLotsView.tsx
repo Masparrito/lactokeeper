@@ -166,13 +166,15 @@ const LotCardContent = ({ lotName, count, subLotsCount, dragControls, isSubLot }
 );
 
 // --- Componente de Tarjeta Swipeable ---
-const SwipeableLotCard = ({ lot, onEdit, onDelete, onClick, dragControls, isSubLot = false }: { 
-    lot: LotWithCount, 
-    onEdit: () => void, 
-    onDelete: () => void, 
-    onClick: () => void, 
-    dragControls?: any, 
-    isSubLot?: boolean 
+const SwipeableLotCard = ({ lot, onEdit, onDelete, onClick, dragControls, isSubLot = false, subLots = [], onSubLotClick }: {
+    lot: LotWithCount,
+    onEdit: () => void,
+    onDelete: () => void,
+    onClick: () => void,
+    dragControls?: any,
+    isSubLot?: boolean,
+    subLots?: LotWithCount[],
+    onSubLotClick?: (lot: LotWithCount) => void
 }) => {
     const swipeControls = useAnimation();
     const dragStarted = useRef(false);
@@ -205,19 +207,36 @@ const SwipeableLotCard = ({ lot, onEdit, onDelete, onClick, dragControls, isSubL
                 {showEdit && <button onClick={onEdit} onPointerDown={(e) => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-c-accent-sky text-white"><Edit size={22} /><span className="text-xs mt-1 font-semibold">Editar</span></button>}
                 {showDelete && <button onClick={onDelete} onPointerDown={(e) => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-red text-white"><Trash2 size={22} /><span className="text-xs mt-1 font-semibold">Borrar</span></button>}
             </div>
-            <motion.div 
+            <motion.div
                 {...dragProps}
                 dragListener={!isSubLot && dragControls ? false : undefined}
                 className="relative w-full z-10 cursor-pointer bg-c-surface"
             >
-                <LotCardContent 
-                    lotName={lot.name} 
-                    count={lot.count} 
-                    subLotsCount={lot.subLots?.length || 0} 
+                <LotCardContent
+                    lotName={lot.name}
+                    count={lot.count}
+                    subLotsCount={lot.subLots?.length || 0}
                     dragControls={dragControls}
                     isSubLot={isSubLot}
                 />
             </motion.div>
+
+            {/* Sub-lotes (corrales) como chips verdes dentro de la tarjeta del lote */}
+            {!isSubLot && subLots.length > 0 && (
+                <div className="relative z-10 bg-c-surface px-4 pb-3 -mt-1 flex flex-wrap gap-2">
+                    {subLots.map(sl => (
+                        <button
+                            key={sl.id}
+                            onClick={(e) => { e.stopPropagation(); onSubLotClick?.(sl); }}
+                            onPointerDown={(e) => e.stopPropagation()}
+                            className="flex items-center gap-1.5 bg-c-accent/10 hover:bg-c-accent/20 text-c-accent border border-c-accent/25 rounded-lg pl-2.5 pr-1.5 py-1.5 text-sm font-semibold active:scale-95 transition-all"
+                        >
+                            {sl.name}
+                            <span className="text-xs font-bold bg-c-accent/15 rounded px-1.5 py-0.5 min-w-[1.25rem] text-center">{sl.count}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
@@ -238,28 +257,16 @@ const ReorderableLotItem = ({ lot, navigateTo, onEdit, onDelete }: {
             dragControls={dragControls} 
             className="space-y-1"
         >
-            <SwipeableLotCard 
-                lot={lot} 
-                dragControls={dragControls} 
-                onClick={() => navigateTo({ name: 'lot-detail', lotName: lot.name })} 
-                onEdit={() => onEdit(lot)} 
-                onDelete={() => onDelete(lot)} 
+            <SwipeableLotCard
+                lot={lot}
+                dragControls={dragControls}
+                onClick={() => navigateTo({ name: 'lot-detail', lotName: lot.name })}
+                onEdit={() => onEdit(lot)}
+                onDelete={() => onDelete(lot)}
                 isSubLot={false}
+                subLots={lot.subLots}
+                onSubLotClick={(sl) => navigateTo({ name: 'lot-detail', lotName: sl.name })}
             />
-            {lot.subLots && lot.subLots.length > 0 && (
-                <div className="pl-6 space-y-1">
-                    {lot.subLots.map((subLot: LotWithCount) => (
-                        <SwipeableLotCard
-                            key={subLot.id}
-                            lot={subLot}
-                            onClick={() => navigateTo({ name: 'lot-detail', lotName: subLot.name })}
-                            onEdit={() => onEdit(subLot)}
-                            onDelete={() => onDelete(subLot)}
-                            isSubLot={true}
-                        />
-                    ))}
-                </div>
-            )}
         </Reorder.Item> 
     );
 };

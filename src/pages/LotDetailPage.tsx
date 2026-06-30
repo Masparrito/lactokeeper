@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import type { PageState } from '../types/navigation';
 // --- INICIO CORRECCIÓN: Imports 'Square' y 'CheckSquare' eliminados ---
-import { ArrowLeft, Plus, Edit, Trash2, MoveRight, CheckSquare, Square, Baby, Droplets, Scale, Archive, HeartCrack, Heart, DollarSign, Ban, Layers, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, MoveRight, CheckSquare, Square, Baby, Droplets, Scale, Archive, HeartCrack, Heart, DollarSign, Ban, Layers, ChevronRight, MoreVertical } from 'lucide-react';
 // --- FIN CORRECCIÓN ---
 import { Animal } from '../db/local';
 import { AdvancedAnimalSelector } from '../components/ui/AdvancedAnimalSelector';
@@ -77,9 +77,14 @@ export default function LotDetailPage({
 }: LotDetailPageProps) {
 
     // (CORREGIDO) Extraer 'appConfig' del hook useData
-    const { animals, parturitions, serviceRecords, breedingSeasons, sireLots, updateAnimal, startDryingProcess, setLactationAsDry, fathers, appConfig, lots } = useData();
+    const { animals, parturitions, serviceRecords, breedingSeasons, sireLots, updateAnimal, startDryingProcess, setLactationAsDry, fathers, appConfig, lots, updateLot, deleteLot } = useData();
     const [isSelectorOpen, setSelectorOpen] = useState(false);
     const [isAddSubLotOpen, setAddSubLotOpen] = useState(false);
+    const [isLotMenuOpen, setLotMenuOpen] = useState(false);
+    const [isRenameOpen, setRenameOpen] = useState(false);
+    const [renameValue, setRenameValue] = useState('');
+    const [isDeleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [lotActionError, setLotActionError] = useState('');
     const [isEditing, setIsEditing] = useState(false);
     const [selectedAnimals, setSelectedAnimals] = useState<Set<string>>(new Set());
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
@@ -167,6 +172,40 @@ export default function LotDetailPage({
         setSelectorOpen(false);
     };
 
+    // --- Gestión del lote actual (renombrar / eliminar) ---
+    const handleRenameLot = async () => {
+        if (!currentLot) return;
+        const name = renameValue.trim();
+        if (!name) { setLotActionError('El nombre no puede estar vacío.'); return; }
+        if (name === currentLot.name) { setRenameOpen(false); return; }
+        try {
+            setLotActionError('');
+            await updateLot(currentLot.id, { name });
+            setRenameOpen(false);
+            onBack(); // el lote cambió de nombre; volvemos al listado
+        } catch (e: any) {
+            setLotActionError(e?.message || 'No se pudo renombrar.');
+        }
+    };
+
+    const handleDeleteLot = async () => {
+        if (!currentLot) return;
+        try {
+            setLotActionError('');
+            await deleteLot(currentLot.id);
+            setDeleteConfirmOpen(false);
+            onBack();
+        } catch (e: any) {
+            setLotActionError(e?.message || 'No se pudo eliminar.');
+            setDeleteConfirmOpen(false);
+        }
+    };
+
+    const lotMenuActions: ActionSheetAction[] = [
+        { label: 'Renombrar lote', icon: Edit, onClick: () => { setRenameValue(currentLot?.name || ''); setLotActionError(''); setRenameOpen(true); } },
+        { label: 'Eliminar lote', icon: Trash2, color: 'text-brand-red', onClick: () => { setLotActionError(''); setDeleteConfirmOpen(true); } },
+    ];
+
     // --- (SIN CAMBIOS) ---
     const handleCardClick = (animalId: string) => {
         if (isEditing) {
@@ -238,7 +277,14 @@ export default function LotDetailPage({
                         </p>
                     </div>
                     {isEditing ? (<button onClick={() => { setIsEditing(false); setSelectedAnimals(new Set()); }} className="text-c-accent font-semibold px-2 py-1">Listo</button>)
-                    : (<button onClick={() => setIsEditing(true)} className="p-2 -mr-2 text-c-text-muted hover:text-c-text"><Edit size={20} /></button>)}
+                    : (
+                        <div className="flex items-center gap-1">
+                            {currentLot && lotName !== 'Sin Asignar' && (
+                                <button onClick={() => setLotMenuOpen(true)} className="p-2 text-c-text-muted hover:text-c-text" title="Opciones del lote"><MoreVertical size={20} /></button>
+                            )}
+                            <button onClick={() => setIsEditing(true)} className="p-2 -mr-2 text-c-text-muted hover:text-c-text"><Edit size={20} /></button>
+                        </div>
+                    )}
                 </header>
 
                 {!isEditing && (
@@ -363,6 +409,45 @@ export default function LotDetailPage({
                     forcedParentLotName={currentLot.name}
                 />
             )}
+
+            {/* Menú de opciones del lote (renombrar / eliminar) */}
+            <ActionSheetModal
+                isOpen={isLotMenuOpen}
+                onClose={() => setLotMenuOpen(false)}
+                title={`Opciones de ${lotName}`}
+                actions={lotMenuActions}
+            />
+
+            {/* Renombrar lote */}
+            <Modal isOpen={isRenameOpen} onClose={() => setRenameOpen(false)} title="Renombrar lote">
+                <div className="space-y-4">
+                    <input
+                        type="text"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        placeholder="Nuevo nombre del lote"
+                        autoFocus
+                        className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl focus:border-c-accent focus:ring-0"
+                    />
+                    {lotActionError && <p className="text-sm text-brand-red text-center">{lotActionError}</p>}
+                    <div className="flex justify-end gap-3 pt-2">
+                        <button onClick={() => setRenameOpen(false)} className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-3 font-semibold rounded-lg text-c-text">Cancelar</button>
+                        <button onClick={handleRenameLot} className="px-5 py-2 bg-c-accent hover:bg-c-accent/90 text-white font-bold rounded-lg">Guardar</button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Eliminar lote */}
+            <Modal isOpen={isDeleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} title={`Eliminar ${lotName}`}>
+                <div className="space-y-4">
+                    <p className="text-c-text-muted">¿Seguro que quieres eliminar el lote "{lotName}"? Esta acción no se puede deshacer.</p>
+                    {lotActionError && <p className="text-sm text-brand-red text-center">{lotActionError}</p>}
+                    <div className="flex justify-end gap-3 pt-2">
+                        <button onClick={() => setDeleteConfirmOpen(false)} className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-3 font-semibold rounded-lg text-c-text">Cancelar</button>
+                        <button onClick={handleDeleteLot} className="px-5 py-2 bg-brand-red hover:bg-red-700 text-white font-bold rounded-lg">Eliminar</button>
+                    </div>
+                </div>
+            </Modal>
             {/* --- (FIN CORRECCIÓN 2) --- */}
 
             <TransferAnimalsModal isOpen={isTransferModalOpen} onClose={() => { setIsTransferModalOpen(false); setIsEditing(false); setSelectedAnimals(new Set()); }} animalsToTransfer={Array.from(selectedAnimals)} fromLot={lotName} />
