@@ -91,6 +91,7 @@ interface IDataContext {
   deleteFamachaRev: (revId: string) => Promise<void>;
 
   deleteEvent: (eventId: string) => Promise<void>;
+  deleteServiceRecord: (id: string) => Promise<void>;
   updateEventNotes: (eventId: string, notes: string) => Promise<void>;
 
   updateAppConfig: (config: AppConfig) => Promise<void>;
@@ -1135,6 +1136,46 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent, appConfig?.diasGestacion]);
 
+    // Elimina un servicio (para corregir errores desde Actividades Recientes).
+    // Borra el registro + su evento, y revierte el estado reproductivo a "Vacía"
+    // si era el único servicio del ciclo y la hembra seguía como "Servida".
+    const deleteServiceRecord = useCallback(async (id: string) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        const rec = await localDb.serviceRecords.get(id);
+        if (!rec) return;
+
+        // Evento 'Servicio' asociado (mismo animal y fecha).
+        const evs = await localDb.events
+            .where('date').equals(rec.serviceDate)
+            .and(e => e.type === 'Servicio' && e.animalId === rec.femaleId)
+            .toArray();
+        const evIds = evs.map(e => e.id);
+
+        // ¿Quedan otros servicios en el ciclo actual (tras el último parto)?
+        const parts = await localDb.parturitions.where('goatId').equals(rec.femaleId).toArray();
+        parts.sort((a, b) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime());
+        const cutoff = parts.length > 0 ? parts[0].parturitionDate : '2000-01-01';
+        const remaining = (await localDb.serviceRecords.where('femaleId').equals(rec.femaleId).toArray())
+            .filter(s => s.id !== id && s.serviceDate > cutoff);
+
+        const female = await localDb.animals.get(rec.femaleId);
+        const revertStatus = remaining.length === 0 && female?.reproductiveStatus === 'Servida';
+
+        await localDb.transaction('rw', localDb.serviceRecords, localDb.events, localDb.animals, async () => {
+            await localDb.serviceRecords.delete(id);
+            if (evIds.length) await localDb.events.bulkDelete(evIds);
+            if (revertStatus) await localDb.animals.update(rec.femaleId, { reproductiveStatus: 'Vacía', _synced: false });
+        });
+
+        await fetchDataFromLocalDb();
+        if (revertStatus) {
+            const updated = await localDb.animals.get(rec.femaleId);
+            if (updated) enqueueSync(() => syncToFirestore("animals", rec.femaleId, updated));
+        }
+        await recordDeletions([{ collection: "serviceRecords", id }, ...evIds.map(eid => ({ collection: "events", id: eid }))]);
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, recordDeletions]);
+
     const addBatchEvent = useCallback(async (data: { lotName: string; date: string; type: EventType; details: string; }) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
@@ -1543,6 +1584,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addFamachaRev, deleteFamachaRev,
 
         deleteEvent,
+        deleteServiceRecord,
         updateEventNotes,
         addEvent: internalAddEvent,
 
@@ -1567,6 +1609,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addFamachaRev, deleteFamachaRev,
 
         deleteEvent,
+        deleteServiceRecord,
         updateEventNotes,
         internalAddEvent,
 
