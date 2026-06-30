@@ -4,10 +4,11 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import type { PageState } from '../types/navigation';
 // --- INICIO CORRECCIÓN: Imports 'Square' y 'CheckSquare' eliminados ---
-import { ArrowLeft, Plus, Edit, Trash2, MoveRight, CheckSquare, Square, Baby, Droplets, Scale, Archive, HeartCrack, Heart, DollarSign, Ban } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, MoveRight, CheckSquare, Square, Baby, Droplets, Scale, Archive, HeartCrack, Heart, DollarSign, Ban, Layers, ChevronRight } from 'lucide-react';
 // --- FIN CORRECCIÓN ---
 import { Animal } from '../db/local';
 import { AdvancedAnimalSelector } from '../components/ui/AdvancedAnimalSelector';
+import { AddLotModal } from '../components/ui/AddLotModal';
 import { TransferAnimalsModal } from '../components/ui/TransferAnimalsModal';
 import { formatAge, getAnimalStatusObjects } from '../utils/calculations';
 import { formatAnimalDisplay } from '../utils/formatting';
@@ -76,8 +77,9 @@ export default function LotDetailPage({
 }: LotDetailPageProps) {
 
     // (CORREGIDO) Extraer 'appConfig' del hook useData
-    const { animals, parturitions, serviceRecords, breedingSeasons, sireLots, updateAnimal, startDryingProcess, setLactationAsDry, fathers, appConfig } = useData();
+    const { animals, parturitions, serviceRecords, breedingSeasons, sireLots, updateAnimal, startDryingProcess, setLactationAsDry, fathers, appConfig, lots } = useData();
     const [isSelectorOpen, setSelectorOpen] = useState(false);
+    const [isAddSubLotOpen, setAddSubLotOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [selectedAnimals, setSelectedAnimals] = useState<Set<string>>(new Set());
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
@@ -119,6 +121,20 @@ export default function LotDetailPage({
                 };
             });
     }, [animals, lotName, parturitions, serviceRecords, sireLots, breedingSeasons, fathers]);
+
+    // --- SUB-LOTES (corrales) del lote actual ---
+    const currentLot = useMemo(() => lots.find(l => l.name === lotName), [lots, lotName]);
+    const isTopLevelLot = !!currentLot && !currentLot.parentLotId;
+    const subLots = useMemo(() => {
+        if (!currentLot) return [];
+        return lots
+            .filter(l => l.parentLotId === currentLot.id)
+            .map(l => ({
+                ...l,
+                count: animals.filter(a => !a.isReference && (a.location || 'Sin Asignar') === l.name).length,
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    }, [lots, currentLot, animals]);
 
     
     // --- (CORRECCIÓN 1: SOLAPAMIENTO) ---
@@ -215,7 +231,11 @@ export default function LotDetailPage({
                     <button onClick={onBack} className="p-2 -ml-2 text-c-text-muted hover:text-c-text transition-colors"><ArrowLeft size={24} /></button>
                     <div className="text-center">
                         <h1 className="text-3xl font-bold tracking-tight text-c-text">{lotName}</h1>
-                        <p className="text-lg text-c-text-muted">{animalsInLot.length} {animalsInLot.length === 1 ? 'animal' : 'animales'}</p>
+                        <p className="text-lg text-c-text-muted">
+                            {subLots.length > 0
+                                ? `${animalsInLot.length} directos · ${subLots.reduce((s, sl) => s + sl.count, 0)} en sub-lotes`
+                                : `${animalsInLot.length} ${animalsInLot.length === 1 ? 'animal' : 'animales'}`}
+                        </p>
                     </div>
                     {isEditing ? (<button onClick={() => { setIsEditing(false); setSelectedAnimals(new Set()); }} className="text-c-accent font-semibold px-2 py-1">Listo</button>)
                     : (<button onClick={() => setIsEditing(true)} className="p-2 -mr-2 text-c-text-muted hover:text-c-text"><Edit size={20} /></button>)}
@@ -224,6 +244,40 @@ export default function LotDetailPage({
                 {!isEditing && (
                     <div className="px-4 pt-4">
                         <button onClick={() => setSelectorOpen(true)} className="w-full flex items-center justify-center gap-2 bg-c-accent hover:bg-c-accent/90 text-white font-bold py-4 px-4 rounded-xl transition-colors text-lg"><Plus size={20} /> Añadir Animales</button>
+                    </div>
+                )}
+
+                {/* --- SUB-LOTES (corrales) --- solo en lotes principales --- */}
+                {!isEditing && isTopLevelLot && (
+                    <div className="px-4 pt-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <h2 className="text-[11px] font-bold uppercase tracking-widest text-c-text-faint">
+                                Sub-lotes {subLots.length > 0 ? `(${subLots.length})` : ''}
+                            </h2>
+                            <button onClick={() => setAddSubLotOpen(true)} className="flex items-center gap-1 text-sm font-bold text-c-accent">
+                                <Plus size={16} /> Crear sub-lote
+                            </button>
+                        </div>
+                        {subLots.length > 0 ? (
+                            <div className="space-y-2">
+                                {subLots.map(sl => (
+                                    <button
+                                        key={sl.id}
+                                        onClick={() => navigateTo({ name: 'lot-detail', lotName: sl.name })}
+                                        className="w-full flex items-center gap-3 bg-c-surface border border-c-border rounded-xl px-4 py-3 text-left hover:bg-c-surface-2 transition-colors"
+                                    >
+                                        <Layers size={16} className="text-c-text-faint flex-shrink-0" />
+                                        <span className="font-semibold text-c-text truncate flex-1">{sl.name}</span>
+                                        <span className="text-sm text-c-text-muted flex-shrink-0">
+                                            <span className="font-bold text-c-accent">{sl.count}</span> {sl.count === 1 ? 'animal' : 'animales'}
+                                        </span>
+                                        <ChevronRight size={16} className="text-c-text-faint flex-shrink-0" />
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-c-text-faint px-1 py-2">Crea corrales (Corral 1, Corral 2…) para subdividir este lote.</p>
+                        )}
                     </div>
                 )}
 
@@ -300,6 +354,15 @@ export default function LotDetailPage({
                 title={`Añadir animales a: ${lotName}`}
                 appConfig={appConfig} // <-- PROP AÑADIDA
             />
+
+            {currentLot && (
+                <AddLotModal
+                    isOpen={isAddSubLotOpen}
+                    onClose={() => setAddSubLotOpen(false)}
+                    forcedParentLotId={currentLot.id}
+                    forcedParentLotName={currentLot.name}
+                />
+            )}
             {/* --- (FIN CORRECCIÓN 2) --- */}
 
             <TransferAnimalsModal isOpen={isTransferModalOpen} onClose={() => { setIsTransferModalOpen(false); setIsEditing(false); setSelectedAnimals(new Set()); }} animalsToTransfer={Array.from(selectedAnimals)} fromLot={lotName} />

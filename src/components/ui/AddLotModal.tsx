@@ -1,20 +1,28 @@
 // src/components/ui/AddLotModal.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from './Modal'; // Asumiendo que está en /ui/Modal.tsx
 import { useData } from '../../context/DataContext';
 
 interface AddLotModalProps {
     isOpen: boolean;
     onClose: () => void;
-    editingLotId?: string; 
+    editingLotId?: string;
+    forcedParentLotId?: string;
+    forcedParentLotName?: string;
 }
 
-export const AddLotModal: React.FC<AddLotModalProps> = ({ isOpen, onClose, editingLotId }) => {
+export const AddLotModal: React.FC<AddLotModalProps> = ({ isOpen, onClose, editingLotId, forcedParentLotId, forcedParentLotName }) => {
     const { lots, addLot } = useData();
     const [lotName, setLotName] = useState('');
     const [parentLotId, setParentLotId] = useState<string>('');
     const [error, setError] = useState('');
+
+    const isSubLotMode = !!forcedParentLotId;
+
+    useEffect(() => {
+        if (isOpen) setParentLotId(forcedParentLotId || '');
+    }, [isOpen, forcedParentLotId]);
 
     const handleSave = async () => {
         if (lotName.trim() === '') {
@@ -42,28 +50,29 @@ export const AddLotModal: React.FC<AddLotModalProps> = ({ isOpen, onClose, editi
     const availableParentLots = lots.filter(lot => !lot.parentLotId && lot.id !== editingLotId);
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Crear Nuevo Lote">
+        <Modal isOpen={isOpen} onClose={handleClose} title={isSubLotMode ? `Nuevo sub-lote en ${forcedParentLotName || ''}` : 'Crear Nuevo Lote'}>
             <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-4">
                 <p className="text-sm text-c-text-muted">
-                    Introduce el nombre de la nueva ubicación o lote en tu finca.
+                    {isSubLotMode ? `Crea un corral o sub-lote dentro de "${forcedParentLotName || ''}".` : 'Introduce el nombre de la nueva ubicación o lote en tu finca.'}
                 </p>
                 <div>
-                    <label htmlFor="lotName" className="block text-sm font-medium text-c-text-muted mb-1">Nombre del Lote</label>
+                    <label htmlFor="lotName" className="block text-sm font-medium text-c-text-muted mb-1">{isSubLotMode ? 'Nombre del sub-lote' : 'Nombre del Lote'}</label>
                     <input 
                         id="lotName"
                         type="text"
                         value={lotName}
                         onChange={(e) => setLotName(e.target.value)}
-                        placeholder="Ej: Galpón 1"
+                        placeholder={isSubLotMode ? 'Ej: Corral 1' : 'Ej: Galpón 1'}
                         className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl focus:border-c-accent focus:ring-0"
                     />
                 </div>
 
                 <div>
-                    <label htmlFor="parentLot" className="block text-sm font-medium text-c-text-muted mb-1">Sub-lote de (Opcional)</label>
+                    <label htmlFor="parentLot" className="block text-sm font-medium text-c-text-muted mb-1" style={{ display: isSubLotMode ? 'none' : undefined }}>Sub-lote de (Opcional)</label>
                     <select
                         id="parentLot"
                         value={parentLotId}
+                        style={{ display: isSubLotMode ? 'none' : undefined }}
                         onChange={(e) => setParentLotId(e.target.value)}
                         className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl focus:border-c-accent focus:ring-0"
                     >
