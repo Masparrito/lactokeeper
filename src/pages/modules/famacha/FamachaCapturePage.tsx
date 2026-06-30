@@ -53,6 +53,9 @@ export function FamachaCapturePage() {
     const lockRow = (id: string) => setUnlockedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
     const unlockRow = (id: string) => setUnlockedIds(prev => { const n = new Set(prev); n.add(id); return n; });
 
+    // Confirmación en 2 pasos para borrar toda la carga de una fecha.
+    const [confirmingClear, setConfirmingClear] = useState(false);
+
     // Modal "+ animal"
     const [showAdd, setShowAdd] = useState(false);
     const [newArete, setNewArete] = useState('');
@@ -112,6 +115,23 @@ export function FamachaCapturePage() {
             console.error('Error al eliminar revisión Famacha:', e);
         } finally {
             setSavingId(null);
+        }
+    };
+
+    // Borrar todas las revisiones de la fecha seleccionada (limpiar una jornada
+    // de prueba o cargada por error).
+    const handleClearJornada = async () => {
+        const revs = Array.from(revsDelDia.values());
+        if (!revs.length) { setConfirmingClear(false); return; }
+        setSavingId('__clear__');
+        try {
+            for (const r of revs) await deleteFamachaRev(r.id);
+            showToast(`Se eliminaron ${revs.length} revisión(es) del ${fecha}.`);
+        } catch (e) {
+            console.error('Error al limpiar jornada Famacha:', e);
+        } finally {
+            setSavingId(null);
+            setConfirmingClear(false);
         }
     };
 
@@ -191,7 +211,20 @@ export function FamachaCapturePage() {
                             className="w-full bg-c-surface-2 text-c-text rounded-lg px-3 py-2.5 text-sm border border-c-border focus:outline-none focus:ring-2 focus:ring-rose-500"
                         />
                         {revsDelDia.size > 0 && (
-                            <p className="text-[11px] text-c-text-faint">Esta fecha ya tiene {revsDelDia.size} animal(es) cargado(s).</p>
+                            <div className="flex items-center justify-between gap-2">
+                                <p className="text-[11px] text-c-text-faint">Esta fecha ya tiene {revsDelDia.size} animal(es) cargado(s).</p>
+                                {!confirmingClear ? (
+                                    <button onClick={() => setConfirmingClear(true)} className="flex items-center gap-1 text-[11px] font-semibold text-red-500 flex-shrink-0">
+                                        <Trash2 size={12} /> Eliminar carga
+                                    </button>
+                                ) : (
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        <span className="text-[11px] text-c-text-muted">¿Borrar {revsDelDia.size}?</span>
+                                        <button onClick={handleClearJornada} disabled={savingId === '__clear__'} className="text-[11px] font-bold text-red-500 disabled:opacity-50">Sí</button>
+                                        <button onClick={() => setConfirmingClear(false)} className="text-[11px] font-semibold text-c-text-muted">No</button>
+                                    </div>
+                                )}
+                            </div>
                         )}
                         <button
                             onClick={() => setJornadaActiva(true)}

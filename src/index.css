@@ -96,3 +96,21 @@ body {
     animation: spin 3s linear infinite;
   }
 }
+
+/* Inputs de fecha: en iOS Safari el control nativo se desborda del contenedor
+   (el valor se sale por la derecha). Forzamos ancho contenido y alineación. */
+input[type="date"],
+input[type="datetime-local"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+}
+input[type="date"]::-webkit-calendar-picker-indicator {
+  margin-left: auto;
+}
