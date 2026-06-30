@@ -98,7 +98,7 @@ export interface Animal extends SyncedRecord {
     saleBuyer?: string;
     salePurpose?: 'Cría' | 'Carne';
     deathReason?: string;
-    cullReason?: 'Baja producción' | 'Bajo índice de crecimiento' | 'Inflamación articular' | 'Linfadenitis caseosa' | 'Sospecha de otras enfermedades' | string;
+    cullReason?: 'Baja producción' | 'Bajo índice de crecimiento' | 'Inflamación articular' | 'Linfadenitis caseosa' | 'Sacrificado / Beneficiado' | 'Sospecha de otras enfermedades' | string;
     cullReasonDetails?: string;
     breedingFailures?: number;
     lastWeighing?: { date: string, kg: number } | null;

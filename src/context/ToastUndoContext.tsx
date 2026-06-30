@@ -36,7 +36,7 @@ export const ToastUndoProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }, durationMs);
     }, []);
 
-    const showUndo = useCallback((message: string, onUndo: () => void | Promise<void>, durationMs = 15000) => {
+    const showUndo = useCallback((message: string, onUndo: () => void | Promise<void>, durationMs = 5000) => {
         present(message, onUndo, durationMs);
     }, [present]);
 
@@ -77,16 +77,17 @@ export const ToastUndoProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     className="fixed left-0 right-0 z-[130] px-4 flex justify-center pointer-events-none animate-slide-up"
                     style={{ bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
                 >
-                    <div className="pointer-events-auto w-full max-w-md bg-c-text-strong text-c-bg rounded-xl shadow-2xl flex items-center gap-3 pl-4 pr-2 py-2.5">
-                        <CheckCircle2 size={18} className="shrink-0 opacity-80" />
-                        <span className="flex-1 text-sm font-medium truncate">{toast.message}</span>
+                    {/* Pill compacta: no roba espacio. Si hay Deshacer, prioriza ese botón. */}
+                    <div className="pointer-events-auto bg-c-text-strong/95 text-c-bg rounded-full shadow-xl flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 max-w-[90vw]">
+                        <CheckCircle2 size={14} className="shrink-0 opacity-70" />
+                        <span className="text-xs font-medium truncate max-w-[40vw]">{toast.message}</span>
                         {toast.onUndo && (
-                            <button onClick={handleUndo} className="flex items-center gap-1.5 font-bold text-sm px-3 py-1.5 rounded-lg bg-c-bg/15 hover:bg-c-bg/25 transition-colors">
-                                <Undo2 size={15} /> Deshacer
+                            <button onClick={handleUndo} className="flex items-center gap-1 font-bold text-xs px-2.5 py-1 rounded-full bg-c-bg/20 hover:bg-c-bg/30 transition-colors shrink-0">
+                                <Undo2 size={13} /> Deshacer
                             </button>
                         )}
-                        <button onClick={dismiss} aria-label="Cerrar" className="p-1.5 rounded-lg hover:bg-c-bg/15 transition-colors">
-                            <X size={16} />
+                        <button onClick={dismiss} aria-label="Cerrar" className="p-1 rounded-full hover:bg-c-bg/20 transition-colors shrink-0">
+                            <X size={14} />
                         </button>
                     </div>
                 </div>

@@ -415,6 +415,20 @@ export default function RebanoProfilePage({
                 </header>
 
                 <main className="px-4 space-y-4 pb-32 flex-1">
+                    {/* Aviso de baja: identifica rápido si el animal está vendido/muerto/descartado */}
+                    {animal.isReference && (
+                        <div className="mt-4 flex items-center gap-2 bg-brand-red/10 border border-brand-red/30 rounded-xl px-3 py-2.5">
+                            <Archive size={18} className="text-brand-red shrink-0" />
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold text-brand-red leading-tight">DE BAJA · {animal.status}</p>
+                                <p className="text-[11px] text-c-text-muted leading-tight">
+                                    {animal.status === 'Descarte' && animal.cullReason ? animal.cullReason : ''}
+                                    {animal.status === 'Muerte' && animal.deathReason ? animal.deathReason : ''}
+                                    {animal.endDate ? `${(animal.cullReason || animal.deathReason) ? ' · ' : ''}${new Date(animal.endDate + 'T00:00:00Z').toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}` : ''}
+                                </p>
+                            </div>
+                        </div>
+                    )}
                     {/* Identidad del animal (en el flujo, ya no fijo) */}
                     <div className="pt-4 space-y-2">
                         {isEditing ? ( <FormInput type="text" value={displayId} disabled={appConfig.lockAnimalIdEditing !== false} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditedData(prev => ({ ...prev, id: e.target.value.toUpperCase() }))} placeholder="ID DEL ANIMAL" title={appConfig.lockAnimalIdEditing !== false ? 'ID protegido. Actívalo en Configuración → Seguridad para editarlo.' : 'Edición de ID habilitada'} className={`text-2xl font-mono font-bold tracking-tight text-c-text p-2 ${appConfig.lockAnimalIdEditing !== false ? 'opacity-60' : ''}`} /> ) : ( <h1 className="text-2xl font-mono font-bold tracking-tight text-c-text truncate">{displayId}</h1> )}

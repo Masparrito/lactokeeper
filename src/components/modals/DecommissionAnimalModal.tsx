@@ -46,7 +46,7 @@ export const DecommissionAnimalModal: React.FC<DecommissionAnimalModalProps> = (
   const [cullDetails, setCullDetails] = useState('');
 
   const cullOptions: NonNullable<Animal['cullReason']>[] = [
-    'Baja producción', 'Bajo índice de crecimiento', 'Inflamación articular',
+    'Sacrificado / Beneficiado', 'Baja producción', 'Bajo índice de crecimiento', 'Inflamación articular',
     'Linfadenitis caseosa', 'Sospecha de otras enfermedades'
   ];
 
