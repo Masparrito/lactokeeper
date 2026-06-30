@@ -5,7 +5,7 @@ import {
     ArrowLeft, Edit, Save, X, Droplets, Scale, Syringe, Replace,
     Baby, Archive,
     DollarSign, HeartCrack, Ban, RefreshCw, Trash2, Award,
-    Printer, CheckCircle2, PlusCircle, BarChart2, Heart, Star // Importado Heart
+    Printer, CheckCircle2, PlusCircle, BarChart2, Heart, Star, AlertCircle // Importado Heart
 } from 'lucide-react';
 
 // --- Modales y UI Esenciales ---
@@ -45,6 +45,7 @@ import { useAnimalIndicators } from '../hooks/useAnimalIndicators';
 import { getStatusDisplayFlags } from '../hooks/useAnimalStatus';
 import { useShortcuts } from '../context/ShortcutsContext';
 import { useToastUndo } from '../context/ToastUndoContext';
+import { useManagementAlerts } from '../hooks/useManagementAlerts';
 import { exportPedigreeToPDF } from '../utils/pdfExporter';
 import {
     getAnimalZootecnicCategory, 
@@ -90,6 +91,8 @@ export default function RebanoProfilePage({
     const animal = useMemo(() => animals.find(a => a.id === animalId), [animals, animalId]);
     const { recordView, toggleFavorite, isFavorite } = useShortcuts();
     const { showUndo } = useToastUndo();
+    const allAlerts = useManagementAlerts();
+    const animalAlerts = useMemo(() => animal ? allAlerts.filter(a => a.animalId === animal.id) : [], [allAlerts, animal]);
     useEffect(() => { if (animal?.id) recordView(animal.id); }, [animal?.id, recordView]);
     const animalEvents = useEvents(animal ? animal.id : undefined); 
     const pedigreeRoot = usePedigree(animalId);
@@ -434,6 +437,24 @@ export default function RebanoProfilePage({
                         {isEditing ? ( <FormInput type="text" value={displayId} disabled={appConfig.lockAnimalIdEditing !== false} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditedData(prev => ({ ...prev, id: e.target.value.toUpperCase() }))} placeholder="ID DEL ANIMAL" title={appConfig.lockAnimalIdEditing !== false ? 'ID protegido. Actívalo en Configuración → Seguridad para editarlo.' : 'Edición de ID habilitada'} className={`text-2xl font-mono font-bold tracking-tight text-c-text p-2 ${appConfig.lockAnimalIdEditing !== false ? 'opacity-60' : ''}`} /> ) : ( <h1 className="text-2xl font-mono font-bold tracking-tight text-c-text truncate">{displayId}</h1> )}
                         {isEditing ? ( <FormInput type="text" value={displayFormattedName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditedData(prev => ({ ...prev, name: e.target.value.toUpperCase() }))} placeholder="Nombre del Animal" className="text-lg text-c-text-muted p-2" /> ) : ( <p className="text-lg text-c-text-muted truncate -mt-1">{displayFormattedName}</p> )}
                     </div>
+
+                    {/* Centro de alertas del animal */}
+                    {!isEditing && animalAlerts.length > 0 && (
+                        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 space-y-2">
+                            <div className="flex items-center gap-2 text-amber-500 text-xs font-bold uppercase tracking-wide">
+                                <AlertCircle size={14} /> Alertas ({animalAlerts.length})
+                            </div>
+                            {animalAlerts.map((al) => (
+                                <div key={al.id} className="flex items-start gap-2">
+                                    <al.icon size={16} className={`${al.color} mt-0.5 shrink-0`} />
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-c-text leading-tight">{al.title}</p>
+                                        <p className="text-xs text-c-text-muted leading-tight">{al.message}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Acciones Rápidas */}
                     {!isEditing && <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>{quickActions.map((action) => ( <button key={action.label} onClick={action.onClick} disabled={action.disabled} className={`flex-shrink-0 flex items-center gap-2 bg-c-surface-2 hover:bg-c-surface-3 ${action.color} font-semibold px-3 py-1.5 rounded-full text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}><action.icon size={14} /><span>{action.label}</span></button>))}</div>}
