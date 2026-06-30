@@ -38,11 +38,24 @@ export interface ReconcileResult {
   };
 }
 
+// Estados que representan una baja (desincorporación) del rebaño real.
+const BAJA_STATUSES = ['Venta', 'Muerte', 'Descarte'];
+
+// Una baja es un animal REAL que ya no está activo: se le marca isReference
+// al darlo de baja, pero sigue siendo parte del histórico del rebaño.
+const isBaja = (a: Animal): boolean =>
+  BAJA_STATUSES.includes(String(a.status)) || !!a.endDate;
+
+// "Referencia externa" = animal que NUNCA fue parte del rebaño real
+// (ej. macho prestado / padre externo). Esos sí se excluyen del cotejo.
+// Ojo: un animal dado de baja también tiene isReference=true, pero NO es externo.
+const isReferenciaExterna = (a: Animal): boolean => !!a.isReference && !isBaja(a);
+
 export function reconcile(
   famacha: FamachaInventoryItem[],
   animals: Animal[]
 ): ReconcileResult {
-  const reales = animals.filter(a => !a.isReference);
+  const reales = animals.filter(a => !isReferenciaExterna(a));
   const referencia = animals.length - reales.length;
 
   // Índices de GanaderoOS por clave exacta
