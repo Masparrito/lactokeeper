@@ -834,7 +834,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const localDb = getDB();
         const lot = await localDb.lots.get(lotId);
         if (lot) {
-            const animalsInLot = await localDb.animals.where({ location: lot.name }).count();
+            // Solo los animales ACTIVOS (no de baja) cuentan como "asignados". Un
+            // animal vendido/muerto conserva su location histórica pero no debe
+            // impedir borrar un lote que está vacío en la práctica.
+            const animalsInLot = await localDb.animals.where({ location: lot.name }).filter(a => !a.isReference).count();
             if (animalsInLot > 0) throw new Error("No se puede eliminar un lote con animales asignados.");
             const subLots = await localDb.lots.where({ parentLotId: lotId }).count();
             if (subLots > 0) throw new Error("No se puede eliminar un lote que contiene sub-lotes.");

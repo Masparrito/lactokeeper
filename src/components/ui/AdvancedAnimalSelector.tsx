@@ -328,7 +328,7 @@ export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({
                     </div>
 
                     {/* 2. Lista de Animales Virtualizada */}
-                    <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 pt-2 pb-32 custom-scrollbar">
+                    <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 pt-2 pb-4 custom-scrollbar">
                         <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
                             {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                                 const animal = filteredAnimals[virtualRow.index];
@@ -365,12 +365,12 @@ export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({
                         )}
                     </div>
 
-                    {/* 3. Footer Flotante de Acción */}
-                    <div className="fixed bottom-0 left-0 right-0 p-4 pb-8 bg-gradient-to-t from-c-bg via-c-bg to-transparent z-20">
+                    {/* 3. Footer de Acción (fijo dentro del flex, siempre visible en iOS) */}
+                    <div className="flex-shrink-0 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-c-surface border-t border-c-border">
                         <div className="flex gap-3 max-w-md mx-auto">
                             <button
                                 onClick={handleClose}
-                                className="px-6 py-4 rounded-2xl bg-c-surface border border-c-border text-c-text-muted font-bold hover:text-c-text hover:bg-c-surface-2 transition-colors"
+                                className="px-6 py-4 rounded-2xl bg-c-surface-2 border border-c-border text-c-text-muted font-bold hover:text-c-text hover:bg-c-surface-3 transition-colors"
                             >
                                 Cancelar
                             </button>
