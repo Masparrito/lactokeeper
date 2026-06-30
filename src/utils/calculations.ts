@@ -157,8 +157,7 @@ export const getAnimalStatusObjects = (
 
         if (lastParturition) {
             if (lastParturition.status === 'activa') activeStatuses.push(STATUS_DEFINITIONS.MILKING);
-            else if (lastParturition.status === 'en-secado') activeStatuses.push(STATUS_DEFINITIONS.DRYING_OFF);
-            else if (lastParturition.status === 'seca') activeStatuses.push(STATUS_DEFINITIONS.DRY);
+            else if (lastParturition.status === 'en-secado' || lastParturition.status === 'seca') activeStatuses.push(STATUS_DEFINITIONS.DRY);
         }
     }
 

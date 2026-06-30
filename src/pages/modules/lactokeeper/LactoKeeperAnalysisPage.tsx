@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useData } from '../../../context/DataContext';
-import { Plus, ChevronRight, ArrowUp, ArrowDown, Sparkles, ChevronLeft, FilterX, Info, Sigma, Droplets, TrendingUp, LogIn, LogOut, Target, Search, Trash2, BarChart as BarChartIconLucide, Wind, Archive, AlertTriangle } from 'lucide-react';
+import { Plus, ChevronRight, ArrowUp, ArrowDown, Sparkles, ChevronLeft, FilterX, Info, Sigma, Droplets, TrendingUp, LogIn, LogOut, Target, Search, Trash2, BarChart as BarChartIconLucide, Archive, AlertTriangle } from 'lucide-react';
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, LabelList, CartesianGrid, ReferenceLine } from 'recharts';
 import { useGaussAnalysis, AnalyzedAnimal } from '../../../hooks/useGaussAnalysis';
 import { WeighingTrendIcon } from '../../../components/ui/WeighingTrendIcon';
@@ -193,7 +193,7 @@ interface LactoKeeperAnalysisPageProps {
 }
 
 export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperAnalysisPageProps) {
-    const { animals, parturitions, weighings, isLoading, serviceRecords, sireLots, breedingSeasons, startDryingProcess, setLactationAsDry, deleteWeighingSession } = useData();
+    const { animals, parturitions, weighings, isLoading, serviceRecords, sireLots, breedingSeasons, setLactationAsDry, deleteWeighingSession } = useData();
     
     const orphanWeighingIds = useMemo(() => {
         // ... (lógica sin cambios)
@@ -361,13 +361,8 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
         const actions: ActionSheetAction[] = [];
         const currentParturition = parturitions.find(p => p.goatId === animal.id && (p.status === 'activa' || p.status === 'en-secado'));
         actions.push({ label: "Registrar/Editar Pesaje", icon: Droplets, onClick: () => { setIsActionSheetOpen(false); setActiveModal('milkWeighing'); }});
-        if (currentParturition) {
-            if (currentParturition.status === 'activa') {
-                actions.push({ label: "Iniciar Secado", icon: Wind, onClick: () => { startDryingProcess(currentParturition.id); setIsActionSheetOpen(false); }, color: 'text-c-accent-sky' });
-            }
-            if (currentParturition.status === 'activa' || currentParturition.status === 'en-secado') {
-                 actions.push({ label: "Declarar Seca", icon: Archive, onClick: () => { setLactationAsDry(currentParturition.id); setIsActionSheetOpen(false); }, color: 'text-c-text-muted' });
-            }
+        if (currentParturition && (currentParturition.status === 'activa' || currentParturition.status === 'en-secado')) {
+            actions.push({ label: "Declarar Seca", icon: Archive, onClick: () => { setLactationAsDry(currentParturition.id); setIsActionSheetOpen(false); }, color: 'text-c-text-muted' });
         }
         return actions;
     };

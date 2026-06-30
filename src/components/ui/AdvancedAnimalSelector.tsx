@@ -11,7 +11,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 // --- LÓGICA AUXILIAR DE STATUS (Mantenida intacta) ---
 const getAnimalStatuses = (animal: Animal, allParturitions: Parturition[], allServiceRecords: ServiceRecord[], allSireLots: SireLot[], allBreedingSeasons: BreedingSeason[]): AnimalStatusKey[] => {
     const s: AnimalStatusKey[] = []; if (!animal) return [];
-    if (animal.sex === 'Hembra') { const lp = allParturitions.filter(p=>p.goatId===animal.id&&p.status!=='finalizada').sort((a,b)=>new Date(b.parturitionDate).getTime()-new Date(a.parturitionDate).getTime())[0]; if (lp) { if (lp.status==='activa') s.push('MILKING'); else if (lp.status==='en-secado') s.push('DRYING_OFF'); else s.push('DRY'); } }
+    if (animal.sex === 'Hembra') { const lp = allParturitions.filter(p=>p.goatId===animal.id&&p.status!=='finalizada').sort((a,b)=>new Date(b.parturitionDate).getTime()-new Date(a.parturitionDate).getTime())[0]; if (lp) { if (lp.status==='activa') s.push('MILKING'); else s.push('DRY'); } }
     if (animal.reproductiveStatus==='Preñada') s.push('PREGNANT'); else if (animal.reproductiveStatus==='En Servicio') { 
         const hasServiceRecord = allServiceRecords.some(sr=>sr.femaleId===animal.id&&sr.sireLotId===animal.sireLotId);
         if (hasServiceRecord) s.push('IN_SERVICE_CONFIRMED'); else s.push('IN_SERVICE'); 
@@ -410,7 +410,7 @@ export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({
                     
                     {activeMode === 'Activo' && (
                         <div className="space-y-4 pt-2 border-t border-c-border/50">
-                            <FilterBar title="Estado Productivo" filters={['MILKING', 'DRYING_OFF', 'DRY'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey]).filter(Boolean)} activeFilter={productiveFilter} onFilterChange={setProductiveFilter} />
+                            <FilterBar title="Estado Productivo" filters={['MILKING', 'DRY'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey]).filter(Boolean)} activeFilter={productiveFilter} onFilterChange={setProductiveFilter} />
                             <FilterBar title="Estado Reproductivo" filters={['PREGNANT', 'IN_SERVICE_CONFIRMED', 'IN_SERVICE', 'EMPTY', 'SIRE_IN_SERVICE'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey]).filter(Boolean)} activeFilter={reproductiveFilter} onFilterChange={setReproductiveFilter} />
                         </div>
                     )}

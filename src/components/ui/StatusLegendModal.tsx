@@ -9,9 +9,7 @@ interface StatusLegendModalProps {
 
 // Lista de todas las llaves de estado para mostrar en la leyenda
 const ALL_STATUS_KEYS: AnimalStatusKey[] = [
-    'MILKING',
-    'DRYING_OFF',
-    'DRY',
+    'MILKING',    'DRY',
     'PREGNANT',
     'IN_SERVICE_CONFIRMED',
     'IN_SERVICE',

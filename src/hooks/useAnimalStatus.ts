@@ -92,8 +92,8 @@ export const useAnimalStatus = (animal: Animal) => {
         // B. Estado de Lactancia (Productivo)
         if (lastParturition) {
             if (lastParturition.status === 'activa') activeStatuses.push(STATUS_DEFINITIONS.MILKING);
-            else if (lastParturition.status === 'en-secado') activeStatuses.push(STATUS_DEFINITIONS.DRYING_OFF);
-            else if (lastParturition.status === 'seca') activeStatuses.push(STATUS_DEFINITIONS.DRY);
+            // "Secando" se elimina del flujo: cualquier estado de secado se muestra como "Seca".
+            else if (lastParturition.status === 'en-secado' || lastParturition.status === 'seca') activeStatuses.push(STATUS_DEFINITIONS.DRY);
         }
 
         // C. Determinación de "Vientre" (Aptitud Reproductiva)

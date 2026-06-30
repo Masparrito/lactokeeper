@@ -293,8 +293,8 @@ export const useManagementAlerts = () => {
                             type: 'SECADO',
                             icon: Wind,
                             color: 'text-blue-400',
-                            title: 'Iniciar Secado',
-                            message: `Faltan ${daysToParto} días para el parto (Inicia a los ${diasAlertaInicioSecado} días).`,
+                            title: 'Próxima a secar',
+                            message: `Faltan ${daysToParto} días para el parto. Conviene declararla seca (ventana a los ${diasAlertaInicioSecado} días).`,
                             sortDate: fpp
                         });
                     }

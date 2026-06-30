@@ -23,7 +23,6 @@ interface StatusIconsProps {
 // Todos los iconos posibles para una HEMBRA
 const ALL_FEMALE_KEYS: AnimalStatusKey[] = [
     'MILKING',
-    'DRYING_OFF',
     'DRY',
     'PREGNANT',
     'SERVIDA_CONFIRMED', // <--- NUEVO: ÍCONO PARA ESTADO 'SERVIDA'

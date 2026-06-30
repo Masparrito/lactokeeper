@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../context/DataContext';
 import { Animal, Parturition } from '../../db/local'; // Import Parturition type
-import { AlertTriangle, Baby, Calendar, ChevronRight, History, PlusCircle, Wind, Archive } from 'lucide-react';
+import { AlertTriangle, Baby, Calendar, ChevronRight, History, PlusCircle, Archive } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { ParturitionModal } from './ParturitionModal'; // Modal to declare parturition
 // --- CAMBIO: formatAnimalDisplay ya no es necesario ---
@@ -16,7 +16,7 @@ interface MilkWeighingActionModalProps {
   onClose: () => void; // Function to close the modal
   onLogToSession: (date: string) => void; // Function to add weighing to an existing session
   onStartNewSession: () => void; // Function to start a new weighing session flow
-  onStartDrying: (parturitionId: string) => void; // Function to initiate drying
+  onStartDrying?: (parturitionId: string) => void; // (Obsoleto: ya no se usa "iniciar secado")
   onSetDry: (parturitionId: string) => void; // Function to declare lactation as dry
 }
 
@@ -26,7 +26,6 @@ export const MilkWeighingActionModal: React.FC<MilkWeighingActionModalProps> = (
   onClose,
   onLogToSession,
   onStartNewSession,
-  onStartDrying,
   onSetDry,
 }) => {
   const { parturitions, weighings } = useData();
@@ -153,31 +152,18 @@ export const MilkWeighingActionModal: React.FC<MilkWeighingActionModalProps> = (
             </p>
         </div>
 
-        {/* Acciones de Secado */}
+        {/* Acción de Secado (un solo paso: declarar seca) */}
         {activeParturition && (
             <div className="pt-4 border-t border-c-border">
                 <h3 className="text-sm font-semibold text-c-text-muted mb-2">Acciones de Lactancia</h3>
-                <div className="flex flex-col sm:flex-row gap-2">
-                    <button
-                        type="button"
-                        onClick={() => onStartDrying(activeParturition.id)}
-                        disabled={activeParturition.status !== 'activa'}
-                        className="w-full flex items-center justify-center gap-2 bg-blue-600/20 text-blue-300 font-semibold py-3 px-3 rounded-lg hover:bg-blue-600/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        <Wind size={16}/> {activeParturition.status === 'en-secado' ? 'Ya en Secado' : 'Iniciar Secado'}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => onSetDry(activeParturition.id)}
-                        disabled={activeParturition.status === 'seca' || activeParturition.status === 'finalizada'}
-                        className="w-full flex items-center justify-center gap-2 bg-gray-600/20 text-gray-300 font-semibold py-3 px-3 rounded-lg hover:bg-gray-600/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        <Archive size={16}/> {activeParturition.status === 'seca' ? 'Ya Seca' : 'Declarar Seca'}
-                    </button>
-                </div>
-                {activeParturition.status === 'en-secado' && (
-                     <p className="text-center text-xs text-c-text-muted mt-2">El animal está en su período de secado.</p>
-                 )}
+                <button
+                    type="button"
+                    onClick={() => onSetDry(activeParturition.id)}
+                    disabled={activeParturition.status === 'seca' || activeParturition.status === 'finalizada'}
+                    className="w-full flex items-center justify-center gap-2 bg-c-surface-2 text-c-text font-semibold py-3 px-3 rounded-lg hover:bg-c-surface-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <Archive size={16}/> {activeParturition.status === 'seca' ? 'Ya está Seca' : 'Declarar Seca'}
+                </button>
             </div>
         )}
       </div>

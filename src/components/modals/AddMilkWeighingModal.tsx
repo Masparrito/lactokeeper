@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../context/DataContext';
 import { Animal } from '../../db/local'; // Import Parturition type
-import { AlertTriangle, CheckCircle, Save, Wind, Archive, Baby } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Save, Archive, Baby } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { ParturitionModal } from './ParturitionModal'; // Modal to declare parturition
 import { calculateDEL } from '../../utils/calculations'; // DEL calculation utility
@@ -22,7 +22,7 @@ export const AddMilkWeighingModal: React.FC<AddMilkWeighingModalProps> = ({
   onSaveSuccess,
   onCancel,
 }) => {
-  const { parturitions, addWeighing, deleteWeighing, startDryingProcess, setLactationAsDry } = useData();
+  const { parturitions, addWeighing, deleteWeighing, setLactationAsDry } = useData();
   const { showUndo } = useToastUndo();
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -74,20 +74,7 @@ export const AddMilkWeighingModal: React.FC<AddMilkWeighingModalProps> = ({
     }
   };
 
-  // --- Handlers for Drying Actions ---
-  const handleStartDrying = async () => {
-    if (!activeParturition || activeParturition.status !== 'activa') return;
-    setIsLoading(true); setMessage(null);
-    try {
-      await startDryingProcess(activeParturition.id);
-      setMessage({ type: 'success', text: 'Proceso de secado iniciado con éxito.' });
-      setTimeout(onSaveSuccess, 1500);
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'No se pudo iniciar el secado.' });
-      setIsLoading(false);
-    }
-  };
-
+  // --- Handler for Drying Action (un solo paso: declarar seca) ---
   const handleSetDry = async () => {
     if (!activeParturition || activeParturition.status === 'seca' || activeParturition.status === 'finalizada') return;
     setIsLoading(true); setMessage(null);
@@ -153,24 +140,14 @@ export const AddMilkWeighingModal: React.FC<AddMilkWeighingModalProps> = ({
 
               <div className="space-y-2 pt-4 border-t border-c-border">
                   <h4 className="text-sm font-semibold text-c-text-muted">Otras Acciones de Lactancia</h4>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                      <button
-                          type="button"
-                          onClick={handleStartDrying}
-                          disabled={isLoading || activeParturition.status !== 'activa'}
-                          className="w-full flex items-center justify-center gap-2 bg-blue-600/20 text-blue-300 font-semibold py-3 px-3 rounded-lg hover:bg-blue-600/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                          <Wind size={16}/> {activeParturition.status === 'en-secado' ? 'Ya en Secado' : 'Iniciar Secado'}
-                      </button>
-                      <button
-                          type="button"
-                          onClick={handleSetDry}
-                          disabled={isLoading || activeParturition.status === 'seca' || activeParturition.status === 'finalizada'}
-                          className="w-full flex items-center justify-center gap-2 bg-gray-600/20 text-gray-300 font-semibold py-3 px-3 rounded-lg hover:bg-gray-600/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                          <Archive size={16}/> {activeParturition.status === 'seca' ? 'Ya Seca' : 'Declarar Seca'}
-                      </button>
-                  </div>
+                  <button
+                      type="button"
+                      onClick={handleSetDry}
+                      disabled={isLoading || activeParturition.status === 'seca' || activeParturition.status === 'finalizada'}
+                      className="w-full flex items-center justify-center gap-2 bg-c-surface-2 text-c-text font-semibold py-3 px-3 rounded-lg hover:bg-c-surface-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                      <Archive size={16}/> {activeParturition.status === 'seca' ? 'Ya está Seca' : 'Declarar Seca'}
+                  </button>
               </div>
 
             </form>
