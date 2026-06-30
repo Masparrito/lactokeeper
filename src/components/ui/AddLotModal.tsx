@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from './Modal'; // Asumiendo que está en /ui/Modal.tsx
 import { useData } from '../../context/DataContext';
+import { composeSubLotName } from '../../utils/lots';
 
 interface AddLotModalProps {
     isOpen: boolean;
@@ -32,7 +33,8 @@ export const AddLotModal: React.FC<AddLotModalProps> = ({ isOpen, onClose, force
         try {
             // --- CORRECCIÓN DE ERROR TS2345 ---
             // Ahora pasamos un objeto, como espera DataContext
-            await addLot({ name: lotName, parentLotId: parentLotId || undefined });
+            const finalName = isSubLotMode ? composeSubLotName(forcedParentLotName || '', lotName) : lotName.trim();
+            await addLot({ name: finalName, parentLotId: parentLotId || undefined });
             handleClose();
         } catch (err: any) {
             setError(err.message || 'No se pudo guardar el lote.');

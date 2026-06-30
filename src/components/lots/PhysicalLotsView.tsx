@@ -9,6 +9,7 @@ import { Reorder, motion, useAnimation, useDragControls } from 'framer-motion';
 import { Modal } from '../ui/Modal';
 import { GiBarn } from 'react-icons/gi';
 import { Lot } from '../../db/local'; // Importar el tipo Lot
+import { subLotDisplayName } from '../../utils/lots';
 
 // --- (CORREGIDO) Definición de Tipo movida a la parte superior ---
 interface LotWithCount extends Lot {
@@ -231,7 +232,7 @@ const SwipeableLotCard = ({ lot, onEdit, onDelete, onClick, dragControls, isSubL
                             onPointerDown={(e) => e.stopPropagation()}
                             className="flex items-center gap-1.5 bg-c-accent/10 hover:bg-c-accent/20 text-c-accent border border-c-accent/25 rounded-lg pl-2.5 pr-1.5 py-1.5 text-sm font-semibold active:scale-95 transition-all"
                         >
-                            {sl.name}
+                            {subLotDisplayName(sl.name)}
                             <span className="text-xs font-bold bg-c-accent/15 rounded px-1.5 py-0.5 min-w-[1.25rem] text-center">{sl.count}</span>
                         </button>
                     ))}

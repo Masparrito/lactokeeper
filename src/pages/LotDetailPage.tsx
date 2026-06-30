@@ -9,6 +9,7 @@ import { ArrowLeft, Plus, Edit, Trash2, MoveRight, CheckSquare, Square, Baby, Dr
 import { Animal } from '../db/local';
 import { AdvancedAnimalSelector } from '../components/ui/AdvancedAnimalSelector';
 import { AddLotModal } from '../components/ui/AddLotModal';
+import { subLotDisplayName, subLotParentName, composeSubLotName } from '../utils/lots';
 import { TransferAnimalsModal } from '../components/ui/TransferAnimalsModal';
 import { formatAge, getAnimalStatusObjects } from '../utils/calculations';
 import { formatAnimalDisplay } from '../utils/formatting';
@@ -177,10 +178,12 @@ export default function LotDetailPage({
         if (!currentLot) return;
         const name = renameValue.trim();
         if (!name) { setLotActionError('El nombre no puede estar vacío.'); return; }
-        if (name === currentLot.name) { setRenameOpen(false); return; }
+        // Un sub-lote conserva el prefijo de su lote padre para seguir siendo único.
+        const finalName = currentLot.parentLotId ? composeSubLotName(subLotParentName(currentLot.name), name) : name;
+        if (finalName === currentLot.name) { setRenameOpen(false); return; }
         try {
             setLotActionError('');
-            await updateLot(currentLot.id, { name });
+            await updateLot(currentLot.id, { name: finalName });
             setRenameOpen(false);
             onBack(); // el lote cambió de nombre; volvemos al listado
         } catch (e: any) {
@@ -202,7 +205,7 @@ export default function LotDetailPage({
     };
 
     const lotMenuActions: ActionSheetAction[] = [
-        { label: 'Renombrar lote', icon: Edit, onClick: () => { setRenameValue(currentLot?.name || ''); setLotActionError(''); setRenameOpen(true); } },
+        { label: 'Renombrar lote', icon: Edit, onClick: () => { setRenameValue(currentLot?.parentLotId ? subLotDisplayName(currentLot.name) : (currentLot?.name || '')); setLotActionError(''); setRenameOpen(true); } },
         { label: 'Eliminar lote', icon: Trash2, color: 'text-brand-red', onClick: () => { setLotActionError(''); setDeleteConfirmOpen(true); } },
     ];
 
@@ -269,7 +272,10 @@ export default function LotDetailPage({
                 <header className="flex items-center justify-between p-4 sticky top-0 bg-c-surface z-10 border-b border-c-border">
                     <button onClick={onBack} className="p-2 -ml-2 text-c-text-muted hover:text-c-text transition-colors"><ArrowLeft size={24} /></button>
                     <div className="text-center">
-                        <h1 className="text-3xl font-bold tracking-tight text-c-text">{lotName}</h1>
+                        {currentLot?.parentLotId && (
+                            <p className="text-xs font-semibold text-c-accent uppercase tracking-wide">{subLotParentName(lotName)}</p>
+                        )}
+                        <h1 className="text-3xl font-bold tracking-tight text-c-text">{currentLot?.parentLotId ? subLotDisplayName(lotName) : lotName}</h1>
                         <p className="text-lg text-c-text-muted">
                             {subLots.length > 0
                                 ? `${animalsInLot.length} directos · ${subLots.reduce((s, sl) => s + sl.count, 0)} en sub-lotes`
@@ -313,7 +319,7 @@ export default function LotDetailPage({
                                         className="w-full flex items-center gap-3 bg-c-surface border border-c-border rounded-xl px-4 py-3 text-left hover:bg-c-surface-2 transition-colors"
                                     >
                                         <Layers size={16} className="text-c-text-faint flex-shrink-0" />
-                                        <span className="font-semibold text-c-text truncate flex-1">{sl.name}</span>
+                                        <span className="font-semibold text-c-text truncate flex-1">{subLotDisplayName(sl.name)}</span>
                                         <span className="text-sm text-c-text-muted flex-shrink-0">
                                             <span className="font-bold text-c-accent">{sl.count}</span> {sl.count === 1 ? 'animal' : 'animales'}
                                         </span>

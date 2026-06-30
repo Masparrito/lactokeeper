@@ -270,7 +270,7 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
                     />
                 </div>
 
-                <SettingsGroup title="Módulos" icon={LayoutGrid} startOpen>
+                <SettingsGroup title="Módulos" icon={LayoutGrid}>
                     <div className="px-3 pt-3 pb-1">
                         <p className="text-sm text-c-text-muted">
                             Activa o desactiva los módulos. Los desactivados aparecerán atenuados en el menú de módulos. Rebaño es el núcleo y siempre está activo.
