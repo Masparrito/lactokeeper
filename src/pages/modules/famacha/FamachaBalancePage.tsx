@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { CheckCircle2, AlertTriangle, HelpCircle, ListChecks, Upload, ChevronDown, FileDown } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { reconcile } from '../../../utils/famachaReconcile';
-import { FAMACHA_INVENTORY_SNAPSHOT, type FamachaInventoryItem } from './famachaInventory';
+import { type FamachaInventoryItem } from './famachaInventory';
 
 const scoreColor: Record<number, string> = {
     1: 'bg-emerald-600', 2: 'bg-green-600', 3: 'bg-yellow-600', 4: 'bg-orange-600', 5: 'bg-red-600',
@@ -43,8 +43,28 @@ function Section({
 }
 
 export function FamachaBalancePage() {
-    const { animals } = useData();
-    const [inventory, setInventory] = useState<FamachaInventoryItem[]>(FAMACHA_INVENTORY_SNAPSHOT);
+    const { animals, famachaRevs } = useData();
+    // Por defecto el cotejo usa las revisiones Famacha REALES que tú cargaste
+    // (la última de cada animal). Se puede sustituir importando un respaldo .json.
+    const liveInventory = useMemo<FamachaInventoryItem[]>(() => {
+        const byAnimal = new Map<string, { lastScore: number; lastFecha: string; revCount: number }>();
+        for (const r of famachaRevs) {
+            const cur = byAnimal.get(r.animalId);
+            if (!cur) {
+                byAnimal.set(r.animalId, { lastScore: r.score, lastFecha: r.fecha, revCount: 1 });
+            } else {
+                cur.revCount += 1;
+                if (r.fecha > cur.lastFecha) { cur.lastFecha = r.fecha; cur.lastScore = r.score; }
+            }
+        }
+        // Clave = animalId (= ID/arete real) para que cuadre exacto con GanaderoOS.
+        return Array.from(byAnimal.entries()).map(([animalId, v]) => ({
+            arete: animalId, lastScore: v.lastScore as FamachaInventoryItem['lastScore'], lastFecha: v.lastFecha, revCount: v.revCount,
+        }));
+    }, [famachaRevs]);
+
+    const [importOverride, setImportOverride] = useState<FamachaInventoryItem[] | null>(null);
+    const inventory = importOverride ?? liveInventory;
     const [importInfo, setImportInfo] = useState<string | null>(null);
 
     const result = useMemo(() => reconcile(inventory, animals), [inventory, animals]);
@@ -96,8 +116,8 @@ export function FamachaBalancePage() {
                 const last = sorted.length ? sorted[sorted.length - 1] : null;
                 return { arete: String(a.arete ?? a.id ?? ''), lastScore: last?.score ?? null, lastFecha: last?.fecha ?? null, revCount: revs.length };
             }).filter((x: FamachaInventoryItem) => x.arete);
-            setInventory(parsed);
-            setImportInfo(`Respaldo importado: ${parsed.length} animales.`);
+            setImportOverride(parsed);
+            setImportInfo(`Respaldo importado: ${parsed.length} animales (sustituye a tus datos en vivo).`);
         } catch (err: any) {
             setImportInfo(`No se pudo leer el archivo: ${err.message}`);
         }
@@ -226,8 +246,13 @@ export function FamachaBalancePage() {
                 </label>
                 {importInfo && <p className="text-xs text-c-text-muted mt-2 text-center">{importInfo}</p>}
                 <p className="text-[11px] text-c-text-faint mt-2 text-center">
-                    Por defecto se compara con la evaluación Famacha del 27/06/2026 ({FAMACHA_INVENTORY_SNAPSHOT.length} animales).
+                    Por defecto se compara con tus revisiones Famacha cargadas ({liveInventory.length} animales con revisión).
                 </p>
+                {importOverride && (
+                    <button onClick={() => { setImportOverride(null); setImportInfo(null); }} className="mt-2 w-full text-xs font-semibold text-rose-500 py-1.5">
+                        Volver a mis datos en vivo
+                    </button>
+                )}
             </div>
         </div>
     );

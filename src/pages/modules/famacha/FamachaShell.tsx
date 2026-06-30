@@ -20,6 +20,25 @@ export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
     const { syncStatus } = useData();
     const [isModuleSwitcherOpen, setIsModuleSwitcherOpen] = useState(false);
     const [activeView, setActiveView] = useState<FamachaView>('revision');
+    // Pila de vistas visitadas: el botón "back" regresa a la vista anterior
+    // dentro del módulo; solo sale a Rebaño cuando no hay vista previa.
+    const [viewHistory, setViewHistory] = useState<FamachaView[]>([]);
+
+    const goToView = (v: FamachaView) => {
+        if (v === activeView) return;
+        setViewHistory(h => [...h, activeView]);
+        setActiveView(v);
+    };
+
+    const handleBack = () => {
+        if (viewHistory.length > 0) {
+            const prev = viewHistory[viewHistory.length - 1];
+            setViewHistory(h => h.slice(0, -1));
+            setActiveView(prev);
+        } else {
+            onSwitchModule('rebano');
+        }
+    };
 
     const navItems = [
         { view: 'revision', label: 'Revisión', icon: Zap },
@@ -34,7 +53,7 @@ export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
             {/* Header */}
             <header className="flex-shrink-0 bg-c-bg/95 backdrop-blur-lg border-b border-c-border pt-[env(safe-area-inset-top)]">
                 <div className="max-w-4xl mx-auto flex items-center justify-between px-4 h-16">
-                    <button onClick={() => onSwitchModule('rebano')} className="p-2 -ml-2 text-c-text-muted hover:text-c-text" aria-label="Salir del módulo">
+                    <button onClick={handleBack} className="p-2 -ml-2 text-c-text-muted hover:text-c-text" aria-label="Volver">
                         <ArrowLeft size={24} />
                     </button>
                     <div className="flex items-center gap-2">
@@ -70,7 +89,7 @@ export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
                         return (
                             <button
                                 key={item.view}
-                                onClick={() => setActiveView(item.view)}
+                                onClick={() => goToView(item.view)}
                                 className={`flex flex-col items-center justify-center gap-1 w-full h-full transition-colors ${isActive ? 'text-rose-500' : 'text-c-text-muted hover:text-c-text'}`}
                             >
                                 <item.icon size={21} strokeWidth={isActive ? 2.5 : 2} />

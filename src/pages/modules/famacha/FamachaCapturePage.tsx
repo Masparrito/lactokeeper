@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, AlertTriangle, Plus, X, Check, Syringe } from 'lucide-react';
+import { Search, AlertTriangle, Plus, X, Check, Syringe, Pencil, Trash2, CheckCircle2, Lock, CalendarCheck } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { getAnimalZootecnicCategory } from '../../../utils/calculations';
 import { getCleanId } from '../../../utils/formatting';
@@ -35,13 +35,23 @@ const accionText: Record<FamachaAccion, { label: string; cls: string }> = {
 
 export function FamachaCapturePage() {
     const { animals, famachaRevs, products, parturitions, appConfig, addFamachaRev, deleteFamachaRev, addAnimal } = useData();
-    const { showUndo } = useToastUndo();
+    const { showUndo, showToast } = useToastUndo();
 
     const today = new Date().toISOString().split('T')[0];
     const [fecha, setFecha] = useState<string>(today);
     const [search, setSearch] = useState('');
     const [productoDelDia, setProductoDelDia] = useState('');
     const [savingId, setSavingId] = useState<string | null>(null);
+
+    // La jornada arranca INACTIVA: hay que elegir la fecha y pulsar "Comenzar"
+    // para habilitar los botones (evita tocar números por accidente).
+    const [jornadaActiva, setJornadaActiva] = useState(false);
+    // Filas desbloqueadas para edición. Una fila ya declarada queda en "hold":
+    // para cambiar su valor hay que pulsar el lápiz (la mete aquí).
+    const [unlockedIds, setUnlockedIds] = useState<Set<string>>(new Set());
+
+    const lockRow = (id: string) => setUnlockedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+    const unlockRow = (id: string) => setUnlockedIds(prev => { const n = new Set(prev); n.add(id); return n; });
 
     // Modal "+ animal"
     const [showAdd, setShowAdd] = useState(false);
@@ -82,11 +92,35 @@ export function FamachaCapturePage() {
                 }
                 return deleteFamachaRev(revId);
             });
+            lockRow(animalId); // queda en "hold" tras declarar/editar
         } catch (e) {
             console.error('Error al guardar revisión Famacha:', e);
         } finally {
             setSavingId(null);
         }
+    };
+
+    // Eliminar la revisión de este día (limpiar un valor cargado por error).
+    const handleDeleteRev = async (animalId: string) => {
+        const rev = revsDelDia.get(animalId);
+        if (!rev) return;
+        setSavingId(animalId);
+        try {
+            await deleteFamachaRev(rev.id);
+            lockRow(animalId);
+        } catch (e) {
+            console.error('Error al eliminar revisión Famacha:', e);
+        } finally {
+            setSavingId(null);
+        }
+    };
+
+    // "Cargar": el usuario confirma que terminó la jornada → se bloquea todo.
+    const handleFinalizar = () => {
+        setJornadaActiva(false);
+        setUnlockedIds(new Set());
+        setSearch('');
+        showToast(`Jornada del ${fecha} cargada: ${revisadosHoy} animal(es) revisado(s).`);
     };
 
     // Toggle explícito de dosis: registra el precedente real de si se aplicó o no
@@ -136,48 +170,86 @@ export function FamachaCapturePage() {
             <div className="bg-c-surface rounded-2xl border border-c-border p-4 space-y-3">
                 <div>
                     <h2 className="flex items-center gap-2 font-semibold text-c-text-strong">
-                        <span className="w-2 h-2 rounded-full bg-rose-500" /> Revisión del día
+                        <span className="w-2 h-2 rounded-full bg-rose-500" /> Revisión Famacha
                     </h2>
-                    <p className="text-xs text-c-text-muted mt-1">Toca el Famacha (1-5) de cada animal — se guarda solo.</p>
+                    <p className="text-xs text-c-text-muted mt-1">
+                        {jornadaActiva
+                            ? 'Toca el Famacha (1-5). Un valor declarado queda fijo: usa el lápiz para editarlo.'
+                            : 'Elige la fecha de la jornada y pulsa «Comenzar» para habilitar la carga.'}
+                    </p>
                 </div>
-                <div className="flex items-center gap-2">
+
+                {!jornadaActiva ? (
+                    /* --- PUERTA: la jornada arranca inactiva --- */
+                    <>
+                        <label className="block text-xs font-semibold text-c-text-muted">Fecha de la jornada</label>
+                        <input
+                            type="date"
+                            value={fecha}
+                            max={today}
+                            onChange={e => setFecha(e.target.value)}
+                            className="w-full bg-c-surface-2 text-c-text rounded-lg px-3 py-2.5 text-sm border border-c-border focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        />
+                        {revsDelDia.size > 0 && (
+                            <p className="text-[11px] text-c-text-faint">Esta fecha ya tiene {revsDelDia.size} animal(es) cargado(s).</p>
+                        )}
+                        <button
+                            onClick={() => setJornadaActiva(true)}
+                            className="w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-xl"
+                        >
+                            <CalendarCheck size={18} /> Comenzar revisión
+                        </button>
+                    </>
+                ) : (
+                    /* --- JORNADA ACTIVA --- */
+                    <>
+                        <div className="flex items-center justify-between gap-2 bg-c-surface-2 rounded-lg px-3 py-2">
+                            <span className="text-sm font-semibold text-c-text">Jornada: {fecha}</span>
+                            <button onClick={() => { setJornadaActiva(false); setUnlockedIds(new Set()); }} className="text-xs font-semibold text-rose-500">Cambiar fecha</button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <select
+                                value={productoDelDia}
+                                onChange={e => setProductoDelDia(e.target.value)}
+                                className="flex-1 bg-c-surface-2 text-c-text rounded-lg px-3 py-2 text-sm border border-c-border focus:outline-none focus:ring-2 focus:ring-rose-500"
+                            >
+                                <option value="">Producto del día: ninguno</option>
+                                {desparasitantes.map(p => <option key={p.id} value={p.name}>Producto: {p.name}</option>)}
+                            </select>
+                            <button onClick={() => setShowAdd(true)} className="flex items-center gap-1 bg-c-surface-2 hover:bg-c-surface-3 text-c-text text-sm font-semibold rounded-lg px-3 py-2">
+                                <Plus size={16} /> animal
+                            </button>
+                        </div>
+                        <div className="bg-rose-500/10 text-rose-600 text-sm font-semibold rounded-lg px-3 py-2 text-center">
+                            {revisadosHoy} de {activos.length} revisados
+                        </div>
+                        {/* "Cargar": confirmar y bloquear la jornada (botón superior) */}
+                        <button
+                            onClick={handleFinalizar}
+                            className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl"
+                        >
+                            <CheckCircle2 size={18} /> Cargar jornada ({revisadosHoy})
+                        </button>
+                    </>
+                )}
+            </div>
+
+            {/* Buscador (solo con jornada activa) */}
+            {jornadaActiva && (
+                <div className="relative">
+                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-c-text-faint" />
                     <input
-                        type="date"
-                        value={fecha}
-                        max={today}
-                        onChange={e => setFecha(e.target.value)}
-                        className="flex-1 bg-c-surface-2 text-c-text rounded-lg px-3 py-2 text-sm border border-c-border focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        type="text"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Buscar arete…"
+                        className="w-full bg-c-surface-2/80 text-c-text pl-10 pr-3 py-2.5 rounded-xl border border-transparent focus:border-rose-500 focus:outline-none placeholder-c-text-faint"
                     />
-                    <button onClick={() => setShowAdd(true)} className="flex items-center gap-1 bg-c-surface-2 hover:bg-c-surface-3 text-c-text text-sm font-semibold rounded-lg px-3 py-2">
-                        <Plus size={16} /> animal
-                    </button>
                 </div>
-                <select
-                    value={productoDelDia}
-                    onChange={e => setProductoDelDia(e.target.value)}
-                    className="w-full bg-c-surface-2 text-c-text rounded-lg px-3 py-2 text-sm border border-c-border focus:outline-none focus:ring-2 focus:ring-rose-500"
-                >
-                    <option value="">Producto del día: ninguno</option>
-                    {desparasitantes.map(p => <option key={p.id} value={p.name}>Producto: {p.name}</option>)}
-                </select>
-                <div className="bg-rose-500/10 text-rose-600 text-sm font-semibold rounded-lg px-3 py-2 text-center">
-                    {revisadosHoy} de {activos.length} revisados — {fecha}
-                </div>
-            </div>
+            )}
 
-            {/* Buscador */}
-            <div className="relative">
-                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-c-text-faint" />
-                <input
-                    type="text"
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    placeholder="Buscar arete…"
-                    className="w-full bg-c-surface-2/80 text-c-text pl-10 pr-3 py-2.5 rounded-xl border border-transparent focus:border-rose-500 focus:outline-none placeholder-c-text-faint"
-                />
-            </div>
-
-            {/* Lista compacta */}
+            {/* Lista compacta (solo con jornada activa) */}
+            {jornadaActiva && (
             <div className="bg-c-surface rounded-2xl border border-c-border divide-y divide-c-border overflow-hidden">
                 {lista.length === 0 && <p className="text-center text-c-text-faint py-8">No hay animales activos que coincidan.</p>}
                 {lista.map(({ animal, arete }) => {
@@ -186,6 +258,8 @@ export function FamachaCapturePage() {
                     const dosisInfo = infoDosificacion(famachaRevs, animal.id, fecha);
                     const tendencia = rev ? tendenciaFamacha(famachaRevs, animal.id, fecha, rev.score) : null;
                     const dosisChipCls = dosisInfo.nivel === 'block' ? 'text-red-600' : dosisInfo.nivel === 'warn' ? 'text-amber-600' : 'text-c-text-faint';
+                    // "hold": una fila ya declarada queda bloqueada hasta pulsar el lápiz.
+                    const bloqueada = !!rev && !unlockedIds.has(animal.id);
                     return (
                         <div key={animal.id} className="px-3 py-2.5 space-y-2">
                             <div className="flex items-center gap-2">
@@ -206,28 +280,49 @@ export function FamachaCapturePage() {
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex gap-1 flex-shrink-0">
+                                <div className="flex items-center gap-1 flex-shrink-0">
                                     {([1, 2, 3, 4, 5] as FamachaScore[]).map(score => {
                                         const selected = rev?.score === score;
                                         return (
                                             <button
                                                 key={score}
-                                                disabled={savingId === animal.id}
+                                                disabled={savingId === animal.id || bloqueada}
                                                 onClick={() => handleScore(animal.id, arete, score)}
                                                 className={`w-9 h-9 rounded-lg font-bold text-sm border transition-all disabled:opacity-50 ${
                                                     selected ? `${scoreColor[score]} text-white scale-105` : 'bg-c-surface-2 border-c-border-strong text-c-text-muted hover:border-c-text-faint'
-                                                }`}
+                                                } ${bloqueada && !selected ? 'opacity-30' : ''}`}
                                             >
                                                 {score}
                                             </button>
                                         );
                                     })}
+                                    {/* Lápiz para editar una fila en "hold" */}
+                                    {bloqueada && (
+                                        <button
+                                            onClick={() => unlockRow(animal.id)}
+                                            title="Editar valor declarado"
+                                            className="ml-1 w-9 h-9 rounded-lg flex items-center justify-center text-c-text-muted bg-c-surface-2 border border-c-border-strong hover:text-rose-500"
+                                        >
+                                            <Pencil size={15} />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
-                            {/* Fila de decisión: sugerencia + toggle explícito de desparasitante */}
+                            {/* Fila de decisión: sugerencia + dosis + editar/eliminar */}
                             {rev && (
                                 <div className="flex items-center gap-2 pl-0.5">
                                     <span className={`text-[11px] font-semibold ${accionText[rev.accion].cls}`}>{accionText[rev.accion].label}</span>
+                                    {bloqueada && <Lock size={11} className="text-c-text-faint" />}
+                                    {!bloqueada && (
+                                        <button
+                                            onClick={() => handleDeleteRev(animal.id)}
+                                            disabled={savingId === animal.id}
+                                            title="Eliminar revisión de este día"
+                                            className="flex items-center gap-1 text-[11px] font-semibold text-red-500 disabled:opacity-50"
+                                        >
+                                            <Trash2 size={13} /> Eliminar
+                                        </button>
+                                    )}
                                     <button
                                         disabled={savingId === animal.id}
                                         onClick={() => handleToggleDose(animal.id, arete)}
@@ -246,6 +341,7 @@ export function FamachaCapturePage() {
                     );
                 })}
             </div>
+            )}
 
             {/* Modal + animal */}
             {showAdd && (
