@@ -21,11 +21,13 @@ import { NewWeighingSessionFlow } from './modules/shared/NewWeighingSessionFlow'
 interface AssignedFemaleCardProps {
     animal: Animal;
     services: ServiceRecord[];
+    currentLotId: string;
+    sireNameByLot: Map<string, string>;
     onClick: () => void;
     onOpenActions: (animal: Animal) => void;
 }
 
-const AssignedFemaleCard = ({ animal, services, onClick, onOpenActions }: AssignedFemaleCardProps) => {
+const AssignedFemaleCard = ({ animal, services, currentLotId, sireNameByLot, onClick, onOpenActions }: AssignedFemaleCardProps) => {
     const formattedName = animal.name ? String(animal.name).toUpperCase().trim() : '';
     
     // --- LÓGICA DE CONTADOR DE SERVICIOS ---
@@ -35,6 +37,10 @@ const AssignedFemaleCard = ({ animal, services, onClick, onOpenActions }: Assign
     }, [services, animal.id]);
 
     const serviceCount = animalServices.length;
+    // Distintivo: si fue servida por un macho distinto al de este lote.
+    const lastService = animalServices[0];
+    const servedByOther = lastService && lastService.sireLotId && lastService.sireLotId !== currentLotId;
+    const otherSireName = servedByOther ? (sireNameByLot.get(lastService.sireLotId) || lastService.sireLotId) : null;
     // Asumimos que es "Servida" si tiene servicios pero aún no está diagnosticada preñada
     // Usamos 'as string' para evitar conflictos si el tipo ReproductiveStatus es estricto
     const currentStatus = animal.reproductiveStatus as string;
@@ -72,6 +78,11 @@ const AssignedFemaleCard = ({ animal, services, onClick, onOpenActions }: Assign
                         )}
                     </div>
                     {formattedName && <p className="text-xs text-c-text-faint truncate mt-0.5 font-medium">{formattedName}</p>}
+                    {otherSireName && (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded mt-0.5">
+                            <HeartHandshake size={9} /> Servida por {otherSireName}
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -119,6 +130,16 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
     const [sessionDate, setSessionDate] = useState<string | null>(null);
     const [bulkAnimals, setBulkAnimals] = useState<Animal[]>([]);
     const [bulkWeightType, setBulkWeightType] = useState<'leche' | 'corporal'>('corporal');
+
+    // Mapa lote-de-semental -> nombre del macho (para el distintivo "servida por otro").
+    const sireNameByLot = useMemo(() => {
+        const m = new Map<string, string>();
+        sireLots.forEach(sl => {
+            const f = fathers.find((ff: Father) => ff.id === sl.sireId) || animals.find(a => a.id === sl.sireId);
+            m.set(sl.id, f ? formatAnimalDisplay(f) : sl.sireId);
+        });
+        return m;
+    }, [sireLots, fathers, animals]);
 
     // Lógica de datos
     const lot = useMemo(() => sireLots.find(l => l.id === lotId), [sireLots, lotId]);
@@ -262,10 +283,12 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
                 <div className="flex-1 overflow-y-auto px-4 pt-4 pb-24 custom-scrollbar">
                     {filteredFemales.length > 0 ? (
                         filteredFemales.map(animal => (
-                            <AssignedFemaleCard 
-                                key={animal.id} 
-                                animal={animal} 
+                            <AssignedFemaleCard
+                                key={animal.id}
+                                animal={animal}
                                 services={serviceRecords} // <-- PASAMOS LOS SERVICIOS AQUÍ
+                                currentLotId={lotId}
+                                sireNameByLot={sireNameByLot}
                                 onClick={() => navigateTo({ name: 'rebano-profile', animalId: animal.id })}
                                 onOpenActions={handleOpenActions}
                             />
