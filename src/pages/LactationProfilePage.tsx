@@ -6,7 +6,7 @@ import { XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, AreaChart, A
 import { LactationCycle, useAnimalData } from '../hooks/useAnimalData';
 // ComparisonResult sí se usa en useComparativeData
 import { useComparativeData, ComparisonRequest, ComparisonTargetType } from '../hooks/useComparativeData';
-import { ArrowLeft, Droplet, TrendingUp, CalendarDays, Repeat, CalendarCheck2, Wind, Archive, FileText, BarChart2, Loader2, XCircle } from 'lucide-react';
+import { ArrowLeft, Droplet, TrendingUp, CalendarDays, Repeat, CalendarCheck2, Wind, Archive, FileText, BarChart2, Loader2, XCircle, ChevronRight } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { useData } from '../context/DataContext';
 import { calculateDEL } from '../utils/calculations';
@@ -15,7 +15,6 @@ import type { PageState } from '../types/navigation';
 import { HistoricalLactationChart } from '../components/charts/HistoricalLactationChart';
 // --- CORRECCIÓN: Eliminada la importación de 'ComparisonData' de HistoricalLactationChart ---
 // import type { ComparisonData } from '../components/charts/HistoricalLactationChart'; // <-- LÍNEA ELIMINADA
-import { LactationSummaryCard } from '../components/ui/LactationSummaryCard';
 import { ComparativeMetricsDisplay } from '../components/ui/ComparativeMetricsDisplay';
 // src/utils/formatting.ts (Example)
 import { Animal, Father } from '../db/local'; // Adjust import as needed
@@ -313,17 +312,39 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                     )}
                 </div>
 
-                {previousLactations.length > 0 && (
-                    <div className="space-y-3 pt-4">
-                        <h3 className="text-lg font-semibold text-c-text-strong px-1">Lactancias Anteriores</h3>
-                        {previousLactations.map((lact, index) => (
-                            <LactationSummaryCard
-                                key={lact.parturitionDate}
-                                lactationNumber={allLactations.length - 1 - index}
-                                lactationData={lact}
-                                onClick={() => openLactationModal(lact)}
-                            />
-                        ))}
+                {allLactations.length > 0 && (
+                    <div className="space-y-2 pt-4">
+                        <h3 className="text-c-text-muted font-semibold text-xs uppercase px-1">Lactancias ({allLactations.length})</h3>
+                        {allLactations.map((lact, index) => {
+                            const n = index + 1; // Lactancia 1, 2, 3…
+                            const year = new Date(lact.parturitionDate + 'T00:00:00Z').getUTCFullYear();
+                            const hasCurve = lact.lactationCurve.length > 0;
+                            const isCurrent = index === allLactations.length - 1 &&
+                                (currentLactationData?.status === 'activa' || currentLactationData?.status === 'en-secado');
+                            return (
+                                <button
+                                    key={lact.parturitionDate}
+                                    onClick={() => openLactationModal(lact)}
+                                    disabled={!hasCurve}
+                                    className="w-full flex items-center gap-3 bg-c-surface border border-c-border rounded-xl px-3 py-2.5 text-left hover:bg-c-surface-2 transition-colors disabled:opacity-60 disabled:cursor-default"
+                                >
+                                    <div className="w-9 h-9 rounded-lg bg-amber-500/15 text-amber-500 flex items-center justify-center font-bold flex-shrink-0">{n}</div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-c-text-strong">Lactancia {n}</span>
+                                            <span className="text-xs text-c-text-faint">{year}</span>
+                                            {isCurrent && <span className="text-[10px] font-bold uppercase bg-c-accent/15 text-c-accent px-1.5 py-0.5 rounded">Actual</span>}
+                                        </div>
+                                        <p className="text-xs text-c-text-muted truncate">
+                                            {hasCurve
+                                                ? `Prom ${lact.averageProduction.toFixed(2)} · Pico ${lact.peakProduction.kg.toFixed(2)} Kg · ${lact.totalDays} días · ${lact.weighings.length} pesajes`
+                                                : 'Sin pesajes registrados'}
+                                        </p>
+                                    </div>
+                                    {hasCurve && <ChevronRight size={18} className="text-c-text-faint flex-shrink-0" />}
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
 
