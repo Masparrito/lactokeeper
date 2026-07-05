@@ -6,9 +6,10 @@ import { XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, AreaChart, A
 import { LactationCycle, useAnimalData } from '../hooks/useAnimalData';
 // ComparisonResult sí se usa en useComparativeData
 import { useComparativeData, ComparisonRequest, ComparisonTargetType } from '../hooks/useComparativeData';
-import { ArrowLeft, Droplet, TrendingUp, CalendarDays, Repeat, CalendarCheck2, Wind, Archive, FileText, BarChart2, Loader2, XCircle, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Droplet, TrendingUp, CalendarDays, Repeat, CalendarCheck2, Wind, Archive, FileText, BarChart2, Loader2, XCircle, ChevronRight, Trash2, Droplets } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { useData } from '../context/DataContext';
+import { useToastUndo } from '../context/ToastUndoContext';
 import { calculateDEL } from '../utils/calculations';
 import type { PageState } from '../types/navigation';
 // --- CORRECCIÓN: Se importa solo el componente HistoricalLactationChart ---
@@ -52,11 +53,14 @@ interface LactationProfilePageProps {
 
 export default function LactationProfilePage({ animalId, onBack, navigateTo }: LactationProfilePageProps) {
     // --- 1. TODOS LOS HOOKS SE LLAMAN PRIMERO, DE FORMA INCONDICIONAL ---
-    const { animals, parturitions, weighings, startDryingProcess, setLactationAsDry } = useData();
+    const { animals, parturitions, weighings, startDryingProcess, setLactationAsDry, addWeighing, deleteWeighing } = useData();
     const { allLactations, parturitionIntervals, lastWeighingDate, isLoading } = useAnimalData(animalId);
+    const { showUndo } = useToastUndo();
 
     const [isCurveModalOpen, setIsCurveModalOpen] = useState(false);
     const [modalLactationData, setModalLactationData] = useState<LactationCycle | null>(null);
+    // Lactancia cuyos pesajes se están viendo (por fecha de parto = clave estable).
+    const [weighingsModalKey, setWeighingsModalKey] = useState<string | null>(null);
     const [isComparing, setIsComparing] = useState(false);
     const [highlightedLactationDate, setHighlightedLactationDate] = useState<string | null>(null); // Estado para Zoom/Resaltado
 
@@ -193,6 +197,15 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
         }
     };
 
+    // Lactancia (en vivo) cuyos pesajes se muestran en el modal de listado.
+    const weighingsModalLact = weighingsModalKey ? allLactations.find(l => l.parturitionDate === weighingsModalKey) || null : null;
+    const weighingsModalNumber = weighingsModalKey ? allLactations.findIndex(l => l.parturitionDate === weighingsModalKey) + 1 : 0;
+
+    const handleDeleteWeighing = async (w: { id: string; date: string; kg: number }) => {
+        await deleteWeighing(w.id);
+        showUndo(`Pesaje eliminado (${w.kg} Kg)`, () => addWeighing({ goatId: animalId, date: w.date, kg: w.kg }).then(() => {}));
+    };
+
     const getCompareButtonStyle = (type: ComparisonTargetType, index?: number) => {
         const isActive = comparisonRequest.type === type && (type !== 'SPECIFIC_LACTATION' || comparisonRequest.specificLactationIndex === index);
         let ringClass = '';
@@ -247,6 +260,43 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                         </div>
                     </button>
                 </div>
+
+                {/* Lactancias del animal (encima del gráfico). Tocar → lista de pesajes. */}
+                {allLactations.length > 0 && (
+                    <div className="space-y-2">
+                        <h3 className="text-c-text-muted font-semibold text-xs uppercase px-1">Lactancias ({allLactations.length})</h3>
+                        {allLactations.map((lact, index) => {
+                            const n = index + 1; // Lactancia 1, 2, 3…
+                            const year = new Date(lact.parturitionDate + 'T00:00:00Z').getUTCFullYear();
+                            const hasWeighings = lact.weighings.length > 0;
+                            const isCurrent = index === allLactations.length - 1 &&
+                                (currentLactationData?.status === 'activa' || currentLactationData?.status === 'en-secado');
+                            return (
+                                <button
+                                    key={lact.parturitionDate}
+                                    onClick={() => setWeighingsModalKey(lact.parturitionDate)}
+                                    disabled={!hasWeighings}
+                                    className="w-full flex items-center gap-3 bg-c-surface border border-c-border rounded-xl px-3 py-2.5 text-left hover:bg-c-surface-2 transition-colors disabled:opacity-60 disabled:cursor-default"
+                                >
+                                    <div className="w-9 h-9 rounded-lg bg-amber-500/15 text-amber-500 flex items-center justify-center font-bold flex-shrink-0">{n}</div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-c-text-strong">Lactancia {n}</span>
+                                            <span className="text-xs text-c-text-faint">{year}</span>
+                                            {isCurrent && <span className="text-[10px] font-bold uppercase bg-c-accent/15 text-c-accent px-1.5 py-0.5 rounded">Actual</span>}
+                                        </div>
+                                        <p className="text-xs text-c-text-muted truncate">
+                                            {hasWeighings
+                                                ? `Prom ${lact.averageProduction.toFixed(2)} · Pico ${lact.peakProduction.kg.toFixed(2)} Kg · ${lact.totalDays} días · ${lact.weighings.length} pesajes`
+                                                : 'Sin pesajes registrados'}
+                                        </p>
+                                    </div>
+                                    {hasWeighings && <ChevronRight size={18} className="text-c-text-faint flex-shrink-0" />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
 
                 <div className="bg-c-surface backdrop-blur-xl rounded-2xl p-4 border border-c-border relative">
                     <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-c-border pb-2 mb-4 gap-2">
@@ -312,42 +362,6 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                     )}
                 </div>
 
-                {allLactations.length > 0 && (
-                    <div className="space-y-2 pt-4">
-                        <h3 className="text-c-text-muted font-semibold text-xs uppercase px-1">Lactancias ({allLactations.length})</h3>
-                        {allLactations.map((lact, index) => {
-                            const n = index + 1; // Lactancia 1, 2, 3…
-                            const year = new Date(lact.parturitionDate + 'T00:00:00Z').getUTCFullYear();
-                            const hasCurve = lact.lactationCurve.length > 0;
-                            const isCurrent = index === allLactations.length - 1 &&
-                                (currentLactationData?.status === 'activa' || currentLactationData?.status === 'en-secado');
-                            return (
-                                <button
-                                    key={lact.parturitionDate}
-                                    onClick={() => openLactationModal(lact)}
-                                    disabled={!hasCurve}
-                                    className="w-full flex items-center gap-3 bg-c-surface border border-c-border rounded-xl px-3 py-2.5 text-left hover:bg-c-surface-2 transition-colors disabled:opacity-60 disabled:cursor-default"
-                                >
-                                    <div className="w-9 h-9 rounded-lg bg-amber-500/15 text-amber-500 flex items-center justify-center font-bold flex-shrink-0">{n}</div>
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-semibold text-c-text-strong">Lactancia {n}</span>
-                                            <span className="text-xs text-c-text-faint">{year}</span>
-                                            {isCurrent && <span className="text-[10px] font-bold uppercase bg-c-accent/15 text-c-accent px-1.5 py-0.5 rounded">Actual</span>}
-                                        </div>
-                                        <p className="text-xs text-c-text-muted truncate">
-                                            {hasCurve
-                                                ? `Prom ${lact.averageProduction.toFixed(2)} · Pico ${lact.peakProduction.kg.toFixed(2)} Kg · ${lact.totalDays} días · ${lact.weighings.length} pesajes`
-                                                : 'Sin pesajes registrados'}
-                                        </p>
-                                    </div>
-                                    {hasCurve && <ChevronRight size={18} className="text-c-text-faint flex-shrink-0" />}
-                                </button>
-                            );
-                        })}
-                    </div>
-                )}
-
                 {currentLactationData?.id && currentLactationData.status !== 'finalizada' && (
                      <div className="bg-c-surface backdrop-blur-xl rounded-2xl p-4 border border-c-border">
                         <h3 className="text-c-text-muted font-semibold text-xs uppercase mb-3">Gestión de Lactancia Actual</h3>
@@ -368,6 +382,52 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                     </div>
                 )}
             </div>
+
+            {/* Listado de pesajes de la lactancia seleccionada */}
+            <Modal
+                isOpen={!!weighingsModalLact}
+                onClose={() => setWeighingsModalKey(null)}
+                title={weighingsModalLact ? `Pesajes · Lactancia ${weighingsModalNumber}` : 'Pesajes'}
+            >
+                {weighingsModalLact && (
+                    <div className="space-y-2">
+                        <p className="text-xs text-c-text-muted">
+                            {weighingsModalLact.weighings.length} pesaje(s) · Prom {weighingsModalLact.averageProduction.toFixed(2)} Kg
+                        </p>
+                        <div className="max-h-[60vh] overflow-y-auto -mx-1 px-1 divide-y divide-c-border">
+                            {[...weighingsModalLact.weighings]
+                                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                .map(w => {
+                                    const del = calculateDEL(weighingsModalLact.parturitionDate, w.date);
+                                    return (
+                                        <div key={w.id} className="flex items-center gap-3 py-2.5">
+                                            <div className="w-9 h-9 rounded-lg bg-cyan-500/15 text-cyan-500 flex items-center justify-center flex-shrink-0">
+                                                <Droplets size={16} />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-semibold text-c-text-strong">{w.kg.toFixed(2)} Kg</p>
+                                                <p className="text-xs text-c-text-muted">
+                                                    {new Date(w.date + 'T00:00:00Z').toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })}
+                                                    {typeof del === 'number' ? ` · DEL ${del}` : ''}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => handleDeleteWeighing(w)}
+                                                aria-label="Eliminar pesaje"
+                                                className="p-2 rounded-lg text-c-text-faint hover:text-red-400 hover:bg-red-500/10 active:scale-95 transition-all flex-shrink-0"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            {weighingsModalLact.weighings.length === 0 && (
+                                <p className="text-center text-c-text-faint py-6 text-sm">Sin pesajes registrados.</p>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </Modal>
 
             <Modal isOpen={isCurveModalOpen} onClose={() => setIsCurveModalOpen(false)} title={`Curva Lactancia (${modalLactationData ? new Date(modalLactationData.parturitionDate).getFullYear() : 'Actual'}) - ${animalId}`}>
                 {modalLactationData ? (
