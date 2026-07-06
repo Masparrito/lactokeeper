@@ -9,6 +9,7 @@ import ManageLotsPage from './ManageLotsPage';
 import BreedingSeasonDetailPage from './BreedingSeasonDetailPage';
 import SireLotDetailPage from './SireLotDetailPage';
 import LactationProfilePage from './LactationProfilePage';
+import LactationWeighingsPage from './LactationWeighingsPage';
 import FeedingPlanPage from './FeedingPlanPage';
 import BatchTreatmentPage from './BatchTreatmentPage';
 import GrowthProfilePage from './modules/kilos/GrowthProfilePage';
@@ -87,7 +88,7 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
 
     const navItems = [
         { id: 'lots-dashboard', page: { name: 'lots-dashboard' }, label: 'Lotes', icon: GiGoat, mapsTo: ['lots-dashboard', 'lot-detail', 'breeding-season-detail', 'sire-lot-detail', 'feeding-plan', 'batch-treatment'] },
-        { id: 'herd', page: { name: 'herd' }, label: 'Rebaño', icon: FaCow, mapsTo: ['herd', 'rebano-profile', 'manage-lots', 'lactation-profile', 'growth-profile', 'configuracion', 'management'] },
+        { id: 'herd', page: { name: 'herd' }, label: 'Rebaño', icon: FaCow, mapsTo: ['herd', 'rebano-profile', 'manage-lots', 'lactation-profile', 'lactation-weighings', 'growth-profile', 'configuracion', 'management'] },
         { id: 'add-animal', page: { name: 'add-animal' }, label: 'Añadir', icon: PlusCircle, mapsTo: ['add-animal'] },
         { id: 'farm-calendar', page: { name: 'farm-calendar' }, label: 'Calendario', icon: CalendarDays, mapsTo: ['farm-calendar', 'birthing-season-detail'] },
         { id: 'modules', label: 'Módulos', icon: Grid, mapsTo: [] }, 
@@ -134,13 +135,17 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
                     setPage({ name: 'lots-dashboard' });
                     break;
 
+                case 'lactation-weighings':
+                    setPage({ name: 'lactation-profile', animalId: page.animalId });
+                    break;
+
                 case 'rebano-profile':
                 case 'lactation-profile':
                 case 'growth-profile':
                 case 'manage-lots':
                 case 'configuracion':
                 case 'management':
-                case 'add-animal': 
+                case 'add-animal':
                     setPage({ name: 'herd' });
                     break;
 
@@ -238,6 +243,7 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
             case 'add-animal': return <AddAnimalPage onBack={() => handleNavClick(navItems.find(i => i.id === 'herd')!)} />;
             case 'rebano-profile': return <RebanoProfilePage animalId={page.animalId} onBack={navigateBack} navigateTo={navigateTo} contextDate={(page as any).contextDate} />;
             case 'lactation-profile': return <LactationProfilePage animalId={page.animalId} onBack={navigateBack} navigateTo={navigateTo} />;
+            case 'lactation-weighings': return <LactationWeighingsPage animalId={page.animalId} parturitionDate={page.parturitionDate} onBack={navigateBack} navigateTo={navigateTo} />;
             case 'growth-profile': return <GrowthProfilePage animalId={page.animalId} onBack={navigateBack} />;
             case 'feeding-plan': return <FeedingPlanPage lotName={page.lotName} onBack={navigateBack} />;
             case 'batch-treatment': return <BatchTreatmentPage lotName={page.lotName} onBack={navigateBack} />;
