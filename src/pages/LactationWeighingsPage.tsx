@@ -11,7 +11,7 @@
 //  - Editar = borrar el viejo y luego agregar el nuevo (no existe
 //    updateWeighing; y el evento espejo se localiza por su kg/fecha original,
 //    así que hay que borrar primero).
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { ArrowLeft, Droplets, Trash2, Pencil, Plus, X, Check, CalendarDays } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToastUndo } from '../context/ToastUndoContext';
@@ -71,6 +71,9 @@ export default function LactationWeighingsPage({ animalId, parturitionDate, onBa
     const [addDate, setAddDate] = useState(maxDate);
     const [addKg, setAddKg] = useState('');
     const [error, setError] = useState('');
+    const [lastSaved, setLastSaved] = useState<{ kg: number; date: string } | null>(null);
+    const kgInputRef = useRef<HTMLInputElement>(null);
+    const shownLast = lastSaved ?? (rows[0] ? { kg: rows[0].kg, date: rows[0].date } : null);
 
     const validate = (date: string, kgStr: string, excludeId?: string): { ok: true; kg: number } | { ok: false; msg: string } => {
         const kg = parseFloat(kgStr.replace(',', '.'));
@@ -89,7 +92,9 @@ export default function LactationWeighingsPage({ animalId, parturitionDate, onBa
         setError('');
         const newId = await addWeighing({ goatId: animalId, date: addDate, kg: v.kg });
         showUndo(`Pesaje ${v.kg} Kg · ${fmtDate(addDate)}`, () => deleteWeighing(newId));
+        setLastSaved({ kg: v.kg, date: addDate });
         setAddKg('');
+        kgInputRef.current?.focus(); // cargar en cadena con Enter (escritorio)
         // Se conserva la fecha para que el usuario la ajuste al agregar el siguiente.
     };
 
@@ -113,6 +118,7 @@ export default function LactationWeighingsPage({ animalId, parturitionDate, onBa
         // Orden obligatorio: borrar el viejo (con su kg/fecha original) y luego agregar.
         await deleteWeighing(editing.id);
         await addWeighing({ goatId: animalId, date: editDate, kg: v.kg });
+        setLastSaved({ kg: v.kg, date: editDate });
         setEditing(null);
         showToast('Pesaje actualizado.');
     };
@@ -140,12 +146,20 @@ export default function LactationWeighingsPage({ animalId, parturitionDate, onBa
                         </div>
                         <div className="w-24">
                             <label className="block text-[11px] font-semibold text-c-text-muted mb-1">Kg</label>
-                            <input type="number" inputMode="decimal" step="0.01" value={addKg} placeholder="0.00" onChange={e => setAddKg(e.target.value)}
+                            <input ref={kgInputRef} type="number" inputMode="decimal" step="0.01" value={addKg} placeholder="0.00" onChange={e => setAddKg(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
                                 className="w-full bg-c-surface-2 text-c-text rounded-lg px-3 py-2.5 text-sm border border-c-border focus:outline-none focus:ring-2 focus:ring-c-accent-sky" />
                         </div>
                         <button onClick={handleAdd} className="bg-c-accent-sky hover:bg-blue-600 text-white font-bold px-4 py-2.5 rounded-lg flex-shrink-0">Agregar</button>
                     </div>
+                    {shownLast && (
+                        <div className="mt-3 flex items-center gap-2 bg-c-accent-sky/10 border border-c-accent-sky/25 rounded-lg px-3 py-2">
+                            <Check size={15} className="text-c-accent-sky flex-shrink-0" />
+                            <span className="text-xs text-c-text-muted">{lastSaved ? 'Último agregado:' : 'Último pesaje:'}</span>
+                            <span className="text-sm font-bold text-c-accent-sky">{shownLast.kg.toFixed(2)} Kg</span>
+                            <span className="text-xs text-c-text-faint ml-auto">{fmtDate(shownLast.date)}</span>
+                        </div>
+                    )}
                     {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
                     <p className="text-[11px] text-c-text-faint mt-2">
                         Fechas permitidas: {fmtDate(minDate)} — {fmtDate(maxDate)}. Puedes agregar varios seguidos cambiando la fecha.

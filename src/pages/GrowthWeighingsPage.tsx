@@ -14,7 +14,7 @@
 //    evento espejo se localiza por su kg/fecha original → borrar primero).
 //  - El peso AL NACER y AL DESTETE son campos del animal (ficha), no pesajes:
 //    se muestran como contexto de solo lectura, no se editan/borran aquí.
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { ArrowLeft, Scale, Trash2, Pencil, Plus, X, Check, CalendarDays, TrendingUp, Baby, Award, Heart, Target } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToastUndo } from '../context/ToastUndoContext';
@@ -135,6 +135,10 @@ export default function GrowthWeighingsPage({ animalId, onBack }: GrowthWeighing
     const [addDate, setAddDate] = useState(maxDate);
     const [addKg, setAddKg] = useState('');
     const [error, setError] = useState('');
+    const [lastSaved, setLastSaved] = useState<{ kg: number; date: string } | null>(null);
+    const kgInputRef = useRef<HTMLInputElement>(null);
+    // Último peso a mostrar: el recién guardado en esta sesión, o el más reciente cargado.
+    const shownLast = lastSaved ?? (rowsDesc[0] ? { kg: rowsDesc[0].kg, date: rowsDesc[0].date } : null);
 
     // Aviso de atípico (no bloqueante) mientras se escribe.
     const atypicalMsg = useMemo(() => {
@@ -162,7 +166,9 @@ export default function GrowthWeighingsPage({ animalId, onBack }: GrowthWeighing
         setError('');
         const newId = await addBodyWeighing({ animalId, date: addDate, kg: v.kg });
         showUndo(`Peso ${v.kg} Kg · ${fmtDate(addDate)}`, () => deleteBodyWeighing(newId));
+        setLastSaved({ kg: v.kg, date: addDate });
         setAddKg('');
+        kgInputRef.current?.focus(); // permite cargar en cadena con Enter (escritorio)
     };
 
     const handleDelete = async (w: BodyWeighing) => {
@@ -184,6 +190,7 @@ export default function GrowthWeighingsPage({ animalId, onBack }: GrowthWeighing
         if (!v.ok) { setEditError(v.msg); return; }
         await deleteBodyWeighing(editing.id);
         await addBodyWeighing({ animalId, date: editDate, kg: v.kg });
+        setLastSaved({ kg: v.kg, date: editDate });
         setEditing(null);
         showToast('Pesaje actualizado.');
     };
@@ -288,12 +295,20 @@ export default function GrowthWeighingsPage({ animalId, onBack }: GrowthWeighing
                         </div>
                         <div className="w-24">
                             <label className="block text-[11px] font-semibold text-c-text-muted mb-1">Kg</label>
-                            <input type="number" inputMode="decimal" step="0.1" value={addKg} placeholder="0.0" onChange={e => setAddKg(e.target.value)}
+                            <input ref={kgInputRef} type="number" inputMode="decimal" step="0.1" value={addKg} placeholder="0.0" onChange={e => setAddKg(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
                                 className="w-full bg-c-surface-2 text-c-text rounded-lg px-3 py-2.5 text-sm border border-c-border focus:outline-none focus:ring-2 focus:ring-c-accent" />
                         </div>
                         <button onClick={handleAdd} className="bg-c-accent hover:bg-green-600 text-white font-bold px-4 py-2.5 rounded-lg flex-shrink-0">Agregar</button>
                     </div>
+                    {shownLast && (
+                        <div className="mt-3 flex items-center gap-2 bg-c-accent/10 border border-c-accent/25 rounded-lg px-3 py-2">
+                            <Check size={15} className="text-c-accent flex-shrink-0" />
+                            <span className="text-xs text-c-text-muted">{lastSaved ? 'Último agregado:' : 'Último pesaje:'}</span>
+                            <span className="text-sm font-bold text-c-accent">{shownLast.kg.toFixed(2)} Kg</span>
+                            <span className="text-xs text-c-text-faint ml-auto">{fmtDate(shownLast.date)}</span>
+                        </div>
+                    )}
                     {atypicalMsg && !error && <p className="text-xs text-amber-500 mt-2">⚠️ {atypicalMsg}</p>}
                     {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
                     <p className="text-[11px] text-c-text-faint mt-2">
