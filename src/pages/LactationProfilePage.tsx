@@ -6,7 +6,7 @@ import { XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, AreaChart, A
 import { LactationCycle, useAnimalData } from '../hooks/useAnimalData';
 // ComparisonResult sí se usa en useComparativeData
 import { useComparativeData, ComparisonRequest, ComparisonTargetType } from '../hooks/useComparativeData';
-import { ArrowLeft, Droplet, TrendingUp, CalendarDays, Repeat, CalendarCheck2, Wind, Archive, FileText, BarChart2, Loader2, XCircle, ChevronRight, PlusCircle, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Droplet, TrendingUp, CalendarDays, Repeat, CalendarCheck2, Wind, Archive, FileText, BarChart2, Loader2, XCircle, ChevronRight, PlusCircle, AlertTriangle, Trash2 } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { ParturitionModal } from '../components/modals/ParturitionModal';
 import { useData } from '../context/DataContext';
@@ -18,7 +18,7 @@ import { HistoricalLactationChart } from '../components/charts/HistoricalLactati
 // import type { ComparisonData } from '../components/charts/HistoricalLactationChart'; // <-- LÍNEA ELIMINADA
 import { ComparativeMetricsDisplay } from '../components/ui/ComparativeMetricsDisplay';
 // src/utils/formatting.ts (Example)
-import { Animal, Father } from '../db/local'; // Adjust import as needed
+import { Animal, Father, Parturition } from '../db/local'; // Adjust import as needed
 
 
 export const formatAnimalDisplay = (animal: Animal | Father | { id: string, name?: string } | undefined | null): string => {
@@ -53,7 +53,7 @@ interface LactationProfilePageProps {
 
 export default function LactationProfilePage({ animalId, onBack, navigateTo }: LactationProfilePageProps) {
     // --- 1. TODOS LOS HOOKS SE LLAMAN PRIMERO, DE FORMA INCONDICIONAL ---
-    const { animals, parturitions, weighings, startDryingProcess, setLactationAsDry, addParturition } = useData();
+    const { animals, parturitions, weighings, startDryingProcess, setLactationAsDry, addParturition, deleteParturition } = useData();
     const { allLactations, parturitionIntervals, lastWeighingDate, isLoading } = useAnimalData(animalId);
 
     const todayStr = new Date().toISOString().split('T')[0];
@@ -64,13 +64,31 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
     const [createDate, setCreateDate] = useState(todayStr);
     const [createError, setCreateError] = useState('');
     const [partoModal, setPartoModal] = useState<{ date: string; id: string } | null>(null);
+    const [deleteLactPart, setDeleteLactPart] = useState<Parturition | null>(null);
 
     // Parto de cada lactancia (para detectar provisionales) indexado por fecha.
     const parturitionByDate = useMemo(() => {
-        const m = new Map<string, typeof parturitions[number]>();
+        const m = new Map<string, Parturition>();
         parturitions.filter(p => p.goatId === animalId).forEach(p => m.set(p.parturitionDate, p));
         return m;
     }, [parturitions, animalId]);
+
+    const partDatesAsc = useMemo(() => [...parturitionByDate.keys()].sort(), [parturitionByDate]);
+
+    // ¿Cuántos pesajes EXISTENTES quedarían dentro de la ventana de la lactancia
+    // que se va a crear? (esos se "moverían" a la nueva lactancia). Sirve para
+    // avisar antes de crear y evitar sorpresas.
+    const createAbsorbedCount = useMemo(() => {
+        if (!createDate) return 0;
+        const nextParto = partDatesAsc.find(d => d > createDate);
+        return weighings.filter(w => w.goatId === animalId && w.date >= createDate && (!nextParto || w.date < nextParto)).length;
+    }, [createDate, partDatesAsc, weighings, animalId]);
+
+    const handleDeleteLactation = async () => {
+        if (!deleteLactPart) return;
+        await deleteParturition(deleteLactPart.id);
+        setDeleteLactPart(null);
+    };
 
     const handleCreateLactation = async () => {
         if (!createDate) { setCreateError('Elige la fecha del parto.'); return; }
@@ -317,14 +335,23 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                                     <ChevronRight size={18} className="text-c-text-faint flex-shrink-0" />
                                 </button>
                                 {isProvisional && part && (
-                                    <button
-                                        onClick={() => setPartoModal({ date: part.parturitionDate, id: part.id })}
-                                        className="w-full flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-lg px-3 py-2 text-left hover:bg-amber-500/15 transition-colors"
-                                    >
-                                        <AlertTriangle size={15} className="flex-shrink-0" />
-                                        <span className="text-xs font-semibold flex-1">Falta cargar parto — toca para registrarlo</span>
-                                        <ChevronRight size={15} className="flex-shrink-0" />
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setPartoModal({ date: part.parturitionDate, id: part.id })}
+                                            className="flex-1 flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-lg px-3 py-2 text-left hover:bg-amber-500/15 transition-colors"
+                                        >
+                                            <AlertTriangle size={15} className="flex-shrink-0" />
+                                            <span className="text-xs font-semibold flex-1">Falta cargar parto — toca para registrarlo</span>
+                                            <ChevronRight size={15} className="flex-shrink-0" />
+                                        </button>
+                                        <button
+                                            onClick={() => setDeleteLactPart(part)}
+                                            title="Eliminar esta lactancia"
+                                            className="p-2 rounded-lg text-c-text-faint hover:text-red-400 hover:bg-red-500/10 border border-c-border flex-shrink-0"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         );
@@ -427,10 +454,34 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                         <input type="date" value={createDate} max={todayStr} onChange={e => setCreateDate(e.target.value)}
                             className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl border border-c-border focus:outline-none focus:ring-2 focus:ring-c-accent-sky" />
                     </div>
+                    {createAbsorbedCount > 0 && (
+                        <div className="flex gap-2 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+                            <AlertTriangle size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-amber-700 leading-relaxed">
+                                Hay <b>{createAbsorbedCount} pesaje(s)</b> con fecha igual o posterior al {new Date(createDate + 'T00:00:00Z').toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })} que <b>pasarán a esta nueva lactancia</b> (dejarán de contar en la lactancia anterior). No se borra ningún pesaje; solo se reagrupan por la nueva fecha de parto.
+                            </p>
+                        </div>
+                    )}
                     {createError && <p className="text-sm text-red-500 text-center">{createError}</p>}
                     <div className="flex justify-end gap-3 pt-2">
                         <button onClick={() => setCreateOpen(false)} className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-3 font-semibold rounded-lg text-c-text">Cancelar</button>
-                        <button onClick={handleCreateLactation} className="px-5 py-2 bg-c-accent-sky hover:bg-blue-600 text-white font-bold rounded-lg">Crear</button>
+                        <button onClick={handleCreateLactation} className={`px-5 py-2 text-white font-bold rounded-lg ${createAbsorbedCount > 0 ? 'bg-amber-600 hover:bg-amber-700' : 'bg-c-accent-sky hover:bg-blue-600'}`}>
+                            {createAbsorbedCount > 0 ? 'Entiendo, crear' : 'Crear'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Eliminar lactancia (parto provisional) */}
+            <Modal isOpen={!!deleteLactPart} onClose={() => setDeleteLactPart(null)} title="Eliminar lactancia">
+                <div className="space-y-4">
+                    <p className="text-c-text-muted text-sm leading-relaxed">
+                        Se eliminará esta lactancia{deleteLactPart ? ` (parto del ${new Date(deleteLactPart.parturitionDate + 'T00:00:00Z').toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })})` : ''}.
+                        Los pesajes que caían en su rango <b>volverán a la lactancia anterior</b>. No se elimina ningún pesaje.
+                    </p>
+                    <div className="flex justify-end gap-3 pt-2">
+                        <button onClick={() => setDeleteLactPart(null)} className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-3 font-semibold rounded-lg text-c-text">Cancelar</button>
+                        <button onClick={handleDeleteLactation} className="px-5 py-2 bg-brand-red hover:bg-red-700 text-white font-bold rounded-lg">Eliminar lactancia</button>
                     </div>
                 </div>
             </Modal>
