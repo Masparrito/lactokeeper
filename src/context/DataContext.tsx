@@ -75,6 +75,7 @@ interface IDataContext {
   deleteWeighingSession: (date: string) => Promise<void>;
   deleteBodyWeighingSession: (date: string) => Promise<void>;
   addParturition: (data: any) => Promise<void>;
+  deleteParturition: (id: string) => Promise<void>;
   fetchData: () => Promise<void>;
   addFather: (father: { id: string, name: string }) => Promise<void>;
   addProduct: (productData: Omit<Product, 'id' | 'userId' | '_synced'>) => Promise<void>;
@@ -998,8 +999,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             status: lactationStatus, 
             userId: currentUser.uid, 
             _synced: false, 
-            dryingStartDate: data.inducedLactation && data.parturitionOutcome === 'Aborto' ? data.parturitionDate : undefined, 
-            liveOffspring: data.liveOffspring ? data.liveOffspring.map((kid: any) => ({ id: kid.id?.toUpperCase(), sex: kid.sex, birthWeight: kid.birthWeight })) : undefined 
+            dryingStartDate: data.inducedLactation && data.parturitionOutcome === 'Aborto' ? data.parturitionDate : undefined,
+            liveOffspring: data.liveOffspring ? data.liveOffspring.map((kid: any) => ({ id: kid.id?.toUpperCase(), sex: kid.sex, birthWeight: kid.birthWeight })) : undefined,
+            provisional: data.provisional || undefined,
         };
         
         const newKidsData: Animal[] = (data.liveOffspring || []).map((kid: any) => ({ 
@@ -1030,25 +1032,29 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 });
             }
 
-            let eventType: EventType;
-            let eventDetails = `Parto ${data.parturitionType} (${data.offspringCount} crías) con Semental: ${data.sireId}. Vivas: ${newKidsData.length}.`;
-            
-            if (data.parturitionOutcome === 'Aborto') {
-                eventType = 'Aborto'; 
-                eventDetails = `Aborto registrado con Semental: ${data.sireId}. ${data.inducedLactation ? 'Se induce lactancia.' : ''}`;
-            } else if (data.parturitionOutcome === 'Con Mortinatos') {
-                const stillCount = data.offspringCount - newKidsData.length;
-                if (newKidsData.length === 0) {
+            // Un parto provisional (solo fecha, para crear la lactancia) NO genera
+            // evento de "Parto" — se registra cuando el usuario complete el parto.
+            if (!data.provisional) {
+                let eventType: EventType;
+                let eventDetails = `Parto ${data.parturitionType} (${data.offspringCount} crías) con Semental: ${data.sireId}. Vivas: ${newKidsData.length}.`;
+
+                if (data.parturitionOutcome === 'Aborto') {
                     eventType = 'Aborto';
-                    eventDetails = `Mortinato completo (${stillCount} crías). Padre: ${data.sireId}.`;
+                    eventDetails = `Aborto registrado con Semental: ${data.sireId}. ${data.inducedLactation ? 'Se induce lactancia.' : ''}`;
+                } else if (data.parturitionOutcome === 'Con Mortinatos') {
+                    const stillCount = data.offspringCount - newKidsData.length;
+                    if (newKidsData.length === 0) {
+                        eventType = 'Aborto';
+                        eventDetails = `Mortinato completo (${stillCount} crías). Padre: ${data.sireId}.`;
+                    } else {
+                        eventType = 'Parto';
+                        eventDetails = `Padre: ${data.sireId}. Crías: ${newKidsData.length} vivas, ${stillCount} mortinatos.`;
+                    }
                 } else {
                     eventType = 'Parto';
-                    eventDetails = `Padre: ${data.sireId}. Crías: ${newKidsData.length} vivas, ${stillCount} mortinatos.`;
                 }
-            } else {
-                 eventType = 'Parto';
+                internalAddEvent({ animalId: upperCaseMotherId, date: data.parturitionDate, type: eventType, details: eventDetails });
             }
-            internalAddEvent({ animalId: upperCaseMotherId, date: data.parturitionDate, type: eventType, details: eventDetails });
 
             if (newKidsData.length > 0) {
                 await localDb.animals.bulkPut(newKidsData);
@@ -1074,6 +1080,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         enqueueSync(sync);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent, cleanForBatch]);
+
+    // Elimina un parto (usado para reemplazar un parto provisional al completar
+    // los datos reales). Borra el registro y su evento Parto/Aborto asociado.
+    // NOTA: no elimina crías (un provisional no tiene crías); para partos reales
+    // con crías, esas quedan intactas.
+    const deleteParturition = useCallback(async (id: string) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        const part = await localDb.parturitions.get(id);
+        if (!part) return;
+        const evs = await localDb.events.where('date').equals(part.parturitionDate)
+            .and(e => (e.type === 'Parto' || e.type === 'Aborto') && e.animalId === part.goatId).toArray();
+        const evIds = evs.map(e => e.id);
+        await localDb.transaction('rw', localDb.parturitions, localDb.events, async () => {
+            await localDb.parturitions.delete(id);
+            if (evIds.length) await localDb.events.bulkDelete(evIds);
+        });
+        await fetchDataFromLocalDb();
+        await recordDeletions([{ collection: "parturitions", id }, ...evIds.map(eid => ({ collection: "events", id: eid }))]);
+    }, [currentUser, fetchDataFromLocalDb, recordDeletions]);
 
     // --- FUNCIÓN addServiceRecord ACTUALIZADA Y MEJORADA ---
     const addServiceRecord = useCallback(async (recordData: Omit<ServiceRecord, 'id' | 'userId' | '_synced'>) => {
@@ -1581,7 +1607,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addSireLot, updateSireLot, deleteSireLot, addServiceRecord,
         addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighing, deleteBodyWeighing, deleteWeighingSession,
         deleteBodyWeighingSession,
-        addParturition, addFather,
+        addParturition, deleteParturition, addFather,
         addProduct, updateProduct, deleteProduct, addHealthPlanWithActivities, updateHealthPlan, deleteHealthPlan,
         addPlanActivity, updatePlanActivity, deletePlanActivity, addHealthEvent,
         addFamachaRev, deleteFamachaRev,
@@ -1606,7 +1632,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addSireLot, updateSireLot, deleteSireLot, addServiceRecord,
         addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighing, deleteBodyWeighing, deleteWeighingSession,
         deleteBodyWeighingSession,
-        addParturition, addFather,
+        addParturition, deleteParturition, addFather,
         addProduct, updateProduct, deleteProduct, addHealthPlanWithActivities, updateHealthPlan, deleteHealthPlan,
         addPlanActivity, updatePlanActivity, deletePlanActivity, addHealthEvent,
         addFamachaRev, deleteFamachaRev,

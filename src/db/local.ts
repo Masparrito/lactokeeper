@@ -124,6 +124,10 @@ export interface Parturition extends SyncedRecord {
     parturitionOutcome?: 'Normal' | 'Aborto' | 'Con Mortinatos';
     dryingStartDate?: string;
     liveOffspring?: { id: string, sex: 'Hembra' | 'Macho', birthWeight?: string | number }[];
+    // Parto "provisional": la lactancia se creó para cargar pesajes pero aún
+    // falta registrar los datos reales del parto (cría/padre/tipo). Dispara la
+    // alerta "Falta cargar parto".
+    provisional?: boolean;
 }
 
 export interface Weighing extends SyncedRecord {

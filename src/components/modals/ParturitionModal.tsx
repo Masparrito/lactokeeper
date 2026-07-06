@@ -32,10 +32,14 @@ interface ParturitionModalProps {
     isOpen: boolean;
     onClose: () => void;
     motherId: string;
+    // Completar un parto PROVISIONAL: prefija la fecha y, al guardar, reemplaza
+    // el parto provisional por el real (para no duplicar la lactancia).
+    defaultDate?: string;
+    replaceProvisionalId?: string;
 }
 
-export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onClose, motherId }) => {
-    const { animals, fathers, addFather, addParturition, parturitions: allParturitions, addEvent, updateAnimal } = useData();
+export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onClose, motherId, defaultDate, replaceProvisionalId }) => {
+    const { animals, fathers, addFather, addParturition, deleteParturition, parturitions: allParturitions, addEvent, updateAnimal } = useData();
     const [step, setStep] = useState<Step>(1);
 
     const [parturitionDate, setParturitionDate] = useState(new Date().toISOString().split('T')[0]);
@@ -78,10 +82,10 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
 
     useEffect(() => {
         if (isOpen) {
-            setStep(1); setParturitionDate(new Date().toISOString().split('T')[0]); setSireId('');
+            setStep(1); setParturitionDate(defaultDate || new Date().toISOString().split('T')[0]); setSireId('');
             setOffspringCount(1); setOffspring([]); setIsLoading(false); setError('');
         }
-    }, [isOpen]);
+    }, [isOpen, defaultDate]);
 
     const handleNextStep = () => setStep(prev => (prev < 4 ? prev + 1 : prev) as Step);
     const handlePrevStep = () => setStep(prev => (prev > 1 ? prev - 1 : prev) as Step);
@@ -118,7 +122,9 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
             return diffDays < MIN_DAYS_BETWEEN_PARTURITIONS;
         });
 
-        if (isTooClose) {
+        // Al completar un parto provisional, el parto "cercano" ES el provisional
+        // que vamos a reemplazar, así que no bloqueamos.
+        if (isTooClose && !replaceProvisionalId) {
             setError(`Ya existe un parto registrado para ${motherId} en fecha cercana.`);
             setIsLoading(false); return;
         }
@@ -134,9 +140,13 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
                 id: `${kid.sex === 'Macho' ? 'X' : fatherInitial}${kid.correlative}`
             }));
 
+            // Reemplaza el parto provisional (misma fecha → los pesajes ya
+            // cargados siguen perteneciendo a esta lactancia).
+            if (replaceProvisionalId) await deleteParturition(replaceProvisionalId);
+
             await addParturition({
-                goatId: motherId.toUpperCase(), 
-                parturitionDate, 
+                goatId: motherId.toUpperCase(),
+                parturitionDate,
                 sireId: sireId || undefined,
                 parturitionType: parturitionTypes.find(p => p.count === offspringCount)?.name || 'Simple',
                 offspringCount: offspring.length, 

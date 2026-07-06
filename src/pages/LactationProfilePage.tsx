@@ -6,8 +6,9 @@ import { XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, AreaChart, A
 import { LactationCycle, useAnimalData } from '../hooks/useAnimalData';
 // ComparisonResult sí se usa en useComparativeData
 import { useComparativeData, ComparisonRequest, ComparisonTargetType } from '../hooks/useComparativeData';
-import { ArrowLeft, Droplet, TrendingUp, CalendarDays, Repeat, CalendarCheck2, Wind, Archive, FileText, BarChart2, Loader2, XCircle, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Droplet, TrendingUp, CalendarDays, Repeat, CalendarCheck2, Wind, Archive, FileText, BarChart2, Loader2, XCircle, ChevronRight, PlusCircle, AlertTriangle } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
+import { ParturitionModal } from '../components/modals/ParturitionModal';
 import { useData } from '../context/DataContext';
 import { calculateDEL } from '../utils/calculations';
 import type { PageState } from '../types/navigation';
@@ -52,11 +53,36 @@ interface LactationProfilePageProps {
 
 export default function LactationProfilePage({ animalId, onBack, navigateTo }: LactationProfilePageProps) {
     // --- 1. TODOS LOS HOOKS SE LLAMAN PRIMERO, DE FORMA INCONDICIONAL ---
-    const { animals, parturitions, weighings, startDryingProcess, setLactationAsDry } = useData();
+    const { animals, parturitions, weighings, startDryingProcess, setLactationAsDry, addParturition } = useData();
     const { allLactations, parturitionIntervals, lastWeighingDate, isLoading } = useAnimalData(animalId);
 
+    const todayStr = new Date().toISOString().split('T')[0];
     const [isCurveModalOpen, setIsCurveModalOpen] = useState(false);
     const [modalLactationData, setModalLactationData] = useState<LactationCycle | null>(null);
+    // Crear lactancia (parto provisional) y completar parto provisional.
+    const [isCreateOpen, setCreateOpen] = useState(false);
+    const [createDate, setCreateDate] = useState(todayStr);
+    const [createError, setCreateError] = useState('');
+    const [partoModal, setPartoModal] = useState<{ date: string; id: string } | null>(null);
+
+    // Parto de cada lactancia (para detectar provisionales) indexado por fecha.
+    const parturitionByDate = useMemo(() => {
+        const m = new Map<string, typeof parturitions[number]>();
+        parturitions.filter(p => p.goatId === animalId).forEach(p => m.set(p.parturitionDate, p));
+        return m;
+    }, [parturitions, animalId]);
+
+    const handleCreateLactation = async () => {
+        if (!createDate) { setCreateError('Elige la fecha del parto.'); return; }
+        if (createDate > todayStr) { setCreateError('La fecha no puede ser futura.'); return; }
+        if (parturitionByDate.has(createDate)) { setCreateError('Ya existe una lactancia con esa fecha.'); return; }
+        setCreateError('');
+        await addParturition({
+            goatId: animalId, parturitionDate: createDate, provisional: true,
+            sireId: '', offspringCount: 0, parturitionType: 'Simple', parturitionOutcome: 'Normal', liveOffspring: [],
+        });
+        setCreateOpen(false);
+    };
     const [isComparing, setIsComparing] = useState(false);
     const [highlightedLactationDate, setHighlightedLactationDate] = useState<string | null>(null); // Estado para Zoom/Resaltado
 
@@ -249,18 +275,29 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                 </div>
 
                 {/* Lactancias del animal (encima del gráfico). Tocar → lista de pesajes. */}
-                {allLactations.length > 0 && (
-                    <div className="space-y-2">
-                        <h3 className="text-c-text-muted font-semibold text-xs uppercase px-1">Lactancias ({allLactations.length})</h3>
-                        {allLactations.map((lact, index) => {
-                            const n = index + 1; // Lactancia 1, 2, 3…
-                            const year = new Date(lact.parturitionDate + 'T00:00:00Z').getUTCFullYear();
-                            const hasWeighings = lact.weighings.length > 0;
-                            const isCurrent = index === allLactations.length - 1 &&
-                                (currentLactationData?.status === 'activa' || currentLactationData?.status === 'en-secado');
-                            return (
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between px-1">
+                        <h3 className="text-c-text-muted font-semibold text-xs uppercase">Lactancias ({allLactations.length})</h3>
+                        <button onClick={() => { setCreateDate(todayStr); setCreateError(''); setCreateOpen(true); }} className="flex items-center gap-1 text-sm font-bold text-c-accent-sky">
+                            <PlusCircle size={16} /> Crear lactancia
+                        </button>
+                    </div>
+                    {allLactations.length === 0 && (
+                        <p className="text-xs text-c-text-faint px-1 py-2">
+                            Este animal no tiene lactancias. Crea una (con la fecha del parto) para empezar a cargar pesajes.
+                        </p>
+                    )}
+                    {allLactations.map((lact, index) => {
+                        const n = index + 1; // Lactancia 1, 2, 3…
+                        const year = new Date(lact.parturitionDate + 'T00:00:00Z').getUTCFullYear();
+                        const hasWeighings = lact.weighings.length > 0;
+                        const isCurrent = index === allLactations.length - 1 &&
+                            (currentLactationData?.status === 'activa' || currentLactationData?.status === 'en-secado');
+                        const part = parturitionByDate.get(lact.parturitionDate);
+                        const isProvisional = !!part?.provisional;
+                        return (
+                            <div key={lact.parturitionDate} className="space-y-1">
                                 <button
-                                    key={lact.parturitionDate}
                                     onClick={() => navigateTo({ name: 'lactation-weighings', animalId, parturitionDate: lact.parturitionDate })}
                                     className="w-full flex items-center gap-3 bg-c-surface border border-c-border rounded-xl px-3 py-2.5 text-left hover:bg-c-surface-2 transition-colors"
                                 >
@@ -279,10 +316,20 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                                     </div>
                                     <ChevronRight size={18} className="text-c-text-faint flex-shrink-0" />
                                 </button>
-                            );
-                        })}
-                    </div>
-                )}
+                                {isProvisional && part && (
+                                    <button
+                                        onClick={() => setPartoModal({ date: part.parturitionDate, id: part.id })}
+                                        className="w-full flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-lg px-3 py-2 text-left hover:bg-amber-500/15 transition-colors"
+                                    >
+                                        <AlertTriangle size={15} className="flex-shrink-0" />
+                                        <span className="text-xs font-semibold flex-1">Falta cargar parto — toca para registrarlo</span>
+                                        <ChevronRight size={15} className="flex-shrink-0" />
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
 
                 <div className="bg-c-surface backdrop-blur-xl rounded-2xl p-4 border border-c-border relative">
                     <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-c-border pb-2 mb-4 gap-2">
@@ -368,6 +415,36 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                     </div>
                 )}
             </div>
+
+            {/* Crear lactancia (parto provisional) */}
+            <Modal isOpen={isCreateOpen} onClose={() => setCreateOpen(false)} title="Crear lactancia">
+                <div className="space-y-4">
+                    <p className="text-sm text-c-text-muted">
+                        Ingresa la fecha del parto que originó esta lactancia. Podrás cargar los pesajes de inmediato; si aún no registras los datos completos del parto, la lactancia quedará marcada como «Falta cargar parto».
+                    </p>
+                    <div>
+                        <label className="block text-sm font-medium text-c-text-muted mb-1">Fecha del parto</label>
+                        <input type="date" value={createDate} max={todayStr} onChange={e => setCreateDate(e.target.value)}
+                            className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl border border-c-border focus:outline-none focus:ring-2 focus:ring-c-accent-sky" />
+                    </div>
+                    {createError && <p className="text-sm text-red-500 text-center">{createError}</p>}
+                    <div className="flex justify-end gap-3 pt-2">
+                        <button onClick={() => setCreateOpen(false)} className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-3 font-semibold rounded-lg text-c-text">Cancelar</button>
+                        <button onClick={handleCreateLactation} className="px-5 py-2 bg-c-accent-sky hover:bg-blue-600 text-white font-bold rounded-lg">Crear</button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Completar parto provisional */}
+            {partoModal && (
+                <ParturitionModal
+                    isOpen={true}
+                    onClose={() => setPartoModal(null)}
+                    motherId={animalId}
+                    defaultDate={partoModal.date}
+                    replaceProvisionalId={partoModal.id}
+                />
+            )}
 
             <Modal isOpen={isCurveModalOpen} onClose={() => setIsCurveModalOpen(false)} title={`Curva Lactancia (${modalLactationData ? new Date(modalLactationData.parturitionDate).getFullYear() : 'Actual'}) - ${animalId}`}>
                 {modalLactationData ? (
