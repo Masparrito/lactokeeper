@@ -1,9 +1,9 @@
 // src/hooks/useAnimalData.ts
 
-import { useState, useEffect, useMemo } from 'react';
-// 1. CORRECCIÓN: Importamos getDB en lugar de db.
-import { getDB, Weighing, Parturition } from '../db/local';
+import { useMemo } from 'react';
+import { Weighing } from '../db/local';
 import { calculateDEL } from '../utils/calculations';
+import { useData } from '../context/DataContext';
 
 export interface LactationCycle {
   parturitionDate: string;
@@ -14,45 +14,33 @@ export interface LactationCycle {
   totalDays: number;
 }
 
+// Deriva TODO en vivo desde el contexto (useData). Cualquier alta/edición/
+// borrado de pesajes o partos se refleja al instante en el perfil de lactancia
+// (antes se cargaba una sola vez desde Dexie y quedaba obsoleto).
 export const useAnimalData = (animalId: string) => {
-  const [weighings, setWeighings] = useState<Weighing[]>([]);
-  const [parturitions, setParturitions] = useState<Parturition[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { weighings: allWeighings, parturitions: allParturitions, isLoading } = useData();
 
-  useEffect(() => {
-    if (!animalId) return;
-    const fetchDataForAnimal = async () => {
-      setIsLoading(true);
-      try {
-        // 2. CORRECCIÓN: Obtenemos la instancia de la DB con la nueva función.
-        const localDb = getDB(); 
+  const weighings = useMemo(
+    () => allWeighings.filter(w => w.goatId === animalId),
+    [allWeighings, animalId]
+  );
 
-        // Usamos la instancia 'localDb' para las consultas.
-        const [weighingData, parturitionData] = await Promise.all([
-          localDb.weighings.where('goatId').equals(animalId).toArray(),
-          localDb.parturitions.where('goatId').equals(animalId).toArray(),
-        ]);
-
-        setWeighings(weighingData);
-        setParturitions(parturitionData.sort((a, b) => new Date(a.parturitionDate).getTime() - new Date(b.parturitionDate).getTime()));
-      } catch (error) {
-        console.error(`Error al cargar datos para ${animalId}:`, error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchDataForAnimal();
-  }, [animalId]);
+  const parturitions = useMemo(
+    () => allParturitions
+      .filter(p => p.goatId === animalId)
+      .sort((a, b) => new Date(a.parturitionDate).getTime() - new Date(b.parturitionDate).getTime()),
+    [allParturitions, animalId]
+  );
 
   const processedData = useMemo(() => {
-    if (parturitions.length === 0) return { allLactations: [], parturitionIntervals: [], lastWeighingDate: null };
+    if (parturitions.length === 0) return { allLactations: [] as LactationCycle[], parturitionIntervals: [] as { period: string; days: number }[], lastWeighingDate: null as string | null };
 
     const allLactations: LactationCycle[] = parturitions.map((parturition, index) => {
       const startDate = new Date(parturition.parturitionDate);
-      // Si es el último parto, la fecha final es hoy. Si no, es la fecha del siguiente parto.
-      const endDate = index < parturitions.length - 1 
-        ? new Date(parturitions[index + 1].parturitionDate) 
-        : new Date(9999, 11, 31); // Una fecha muy en el futuro para incluir todos los pesajes hasta hoy
+      // Si es el último parto, la fecha final es "abierta" (incluye pesajes hasta hoy).
+      const endDate = index < parturitions.length - 1
+        ? new Date(parturitions[index + 1].parturitionDate)
+        : new Date(9999, 11, 31);
 
       const cycleWeighings = weighings.filter(w => {
         const weighDate = new Date(w.date);
@@ -80,18 +68,17 @@ export const useAnimalData = (animalId: string) => {
     });
 
     const parturitionIntervals = parturitions.slice(1).map((parturition, index) => {
-        const previousParturition = parturitions[index];
-        const diffTime = new Date(parturition.parturitionDate).getTime() - new Date(previousParturition.parturitionDate).getTime();
-        return {
-            period: `${previousParturition.parturitionDate.substring(0,4)} - ${parturition.parturitionDate.substring(0,4)}`,
-            days: Math.round(diffTime / (1000 * 60 * 60 * 24))
-        };
+      const previousParturition = parturitions[index];
+      const diffTime = new Date(parturition.parturitionDate).getTime() - new Date(previousParturition.parturitionDate).getTime();
+      return {
+        period: `${previousParturition.parturitionDate.substring(0, 4)} - ${parturition.parturitionDate.substring(0, 4)}`,
+        days: Math.round(diffTime / (1000 * 60 * 60 * 24)),
+      };
     });
 
-    const lastWeighing = weighings.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+    const lastWeighing = [...weighings].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
     return { allLactations, parturitionIntervals, lastWeighingDate: lastWeighing?.date || null };
-
   }, [weighings, parturitions]);
 
   return { ...processedData, isLoading };
