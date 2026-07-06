@@ -376,7 +376,7 @@ export default function RebanoProfilePage({
             { label: "Parto", icon: Baby, onClick: () => setParturitionModalOpen(true), color: "text-pink-400", disabled: animal.isReference },
             { label: "Aborto", icon: HeartCrack, onClick: () => setIsAbortionModalOpen(true), color: "text-yellow-400", disabled: animal.isReference }
         ] : []),
-        { label: "Peso", icon: Scale, onClick: () => setIsWeightMenuOpen(true), color: "text-brand-green", disabled: false },
+        { label: "Kilos", icon: Scale, onClick: () => navigateTo({ name: 'growth-profile', animalId: animal.id }), color: "text-brand-green", disabled: false },
         { label: "Sanidad", icon: Syringe, onClick: () => alert('Función en desarrollo'), color: "text-teal-300", disabled: animal.isReference },
         ...(!animal.isReference ? [
             { label: "Mover", icon: Replace, onClick: () => setLotChangeModalOpen(true), color: "text-brand-blue", disabled: isEditing },
