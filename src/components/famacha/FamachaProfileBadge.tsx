@@ -10,6 +10,7 @@ import {
     tendenciaFamacha, tratadoYNoMejora, MENSAJE_NO_MEJORA,
 } from '../../utils/famachaLogic';
 import { TrendArrow, FamachaScoreDot, famachaScoreColor, tendenciaLabel } from './FamachaTrend';
+import { FamachaEvolution } from './FamachaEvolution';
 
 const accionLabel: Record<string, string> = {
     '−': 'No dosis', '+': 'Dosificar', '=': 'No repetir', '+ separar': 'Separar + vet.',
@@ -76,7 +77,12 @@ export function FamachaProfileBadge({ animalId }: { animalId: string }) {
                             </div>
                         )}
 
+                        {/* Evolución de las últimas 5 revisiones (con marca de dosis) */}
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-c-text-faint mb-2">Evolución (últimas 5)</p>
+                        <div className="mb-4"><FamachaEvolution revs={famachaRevs} animalId={animalId} limit={5} /></div>
+
                         {/* Lista completa con tendencia por revisión */}
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-c-text-faint mb-2">Historial completo</p>
                         <div className="space-y-2">
                             {revs.map(r => {
                                 const t = tendenciaFamacha(famachaRevs, animalId, r.fecha, r.score);

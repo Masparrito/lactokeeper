@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Eye, Grid, Zap, ClipboardList, BarChart3, Settings, GitCompareArrows } from 'lucide-react';
+import { ArrowLeft, Eye, Grid, Zap, ClipboardList, BarChart3, Settings, GitCompareArrows, CalendarClock } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { SyncStatusIcon } from '../../../components/ui/SyncStatusIcon';
 import { ModuleSwitcher } from '../../../components/ui/ModuleSwitcher';
@@ -9,12 +9,13 @@ import { FamachaAnimalsPage } from './FamachaAnimalsPage';
 import { FamachaIndexPage } from './FamachaIndexPage';
 import { FamachaMorePage } from './FamachaMorePage';
 import { FamachaBalancePage } from './FamachaBalancePage';
+import { FamachaHistoryPage } from './FamachaHistoryPage';
 
 interface FamachaShellProps {
     onSwitchModule: (module: AppModule) => void;
 }
 
-type FamachaView = 'revision' | 'animales' | 'indice' | 'cotejo' | 'mas';
+type FamachaView = 'revision' | 'animales' | 'indice' | 'historial' | 'cotejo' | 'mas';
 
 export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
     const { syncStatus } = useData();
@@ -43,6 +44,7 @@ export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
     const navItems = [
         { view: 'revision', label: 'Revisión', icon: Zap },
         { view: 'animales', label: 'Animales', icon: ClipboardList },
+        { view: 'historial', label: 'Historial', icon: CalendarClock },
         { view: 'indice', label: 'Análisis', icon: BarChart3 },
         { view: 'cotejo', label: 'Cotejo', icon: GitCompareArrows },
         { view: 'mas', label: 'Más', icon: Settings },
@@ -76,6 +78,7 @@ export default function FamachaShell({ onSwitchModule }: FamachaShellProps) {
             <main className="flex-1 overflow-y-auto overflow-x-hidden py-4">
                 {activeView === 'revision' && <FamachaCapturePage />}
                 {activeView === 'animales' && <FamachaAnimalsPage />}
+                {activeView === 'historial' && <FamachaHistoryPage />}
                 {activeView === 'indice' && <FamachaIndexPage />}
                 {activeView === 'cotejo' && <FamachaBalancePage />}
                 {activeView === 'mas' && <FamachaMorePage />}

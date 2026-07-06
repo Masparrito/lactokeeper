@@ -87,8 +87,11 @@ export function FamachaCapturePage() {
         const prevRev = famachaRevs.find(r => r.animalId === animalId && r.fecha === fecha);
         try {
             const accion = calcularAccion(famachaRevs, animalId, fecha, score);
-            const dosis = accion === '+' || accion === '+ separar';
-            const { revId } = await addFamachaRev({ animalId, arete, fecha, score, accion, dosis, producto: dosis ? productoDelDia : '', dispositivo: getDispositivo() });
+            // La dosis NO es automática: se registra SIN dosis. El usuario pulsa el
+            // botón "Dosificar" solo si realmente aplicó el desparasitante. Al
+            // re-puntuar se conserva la dosis que ya se hubiera marcado a mano.
+            const dosis = prevRev?.dosis ?? false;
+            const { revId } = await addFamachaRev({ animalId, arete, fecha, score, accion, dosis, producto: dosis ? (prevRev?.producto || productoDelDia) : '', dispositivo: getDispositivo() });
             showUndo(`Famacha de ${arete}: ${score}`, () => {
                 if (prevRev) {
                     return addFamachaRev({ animalId: prevRev.animalId, arete: prevRev.arete, fecha: prevRev.fecha, score: prevRev.score, accion: prevRev.accion, dosis: prevRev.dosis, producto: prevRev.producto, dispositivo: prevRev.dispositivo }).then(() => {});
@@ -290,7 +293,12 @@ export function FamachaCapturePage() {
                     const alerta = tratadoYNoMejora(famachaRevs, animal.id);
                     const dosisInfo = infoDosificacion(famachaRevs, animal.id, fecha);
                     const tendencia = rev ? tendenciaFamacha(famachaRevs, animal.id, fecha, rev.score) : null;
-                    const dosisChipCls = dosisInfo.nivel === 'block' ? 'text-red-600' : dosisInfo.nivel === 'warn' ? 'text-amber-600' : 'text-c-text-faint';
+                    const dosisBadgeCls = dosisInfo.nivel === 'block'
+                        ? 'bg-red-500/15 text-red-600 border-red-500/30'
+                        : dosisInfo.nivel === 'warn'
+                            ? 'bg-amber-500/15 text-amber-600 border-amber-500/30'
+                            : 'bg-c-surface-2 text-c-text-muted border-c-border';
+                    const fmtDosis = (f: string) => { try { return new Date(f + 'T00:00:00Z').toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: '2-digit', timeZone: 'UTC' }); } catch { return f; } };
                     // "hold": una fila ya declarada queda bloqueada hasta pulsar el lápiz.
                     const bloqueada = !!rev && !unlockedIds.has(animal.id);
                     return (
@@ -306,11 +314,14 @@ export function FamachaCapturePage() {
                                             </span>
                                         )}
                                     </div>
-                                    {/* Precedente de dosis: cuántos días desde la última aplicación */}
-                                    {dosisInfo.ultimaDosisFecha && (
-                                        <span className={`text-[11px] ${dosisChipCls}`}>
-                                            💉 Dosis hace {dosisInfo.diasDesdeUltimaDosis}d{dosisInfo.nivel === 'block' ? ' · máx. alcanzado' : dosisInfo.nivel === 'warn' ? ' · espera 7d' : ''}
+                                    {/* Precedente de dosis: días desde la última aplicación + fecha */}
+                                    {dosisInfo.ultimaDosisFecha ? (
+                                        <span className={`inline-flex items-center gap-1 mt-0.5 text-[11px] font-bold px-1.5 py-0.5 rounded border ${dosisBadgeCls}`}>
+                                            💉 {dosisInfo.diasDesdeUltimaDosis} d desde última dosis · {fmtDosis(dosisInfo.ultimaDosisFecha)}
+                                            {dosisInfo.nivel === 'block' ? ' · máx.' : dosisInfo.nivel === 'warn' ? ' · espera 7d' : ''}
                                         </span>
+                                    ) : (
+                                        <span className="mt-0.5 text-[11px] text-c-text-faint">Sin dosis previas</span>
                                     )}
                                 </div>
                                 <div className="flex items-center gap-1 flex-shrink-0">

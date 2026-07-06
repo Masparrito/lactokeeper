@@ -4,6 +4,7 @@ import { useData } from '../../../context/DataContext';
 import { getCleanId } from '../../../utils/formatting';
 import { FamachaScore, FamachaRev } from '../../../db/local';
 import { tratadoYNoMejora, MENSAJE_NO_MEJORA } from '../../../utils/famachaLogic';
+import { FamachaEvolution } from '../../../components/famacha/FamachaEvolution';
 
 const scoreBar: Record<FamachaScore, string> = {
     1: 'bg-emerald-600',
@@ -102,6 +103,13 @@ export function FamachaAnimalsPage() {
                             </div>
                         )}
 
+                        {/* Evolución de las últimas 5 revisiones (con marca de dosis) */}
+                        <div className="mb-4">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-c-text-faint mb-2">Evolución (últimas 5)</p>
+                            <FamachaEvolution revs={famachaRevs} animalId={detalle.animalId} limit={5} />
+                        </div>
+
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-c-text-faint mb-2">Historial completo</p>
                         <div className="space-y-2">
                             {detalle.revs.map(r => (
                                 <div key={r.id} className="flex items-center gap-3 bg-c-surface-2 rounded-xl p-3">

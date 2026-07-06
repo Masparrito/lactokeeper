@@ -98,7 +98,7 @@ export function FamachaIndexPage() {
                         onClick={() => exportFamachaPDF(famachaRevs)}
                         className="mt-3 w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-3 rounded-xl"
                     >
-                        <FileDown size={18} /> Descargar último Famacha (PDF)
+                        <FileDown size={18} /> Descargar evolución (PDF · últimas 5)
                     </button>
                 </div>
             )}
