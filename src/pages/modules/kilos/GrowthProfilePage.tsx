@@ -370,14 +370,14 @@ export default function GrowthProfilePage({ animalId, onBack, navigateTo }: Grow
             {navigateTo && (
                 <button
                     onClick={() => navigateTo({ name: 'growth-weighings', animalId })}
-                    className="w-full flex items-center gap-3 bg-c-surface border border-c-border rounded-2xl px-4 py-3 text-left hover:bg-c-surface-2 transition-colors"
+                    className="w-full flex items-center gap-3 bg-c-accent/15 border border-c-accent/40 rounded-2xl px-4 py-3.5 text-left hover:bg-c-accent/25 active:scale-[0.99] transition-all shadow-sm"
                 >
-                    <div className="w-9 h-9 rounded-lg bg-c-accent/15 text-c-accent flex items-center justify-center flex-shrink-0"><ListPlus size={18} /></div>
+                    <div className="w-10 h-10 rounded-xl bg-c-accent text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-c-accent/30"><ListPlus size={20} /></div>
                     <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-c-text-strong text-sm">Pesajes corporales</p>
-                        <p className="text-xs text-c-text-muted">Ver, agregar, editar o eliminar pesajes</p>
+                        <p className="font-bold text-c-accent text-base leading-tight">Agregar pesaje</p>
+                        <p className="text-xs text-c-text-muted">Cargar, ver, editar o eliminar pesos</p>
                     </div>
-                    <ChevronRight size={18} className="text-c-text-faint flex-shrink-0" />
+                    <ChevronRight size={20} className="text-c-accent flex-shrink-0" />
                 </button>
             )}
 
