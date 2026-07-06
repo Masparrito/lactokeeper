@@ -21,6 +21,7 @@ export type PageState =
   | { name: 'lactation-profile', animalId: string }
   | { name: 'lactation-weighings', animalId: string, parturitionDate: string }
   | { name: 'growth-profile', animalId: string }
+  | { name: 'growth-weighings', animalId: string }
   | { name: 'add-animal' }
   | { name: 'ocr' }
   | { name: 'feeding-plan', lotName: string }

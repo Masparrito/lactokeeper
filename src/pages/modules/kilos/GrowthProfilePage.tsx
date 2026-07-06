@@ -12,9 +12,10 @@ import { formatAnimalDisplay } from '../../../utils/formatting';
 import {
     ArrowLeft, Scale, Calendar, CheckCircle, XCircle, MinusCircle, AlertCircle,
     BarChart2, Expand, Activity,
-    ArrowUpRight, ArrowDownRight, FileQuestion
+    ArrowUpRight, ArrowDownRight, FileQuestion, ListPlus, ChevronRight
 } from 'lucide-react';
 import { Animal, BodyWeighing } from '../../../db/local';
+import type { PageState } from '../../../types/navigation';
 import { AppConfig } from '../../../types/config';
 import { GrowthChartModal } from '../../../components/modals/GrowthChartModal';
 import { exportGrowthChartToPDF } from '../../../utils/pdfExporter';
@@ -22,6 +23,7 @@ import { exportGrowthChartToPDF } from '../../../utils/pdfExporter';
 interface GrowthProfilePageProps {
     animalId: string;
     onBack: () => void;
+    navigateTo?: (page: PageState) => void;
 }
 
 const MilestoneWidget = ({ label, target, actual, status, subLabel }: {
@@ -144,7 +146,7 @@ const GrowthIndexCard = ({ score, weightGap, targetWeight, currentWeight }: any)
     );
 };
 
-export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePageProps) {
+export default function GrowthProfilePage({ animalId, onBack, navigateTo }: GrowthProfilePageProps) {
     const { animals, bodyWeighings, appConfig, events } = useData();
     
     const [isChartModalOpen, setIsChartModalOpen] = useState(false);
@@ -365,8 +367,22 @@ export default function GrowthProfilePage({ animalId, onBack }: GrowthProfilePag
                 </div>
             </div>
 
-            <GrowthIndexCard 
-                score={score} 
+            {navigateTo && (
+                <button
+                    onClick={() => navigateTo({ name: 'growth-weighings', animalId })}
+                    className="w-full flex items-center gap-3 bg-c-surface border border-c-border rounded-2xl px-4 py-3 text-left hover:bg-c-surface-2 transition-colors"
+                >
+                    <div className="w-9 h-9 rounded-lg bg-c-accent/15 text-c-accent flex items-center justify-center flex-shrink-0"><ListPlus size={18} /></div>
+                    <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-c-text-strong text-sm">Pesajes corporales</p>
+                        <p className="text-xs text-c-text-muted">Ver, agregar, editar o eliminar pesajes</p>
+                    </div>
+                    <ChevronRight size={18} className="text-c-text-faint flex-shrink-0" />
+                </button>
+            )}
+
+            <GrowthIndexCard
+                score={score}
                 weightGap={weightGap}
                 targetWeight={targetWeightToday}
                 currentWeight={latestWeight}
