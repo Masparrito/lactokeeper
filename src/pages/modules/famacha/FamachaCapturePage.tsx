@@ -293,11 +293,6 @@ export function FamachaCapturePage() {
                     const alerta = tratadoYNoMejora(famachaRevs, animal.id);
                     const dosisInfo = infoDosificacion(famachaRevs, animal.id, fecha);
                     const tendencia = rev ? tendenciaFamacha(famachaRevs, animal.id, fecha, rev.score) : null;
-                    const dosisBadgeCls = dosisInfo.nivel === 'block'
-                        ? 'bg-red-500/15 text-red-600 border-red-500/30'
-                        : dosisInfo.nivel === 'warn'
-                            ? 'bg-amber-500/15 text-amber-600 border-amber-500/30'
-                            : 'bg-c-surface-2 text-c-text-muted border-c-border';
                     const fmtDosis = (f: string) => { try { return new Date(f + 'T00:00:00Z').toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: '2-digit', timeZone: 'UTC' }); } catch { return f; } };
                     // "hold": una fila ya declarada queda bloqueada hasta pulsar el lápiz.
                     const bloqueada = !!rev && !unlockedIds.has(animal.id);
@@ -314,11 +309,10 @@ export function FamachaCapturePage() {
                                             </span>
                                         )}
                                     </div>
-                                    {/* Precedente de dosis: días desde la última aplicación + fecha */}
+                                    {/* Dato factual: cuándo fue la última dosis. El usuario decide. */}
                                     {dosisInfo.ultimaDosisFecha ? (
-                                        <span className={`inline-flex items-center gap-1 mt-0.5 text-[11px] font-bold px-1.5 py-0.5 rounded border ${dosisBadgeCls}`}>
-                                            💉 {dosisInfo.diasDesdeUltimaDosis} d desde última dosis · {fmtDosis(dosisInfo.ultimaDosisFecha)}
-                                            {dosisInfo.nivel === 'block' ? ' · máx.' : dosisInfo.nivel === 'warn' ? ' · espera 7d' : ''}
+                                        <span className="inline-flex items-center gap-1 mt-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded border bg-c-surface-2 text-c-text-muted border-c-border">
+                                            💉 Última dosis: hace {dosisInfo.diasDesdeUltimaDosis} d · {fmtDosis(dosisInfo.ultimaDosisFecha)}
                                         </span>
                                     ) : (
                                         <span className="mt-0.5 text-[11px] text-c-text-faint">Sin dosis previas</span>
