@@ -1,0 +1,24 @@
+name: Function Logs (diagnostico)
+
+# Trae los logs recientes de la Cloud Function scanNotebook para diagnosticar
+# fallos. Manual: se dispara desde "Actions" -> "Run workflow" o vía integración.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  logs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Traer logs de scanNotebook
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
+          echo "===== firebase functions:log ====="
+          npx --yes firebase-tools@latest functions:log --only scanNotebook --project lactokeeper 2>&1 | tail -n 120 || true
+          echo "===== gcloud run logs (fallback) ====="
+          npx --yes firebase-tools@latest functions:log --project lactokeeper 2>&1 | tail -n 120 || true
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
