@@ -53,7 +53,11 @@ exports.scanNotebook = onCall(
     }
 
     // 3) Llamada a Gemini con la clave protegida.
-    const key = GEMINI_API_KEY.value();
+    // Se limpian espacios, saltos de línea y comillas: al pegar la clave en
+    // Secret Manager suele colarse un '\n' final que Gemini rechaza con
+    // "API key not valid". Una API key no contiene espacios internos, así que
+    // eliminar todo el whitespace es seguro.
+    const key = (GEMINI_API_KEY.value() || "").replace(/["']/g, "").replace(/\s+/g, "");
     if (!key) {
       logger.error("GEMINI_API_KEY no está configurada en Secret Manager.");
       throw new HttpsError("failed-precondition", "El servicio de IA no está configurado.");
