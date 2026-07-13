@@ -17,16 +17,18 @@ const logger = require("firebase-functions/logger");
 // bundle del cliente. Se crea una sola vez (ver instrucciones de despliegue).
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 
-const GEMINI_MODEL = "gemini-1.5-flash";
+// Modelo multimodal actual, rápido y estable (gemini-1.5-flash fue retirado).
+const GEMINI_MODEL = "gemini-2.5-flash";
 
 exports.scanNotebook = onCall(
   {
     secrets: [GEMINI_API_KEY],
-    memory: "512MiB",
+    memory: "1GiB",
     timeoutSeconds: 120,
     // Región por defecto (us-central1): coincide con getFunctions(app) en el cliente.
   },
   async (request) => {
+   try {
     // 1) Autenticación obligatoria: solo usuarios logueados pueden usar la IA.
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Debes iniciar sesión para usar el escaneo.");
@@ -74,14 +76,15 @@ exports.scanNotebook = onCall(
     }
 
     if (!response.ok) {
-      let msg = "Error del servicio de IA.";
+      let msg = "";
       try {
         const errData = await response.json();
-        msg = (errData && errData.error && errData.error.message) || msg;
+        msg = (errData && errData.error && errData.error.message) || "";
       } catch (_) { /* respuesta no-JSON */ }
-      // No se filtra la clave ni detalles internos al cliente.
       logger.error(`Gemini respondió ${response.status}: ${msg}`);
-      throw new HttpsError("internal", "El servicio de IA devolvió un error. Intenta de nuevo.");
+      // Se propaga el motivo real (status + mensaje) para poder diagnosticar
+      // en la app. No incluye la clave.
+      throw new HttpsError("internal", `IA ${response.status}${msg ? `: ${msg}` : ""}`);
     }
 
     let data;
@@ -89,6 +92,13 @@ exports.scanNotebook = onCall(
       data = await response.json();
     } catch (_) {
       throw new HttpsError("internal", "Respuesta ilegible del servicio de IA.");
+    }
+
+    // Si el modelo bloqueó la respuesta (safety) o no devolvió candidatos,
+    // se refleja el motivo en vez de un genérico ilegible.
+    const blockReason = data && data.promptFeedback && data.promptFeedback.blockReason;
+    if (blockReason) {
+      throw new HttpsError("internal", `IA bloqueó la respuesta (${blockReason}).`);
     }
 
     const text =
@@ -101,10 +111,19 @@ exports.scanNotebook = onCall(
       data.candidates[0].content.parts[0].text;
 
     if (typeof text !== "string") {
-      throw new HttpsError("internal", "La IA no devolvió datos legibles. Intenta con mejor iluminación.");
+      const finish = data && data.candidates && data.candidates[0] && data.candidates[0].finishReason;
+      throw new HttpsError("internal", `La IA no devolvió texto${finish ? ` (${finish})` : ""}. Intenta con mejor iluminación.`);
     }
 
     // El cliente conserva la limpieza/parseo del JSON (misma lógica de antes).
     return { text };
+   } catch (err) {
+    // Re-lanza los HttpsError tal cual (ya llevan un mensaje claro).
+    if (err instanceof HttpsError) throw err;
+    // Cualquier otro error inesperado: se registra completo y se expone el
+    // mensaje real al cliente, en vez de un genérico "internal" opaco.
+    logger.error("scanNotebook error inesperado:", err);
+    throw new HttpsError("internal", `Fallo interno: ${(err && err.message) || String(err)}`);
+   }
   }
 );
