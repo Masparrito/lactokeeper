@@ -17,14 +17,17 @@ const logger = require("firebase-functions/logger");
 // bundle del cliente. Se crea una sola vez (ver instrucciones de despliegue).
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 
-// Modelo multimodal actual, rápido y estable (gemini-1.5-flash fue retirado).
-const GEMINI_MODEL = "gemini-2.5-flash";
+// Modelo multimodal actual, rápido y estable. Se usa 2.0-flash (sin "modo
+// pensamiento") en vez de 2.5-flash porque este último es más lento y superaba
+// el tiempo de la llamada, devolviendo un genérico "internal".
+// gemini-1.5-flash fue retirado por Google.
+const GEMINI_MODEL = "gemini-2.0-flash";
 
 exports.scanNotebook = onCall(
   {
     secrets: [GEMINI_API_KEY],
     memory: "1GiB",
-    timeoutSeconds: 120,
+    timeoutSeconds: 300,
     // Región por defecto (us-central1): coincide con getFunctions(app) en el cliente.
   },
   async (request) => {

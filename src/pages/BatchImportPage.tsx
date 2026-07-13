@@ -47,12 +47,12 @@ const CaptureView = ({ onImageSelect }: { onImageSelect: (file: File) => void })
         if (event.target.files?.[0]) onImageSelect(event.target.files[0]);
     };
 
-    const buttonClass = "group w-full bg-zinc-900/50 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800 p-4 rounded-xl flex items-center transition-all duration-200 active:scale-[0.98]";
+    const buttonClass = "group w-full bg-c-surface border border-c-border hover:border-c-accent-sky/50 hover:bg-c-surface-2 p-4 rounded-xl flex items-center transition-all duration-200 active:scale-[0.98]";
 
     return (
         <div className="flex flex-col gap-3 animate-fade-in mt-2">
              <input type="file" ref={fileInputRef} accept="image/*" onChange={handleFileChange} className="hidden" />
-            
+
             <button
                 onClick={() => {
                     fileInputRef.current?.setAttribute('capture', 'environment');
@@ -60,14 +60,14 @@ const CaptureView = ({ onImageSelect }: { onImageSelect: (file: File) => void })
                 }}
                 className={buttonClass}
             >
-                <div className="bg-blue-500/10 p-3 rounded-lg mr-4 group-hover:bg-blue-500/20 transition-colors">
-                    <Camera className="w-6 h-6 text-blue-400" />
+                <div className="bg-c-accent-sky/10 p-3 rounded-lg mr-4 group-hover:bg-c-accent-sky/20 transition-colors">
+                    <Camera className="w-6 h-6 text-c-accent-sky" />
                 </div>
                 <div className="flex-grow text-left">
-                    <span className="block text-base font-semibold text-white">Tomar Foto</span>
-                    <span className="block text-xs text-zinc-400">Usar la cámara ahora</span>
+                    <span className="block text-base font-semibold text-c-text-strong">Tomar Foto</span>
+                    <span className="block text-xs text-c-text-muted">Usar la cámara ahora</span>
                 </div>
-                <ChevronRight className="w-5 h-5 text-zinc-600 group-hover:text-zinc-400" />
+                <ChevronRight className="w-5 h-5 text-c-text-faint group-hover:text-c-text-muted" />
             </button>
 
             <button
@@ -77,14 +77,14 @@ const CaptureView = ({ onImageSelect }: { onImageSelect: (file: File) => void })
                 }}
                 className={buttonClass}
             >
-                <div className="bg-emerald-500/10 p-3 rounded-lg mr-4 group-hover:bg-emerald-500/20 transition-colors">
-                    <FileImage className="w-6 h-6 text-emerald-400" />
+                <div className="bg-c-accent/10 p-3 rounded-lg mr-4 group-hover:bg-c-accent/20 transition-colors">
+                    <FileImage className="w-6 h-6 text-c-accent" />
                 </div>
                 <div className="flex-grow text-left">
-                    <span className="block text-base font-semibold text-white">Seleccionar Archivo</span>
-                    <span className="block text-xs text-zinc-400">Desde la galería</span>
+                    <span className="block text-base font-semibold text-c-text-strong">Seleccionar Archivo</span>
+                    <span className="block text-xs text-c-text-muted">Desde la galería</span>
                 </div>
-                <ChevronRight className="w-5 h-5 text-zinc-600 group-hover:text-zinc-400" />
+                <ChevronRight className="w-5 h-5 text-c-text-faint group-hover:text-c-text-muted" />
             </button>
         </div>
     );
@@ -151,7 +151,9 @@ async function callGeminiVisionAPI(
     
     // 4. Llamada a la Cloud Function segura (el prompt no es secreto; la clave
     //    de Gemini vive en el servidor). Requiere usuario autenticado.
-    const scanNotebook = httpsCallable<{ prompt: string; imageBase64: string }, { text: string }>(functions, 'scanNotebook');
+    // timeout amplio (5 min): el análisis de la hoja puede tardar; el default de
+    // 70s del SDK cortaba la llamada y devolvía un genérico "internal".
+    const scanNotebook = httpsCallable<{ prompt: string; imageBase64: string }, { text: string }>(functions, 'scanNotebook', { timeout: 300000 });
 
     let textResponse: string;
     try {
@@ -272,20 +274,20 @@ export default function BatchImportPage({ onBack, onImportSuccess, importType }:
         <div className="w-full max-w-xl mx-auto space-y-6">
             {/* Header */}
             <header className="flex items-center pt-8 px-4">
-                <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors rounded-full hover:bg-white/10">
+                <button onClick={onBack} className="p-2 -ml-2 text-c-text-muted hover:text-c-text transition-colors rounded-full hover:bg-c-surface-2">
                     <ArrowLeft size={24} />
                 </button>
                 <div className="flex-grow ml-2">
-                    <h1 className="text-2xl font-bold text-white">Escanear Cuaderno</h1>
-                    <p className="text-sm text-zinc-400">Digitalización Asistida ({importType === 'leche' ? 'Leche' : 'Corporal'})</p>
+                    <h1 className="text-2xl font-bold text-c-text-strong">Escanear Cuaderno</h1>
+                    <p className="text-sm text-c-text-muted">Digitalización Asistida ({importType === 'leche' ? 'Leche' : 'Corporal'})</p>
                 </div>
             </header>
-            
+
             {/* Configuración */}
             {status === 'capture' && (
                 <div className="px-4 space-y-4">
                     <div>
-                        <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-c-text-faint mb-2">
                             Fecha del Registro
                         </label>
                         <input
@@ -293,27 +295,27 @@ export default function BatchImportPage({ onBack, onImportSuccess, importType }:
                         value={defaultDate}
                         onChange={e => setDefaultDate(e.target.value)}
                         max={new Date().toISOString().split('T')[0]}
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        className="w-full bg-c-surface-2 border border-c-border rounded-xl p-3 text-c-text focus:ring-2 focus:ring-c-accent-sky focus:outline-none"
                         />
                     </div>
 
                     {/* Feedback de Contexto Inteligente */}
                     {previousSessionContext.ids.length > 0 ? (
-                         <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 flex gap-3 items-start">
-                            <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                         <div className="bg-c-accent-sky/10 border border-c-accent-sky/20 rounded-lg p-3 flex gap-3 items-start">
+                            <Info className="w-5 h-5 text-c-accent-sky flex-shrink-0 mt-0.5" />
                             <div>
-                                <p className="text-sm font-semibold text-blue-100">Contexto Activo</p>
-                                <p className="text-xs text-blue-200/80 mt-0.5">
+                                <p className="text-sm font-semibold text-c-text-strong">Contexto Activo</p>
+                                <p className="text-xs text-c-text-muted mt-0.5">
                                     La IA usará el pesaje del <strong>{previousSessionContext.date}</strong> ({previousSessionContext.ids.length} animales) para corregir errores de lectura (ej. 0016 vs Q016).
                                 </p>
                             </div>
                          </div>
                     ) : (
-                        <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-3 flex gap-3 items-start">
-                             <Info className="w-5 h-5 text-zinc-500 flex-shrink-0 mt-0.5" />
+                        <div className="bg-c-surface-2 border border-c-border rounded-lg p-3 flex gap-3 items-start">
+                             <Info className="w-5 h-5 text-c-text-faint flex-shrink-0 mt-0.5" />
                              <div>
-                                <p className="text-sm font-semibold text-zinc-300">Sin Contexto Previo</p>
-                                <p className="text-xs text-zinc-400 mt-0.5">
+                                <p className="text-sm font-semibold text-c-text">Sin Contexto Previo</p>
+                                <p className="text-xs text-c-text-muted mt-0.5">
                                     No se detectó un pesaje inmediatamente anterior. La IA leerá los IDs tal cual están escritos.
                                 </p>
                             </div>
@@ -325,34 +327,34 @@ export default function BatchImportPage({ onBack, onImportSuccess, importType }:
             {/* Botones de Captura */}
             {status === 'capture' && (
                 <div className="px-4 pb-8">
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-c-text-faint mb-2">
                         Capturar
                     </label>
                     <CaptureView onImageSelect={handleImageSelect} />
                 </div>
             )}
-            
+
             {/* Loading */}
             {status === 'loading' && (
                 <div className="text-center py-20 animate-fade-in px-4">
-                    <div className="bg-zinc-900/50 rounded-2xl p-8 border border-zinc-800">
-                        <Loader className="w-12 h-12 text-blue-500 mx-auto animate-spin mb-4" />
-                        <p className="text-lg font-medium text-white">Analizando Hoja...</p>
-                        <p className="text-sm text-zinc-500 mt-1">Identificando IDs y comparando con historial.</p>
+                    <div className="bg-c-surface rounded-2xl p-8 border border-c-border">
+                        <Loader className="w-12 h-12 text-c-accent-sky mx-auto animate-spin mb-4" />
+                        <p className="text-lg font-medium text-c-text-strong">Analizando Hoja...</p>
+                        <p className="text-sm text-c-text-muted mt-1">Identificando IDs y comparando con historial.</p>
                     </div>
                 </div>
             )}
-            
+
             {/* Error */}
             {status === 'error' && (
                  <div className="px-4 animate-fade-in">
-                     <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 text-center">
-                        <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-4" />
-                        <h2 className="text-base font-semibold text-white mb-2">Error de Lectura</h2>
-                        <p className="text-sm text-red-300 mb-6">{errorMessage}</p>
-                        <button 
-                            onClick={() => setStatus('capture')} 
-                            className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-3 px-4 rounded-xl transition-colors"
+                     <div className="bg-brand-red/10 border border-brand-red/20 rounded-2xl p-6 text-center">
+                        <AlertTriangle className="w-10 h-10 text-brand-red mx-auto mb-4" />
+                        <h2 className="text-base font-semibold text-c-text-strong mb-2">Error de Lectura</h2>
+                        <p className="text-sm text-brand-red mb-6 break-words">{errorMessage}</p>
+                        <button
+                            onClick={() => setStatus('capture')}
+                            className="w-full bg-c-surface-2 hover:bg-c-surface-3 text-c-text font-medium py-3 px-4 rounded-xl transition-colors"
                         >
                             Intentar de Nuevo
                         </button>
