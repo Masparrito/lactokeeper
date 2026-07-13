@@ -47,3 +47,16 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           channelId: live
           projectId: lactokeeper
+
+      # Despliega las reglas de seguridad de Firestore (firestore.rules).
+      # 'continue-on-error' evita que un fallo aquí (p. ej. si la cuenta de
+      # servicio aún no tiene el rol "Firebase Rules Admin") tumbe el despliegue
+      # del hosting. Si falla, revisa el log de este paso y concede ese rol.
+      - name: Desplegar reglas de Firestore
+        continue-on-error: true
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
+          npx --yes firebase-tools@latest deploy --only firestore:rules --project lactokeeper --non-interactive
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
