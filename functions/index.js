@@ -40,6 +40,11 @@ exports.scanNotebook = onCall(
     // 2) Validación de entrada.
     const prompt = request.data && request.data.prompt;
     const imageBase64 = request.data && request.data.imageBase64;
+    // Tipo real de la imagen (iPhone suele producir HEIC). Gemini acepta
+    // jpeg/png/webp/heic/heif; enviar el tipo equivocado provoca un 400.
+    const rawMime = (request.data && request.data.mimeType) || "image/jpeg";
+    const SUPPORTED = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+    const mimeType = SUPPORTED.includes(rawMime) ? rawMime : "image/jpeg";
     if (typeof prompt !== "string" || !prompt.trim()) {
       throw new HttpsError("invalid-argument", "Falta el 'prompt' de la solicitud.");
     }
@@ -60,22 +65,30 @@ exports.scanNotebook = onCall(
         {
           parts: [
             { text: prompt },
-            { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
+            { inlineData: { mimeType, data: imageBase64 } },
           ],
         },
       ],
     };
 
     let response;
+    // fetch abortable: si Gemini se cuelga, se convierte en un error legible
+    // en vez de agotar el tiempo de la función y devolver un "internal" opaco.
+    const controller = new AbortController();
+    const abortTimer = setTimeout(() => controller.abort(), 240000);
     try {
       response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
     } catch (err) {
       logger.error("Fallo de red al contactar Gemini:", err);
-      throw new HttpsError("unavailable", "No se pudo conectar con el servicio de IA.");
+      const reason = err && err.name === "AbortError" ? "tiempo de espera agotado" : (err && err.message) || "error de red";
+      throw new HttpsError("unavailable", `No se pudo conectar con el servicio de IA (${reason}).`);
+    } finally {
+      clearTimeout(abortTimer);
     }
 
     if (!response.ok) {

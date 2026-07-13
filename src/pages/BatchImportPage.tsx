@@ -32,10 +32,18 @@ const KEY_SIRES = [
 ];
 
 // --- Helper: Convertir archivo a Base64 ---
-const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+// Devuelve el base64 Y el tipo real de la imagen. En iPhone las fotos suelen
+// ser HEIC; si se envía como "image/jpeg" Gemini puede rechazarlas.
+const toBase64 = (file: File): Promise<{ data: string; mimeType: string }> => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    reader.onload = () => resolve((reader.result as string).split(',')[1]); 
+    reader.onload = () => {
+        const result = reader.result as string; // data:<mime>;base64,<data>
+        const match = /^data:([^;]+);base64,(.*)$/.exec(result);
+        const mimeType = (match && match[1]) || file.type || 'image/jpeg';
+        const data = match ? match[2] : result.split(',')[1];
+        resolve({ data, mimeType });
+    };
     reader.onerror = error => reject(error);
 });
 
@@ -92,11 +100,12 @@ const CaptureView = ({ onImageSelect }: { onImageSelect: (file: File) => void })
 
 // --- LÓGICA PRINCIPAL DE LA API (GEMINI VISION) ---
 async function callGeminiVisionAPI(
-    base64Image: string, 
-    defaultDateISO: string, 
+    base64Image: string,
+    mimeType: string,
+    defaultDateISO: string,
     importType: 'leche' | 'corporal',
     activePrefixes: string[],
-    previousSessionIds: string[] 
+    previousSessionIds: string[]
 ): Promise<OcrResult[]> {
     
     // 1. La clave de Gemini YA NO viaja en el cliente: la llamada se hace a la
@@ -153,15 +162,17 @@ async function callGeminiVisionAPI(
     //    de Gemini vive en el servidor). Requiere usuario autenticado.
     // timeout amplio (5 min): el análisis de la hoja puede tardar; el default de
     // 70s del SDK cortaba la llamada y devolvía un genérico "internal".
-    const scanNotebook = httpsCallable<{ prompt: string; imageBase64: string }, { text: string }>(functions, 'scanNotebook', { timeout: 300000 });
+    const scanNotebook = httpsCallable<{ prompt: string; imageBase64: string; mimeType: string }, { text: string }>(functions, 'scanNotebook', { timeout: 300000 });
 
     let textResponse: string;
     try {
-        const result = await scanNotebook({ prompt, imageBase64: base64Image });
+        const result = await scanNotebook({ prompt, imageBase64: base64Image, mimeType });
         textResponse = result.data?.text ?? '';
     } catch (e: any) {
-        // httpsCallable expone e.message con el mensaje del HttpsError del servidor.
-        throw new Error(e?.message || 'Error de conexión con el servicio de IA.');
+        // Se muestra código + mensaje + detalle para diagnosticar sin adivinar.
+        const code = e?.code ? `[${e.code}] ` : '';
+        const detail = e?.details ? ` — ${typeof e.details === 'string' ? e.details : JSON.stringify(e.details)}` : '';
+        throw new Error(`${code}${e?.message || 'Error de conexión con el servicio de IA.'}${detail}`);
     }
 
     if (!textResponse) {
@@ -247,13 +258,14 @@ export default function BatchImportPage({ onBack, onImportSuccess, importType }:
         setErrorMessage('');
 
         try {
-            const base64Image = await toBase64(file);
-            
+            const { data: base64Image, mimeType } = await toBase64(file);
+
             // Llamada a la IA con todo el contexto
             const newResults = await callGeminiVisionAPI(
-                base64Image, 
-                defaultDate, 
-                importType, 
+                base64Image,
+                mimeType,
+                defaultDate,
+                importType,
                 activePrefixes,
                 previousSessionContext.ids
             );
