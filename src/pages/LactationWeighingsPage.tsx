@@ -146,7 +146,7 @@ export default function LactationWeighingsPage({ animalId, parturitionDate, onBa
                         </div>
                         <div className="w-24">
                             <label className="block text-[11px] font-semibold text-c-text-muted mb-1">Kg</label>
-                            <input ref={kgInputRef} type="number" inputMode="decimal" step="0.01" value={addKg} placeholder="0.00" onChange={e => setAddKg(e.target.value)}
+                            <input ref={kgInputRef} type="text" inputMode="decimal" value={addKg} placeholder="0.00" onChange={e => setAddKg(e.target.value.replace(/[^0-9.,]/g, ''))}
                                 onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
                                 className="w-full bg-c-surface-2 text-c-text rounded-lg px-3 py-2.5 text-sm border border-c-border focus:outline-none focus:ring-2 focus:ring-c-accent-sky" />
                         </div>
@@ -206,7 +206,7 @@ export default function LactationWeighingsPage({ animalId, parturitionDate, onBa
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-c-text-muted mb-1">Producción (Kg)</label>
-                        <input type="number" inputMode="decimal" step="0.01" value={editKg} onChange={e => setEditKg(e.target.value)}
+                        <input type="text" inputMode="decimal" value={editKg} onChange={e => setEditKg(e.target.value.replace(/[^0-9.,]/g, ''))}
                             className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl border border-c-border focus:outline-none focus:ring-2 focus:ring-c-accent-sky" />
                     </div>
                     {editError && <p className="text-sm text-red-500 text-center">{editError}</p>}

@@ -295,7 +295,7 @@ export default function GrowthWeighingsPage({ animalId, onBack }: GrowthWeighing
                         </div>
                         <div className="w-24">
                             <label className="block text-[11px] font-semibold text-c-text-muted mb-1">Kg</label>
-                            <input ref={kgInputRef} type="number" inputMode="decimal" step="0.1" value={addKg} placeholder="0.0" onChange={e => setAddKg(e.target.value)}
+                            <input ref={kgInputRef} type="text" inputMode="decimal" value={addKg} placeholder="0.0" onChange={e => setAddKg(e.target.value.replace(/[^0-9.,]/g, ''))}
                                 onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
                                 className="w-full bg-c-surface-2 text-c-text rounded-lg px-3 py-2.5 text-sm border border-c-border focus:outline-none focus:ring-2 focus:ring-c-accent" />
                         </div>
@@ -358,7 +358,7 @@ export default function GrowthWeighingsPage({ animalId, onBack }: GrowthWeighing
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-c-text-muted mb-1">Peso (Kg)</label>
-                        <input type="number" inputMode="decimal" step="0.1" value={editKg} onChange={e => setEditKg(e.target.value)}
+                        <input type="text" inputMode="decimal" value={editKg} onChange={e => setEditKg(e.target.value.replace(/[^0-9.,]/g, ''))}
                             className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl border border-c-border focus:outline-none focus:ring-2 focus:ring-c-accent" />
                     </div>
                     {editError && <p className="text-sm text-red-500 text-center">{editError}</p>}
@@ -375,7 +375,7 @@ export default function GrowthWeighingsPage({ animalId, onBack }: GrowthWeighing
                     <p className="text-sm text-c-text-muted">Dato de la ficha del animal{birthDate ? ` · nacimiento ${fmtDate(birthDate)}` : ''}.</p>
                     <div>
                         <label className="block text-sm font-medium text-c-text-muted mb-1">Peso al nacer (Kg)</label>
-                        <input type="number" inputMode="decimal" step="0.1" value={birthKg} onChange={e => setBirthKg(e.target.value)} placeholder="0.0"
+                        <input type="text" inputMode="decimal" value={birthKg} onChange={e => setBirthKg(e.target.value.replace(/[^0-9.,]/g, ''))} placeholder="0.0"
                             className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl border border-c-border focus:outline-none focus:ring-2 focus:ring-c-accent" />
                     </div>
                     {birthError && <p className="text-sm text-red-500 text-center">{birthError}</p>}

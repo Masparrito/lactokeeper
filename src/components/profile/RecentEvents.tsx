@@ -11,13 +11,16 @@ import { useData } from '../../context/DataContext';
 import { useToastUndo } from '../../context/ToastUndoContext';
 
 // --- DETERMINAR SI UN EVENTO ES ELIMINABLE Y CÓMO ---
-type DeleteKind = 'weighing' | 'bodyWeighing' | 'service' | 'famacha' | 'event';
+type DeleteKind = 'weighing' | 'bodyWeighing' | 'service' | 'famacha' | 'secado' | 'event';
 
-const SYNTHETIC_SUFFIXES = ['_birth_syn', '_reg_syn', '_start_lac', '_dry', '_hito'];
+// El 'Secado' es sintético (id `${parturitionId}_dry`) pero SÍ es reversible:
+// borrarlo reactiva la lactancia.
+const SYNTHETIC_SUFFIXES = ['_birth_syn', '_reg_syn', '_start_lac', '_hito'];
 const isSynthetic = (id: string) => SYNTHETIC_SUFFIXES.some(s => id.endsWith(s));
 
 const getDeleteKind = (event: TimelineEvent): DeleteKind | null => {
-    if (isSynthetic(event.id)) return null;
+    if (event.type === 'Secado' && event.id.endsWith('_dry')) return 'secado';
+    if (isSynthetic(event.id) || event.id.endsWith('_dry')) return null;
     switch (event.type) {
         case 'Pesaje Corporal': return 'bodyWeighing';
         case 'Pesaje Lechero': return 'weighing';
@@ -38,6 +41,9 @@ const getDeleteKind = (event: TimelineEvent): DeleteKind | null => {
             return 'event';
     }
 };
+
+// parturitionId de un evento sintético de secado `${id}_dry`.
+const secadoParturitionId = (eventId: string) => eventId.replace(/_dry$/, '');
 
 // --- 1. CONFIGURACIÓN DE ESTILOS ---
 const getEventStyle = (type: string) => {
@@ -126,7 +132,7 @@ const MiniEventRow = ({ event, onDelete }: { event: TimelineEvent, onDelete?: (e
 
 // --- 3. COMPONENTE PRINCIPAL ---
 export const RecentEvents = ({ events }: { events: TimelineEvent[] }) => {
-    const { deleteWeighing, deleteBodyWeighing, deleteServiceRecord, deleteFamachaRev, deleteEvent } = useData();
+    const { deleteWeighing, deleteBodyWeighing, deleteServiceRecord, deleteFamachaRev, deleteEvent, revertLactationDrying } = useData();
     const { showToast } = useToastUndo();
 
     const [pendingDelete, setPendingDelete] = useState<TimelineEvent | null>(null);
@@ -143,6 +149,7 @@ export const RecentEvents = ({ events }: { events: TimelineEvent[] }) => {
             else if (kind === 'weighing') await deleteWeighing(pendingDelete.id);
             else if (kind === 'service') await deleteServiceRecord(pendingDelete.id);
             else if (kind === 'famacha') await deleteFamachaRev(pendingDelete.id);
+            else if (kind === 'secado') await revertLactationDrying(secadoParturitionId(pendingDelete.id));
             else await deleteEvent(pendingDelete.id);
 
             setPendingDelete(null);
@@ -277,6 +284,11 @@ export const RecentEvents = ({ events }: { events: TimelineEvent[] }) => {
                                 {getDeleteKind(pendingDelete) === 'service' && (
                                     <p className="text-xs text-amber-400 mt-2 leading-snug">
                                         Si era el único servicio del ciclo, la hembra volverá a estado «Vacía».
+                                    </p>
+                                )}
+                                {getDeleteKind(pendingDelete) === 'secado' && (
+                                    <p className="text-xs text-amber-400 mt-2 leading-snug">
+                                        Se eliminará el secado y la lactancia volverá a estar activa.
                                     </p>
                                 )}
                                 <p className="text-xs text-c-text-faint mt-2">Esta acción no se puede deshacer.</p>

@@ -130,7 +130,10 @@ export const useEvents = (animalId: string | undefined): TimelineEvent[] => {
         });
 
         const excludedTypes = ['Parto', 'Aborto', 'Servicio', 'Pesaje Corporal', 'Pesaje Lechero', 'Tratamiento', 'Nacimiento', 'Registro', 'Ingreso'];
-        events.filter(e => e.animalId === animal.id && !excludedTypes.includes(e.type)).forEach(e => {
+        // El secado se muestra con el evento sintético 'Secado' (derivado del parto);
+        // excluimos los eventos legados 'Cambio de Estado' de secado para no duplicar.
+        const esSecadoLegado = (e: typeof events[number]) => e.type === 'Cambio de Estado' && typeof e.details === 'string' && (e.details.startsWith('Declarada Seca') || e.details.startsWith('Inició proceso de secado'));
+        events.filter(e => e.animalId === animal.id && !excludedTypes.includes(e.type) && !esSecadoLegado(e)).forEach(e => {
             timeline.push({
                 id: e.id,
                 animalId: e.animalId,

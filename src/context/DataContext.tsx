@@ -46,7 +46,8 @@ interface IDataContext {
   deleteAnimalPermanently: (animalId: string) => Promise<void>;
   changeAnimalId: (oldId: string, newId: string) => Promise<void>;
   startDryingProcess: (parturitionId: string) => Promise<void>;
-  setLactationAsDry: (parturitionId: string) => Promise<void>;
+  setLactationAsDry: (parturitionId: string, date?: string) => Promise<void>;
+  revertLactationDrying: (parturitionId: string) => Promise<void>;
   addLot: (lotData: { name: string, parentLotId?: string }) => Promise<void>;
   
   updateLot: (lotId: string, dataToUpdate: Partial<Lot>) => Promise<void>;
@@ -758,18 +759,41 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (updatedParturition) enqueueSync(() => syncToFirestore("parturitions", parturitionId, updatedParturition));
     }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
 
-    const setLactationAsDry = useCallback(async (parturitionId: string) => {
+    const setLactationAsDry = useCallback(async (parturitionId: string, date?: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const parturition = await localDb.parturitions.get(parturitionId);
         if (!parturition) throw new Error("Parto no encontrado");
-        const dataToUpdate = { status: 'seca' as const, _synced: false };
-        await localDb.parturitions.update(parturitionId, dataToUpdate);
-        internalAddEvent({ animalId: parturition.goatId, date: new Date().toISOString().split('T')[0], type: 'Cambio de Estado', details: `Declarada Seca (Lactancia de ${parturition.parturitionDate})` });
+        const dryDate = date || new Date().toISOString().split('T')[0];
+        // El secado se representa por status='seca' + dryingStartDate (fecha real).
+        // El evento "Secado" de la línea de tiempo se deriva del parto (useEvents),
+        // por eso NO creamos un evento aparte (evita duplicados).
+        await localDb.parturitions.update(parturitionId, { status: 'seca' as const, dryingStartDate: dryDate, _synced: false });
         fetchDataFromLocalDb();
         const updatedParturition = await localDb.parturitions.get(parturitionId);
         if (updatedParturition) enqueueSync(() => syncToFirestore("parturitions", parturitionId, updatedParturition));
-    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+
+    // Elimina/revierte un secado: la lactancia vuelve a estar activa. Limpia
+    // también eventos legados "Declarada Seca" (Cambio de Estado) si existieran.
+    const revertLactationDrying = useCallback(async (parturitionId: string) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        const parturition = await localDb.parturitions.get(parturitionId);
+        if (!parturition) return;
+        const evs = await localDb.events.where('animalId').equals(parturition.goatId)
+            .and(e => e.type === 'Cambio de Estado' && typeof e.details === 'string' && (e.details.startsWith('Declarada Seca') || e.details.startsWith('Inició proceso de secado')))
+            .toArray();
+        const evIds = evs.map(e => e.id);
+        await localDb.transaction('rw', localDb.parturitions, localDb.events, async () => {
+            await localDb.parturitions.where('id').equals(parturitionId).modify(p => { p.status = 'activa'; delete (p as any).dryingStartDate; p._synced = false; });
+            if (evIds.length) await localDb.events.bulkDelete(evIds);
+        });
+        fetchDataFromLocalDb();
+        const updated = await localDb.parturitions.get(parturitionId);
+        if (updated) enqueueSync(() => syncToFirestore("parturitions", parturitionId, updated));
+        if (evIds.length) await recordDeletions(evIds.map(id => ({ collection: "events", id })));
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, recordDeletions]);
 
     const addLot = useCallback(async (lotData: { name: string, parentLotId?: string }) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -1598,7 +1622,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoadingConfig,
         isLoading, syncStatus, pendingSyncCount, lastSyncAt, syncNow,
         fetchData: fetchDataFromLocalDb,
-        addAnimal, updateAnimal, bulkUpdateAnimals, deleteAnimalPermanently, changeAnimalId, startDryingProcess, setLactationAsDry, addLot,
+        addAnimal, updateAnimal, bulkUpdateAnimals, deleteAnimalPermanently, changeAnimalId, startDryingProcess, setLactationAsDry, revertLactationDrying, addLot,
         updateLot,
         deleteLot, 
         addOrigin, deleteOrigin,
@@ -1623,7 +1647,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         products, healthPlans, planActivities, healthEvents, famachaRevs,
         appConfig, isLoadingConfig, isLoading, syncStatus, pendingSyncCount, lastSyncAt, syncNow,
         fetchDataFromLocalDb,
-        addAnimal, updateAnimal, bulkUpdateAnimals, deleteAnimalPermanently, changeAnimalId, startDryingProcess, setLactationAsDry, addLot,
+        addAnimal, updateAnimal, bulkUpdateAnimals, deleteAnimalPermanently, changeAnimalId, startDryingProcess, setLactationAsDry, revertLactationDrying, addLot,
         updateLot,
         deleteLot, 
         addOrigin, deleteOrigin,
