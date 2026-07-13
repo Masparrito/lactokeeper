@@ -13,7 +13,8 @@ export type PageState =
   // --- (CORRECCIÓN) Añadida la prop kpiFilter con todos los tipos ---
   | { name: 'herd', locationFilter?: string, kpiFilter?: 'all' | 'females' | 'vientres' | 'Cabra' | 'Cabritona' | 'Crias' | 'Reproductor' }
   | { name: 'manage-lots' }
-  | { name: 'management' } 
+  // typeFilter: al llegar desde un chip de "Para hoy", muestra solo ese grupo.
+  | { name: 'management', typeFilter?: 'SECADO' | 'REPRODUCTIVO' | 'DESTETE' | 'MANEJO' }
   // --- ACTUALIZACIÓN v4.0 ---
   // Se añade la propiedad opcional 'openAction' para permitir abrir el perfil
   // directamente en una acción específica desde el menú swipe.

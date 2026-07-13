@@ -5,9 +5,9 @@ import type { PageState } from '../types/navigation';
 import { Animal } from '../db/local';
 
 // --- ICONOS ---
-import { 
-    Wind, Baby, Heart, ChevronDown, ChevronRight, 
-    ArrowLeft, CheckCircle 
+import {
+    Wind, Baby, Heart, ChevronDown, ChevronRight,
+    ArrowLeft, CheckCircle, Sun
 } from 'lucide-react';
 
 // --- MODALES NECESARIOS ---
@@ -91,10 +91,12 @@ const AlertGroup: React.FC<{
 
 interface ManagementPageProps {
     navigateTo: (page: PageState) => void;
-    onBack: () => void; 
+    onBack: () => void;
+    // Si viene de un chip de "Para hoy", se muestra solo ese grupo.
+    typeFilter?: 'SECADO' | 'REPRODUCTIVO' | 'DESTETE' | 'MANEJO';
 }
 
-export default function ManagementPage({ navigateTo, onBack }: ManagementPageProps) {
+export default function ManagementPage({ navigateTo, onBack, typeFilter }: ManagementPageProps) {
     const { animals, updateAnimal, addEvent } = useData();
     const allAlerts = useManagementAlerts();
 
@@ -102,22 +104,41 @@ export default function ManagementPage({ navigateTo, onBack }: ManagementPagePro
     const [selectedAnimal, setSelectedAnimal] = useState<Animal | null>(null);
     const [activeModal, setActiveModal] = useState<'service' | 'wean' | 'drying' | null>(null);
 
-    const { reproductiveAlerts, dryingAlerts, weaningAlerts } = useMemo(() => {
+    // Cuando se llega desde un chip, se filtra a ese tipo (o se muestran todos).
+    const shown = useMemo(
+        () => (typeFilter ? allAlerts.filter(a => a.type === typeFilter) : allAlerts),
+        [allAlerts, typeFilter]
+    );
+
+    const { reproductiveAlerts, dryingAlerts, weaningAlerts, managementAlerts } = useMemo(() => {
         return {
-            reproductiveAlerts: allAlerts.filter(a => a.type === 'REPRODUCTIVO'),
-            dryingAlerts: allAlerts.filter(a => a.type === 'SECADO'),
-            weaningAlerts: allAlerts.filter(a => a.type === 'DESTETE'),
+            reproductiveAlerts: shown.filter(a => a.type === 'REPRODUCTIVO'),
+            dryingAlerts: shown.filter(a => a.type === 'SECADO'),
+            weaningAlerts: shown.filter(a => a.type === 'DESTETE'),
+            managementAlerts: shown.filter(a => a.type === 'MANEJO'),
         }
-    }, [allAlerts]);
+    }, [shown]);
+
+    const TITLE_BY_TYPE: Record<string, string> = {
+        SECADO: 'Secado', REPRODUCTIVO: 'Reproducción', DESTETE: 'Destete', MANEJO: 'Manejo',
+    };
 
     // --- LOGICA DE INTERCEPTACIÓN DE CLICS ---
     const handleAlertClick = (alert: ManagementAlert) => {
+        // Las alertas de MANEJO son de temporada (no de un animal): llevan al
+        // detalle de la temporada correspondiente.
+        if (alert.type === 'MANEJO') {
+            const seasonId = alert.data?.seasonId || alert.animalId;
+            if (seasonId) navigateTo({ name: 'breeding-season-detail', seasonId });
+            return;
+        }
+
         // 1. Buscamos al animal completo usando el ID de la alerta
         const animal = animals.find(a => a.id === alert.animalId);
-        
+
         if (!animal) {
             console.warn("Animal no encontrado para la alerta:", alert);
-            return; 
+            return;
         }
 
         setSelectedAnimal(animal);
@@ -165,7 +186,7 @@ export default function ManagementPage({ navigateTo, onBack }: ManagementPagePro
         setSelectedAnimal(null);
     };
 
-    const totalAlerts = allAlerts.length;
+    const totalAlerts = shown.length;
 
     return (
         <div className="w-full max-w-lg mx-auto pb-24 bg-c-bg min-h-screen">
@@ -176,7 +197,9 @@ export default function ManagementPage({ navigateTo, onBack }: ManagementPagePro
                     <button onClick={onBack} className="absolute left-0 top-0 p-1 text-c-text-muted hover:text-c-text transition-colors">
                         <ArrowLeft size={24} />
                     </button>
-                    <h1 className="text-lg font-bold text-c-text-strong">Centro de Alertas</h1>
+                    <h1 className="text-lg font-bold text-c-text-strong">
+                        {typeFilter ? TITLE_BY_TYPE[typeFilter] : 'Centro de Alertas'}
+                    </h1>
                     <p className="text-xs text-c-text-muted mt-0.5">
                         {totalAlerts > 0 ? `${totalAlerts} acciones pendientes` : "Al día"}
                     </p>
@@ -217,10 +240,20 @@ export default function ManagementPage({ navigateTo, onBack }: ManagementPagePro
                 )}
 
                 {dryingAlerts.length > 0 && (
-                    <AlertGroup 
+                    <AlertGroup
                         title="Secado"
                         icon={Wind}
                         alerts={dryingAlerts}
+                        onAlertClick={handleAlertClick}
+                        startOpen={true}
+                    />
+                )}
+
+                {managementAlerts.length > 0 && (
+                    <AlertGroup
+                        title="Manejo"
+                        icon={Sun}
+                        alerts={managementAlerts}
                         onAlertClick={handleAlertClick}
                         startOpen={true}
                     />

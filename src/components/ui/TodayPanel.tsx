@@ -39,34 +39,43 @@ export const TodayPanel: React.FC<{ navigateTo: (page: PageState) => void }> = (
     }
 
     return (
-        <button
-            onClick={() => navigateTo({ name: 'management' })}
-            className="mx-4 mt-4 w-[calc(100%-2rem)] text-left bg-c-surface rounded-2xl border border-c-border p-4 hover:border-c-accent/50 transition-colors active:scale-[0.99]"
-        >
+        <div className="mx-4 mt-4 bg-c-surface rounded-2xl border border-c-border p-4">
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                     <ClipboardList size={16} className="text-c-accent" />
                     <span className="text-xs font-bold text-c-text-muted uppercase tracking-wide">Para hoy</span>
                     <span className="text-xs font-bold text-c-accent">{alerts.length}</span>
                 </div>
-                <span className="flex items-center gap-0.5 text-xs font-semibold text-c-accent-sky">Ver todas <ChevronRight size={14} /></span>
+                <button
+                    onClick={() => navigateTo({ name: 'management' })}
+                    className="flex items-center gap-0.5 text-xs font-semibold text-c-accent-sky hover:underline active:opacity-70"
+                >
+                    Ver todas <ChevronRight size={14} />
+                </button>
             </div>
 
-            {/* Chips por tipo */}
+            {/* Chips por tipo — cada uno lleva a su listado correspondiente */}
             <div className="flex flex-wrap gap-2 mb-3">
                 {groups.map(({ type, count }) => {
                     const meta = TYPE_META[type] || TYPE_META.MANEJO;
                     return (
-                        <span key={type} className="inline-flex items-center gap-1.5 bg-c-surface-2 rounded-lg px-2.5 py-1 text-xs font-semibold text-c-text">
+                        <button
+                            key={type}
+                            onClick={() => navigateTo({ name: 'management', typeFilter: type as 'SECADO' | 'REPRODUCTIVO' | 'DESTETE' | 'MANEJO' })}
+                            className="inline-flex items-center gap-1.5 bg-c-surface-2 rounded-lg px-2.5 py-1 text-xs font-semibold text-c-text hover:bg-c-surface-3 active:scale-95 transition-all"
+                        >
                             <meta.icon size={13} className={meta.color} />
                             {count} {meta.label}
-                        </span>
+                        </button>
                     );
                 })}
             </div>
 
-            {/* Primeros pendientes */}
-            <div className="space-y-1.5">
+            {/* Primeros pendientes — toca para ver todas */}
+            <button
+                onClick={() => navigateTo({ name: 'management' })}
+                className="block w-full text-left space-y-1.5 rounded-lg -m-1 p-1 hover:bg-c-surface-2/50 transition-colors"
+            >
                 {top.map(a => {
                     const meta = TYPE_META[a.type] || TYPE_META.MANEJO;
                     return (
@@ -78,7 +87,7 @@ export const TodayPanel: React.FC<{ navigateTo: (page: PageState) => void }> = (
                     );
                 })}
                 {alerts.length > 3 && <p className="text-[11px] text-c-text-faint pt-0.5">y {alerts.length - 3} más…</p>}
-            </div>
-        </button>
+            </button>
+        </div>
     );
 };

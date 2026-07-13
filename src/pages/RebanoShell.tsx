@@ -244,7 +244,7 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
             case 'sire-lot-detail': return <SireLotDetailPage lotId={page.lotId} onBack={navigateBack} navigateTo={navigateTo} />;
             case 'herd': return <HerdPage {...commonProps} locationFilter={page.locationFilter} kpiFilter={page.kpiFilter} scrollContainerRef={mainScrollRef} filterStates={{ viewMode, categoryFilter, productiveFilter, reproductiveFilter, decommissionFilter, searchTerm, selectedSearchIds }} filterSetters={{ setViewMode, setCategoryFilter, setProductiveFilter, setReproductiveFilter, setDecommissionFilter, setSearchTerm, setSelectedSearchIds }} />;
             case 'manage-lots': return <ManageLotsPage onBack={() => handleNavClick(navItems.find(i => i.id === 'herd')!)} />;
-            case 'management': return <ManagementPage navigateTo={navigateTo} onBack={navigateBack} />; 
+            case 'management': return <ManagementPage navigateTo={navigateTo} onBack={navigateBack} typeFilter={page.typeFilter} />;
             case 'add-animal': return <AddAnimalPage onBack={() => handleNavClick(navItems.find(i => i.id === 'herd')!)} />;
             case 'rebano-profile': return <RebanoProfilePage animalId={page.animalId} onBack={navigateBack} navigateTo={navigateTo} contextDate={(page as any).contextDate} />;
             case 'lactation-profile': return <LactationProfilePage animalId={page.animalId} onBack={navigateBack} navigateTo={navigateTo} />;
