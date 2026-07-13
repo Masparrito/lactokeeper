@@ -19,8 +19,8 @@ const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 
 // Modelo multimodal actual. Google retira modelos con frecuencia
 // (1.5-flash y 2.0-flash ya no están disponibles), así que se usa 2.5-flash.
-// Para evitar el "modo pensamiento" (que lo hacía lento y superaba el timeout)
-// se fija thinkingBudget: 0 en generationConfig más abajo.
+// El "modo pensamiento" queda ACTIVADO (razonamiento dinámico) para máxima
+// precisión de OCR/desempate de IDs; hay margen de sobra con el timeout de 300s.
 const GEMINI_MODEL = "gemini-2.5-flash";
 
 exports.scanNotebook = onCall(
@@ -73,10 +73,10 @@ exports.scanNotebook = onCall(
           ],
         },
       ],
-      // thinkingBudget 0 desactiva el "modo pensamiento" de 2.5-flash: respuesta
-      // rápida (evita el timeout) sin perder capacidad de OCR guiado por el prompt.
+      // Razonamiento dinámico ACTIVO (-1): el modelo decide cuánto "pensar".
+      // Mejora el desempate de IDs manuscritos (0 vs Q, A vs 4, etc.).
       generationConfig: {
-        thinkingConfig: { thinkingBudget: 0 },
+        thinkingConfig: { thinkingBudget: -1 },
       },
     };
 
