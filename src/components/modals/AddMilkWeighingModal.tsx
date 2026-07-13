@@ -6,6 +6,7 @@ import { Animal } from '../../db/local'; // Import Parturition type
 import { AlertTriangle, CheckCircle, Save, Archive, Baby } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { ParturitionModal } from './ParturitionModal'; // Modal to declare parturition
+import { DryOffModal } from './DryOffModal';
 import { calculateDEL } from '../../utils/calculations'; // DEL calculation utility
 import { useToastUndo } from '../../context/ToastUndoContext';
 // formatAnimalDisplay ya no se usa aquí
@@ -22,7 +23,7 @@ export const AddMilkWeighingModal: React.FC<AddMilkWeighingModalProps> = ({
   onSaveSuccess,
   onCancel,
 }) => {
-  const { parturitions, addWeighing, deleteWeighing, setLactationAsDry } = useData();
+  const { parturitions, addWeighing, deleteWeighing } = useData();
   const { showUndo } = useToastUndo();
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -30,6 +31,7 @@ export const AddMilkWeighingModal: React.FC<AddMilkWeighingModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isParturitionModalOpen, setParturitionModalOpen] = useState(false);
+  const [isDryOpen, setDryOpen] = useState(false);
 
   const activeParturition = useMemo(() => {
     return parturitions
@@ -75,17 +77,10 @@ export const AddMilkWeighingModal: React.FC<AddMilkWeighingModalProps> = ({
   };
 
   // --- Handler for Drying Action (un solo paso: declarar seca) ---
-  const handleSetDry = async () => {
+  // El secado usa el motor único (DryOffModal) que SIEMPRE pide la fecha.
+  const handleSetDry = () => {
     if (!activeParturition || activeParturition.status === 'seca' || activeParturition.status === 'finalizada') return;
-    setIsLoading(true); setMessage(null);
-    try {
-      await setLactationAsDry(activeParturition.id);
-      setMessage({ type: 'success', text: 'Lactancia declarada como seca con éxito.' });
-      setTimeout(onSaveSuccess, 1500);
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'No se pudo finalizar la lactancia.' });
-      setIsLoading(false);
-    }
+    setDryOpen(true);
   };
 
   // --- RENDERIZADO DEL MODAL ---
@@ -123,7 +118,7 @@ export const AddMilkWeighingModal: React.FC<AddMilkWeighingModalProps> = ({
               {/* Milk Production Input */}
               <div>
                 <label htmlFor="weighingKgMilk" className="block text-sm font-medium text-c-text-muted mb-1">Producción (Kg)</label>
-                <input id="weighingKgMilk" type="number" step="0.1" value={kg} onChange={(e) => setKg(e.target.value)} placeholder="Ej: 3.5" autoFocus className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-c-text" required />
+                <input id="weighingKgMilk" type="text" inputMode="decimal" value={kg} onChange={(e) => setKg(e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))} placeholder="Ej: 3.5" autoFocus className="w-full bg-c-surface-2 p-3 rounded-xl text-lg text-c-text" required />
               </div>
 
               {message && (
@@ -176,6 +171,9 @@ export const AddMilkWeighingModal: React.FC<AddMilkWeighingModalProps> = ({
           motherId={animal.id}
         />
       )}
+
+      {/* Motor único de secado: siempre pide fecha */}
+      <DryOffModal isOpen={isDryOpen} parturitionId={activeParturition?.id ?? null} onClose={() => setDryOpen(false)} onDone={onSaveSuccess} />
     </>
   );
 };

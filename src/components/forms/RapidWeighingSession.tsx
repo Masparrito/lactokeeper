@@ -182,7 +182,7 @@ export const RapidWeighingSession: React.FC<RapidWeighingSessionProps> = ({ weig
                     <div className="px-4 relative">
                         <div className="flex items-center gap-2">
                             <input ref={idRef} type="text" value={currentId} onChange={(e) => { setCurrentId(e.target.value); setMessage(null); }} onKeyDown={handleIdKeyDown} placeholder="ID Animal" autoCapitalize="characters" className={`w-full bg-c-surface p-4 rounded-xl text-lg text-c-text placeholder-c-text-faint border-2 border-transparent ${accentBorder} focus:ring-0 outline-none`} />
-                            <input ref={kgRef} type="number" step={isLeche ? '0.01' : '0.1'} inputMode="decimal" value={currentKg} onChange={(e) => setCurrentKg(e.target.value)} onKeyDown={handleKgKeyDown} placeholder="Kg" className={`w-28 flex-shrink-0 bg-c-surface p-4 rounded-xl text-lg text-c-text placeholder-c-text-faint border-2 border-transparent ${accentBorder} focus:ring-0 outline-none`} />
+                            <input ref={kgRef} type="text" inputMode="decimal" value={currentKg} onChange={(e) => setCurrentKg(e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))} onKeyDown={handleKgKeyDown} placeholder="Kg" className={`w-28 flex-shrink-0 bg-c-surface p-4 rounded-xl text-lg text-c-text placeholder-c-text-faint border-2 border-transparent ${accentBorder} focus:ring-0 outline-none`} />
                             <button onClick={handleSave} disabled={!currentId || !currentKg} aria-label="Guardar y siguiente" className={`aspect-square h-[58px] ${accent} text-white rounded-xl flex items-center justify-center transition-all hover:opacity-90 disabled:opacity-40`}><PlusCircle size={24} /></button>
                         </div>
 

@@ -110,10 +110,10 @@ export const LogWeightForm: React.FC<LogWeightFormProps> = ({
         <label htmlFor="weighingKg" className="block text-sm font-medium text-c-text-muted mb-1">Peso (Kg)</label>
         <input
           id="weighingKg"
-          type="number"
-          step="0.1"
+          type="text"
+          inputMode="decimal"
           value={kg}
-          onChange={(e) => setKg(e.target.value)}
+          onChange={(e) => setKg(e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))}
           placeholder="Ej: 3.5"
           autoFocus
           className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl text-lg"

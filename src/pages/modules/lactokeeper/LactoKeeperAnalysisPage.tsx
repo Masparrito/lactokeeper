@@ -14,6 +14,7 @@ import { motion, useAnimation, PanInfo } from 'framer-motion';
 import { StatusIcons } from '../../../components/icons/StatusIcons';
 import { ActionSheetModal, ActionSheetAction } from '../../../components/ui/ActionSheetModal';
 import { AddMilkWeighingModal } from '../../../components/modals/AddMilkWeighingModal';
+import { DryOffModal } from '../../../components/modals/DryOffModal';
 import { useDryingCandidates } from '../../../hooks/useDryingCandidates';
 import { STATUS_DEFINITIONS, AnimalStatusKey } from '../../../hooks/useAnimalStatus';
 import { ExitingAnimalsModal } from '../../../components/modals/ExitingAnimalsModal';
@@ -193,7 +194,7 @@ interface LactoKeeperAnalysisPageProps {
 }
 
 export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperAnalysisPageProps) {
-    const { animals, parturitions, weighings, isLoading, serviceRecords, sireLots, breedingSeasons, setLactationAsDry, deleteWeighingSession } = useData();
+    const { animals, parturitions, weighings, isLoading, serviceRecords, sireLots, breedingSeasons, deleteWeighingSession } = useData();
     
     const orphanWeighingIds = useMemo(() => {
         // ... (lógica sin cambios)
@@ -219,6 +220,7 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
     const [actionSheetAnimal, setActionSheetAnimal] = useState<AnalyzedAnimal | null>(null);
     const [isDeleteSessionModalOpen, setIsDeleteSessionModalOpen] = useState(false);
     const [dateIndex, setDateIndex] = useState(0);
+    const [dryOffPartId, setDryOffPartId] = useState<string | null>(null);
     const dryingCandidateIds = useDryingCandidates();
 
     const { weighingsByDate, availableDates } = useMemo(() => {
@@ -362,7 +364,7 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
         const currentParturition = parturitions.find(p => p.goatId === animal.id && (p.status === 'activa' || p.status === 'en-secado'));
         actions.push({ label: "Registrar/Editar Pesaje", icon: Droplets, onClick: () => { setIsActionSheetOpen(false); setActiveModal('milkWeighing'); }});
         if (currentParturition && (currentParturition.status === 'activa' || currentParturition.status === 'en-secado')) {
-            actions.push({ label: "Declarar Seca", icon: Archive, onClick: () => { setLactationAsDry(currentParturition.id); setIsActionSheetOpen(false); }, color: 'text-c-text-muted' });
+            actions.push({ label: "Declarar Seca", icon: Archive, onClick: () => { setDryOffPartId(currentParturition.id); setIsActionSheetOpen(false); }, color: 'text-c-text-muted' });
         }
         return actions;
     };
@@ -525,6 +527,8 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
             <ExitingAnimalsModal isOpen={isExitingAnimalsModalOpen} onClose={() => setIsExitingAnimalsModalOpen(false)} animalIds={Array.from(pageData.exitingAnimalIds)} onSelectAnimal={onSelectAnimal}/>
             <ActionSheetModal isOpen={isActionSheetOpen} onClose={() => setIsActionSheetOpen(false)} title={`Acciones para ${formatAnimalDisplay(actionSheetAnimal)}`} actions={getActionsForAnimal(actionSheetAnimal)}/>
              {activeModal === 'milkWeighing' && actionSheetAnimal && ( <AddMilkWeighingModal animal={actionSheetAnimal} onCancel={closeModal} onSaveSuccess={closeModal}/> )}
+             <DryOffModal isOpen={!!dryOffPartId} parturitionId={dryOffPartId} onClose={() => setDryOffPartId(null)} />
+
             {currentDate && <DeleteSessionModal isOpen={isDeleteSessionModalOpen} onClose={() => setIsDeleteSessionModalOpen(false)} onConfirm={handleDeleteCurrentSession} dateToDelete={currentDate}/>}
         </>
     );

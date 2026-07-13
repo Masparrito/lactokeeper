@@ -6,6 +6,7 @@ import { Animal, Parturition } from '../../db/local'; // Import Parturition type
 import { AlertTriangle, Baby, Calendar, ChevronRight, History, PlusCircle, Archive } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { ParturitionModal } from './ParturitionModal'; // Modal to declare parturition
+import { DryOffModal } from './DryOffModal';
 // --- CAMBIO: formatAnimalDisplay ya no es necesario ---
 // import { formatAnimalDisplay } from '../../utils/formatting';
 
@@ -26,10 +27,10 @@ export const MilkWeighingActionModal: React.FC<MilkWeighingActionModalProps> = (
   onClose,
   onLogToSession,
   onStartNewSession,
-  onSetDry,
 }) => {
   const { parturitions, weighings } = useData();
   const [isParturitionModalOpen, setParturitionModalOpen] = useState(false);
+  const [isDryOpen, setDryOpen] = useState(false);
 
   const activeParturition = useMemo(() => {
     return parturitions
@@ -95,6 +96,7 @@ export const MilkWeighingActionModal: React.FC<MilkWeighingActionModalProps> = (
 
   // --- RENDERIZADO DEL MODAL PRINCIPAL (si hay parto activo) ---
   return (
+    <>
     <Modal
         isOpen={isOpen}
         onClose={onClose}
@@ -158,7 +160,7 @@ export const MilkWeighingActionModal: React.FC<MilkWeighingActionModalProps> = (
                 <h3 className="text-sm font-semibold text-c-text-muted mb-2">Acciones de Lactancia</h3>
                 <button
                     type="button"
-                    onClick={() => onSetDry(activeParturition.id)}
+                    onClick={() => setDryOpen(true)}
                     disabled={activeParturition.status === 'seca' || activeParturition.status === 'finalizada'}
                     className="w-full flex items-center justify-center gap-2 bg-c-surface-2 text-c-text font-semibold py-3 px-3 rounded-lg hover:bg-c-surface-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -168,5 +170,9 @@ export const MilkWeighingActionModal: React.FC<MilkWeighingActionModalProps> = (
         )}
       </div>
     </Modal>
+
+    {/* Motor único de secado: siempre pide fecha */}
+    <DryOffModal isOpen={isDryOpen} parturitionId={activeParturition?.id ?? null} onClose={() => setDryOpen(false)} onDone={onClose} />
+    </>
   );
 };

@@ -9,6 +9,7 @@ import { useComparativeData, ComparisonRequest, ComparisonTargetType } from '../
 import { ArrowLeft, Droplet, TrendingUp, CalendarDays, Repeat, CalendarCheck2, RefreshCw, Archive, FileText, BarChart2, Loader2, XCircle, ChevronRight, PlusCircle, AlertTriangle, Trash2 } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { ParturitionModal } from '../components/modals/ParturitionModal';
+import { DryOffModal } from '../components/modals/DryOffModal';
 import { useData } from '../context/DataContext';
 import { calculateDEL } from '../utils/calculations';
 import type { PageState } from '../types/navigation';
@@ -53,7 +54,7 @@ interface LactationProfilePageProps {
 
 export default function LactationProfilePage({ animalId, onBack, navigateTo }: LactationProfilePageProps) {
     // --- 1. TODOS LOS HOOKS SE LLAMAN PRIMERO, DE FORMA INCONDICIONAL ---
-    const { animals, parturitions, weighings, setLactationAsDry, revertLactationDrying, addParturition, deleteParturition } = useData();
+    const { animals, parturitions, weighings, revertLactationDrying, addParturition, deleteParturition } = useData();
     const { allLactations, parturitionIntervals, lastWeighingDate, isLoading } = useAnimalData(animalId);
 
     const todayStr = new Date().toISOString().split('T')[0];
@@ -65,10 +66,8 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
     const [createError, setCreateError] = useState('');
     const [partoModal, setPartoModal] = useState<{ date: string; id: string } | null>(null);
     const [deleteLactPart, setDeleteLactPart] = useState<Parturition | null>(null);
-    // Secado con fecha (declarar / editar).
+    // Secado con fecha (motor único DryOffModal).
     const [isDryOpen, setDryOpen] = useState(false);
-    const [dryDate, setDryDate] = useState(todayStr);
-    const [dryError, setDryError] = useState('');
     const fmtD = (d: string) => { try { return new Date(d + 'T00:00:00Z').toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }); } catch { return d; } };
 
     // Parto de cada lactancia (para detectar provisionales) indexado por fecha.
@@ -95,15 +94,6 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
         setDeleteLactPart(null);
     };
 
-    const handleSetDry = async () => {
-        if (!currentLactationData?.id) return;
-        if (!dryDate) { setDryError('Elige la fecha de secado.'); return; }
-        if (dryDate < currentLactationData.parturitionDate) { setDryError('La fecha no puede ser anterior al parto.'); return; }
-        if (dryDate > todayStr) { setDryError('La fecha no puede ser futura.'); return; }
-        setDryError('');
-        await setLactationAsDry(currentLactationData.id, dryDate);
-        setDryOpen(false);
-    };
 
     const handleCreateLactation = async () => {
         if (!createDate) { setCreateError('Elige la fecha del parto.'); return; }
@@ -454,33 +444,19 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                                     </div>
                                 </div>
                                 <div className="flex gap-3">
-                                    <button onClick={() => { setDryDate(parturitionByDate.get(currentLactationData.parturitionDate)?.dryingStartDate || todayStr); setDryError(''); setDryOpen(true); }} className="flex-1 flex items-center justify-center gap-2 bg-c-surface-2 hover:bg-c-surface-3 text-c-text-strong font-semibold py-2.5 px-3 rounded-xl transition-colors text-sm"><CalendarDays size={16} /> Editar fecha</button>
+                                    <button onClick={() => setDryOpen(true)} className="flex-1 flex items-center justify-center gap-2 bg-c-surface-2 hover:bg-c-surface-3 text-c-text-strong font-semibold py-2.5 px-3 rounded-xl transition-colors text-sm"><CalendarDays size={16} /> Editar fecha</button>
                                     <button onClick={() => currentLactationData.id && revertLactationDrying(currentLactationData.id)} className="flex-1 flex items-center justify-center gap-2 bg-brand-red/10 hover:bg-brand-red/20 text-brand-red font-semibold py-2.5 px-3 rounded-xl transition-colors text-sm"><RefreshCw size={16} /> Reactivar</button>
                                 </div>
                             </div>
                         ) : (
-                            <button onClick={() => { setDryDate(todayStr); setDryError(''); setDryOpen(true); }} className="w-full flex items-center justify-center space-x-2 bg-c-surface-2 hover:bg-c-surface-3 text-c-text-strong font-semibold py-3 px-4 rounded-xl transition-colors"><Archive size={20} /><span>Declarar seca (con fecha)</span></button>
+                            <button onClick={() => setDryOpen(true)} className="w-full flex items-center justify-center space-x-2 bg-c-surface-2 hover:bg-c-surface-3 text-c-text-strong font-semibold py-3 px-4 rounded-xl transition-colors"><Archive size={20} /><span>Declarar seca (con fecha)</span></button>
                         )}
                     </div>
                 )}
             </div>
 
-            {/* Declarar / editar secado (con fecha) */}
-            <Modal isOpen={isDryOpen} onClose={() => setDryOpen(false)} title="Declarar secado">
-                <div className="space-y-4">
-                    <p className="text-sm text-c-text-muted">Indica la fecha en que la cabra fue secada.</p>
-                    <div>
-                        <label className="block text-sm font-medium text-c-text-muted mb-1">Fecha de secado</label>
-                        <input type="date" value={dryDate} min={currentLactationData?.parturitionDate} max={todayStr} onChange={e => setDryDate(e.target.value)}
-                            className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl border border-c-border focus:outline-none focus:ring-2 focus:ring-c-accent-sky" />
-                    </div>
-                    {dryError && <p className="text-sm text-red-500 text-center">{dryError}</p>}
-                    <div className="flex justify-end gap-3 pt-2">
-                        <button onClick={() => setDryOpen(false)} className="px-5 py-2 bg-c-surface-2 hover:bg-c-surface-3 font-semibold rounded-lg text-c-text">Cancelar</button>
-                        <button onClick={handleSetDry} className="px-5 py-2 bg-c-accent-sky hover:bg-blue-600 text-white font-bold rounded-lg">Guardar</button>
-                    </div>
-                </div>
-            </Modal>
+            {/* Declarar / editar secado (motor único) */}
+            <DryOffModal isOpen={isDryOpen} parturitionId={currentLactationData?.id ?? null} onClose={() => setDryOpen(false)} />
 
             {/* Crear lactancia (parto provisional) */}
             <Modal isOpen={isCreateOpen} onClose={() => setCreateOpen(false)} title="Crear lactancia">
