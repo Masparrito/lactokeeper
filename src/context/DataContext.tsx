@@ -38,6 +38,7 @@ interface IDataContext {
   isLoading: boolean;
   syncStatus: SyncStatus;
   pendingSyncCount: number;        // cambios locales aún sin subir (incluye borrados)
+  syncFailures: SyncFailure[];     // cambios que Firestore rechazó (diagnóstico)
   lastSyncAt: number | null;       // timestamp de la última subida exitosa
   syncNow: () => Promise<void>;    // forzar sincronización ahora
   addAnimal: (animalData: Omit<Animal, 'id' | '_synced' | 'userId' | 'createdAt'> & { id?: string }) => Promise<void>;
@@ -103,41 +104,99 @@ const DataContext = createContext<IDataContext>({} as IDataContext);
 
 export const useData = () => useContext(DataContext);
 
+// --- DIAGNÓSTICO / AUTOREPARACIÓN DE SINCRONIZACIÓN ---
+// Estado compartido a nivel de módulo que el provider puebla. Permite a los
+// helpers de sincronización (definidos fuera del componente) conocer el uid
+// actual y reportar el resultado de cada escritura sin tocar los ~30 sitios
+// que encolan syncToFirestore.
+export interface SyncFailure { collection: string; id: string; error: string; attempts: number; }
+const syncRuntime: {
+    uid: string | null;
+    onResult: ((r: { collection: string; id: string; ok: boolean; error?: string }) => void) | null;
+} = { uid: null, onResult: null };
+
+// Sanitiza recursivamente un valor para Firestore. Firestore RECHAZA (abortando
+// toda la escritura o el batch completo) cualquier `undefined`, número no finito
+// (NaN/Infinity), función o símbolo — incluso anidado dentro de objetos/arrays.
+// La limpieza superficial anterior dejaba pasar valores anidados inválidos, y un
+// solo registro "envenenado" quedaba `_synced:false` para siempre. Este saneo
+// profundo elimina esos valores conservando el resto de la data intacta.
+const sanitizeForFirestore = (value: any): any => {
+    if (value === null) return null;
+    if (value instanceof Timestamp || value instanceof Date) return value;
+    if (Array.isArray(value)) {
+        // Firestore no admite `undefined` dentro de arrays: se sustituye por null
+        // para preservar posiciones (los objetos internos se sanean en profundidad).
+        return value.map(v => {
+            const sv = sanitizeForFirestore(v);
+            return sv === undefined ? null : sv;
+        });
+    }
+    if (typeof value === 'object') {
+        const out: Record<string, any> = {};
+        for (const [k, v] of Object.entries(value)) {
+            if (k === '_synced') continue; // flag local, nunca se sube
+            const sv = sanitizeForFirestore(v);
+            if (sv === undefined) continue; // descarta undefined y no-finitos anidados
+            out[k] = sv;
+        }
+        return out;
+    }
+    if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+    if (typeof value === 'function' || typeof value === 'symbol') return undefined;
+    return value;
+};
+
+// Ruta de documento válida para Firestore: segmentos no vacíos y sin '/'.
+// Un tombstone con ruta inválida jamás podría escribirse y bloquearía el batch
+// de borrados indefinidamente, por eso se detecta y descarta.
+const isValidFirestorePath = (collectionName?: string, docId?: string): boolean => {
+    const ok = (s?: string) => typeof s === 'string' && s.trim().length > 0 && !s.includes('/');
+    return ok(collectionName) && ok(docId);
+};
+
 // Helper de Sincronización
 const syncToFirestore = async (collectionName: string, id: string, data: any) => {
+    const table = getDB()[collectionName as keyof GanaderoOSTables] as Table<any, any>;
     try {
-        const cleanData = Object.entries(data).reduce((acc, [key, value]) => {
-            // Se descartan undefined, _synced y números no finitos (NaN/Infinity),
-            // que Firestore rechazaría abortando toda la escritura.
-            const isInvalidNumber = typeof value === 'number' && !Number.isFinite(value);
-            if (value !== undefined && key !== '_synced' && !isInvalidNumber) {
-                (acc as any)[key] = value;
-            }
-            return acc;
-        }, {});
+        const cleanData = sanitizeForFirestore(data) as Record<string, any>;
 
-        const table = getDB()[collectionName as keyof GanaderoOSTables] as Table<any, any>;
+        // Autoreparación: TODO registro del usuario debe llevar su `userId`. Sin él,
+        // las reglas de seguridad de Firestore rechazan la escritura y el registro
+        // queda atascado para siempre. Se rellena con el uid actual (modelo de un
+        // solo usuario por cuenta, así que es seguro y correcto).
+        let backfilledUserId = false;
+        if (!cleanData.userId && syncRuntime.uid) {
+            cleanData.userId = syncRuntime.uid;
+            backfilledUserId = true;
+        }
+
         const existingDoc = await table.get(id);
-        const needsTimestamp = !existingDoc || !(existingDoc as any).createdAt || data.createdAt === serverTimestamp();
+        const needsTimestamp = !existingDoc || !(existingDoc as any).createdAt;
 
         const dataToSync: Record<string, any> = { ...cleanData };
-        if (needsTimestamp && !(cleanData as any).createdAt) {
-            dataToSync.createdAt = serverTimestamp();
-        } else if ((cleanData as any).createdAt === null || (cleanData as any).createdAt === undefined) {
-             delete dataToSync.createdAt;
+        // Un createdAt null/undefined no debe escribirse tal cual: se completa con el
+        // sello del servidor cuando falta, o se omite si ya existe en el documento.
+        if (dataToSync.createdAt === null || dataToSync.createdAt === undefined) {
+            delete dataToSync.createdAt;
+            if (needsTimestamp) dataToSync.createdAt = serverTimestamp();
         }
 
         await setDoc(doc(firestoreDb, collectionName, id), dataToSync, { merge: true });
-        await table.update(id, { _synced: true });
+        const patch: Record<string, any> = { _synced: true };
+        if (backfilledUserId) patch.userId = syncRuntime.uid; // persiste la reparación en Dexie
+        await table.update(id, patch);
+        syncRuntime.onResult?.({ collection: collectionName, id, ok: true });
 
-    } catch (error) {
+    } catch (error: any) {
+        const msg = error?.code ? `${error.code}: ${error.message || ''}`.trim() : (error?.message || String(error));
         console.error(`Firestore sync for ${collectionName} (${id}) failed:`, error);
-        const table = getDB()[collectionName as keyof GanaderoOSTables] as Table<any, any>;
         try {
             await table.update(id, { _synced: false });
         } catch (localUpdateError) {
              console.error(`Failed to update sync status locally for ${collectionName} (${id}):`, localUpdateError);
         }
+        syncRuntime.onResult?.({ collection: collectionName, id, ok: false, error: msg });
     }
 };
 
@@ -183,27 +242,47 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [appConfig, setAppConfig] = useState<AppConfig>(DEFAULT_CONFIG);
     const [isLoadingConfig, setIsLoadingConfig] = useState(true);
 
+    // Diagnóstico de sincronización: registros/borrados que Firestore rechazó.
+    // Permite mostrar al usuario QUÉ cambio no se pudo guardar y POR QUÉ, en vez
+    // de un contador de "pendientes" que nunca baja sin explicación.
+    const [syncFailures, setSyncFailures] = useState<SyncFailure[]>([]);
+    const stuckRef = useRef<Map<string, SyncFailure>>(new Map());
+
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const syncQueueRef = useRef<(() => Promise<void>)[]>([]);
     const isSyncingRef = useRef(false);
+    const deletionAttemptsRef = useRef<Map<string, number>>(new Map());
 
-    const cleanForBatch = (data: any) => {
-        const cleanData = Object.entries(data).reduce((acc, [key, value]) => {
-            // Se descartan undefined, _synced y números no finitos (NaN/Infinity),
-            // que Firestore rechazaría abortando todo el batch.
-            const isInvalidNumber = typeof value === 'number' && !Number.isFinite(value);
-            if (value !== undefined && key !== '_synced' && !isInvalidNumber) {
-                (acc as any)[key] = value;
-            }
-            return acc;
-        }, {});
-
-        if ((cleanData as any).createdAt === undefined || (cleanData as any).createdAt === null) {
-            (cleanData as any).createdAt = serverTimestamp();
+    // Anota el resultado de intentar subir un registro/borrado. Éxito → se olvida;
+    // fallo → se recuerda con su error para diagnóstico en la UI.
+    const recordSyncOutcome = useCallback((collectionName: string, id: string, ok: boolean, error?: string) => {
+        const key = `${collectionName}:${id}`;
+        const map = stuckRef.current;
+        if (ok) {
+            if (map.has(key)) { map.delete(key); setSyncFailures(Array.from(map.values())); }
+        } else {
+            const prev = map.get(key);
+            map.set(key, { collection: collectionName, id, error: error || 'error desconocido', attempts: (prev?.attempts || 0) + 1 });
+            setSyncFailures(Array.from(map.values()));
         }
-        
+    }, []);
+
+    // Conecta los helpers de módulo (syncToFirestore) con el estado del provider.
+    useEffect(() => {
+        syncRuntime.uid = currentUser?.uid ?? null;
+        syncRuntime.onResult = (r) => recordSyncOutcome(r.collection, r.id, r.ok, r.error);
+        return () => { syncRuntime.onResult = null; };
+    }, [currentUser?.uid, recordSyncOutcome]);
+
+    const cleanForBatch = useCallback((data: any) => {
+        const cleanData = sanitizeForFirestore(data) as Record<string, any>;
+        // Autoreparación de userId (ver syncToFirestore): sin él las reglas rechazan el batch.
+        if (!cleanData.userId && syncRuntime.uid) cleanData.userId = syncRuntime.uid;
+        if (cleanData.createdAt === undefined || cleanData.createdAt === null) {
+            cleanData.createdAt = serverTimestamp();
+        }
         return cleanData;
-    };
+    }, []);
 
 
     const processSyncQueue = useCallback(async () => {
@@ -299,19 +378,66 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             const localDb = getDB();
             const tombstones = await localDb.pendingDeletions.toArray();
-            if (tombstones.length === 0) return;
-            const CHUNK = 400; // Firestore admite hasta 500 operaciones por batch
-            for (let i = 0; i < tombstones.length; i += CHUNK) {
-                const slice = tombstones.slice(i, i + CHUNK);
-                const batch = writeBatch(firestoreDb);
-                slice.forEach(t => batch.delete(doc(firestoreDb, t.collection, t.docId)));
-                await batch.commit();
-                await localDb.pendingDeletions.bulkDelete(slice.map(t => t.key));
+            if (tombstones.length === 0) { setPendingDeletionsCount(0); return; }
+
+            // 1) Descarta tombstones con ruta inválida (colección/doc vacíos o con '/').
+            //    Nunca podrían escribirse y bloquearían todo el batch indefinidamente.
+            const malformed = tombstones.filter(t => !isValidFirestorePath(t.collection, t.docId));
+            if (malformed.length) {
+                await localDb.pendingDeletions.bulkDelete(malformed.map(t => t.key));
+                malformed.forEach(t => deletionAttemptsRef.current.delete(t.key));
+                console.warn(`[Sync] Descartados ${malformed.length} borrado(s) con ruta inválida.`);
             }
+            const valid = tombstones.filter(t => isValidFirestorePath(t.collection, t.docId));
+            if (valid.length === 0) { setPendingDeletionsCount(await localDb.pendingDeletions.count()); return; }
+
+            const CHUNK = 400; // Firestore admite hasta 500 operaciones por batch
+            for (let i = 0; i < valid.length; i += CHUNK) {
+                const slice = valid.slice(i, i + CHUNK);
+                try {
+                    const batch = writeBatch(firestoreDb);
+                    slice.forEach(t => batch.delete(doc(firestoreDb, t.collection, t.docId)));
+                    await batch.commit();
+                    await localDb.pendingDeletions.bulkDelete(slice.map(t => t.key));
+                    slice.forEach(t => {
+                        deletionAttemptsRef.current.delete(t.key);
+                        recordSyncOutcome(`borrado:${t.collection}`, t.docId, true);
+                    });
+                } catch (batchErr) {
+                    // AISLAMIENTO: un borrado "envenenado" no debe tumbar todo el batch.
+                    // Se reintenta cada tombstone por separado para que los sanos avancen.
+                    for (const t of slice) {
+                        try {
+                            const b = writeBatch(firestoreDb);
+                            b.delete(doc(firestoreDb, t.collection, t.docId));
+                            await b.commit();
+                            await localDb.pendingDeletions.delete(t.key);
+                            deletionAttemptsRef.current.delete(t.key);
+                            recordSyncOutcome(`borrado:${t.collection}`, t.docId, true);
+                        } catch (oneErr: any) {
+                            const attempts = (deletionAttemptsRef.current.get(t.key) || 0) + 1;
+                            deletionAttemptsRef.current.set(t.key, attempts);
+                            const code = oneErr?.code;
+                            const msg = code ? `${code}` : (oneErr?.message || 'error');
+                            // Tras varios reintentos con error permanente, se descarta el
+                            // tombstone para no bloquear el contador para siempre.
+                            if (attempts >= 5 && (code === 'permission-denied' || code === 'invalid-argument' || code === 'not-found')) {
+                                await localDb.pendingDeletions.delete(t.key);
+                                deletionAttemptsRef.current.delete(t.key);
+                                recordSyncOutcome(`borrado:${t.collection}`, t.docId, true);
+                                console.warn(`[Sync] Borrado descartado tras ${attempts} intentos (${msg}): ${t.collection}/${t.docId}`);
+                            } else {
+                                recordSyncOutcome(`borrado:${t.collection}`, t.docId, false, msg);
+                            }
+                        }
+                    }
+                }
+            }
+            setPendingDeletionsCount(await localDb.pendingDeletions.count());
         } catch (error) {
             console.error("[Sync] Error al sincronizar borrados pendientes:", error);
         }
-    }, [currentUser]);
+    }, [currentUser, recordSyncOutcome]);
 
     // Registra borrados como tombstones (durables en Dexie) e intenta propagarlos ya.
     const recordDeletions = useCallback(async (deletions: { collection: string; id: string }[]) => {
@@ -338,8 +464,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [animals, fathers, weighings, parturitions, lots, origins, breedingSeasons, sireLots, serviceRecords, events, feedingPlans, bodyWeighings, products, healthPlans, planActivities, healthEvents, famachaRevs, pendingDeletionsCount]);
 
     // Fuerza una sincronización inmediata (barrido de pendientes + borrados + cola).
+    // Actúa además como PASA DE REPARACIÓN: al re-encolar cada pendiente, el
+    // syncToFirestore mejorado rellena el userId faltante y sanea en profundidad,
+    // curando los registros que Firestore rechazaba. Se limpia el diagnóstico
+    // previo para reflejar el estado real tras este intento.
     const syncNow = useCallback(async () => {
         if (!navigator.onLine) { setSyncStatus('offline'); return; }
+        stuckRef.current.clear();
+        setSyncFailures([]);
         setSyncStatus('syncing');
         await syncPendingRecords();
         await syncPendingDeletions();
@@ -1090,20 +1222,34 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         await fetchDataFromLocalDb();
         
-        const sync = async () => { 
-            const batch = writeBatch(firestoreDb); 
-            batch.set(doc(firestoreDb, "parturitions", newParturitionId), cleanForBatch(parturitionData)); 
-            newKidsData.forEach((kid: Animal) => batch.set(doc(firestoreDb, "animals", kid.id), cleanForBatch(kid))); 
-            
+        const sync = async () => {
+            const batch = writeBatch(firestoreDb);
+            batch.set(doc(firestoreDb, "parturitions", newParturitionId), cleanForBatch(parturitionData));
+            newKidsData.forEach((kid: Animal) => batch.set(doc(firestoreDb, "animals", kid.id), cleanForBatch(kid)));
+
             const updatedMother = await localDb.animals.get(upperCaseMotherId);
-            if (updatedMother && updatedMother._synced === false) {
+            const motherNeedsSync = !!(updatedMother && updatedMother._synced === false);
+            if (updatedMother && motherNeedsSync) {
                  batch.set(doc(firestoreDb, "animals", updatedMother.id), cleanForBatch(updatedMother));
             }
-            
-            await batch.commit(); 
+
+            try {
+                await batch.commit();
+                // Marca local inmediata: no depender solo del eco del snapshot
+                // (en móvil el eco puede perderse al ir a segundo plano y el
+                // registro quedaría atascado en '_synced:false').
+                await localDb.parturitions.update(newParturitionId, { _synced: true });
+                if (newKidsData.length) await localDb.animals.bulkUpdate(newKidsData.map((k: Animal) => ({ key: k.id, changes: { _synced: true } })));
+                if (updatedMother && motherNeedsSync) await localDb.animals.update(updatedMother.id, { _synced: true });
+                await fetchDataFromLocalDb();
+            } catch (err: any) {
+                const msg = err?.code ? `${err.code}` : (err?.message || 'batch error');
+                recordSyncOutcome('parturitions', newParturitionId, false, msg);
+                throw err;
+            }
         };
         enqueueSync(sync);
-    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent, cleanForBatch]);
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent, cleanForBatch, recordSyncOutcome]);
 
     // Elimina un parto (usado para reemplazar un parto provisional al completar
     // los datos reales). Borra el registro y su evento Parto/Aborto asociado.
@@ -1238,10 +1384,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await localDb.events.bulkPut(newEvents);
         fetchDataFromLocalDb();
         
-        const sync = async () => { 
-            const batch = writeBatch(firestoreDb); 
-            newEvents.forEach(event => batch.set(doc(firestoreDb, "events", event.id), cleanForBatch(event))); 
-            await batch.commit(); 
+        const sync = async () => {
+            const batch = writeBatch(firestoreDb);
+            newEvents.forEach(event => batch.set(doc(firestoreDb, "events", event.id), cleanForBatch(event)));
+            await batch.commit();
+            await localDb.events.bulkUpdate(newEvents.map(e => ({ key: e.id, changes: { _synced: true } })));
+            await fetchDataFromLocalDb();
         };
         enqueueSync(sync);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb, cleanForBatch]);
@@ -1390,11 +1538,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await localDb.transaction('rw', localDb.healthPlans, localDb.planActivities, async () => { await localDb.healthPlans.put(newPlan); await localDb.planActivities.bulkPut(newActivities); });
         fetchDataFromLocalDb();
         
-        const sync = async () => { 
-            const batch = writeBatch(firestoreDb); 
-            batch.set(doc(firestoreDb, "healthPlans", newPlan.id), cleanForBatch(newPlan)); 
-            newActivities.forEach(act => batch.set(doc(firestoreDb, "planActivities", act.id), cleanForBatch(act))); 
-            await batch.commit(); 
+        const sync = async () => {
+            const batch = writeBatch(firestoreDb);
+            batch.set(doc(firestoreDb, "healthPlans", newPlan.id), cleanForBatch(newPlan));
+            newActivities.forEach(act => batch.set(doc(firestoreDb, "planActivities", act.id), cleanForBatch(act)));
+            await batch.commit();
+            await localDb.healthPlans.update(newPlan.id, { _synced: true });
+            if (newActivities.length) await localDb.planActivities.bulkUpdate(newActivities.map(a => ({ key: a.id, changes: { _synced: true } })));
+            await fetchDataFromLocalDb();
         };
         enqueueSync(sync);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb, cleanForBatch]);
@@ -1620,7 +1771,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         products, healthPlans, planActivities, healthEvents, famachaRevs,
         appConfig,
         isLoadingConfig,
-        isLoading, syncStatus, pendingSyncCount, lastSyncAt, syncNow,
+        isLoading, syncStatus, pendingSyncCount, syncFailures, lastSyncAt, syncNow,
         fetchData: fetchDataFromLocalDb,
         addAnimal, updateAnimal, bulkUpdateAnimals, deleteAnimalPermanently, changeAnimalId, startDryingProcess, setLactationAsDry, revertLactationDrying, addLot,
         updateLot,
@@ -1645,7 +1796,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }), [
         animals, fathers, weighings, parturitions, lots, origins, breedingSeasons, sireLots, serviceRecords, events, feedingPlans, bodyWeighings,
         products, healthPlans, planActivities, healthEvents, famachaRevs,
-        appConfig, isLoadingConfig, isLoading, syncStatus, pendingSyncCount, lastSyncAt, syncNow,
+        appConfig, isLoadingConfig, isLoading, syncStatus, pendingSyncCount, syncFailures, lastSyncAt, syncNow,
         fetchDataFromLocalDb,
         addAnimal, updateAnimal, bulkUpdateAnimals, deleteAnimalPermanently, changeAnimalId, startDryingProcess, setLactationAsDry, revertLactationDrying, addLot,
         updateLot,

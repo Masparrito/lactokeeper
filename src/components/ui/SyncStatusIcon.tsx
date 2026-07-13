@@ -2,8 +2,21 @@
 
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Cloud, CloudCog, CloudOff, RefreshCw, CheckCircle2, UploadCloud, X } from 'lucide-react';
+import { Cloud, CloudCog, CloudOff, RefreshCw, CheckCircle2, UploadCloud, X, AlertTriangle } from 'lucide-react';
 import { SyncStatus, useData } from '../../context/DataContext';
+
+// Traduce nombres técnicos de colección a etiquetas legibles para el ganadero.
+const COLLECTION_LABELS: Record<string, string> = {
+  animals: 'Animal', fathers: 'Semental', parturitions: 'Parto/Lactancia', weighings: 'Pesaje de leche',
+  bodyWeighings: 'Pesaje corporal', lots: 'Lote', origins: 'Origen', breedingSeasons: 'Temporada de monta',
+  sireLots: 'Lote de sementales', serviceRecords: 'Servicio', events: 'Evento', feedingPlans: 'Plan de alimentación',
+  products: 'Producto', healthPlans: 'Plan sanitario', planActivities: 'Actividad sanitaria', healthEvents: 'Evento sanitario',
+  famachaRevs: 'Revisión Famacha',
+};
+const humanCollection = (c: string): string => {
+  if (c.startsWith('borrado:')) return `Borrado de ${COLLECTION_LABELS[c.slice(8)] ?? c.slice(8)}`;
+  return COLLECTION_LABELS[c] ?? c;
+};
 
 interface SyncStatusIconProps {
   status?: SyncStatus; // opcional: si no se pasa, se toma del contexto
@@ -30,19 +43,20 @@ function relativeTime(ts: number | null): string {
 }
 
 export const SyncStatusIcon: React.FC<SyncStatusIconProps> = ({ status }) => {
-  const { syncStatus, pendingSyncCount, lastSyncAt, syncNow } = useData();
+  const { syncStatus, pendingSyncCount, syncFailures, lastSyncAt, syncNow } = useData();
   const effective = status ?? syncStatus;
   const { Icon, color, label } = statusConfig[effective];
   const [open, setOpen] = useState(false);
 
   const hasPending = pendingSyncCount > 0;
+  const hasFailures = syncFailures.length > 0;
 
   return (
     <>
       <button onClick={() => setOpen(true)} className="relative flex items-center" title={label} aria-label={label}>
         <Icon className={`w-5 h-5 ${color}`} />
         {hasPending && effective !== 'syncing' && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[15px] h-[15px] px-1 rounded-full bg-c-accent-gold text-white text-[9px] font-bold flex items-center justify-center leading-none border border-c-bg">
+          <span className={`absolute -top-1.5 -right-1.5 min-w-[15px] h-[15px] px-1 rounded-full text-white text-[9px] font-bold flex items-center justify-center leading-none border border-c-bg ${hasFailures ? 'bg-brand-red' : 'bg-c-accent-gold'}`}>
             {pendingSyncCount > 99 ? '99+' : pendingSyncCount}
           </span>
         )}
@@ -85,13 +99,37 @@ export const SyncStatusIcon: React.FC<SyncStatusIconProps> = ({ status }) => {
               </div>
             </div>
 
+            {/* Diagnóstico: cambios que el servidor rechazó (con el motivo) */}
+            {hasFailures && (
+              <div className="rounded-xl p-3 mb-4 bg-brand-red/10 border border-brand-red/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle size={18} className="text-brand-red shrink-0" />
+                  <p className="font-semibold text-c-text text-sm">
+                    {syncFailures.length} {syncFailures.length === 1 ? 'cambio no se pudo guardar' : 'cambios no se pudieron guardar'}
+                  </p>
+                </div>
+                <ul className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {syncFailures.slice(0, 8).map((f) => (
+                    <li key={`${f.collection}:${f.id}`} className="text-xs">
+                      <span className="font-medium text-c-text">{humanCollection(f.collection)}</span>
+                      <span className="text-c-text-faint"> · {f.error}</span>
+                    </li>
+                  ))}
+                  {syncFailures.length > 8 && (
+                    <li className="text-xs text-c-text-faint">y {syncFailures.length - 8} más…</li>
+                  )}
+                </ul>
+                <p className="text-[11px] text-c-text-muted mt-2">Toca “Reintentar” para volver a subirlos. Si persiste, comparte este detalle.</p>
+              </div>
+            )}
+
             <button
               onClick={() => syncNow()}
-              disabled={effective === 'offline' || effective === 'syncing' || !hasPending}
+              disabled={effective === 'offline' || effective === 'syncing' || (!hasPending && !hasFailures)}
               className="w-full flex items-center justify-center gap-2 bg-c-accent-sky text-white font-bold py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.99] transition-transform"
             >
               <RefreshCw size={18} className={effective === 'syncing' ? 'animate-spin' : ''} />
-              {effective === 'syncing' ? 'Sincronizando…' : 'Sincronizar ahora'}
+              {effective === 'syncing' ? 'Sincronizando…' : hasFailures ? 'Reintentar' : 'Sincronizar ahora'}
             </button>
           </div>
         </div>,
