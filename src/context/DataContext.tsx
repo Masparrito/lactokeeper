@@ -419,9 +419,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             deletionAttemptsRef.current.set(t.key, attempts);
                             const code = oneErr?.code;
                             const msg = code ? `${code}` : (oneErr?.message || 'error');
-                            // Tras varios reintentos con error permanente, se descarta el
-                            // tombstone para no bloquear el contador para siempre.
-                            if (attempts >= 5 && (code === 'permission-denied' || code === 'invalid-argument' || code === 'not-found')) {
+                            // Solo se descarta un tombstone cuya ruta es intrínsecamente
+                            // imposible de escribir (invalid-argument). NUNCA por
+                            // 'permission-denied': eso es un borrado LEGÍTIMO que las
+                            // reglas rechazan; descartarlo perdería la intención del
+                            // usuario y el documento "reviviría" desde la nube. Se deja
+                            // pendiente y visible hasta que se corrija el permiso.
+                            if (attempts >= 5 && code === 'invalid-argument') {
                                 await localDb.pendingDeletions.delete(t.key);
                                 deletionAttemptsRef.current.delete(t.key);
                                 recordSyncOutcome(`borrado:${t.collection}`, t.docId, true);
