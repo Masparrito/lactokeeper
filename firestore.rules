@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore para LactoKeeper / GanaderoOS.
+//
+// Basadas EXACTAMENTE en las reglas que ya tenía la app (que funcionaban bien
+// para todo salvo un caso). El ÚNICO cambio funcional respecto al original es
+// la regla de 'delete' de la colección general: ahora también permite borrar
+// un documento inexistente (resource == null) o huérfano (sin campo userId).
+//
+// Por qué: Firestore evalúa la regla de borrado contra el documento EXISTENTE.
+// Si el documento no está en la nube (p. ej. se creó y borró antes de
+// sincronizar, como pasó con una revisión Famacha), 'resource.data.userId'
+// no se puede leer y la regla devolvía 'permission-denied' aunque el borrado
+// fuese legítimo. Esto NO permite borrar documentos de OTRO usuario: esos sí
+// tienen userId y no coincide con el del solicitante.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- REGLA ESPECÍFICA PARA CONFIGURACIÓN ---
+    // Un usuario lee/escribe SU propio documento de configuración (id = uid).
+    match /configuracion/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // --- REGLA GENERAL PARA OTRAS COLECCIONES ---
+    match /{collection}/{docId} {
+
+      // Leer / actualizar: solo el dueño del documento existente.
+      allow read, update: if request.auth != null && resource.data.userId == request.auth.uid;
+
+      // Borrar: el dueño, o un documento inexistente/huérfano (ver nota arriba).
+      allow delete: if request.auth != null
+                    && (resource == null
+                        || !('userId' in resource.data)
+                        || resource.data.userId == request.auth.uid);
+
+      // Crear: el documento entrante debe declararse propiedad del usuario.
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+
+      // Listar: la app siempre filtra las consultas por userId.
+      allow list: if request.auth != null;
+    }
+  }
+}
