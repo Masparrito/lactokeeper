@@ -4,6 +4,7 @@ import { initializeApp } from "firebase/app";
 // --- LÍNEA CORREGIDA: Se importa initializeFirestore SIN memoryLocalCache ---
 import { initializeFirestore } from "firebase/firestore";
 import { initializeAuth, browserLocalPersistence } from "firebase/auth";
+import { getFunctions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCq3MZURc1tNUbpK7BDzKZKQoh8C3twzmA",
@@ -25,3 +26,7 @@ export const auth = initializeAuth(app, {
 // Ahora Firestore usará su persistencia offline predeterminada (IndexedDB),
 // lo cual es seguro porque ya hemos hecho que Dexie sea el "primero en escribir".
 export const db = initializeFirestore(app, {});
+
+// Cloud Functions (región por defecto us-central1). Se usa para el backend
+// seguro del escaneo de cuadernos (la clave de Gemini vive en el servidor).
+export const functions = getFunctions(app);

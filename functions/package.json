@@ -1,0 +1,12 @@
+{
+  "name": "lactokeeper-functions",
+  "description": "Backend seguro (Cloud Functions) para LactoKeeper / GanaderoOS",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "firebase-functions": "^5.1.1"
+  }
+}

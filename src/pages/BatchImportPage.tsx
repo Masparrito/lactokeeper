@@ -2,7 +2,9 @@
 
 import React, { useRef, useState, useMemo } from 'react';
 import { ArrowLeft, Camera, FileImage, Loader, AlertTriangle, ChevronRight, Info } from 'lucide-react';
+import { httpsCallable } from 'firebase/functions';
 import { useData } from '../context/DataContext';
+import { functions } from '../firebaseConfig';
 import { Weighing, BodyWeighing } from '../db/local';
 
 // --- Tipos e Interfaces ---
@@ -97,14 +99,8 @@ async function callGeminiVisionAPI(
     previousSessionIds: string[] 
 ): Promise<OcrResult[]> {
     
-    // 1. Obtener API Key
-    const rawApiKey = import.meta.env.VITE_GOOGLE_GEMINI_API_KEY || '';
-    const apiKey = rawApiKey.replace(/['"]/g, '').trim();
-
-    if (!apiKey) throw new Error("No se encontró la clave API (VITE_GOOGLE_GEMINI_API_KEY).");
-    
-    // Usamos gemini-1.5-flash que es el estándar actual rápido y estable para visión
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // 1. La clave de Gemini YA NO viaja en el cliente: la llamada se hace a la
+    //    Cloud Function segura 'scanNotebook', que la guarda del lado servidor.
 
     // 2. Preparar Contexto Enriquecido
     const [year, month, day] = defaultDateISO.split('-');
@@ -153,19 +149,24 @@ async function callGeminiVisionAPI(
         Imagen a procesar:
     `;
     
-    // 4. Llamada
-    const body = { contents: [{ parts: [{ "text": prompt }, { "inlineData": { "mimeType": "image/jpeg", "data": base64Image } }] }] };
-    
-    const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    // 4. Llamada a la Cloud Function segura (el prompt no es secreto; la clave
+    //    de Gemini vive en el servidor). Requiere usuario autenticado.
+    const scanNotebook = httpsCallable<{ prompt: string; imageBase64: string }, { text: string }>(functions, 'scanNotebook');
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Error de conexión con Gemini.');
+    let textResponse: string;
+    try {
+        const result = await scanNotebook({ prompt, imageBase64: base64Image });
+        textResponse = result.data?.text ?? '';
+    } catch (e: any) {
+        // httpsCallable expone e.message con el mensaje del HttpsError del servidor.
+        throw new Error(e?.message || 'Error de conexión con el servicio de IA.');
     }
 
-    const data = await response.json();
+    if (!textResponse) {
+        throw new Error('La IA no devolvió datos legibles. Intenta con mejor iluminación.');
+    }
+
     try {
-        const textResponse = data.candidates[0].content.parts[0].text;
         // Limpieza de bloques de código markdown si la IA los incluye
         const cleanJsonText = textResponse.replace(/^```json\n/, '').replace(/\n```$/, '').replace(/^```/, '').replace(/```$/, '');
         const results: OcrResult[] = JSON.parse(cleanJsonText);
