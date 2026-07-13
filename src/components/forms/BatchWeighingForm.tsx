@@ -441,7 +441,7 @@ export const BatchWeighingForm: React.FC<BatchWeighingFormProps> = ({
                     <div className={`text-xs font-mono flex items-center gap-1 mt-1 px-2 py-0.5 rounded ${
                         Math.abs(calculatedTotal - ocrTotal) < 0.1
                         ? 'bg-c-accent/20 text-c-accent'
-                        : 'bg-yellow-500/20 text-yellow-400'
+                        : 'bg-c-accent-gold/20 text-c-accent-gold'
                     }`}>
                         {Math.abs(calculatedTotal - ocrTotal) < 0.1 ? <CheckCircle size={10}/> : <AlertTriangle size={10}/>}
                         Papel: {ocrTotal.toFixed(2)}
@@ -514,10 +514,11 @@ const ValidatedRowComponent: React.FC<{ row: ValidatedRow, onIdChange: any, onWe
   };
 
   const getBorderColor = () => {
-      if (row.status === 'valid') return 'border-green-500/30 bg-green-900/10';
-      if (row.status === 'warning') return 'border-yellow-500/30 bg-yellow-900/10';
-      if (row.status === 'error') return 'border-red-500/30 bg-red-900/10';
-      return 'border-purple-500/30 bg-purple-900/10';
+      if (row.status === 'valid') return 'border-c-accent/30 bg-c-accent/10';
+      if (row.status === 'warning') return 'border-c-accent-gold/40 bg-c-accent-gold/10';
+      if (row.status === 'error') return 'border-brand-red/30 bg-brand-red/10';
+      // Sin verificar / no reconocido: tinte azul sutil (coincide con el filtro "?").
+      return 'border-c-accent-sky/30 bg-c-accent-sky/10';
   };
 
   return (
@@ -528,11 +529,11 @@ const ValidatedRowComponent: React.FC<{ row: ValidatedRow, onIdChange: any, onWe
                     value={row.animalId}
                     onChange={(e) => onIdChange(row.key, e.target.value.toUpperCase())}
                     className={`w-full bg-c-surface-2 p-3 rounded-xl text-lg text-center font-mono text-c-text
-                        ${row.suggestedId ? 'border border-yellow-500/50' : ''}`}
+                        ${row.suggestedId ? 'border border-c-accent-gold/60' : ''}`}
                     placeholder="ID"
                 />
                 {row.suggestedId && (
-                    <button type="button" onClick={applySuggestion} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-yellow-500/20 text-yellow-400 rounded-lg hover:bg-yellow-500/40 animate-pulse" title="Corregir ID">
+                    <button type="button" onClick={applySuggestion} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-c-accent-gold/20 text-c-accent-gold rounded-lg hover:bg-c-accent-gold/40 animate-pulse" title="Corregir ID">
                         <Lightbulb size={16} />
                     </button>
                 )}
@@ -543,7 +544,7 @@ const ValidatedRowComponent: React.FC<{ row: ValidatedRow, onIdChange: any, onWe
               className="w-2/5 bg-c-surface-2 p-3 rounded-xl text-lg text-center font-mono text-c-text"
               placeholder="0.00"
             />
-            <button type="button" onClick={() => onDeleteRow(row.key)} className="p-3 bg-red-600/20 text-red-400 rounded-lg">
+            <button type="button" onClick={() => onDeleteRow(row.key)} className="p-3 bg-brand-red/15 text-brand-red rounded-lg hover:bg-brand-red/25 transition-colors">
                 <Trash2 size={18} />
             </button>
         </div>
@@ -552,12 +553,12 @@ const ValidatedRowComponent: React.FC<{ row: ValidatedRow, onIdChange: any, onWe
             {row.message.length > 0 && (
                 <div className="flex-grow flex flex-wrap gap-2 text-xs">
                      {row.message.map((msg, idx) => (
-                         <span key={idx} className={`flex items-center gap-1 ${msg.includes('Primer') ? 'text-yellow-400 font-bold' : 'text-c-text-muted'}`}>
+                         <span key={idx} className={`flex items-center gap-1 ${msg.includes('Primer') ? 'text-c-accent-gold font-bold' : 'text-c-text-muted'}`}>
                             {msg.includes('Primer') ? <AlertTriangle size={12}/> : <Info size={12}/>}
                             {msg}
                          </span>
                      ))}
-                     {row.suggestedId && <span onClick={applySuggestion} className="text-yellow-400 underline cursor-pointer font-bold ml-1">Usar {row.suggestedId}</span>}
+                     {row.suggestedId && <span onClick={applySuggestion} className="text-c-accent-gold underline cursor-pointer font-bold ml-1">Usar {row.suggestedId}</span>}
                 </div>
             )}
             {isImportMode && (
