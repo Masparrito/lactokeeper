@@ -17,11 +17,11 @@ const logger = require("firebase-functions/logger");
 // bundle del cliente. Se crea una sola vez (ver instrucciones de despliegue).
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 
-// Modelo multimodal actual, rápido y estable. Se usa 2.0-flash (sin "modo
-// pensamiento") en vez de 2.5-flash porque este último es más lento y superaba
-// el tiempo de la llamada, devolviendo un genérico "internal".
-// gemini-1.5-flash fue retirado por Google.
-const GEMINI_MODEL = "gemini-2.0-flash";
+// Modelo multimodal actual. Google retira modelos con frecuencia
+// (1.5-flash y 2.0-flash ya no están disponibles), así que se usa 2.5-flash.
+// Para evitar el "modo pensamiento" (que lo hacía lento y superaba el timeout)
+// se fija thinkingBudget: 0 en generationConfig más abajo.
+const GEMINI_MODEL = "gemini-2.5-flash";
 
 exports.scanNotebook = onCall(
   {
@@ -73,6 +73,11 @@ exports.scanNotebook = onCall(
           ],
         },
       ],
+      // thinkingBudget 0 desactiva el "modo pensamiento" de 2.5-flash: respuesta
+      // rápida (evita el timeout) sin perder capacidad de OCR guiado por el prompt.
+      generationConfig: {
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     };
 
     let response;
