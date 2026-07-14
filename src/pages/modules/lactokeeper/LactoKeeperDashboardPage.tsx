@@ -160,47 +160,49 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
 
             {/* ===================== CURVA DE LACTANCIA ===================== */}
             <div className="bg-c-surface rounded-2xl p-5 border border-c-border shadow-sm">
-                <div className="flex justify-between items-start gap-3 mb-1">
-                    <div className="flex items-center gap-2 text-c-text-strong font-bold text-sm">
-                        <TrendingUp size={18} className="text-c-accent-sky"/>
-                        <span>Curva de Lactancia</span>
-                        <button onClick={() => setIsChartInfoModalOpen(true)} className="text-c-text-faint hover:text-c-accent-sky transition-colors">
-                            <Info size={15}/>
-                        </button>
-                    </div>
-                    <div className="flex bg-c-surface-2 rounded-lg p-0.5 shrink-0">
-                        {([['1m','Mes'],['3m','Trim.'],['6m','Sem.'],['12m','Año'],['all','Todo']] as const).map(([val, lbl]) => (
-                            <button key={val} onClick={() => setPeriod(val)} className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors ${period === val ? 'bg-c-accent-sky text-white shadow-sm' : 'text-c-text-muted hover:text-c-text'}`}>
-                                {lbl}
-                            </button>
-                        ))}
-                    </div>
+                {/* Fila 1: título */}
+                <div className="flex items-center gap-2 text-c-text-strong font-bold text-base mb-3">
+                    <TrendingUp size={18} className="text-c-accent-sky shrink-0"/>
+                    <span>Curva de Lactancia</span>
+                    <button onClick={() => setIsChartInfoModalOpen(true)} className="text-c-text-faint hover:text-c-accent-sky transition-colors">
+                        <Info size={15}/>
+                    </button>
                 </div>
+
+                {/* Fila 2: selector de período a todo el ancho */}
+                <div className="grid grid-cols-5 gap-1 bg-c-surface-2 rounded-xl p-1 mb-3">
+                    {([['1m','Mes'],['3m','Trim.'],['6m','Sem.'],['12m','Año'],['all','Todo']] as const).map(([val, lbl]) => (
+                        <button key={val} onClick={() => setPeriod(val)} className={`py-1.5 text-xs font-semibold rounded-lg transition-colors ${period === val ? 'bg-c-accent-sky text-white shadow-sm' : 'text-c-text-muted hover:text-c-text'}`}>
+                            {lbl}
+                        </button>
+                    ))}
+                </div>
+
                 <p className="text-[11px] text-c-text-faint mb-3">
                     Basada en <span className="font-semibold text-c-text-muted">{lactation.sampleSize.weighings}</span> pesajes de <span className="font-semibold text-c-text-muted">{lactation.sampleSize.animals}</span> animales{period !== 'all' ? ` · últimos ${period === '1m' ? '30 días' : period === '3m' ? '3 meses' : period === '6m' ? '6 meses' : '12 meses'}` : ' · histórico completo'} · meta {lactation.targetDays} d.
                 </p>
 
                 {/* Barra de opciones: toggles configurables + descargas */}
-                <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
-                    <div className="flex gap-1.5 flex-wrap">
+                <div className="flex items-center justify-between gap-2 mb-4">
+                    <div className="flex gap-1.5">
                         {([['band', 'Banda', showBand, setShowBand], ['wood', 'Curva', showWood, setShowWood], ['mean', 'Puntos', showMean, setShowMean]] as const).map(([key, lbl, val, setter]) => (
                             <button
                                 key={key}
                                 onClick={() => setter(v => !v)}
-                                className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${val ? 'bg-c-accent-sky/10 border-c-accent-sky text-c-accent-sky' : 'bg-c-surface-2 border-c-border text-c-text-muted hover:text-c-text'}`}
+                                className={`px-2.5 py-1.5 text-xs font-semibold rounded-full border transition-colors ${val ? 'bg-c-accent-sky/10 border-c-accent-sky text-c-accent-sky' : 'bg-c-surface-2 border-c-border text-c-text-muted hover:text-c-text'}`}
                             >
                                 {lbl}
                             </button>
                         ))}
                     </div>
-                    <div className="relative">
+                    <div className="relative shrink-0">
                         <button
                             onClick={() => setExportMenuOpen(o => !o)}
                             disabled={isExporting || (!lactation.kpis && lactation.chart.length === 0)}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-c-accent-sky text-white shadow-sm hover:bg-c-accent-sky/90 transition-colors disabled:opacity-50 active:scale-95"
                         >
                             <Download size={14} />
-                            {isExporting ? 'Generando…' : 'Descargar'}
+                            {isExporting ? '…' : 'Descargar'}
                         </button>
                         {exportMenuOpen && (
                             <>
