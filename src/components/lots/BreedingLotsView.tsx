@@ -3,14 +3,14 @@ import type { PageState } from '../../types/navigation';
 import { useData } from '../../context/DataContext';
 import {
     HeartHandshake, Trash2, Edit, Dna, Users, Activity, GripVertical, MoreVertical, ChevronRight,
-    Timer, Plus, Flag
+    Timer, Plus, Flag, Repeat, LogOut
 } from 'lucide-react';
 import { BreedingSeason, SireLot } from '../../db/local';
 import { formatAnimalDisplay } from '../../utils/formatting';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 import { Modal } from '../ui/Modal';
 import { SireLotForm } from '../forms/SireLotForm';
-import { Reorder, useDragControls, useMotionValue, useTransform, motion, AnimatePresence } from 'framer-motion';
+import { Reorder, useDragControls, motion, AnimatePresence } from 'framer-motion';
 
 // --- HELPER: Estadísticas por Semental ---
 const useSireLotStats = (lotId: string) => {
@@ -46,17 +46,21 @@ const useSeasonAggregateStats = (seasonLots: SireLot[]) => {
     }, [animals, serviceRecords, seasonLots]);
 };
 
-// --- SUB-COMPONENTE: Fila de Semental (DARK REDESIGN) ---
-interface SwipeableSireRowProps {
+// --- SUB-COMPONENTE: Fila de Semental (con acciones) ---
+interface SireRowProps {
     lot: SireLot;
     navigateTo: (page: PageState) => void;
     onDelete: (lot: SireLot) => void;
+    onSwap: (lot: SireLot) => void;
+    onRetire: (lot: SireLot) => void;
 }
 
-const SwipeableSireRow = ({ lot, navigateTo, onDelete }: SwipeableSireRowProps) => {
+const SireRow = ({ lot, navigateTo, onDelete, onSwap, onRetire }: SireRowProps) => {
     const { fathers, animals } = useData();
     const stats = useSireLotStats(lot.id);
-    
+    const [menuOpen, setMenuOpen] = useState(false);
+    const isRetired = !!lot.retiredDate;
+
     const sireName = useMemo(() => {
         const father = fathers.find(f => f.id === lot.sireId);
         if (father) return formatAnimalDisplay(father);
@@ -65,68 +69,78 @@ const SwipeableSireRow = ({ lot, navigateTo, onDelete }: SwipeableSireRowProps) 
         return 'Semental';
     }, [fathers, animals, lot.sireId]);
 
-    // Swipe Logic
-    const x = useMotionValue(0);
-    const deleteOpacity = useTransform(x, [-30, -70], [0, 1]); 
-    const [isDragging, setIsDragging] = useState(false);
-
-    const handleDragEnd = (_: any, info: any) => {
-        setIsDragging(false);
-        if (info.offset.x < -80) {
-            if (navigator.vibrate) navigator.vibrate(50);
-            onDelete(lot);
-        }
-    };
+    const retiredLabel = isRetired && lot.retiredDate
+        ? new Date(lot.retiredDate + 'T00:00:00').toLocaleDateString('es-VE', { day: 'numeric', month: 'short' })
+        : '';
 
     return (
-        <div className="relative mb-3 overflow-hidden h-[80px]"> 
-            {/* Fondo Rojo de Eliminación */}
-            <motion.div
-                style={{ opacity: deleteOpacity }}
-                className="absolute inset-0 bg-brand-red/15 rounded-2xl flex items-center justify-end pr-6 pointer-events-none z-0 border border-brand-red/30"
-            >
-                <Trash2 size={24} className="text-brand-red" />
-            </motion.div>
-
-            {/* Tarjeta Deslizable (Frente) */}
-            <motion.div
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={{ left: 0.4, right: 0 }}
-                dragDirectionLock={true}
-                onDragStart={() => setIsDragging(true)}
-                onDragEnd={handleDragEnd}
-                style={{ x, touchAction: "pan-y" }}
-                className="absolute inset-0 bg-c-surface border border-c-border rounded-2xl p-3 flex items-center justify-between z-10 cursor-pointer active:cursor-grabbing hover:bg-c-surface-2 transition-colors shadow-sm"
-                onClick={() => !isDragging && navigateTo({ name: 'sire-lot-detail', lotId: lot.id })}
-            >
-                <div className="flex items-center gap-4 flex-1 min-w-0">
-                    {/* Avatar Grande */}
-                    <div className="w-12 h-12 rounded-xl bg-c-bg flex items-center justify-center text-c-accent-sky border border-c-border flex-shrink-0">
-                        <Dna size={24} strokeWidth={2} />
+        <div className={`relative mb-3 rounded-2xl border transition-colors ${isRetired ? 'bg-c-surface-2/40 border-c-border border-dashed' : 'bg-c-surface border-c-border hover:bg-c-surface-2 shadow-sm'}`}>
+            <div className="flex items-center justify-between p-3">
+                <button
+                    onClick={() => navigateTo({ name: 'sire-lot-detail', lotId: lot.id })}
+                    className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                >
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center border flex-shrink-0 ${isRetired ? 'bg-c-surface-2 text-c-text-faint border-c-border' : 'bg-c-bg text-c-accent-sky border-c-border'}`}>
+                        <Dna size={22} strokeWidth={2} />
                     </div>
-
                     <div className="min-w-0 flex-1">
-                        <p className="text-base font-bold text-c-text truncate leading-tight">{sireName}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] font-bold text-c-text-muted bg-c-surface-2 px-2 py-0.5 rounded-md uppercase tracking-wide border border-c-border">
-                                {stats.totalFemales} Hembras
-                            </span>
-                            {stats.serviceRate > 0 && (
-                                <span className="text-[10px] font-bold text-c-accent bg-c-accent/10 px-2 py-0.5 rounded-md border border-c-accent/20 flex items-center gap-1">
-                                    <Activity size={10} /> {stats.serviceRate.toFixed(0)}% Servidas
+                        <p className={`text-base font-bold truncate leading-tight ${isRetired ? 'text-c-text-muted' : 'text-c-text'}`}>{sireName}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            {isRetired ? (
+                                <span className="text-[10px] font-bold text-c-text-faint bg-c-surface-2 px-2 py-0.5 rounded-md uppercase tracking-wide border border-c-border">
+                                    Retirado {retiredLabel}
                                 </span>
+                            ) : (
+                                <>
+                                    <span className="text-[10px] font-bold text-c-text-muted bg-c-surface-2 px-2 py-0.5 rounded-md uppercase tracking-wide border border-c-border">
+                                        {stats.totalFemales} Hembras
+                                    </span>
+                                    {stats.serviceRate > 0 && (
+                                        <span className="text-[10px] font-bold text-c-accent bg-c-accent/10 px-2 py-0.5 rounded-md border border-c-accent/20 flex items-center gap-1">
+                                            <Activity size={10} /> {stats.serviceRate.toFixed(0)}% Servidas
+                                        </span>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>
-                </div>
+                </button>
 
-                <div className="pl-2 flex flex-col items-end justify-center">
-                     <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${stats.serviceRate >= 100 ? 'bg-c-accent/10 text-c-accent' : 'bg-c-surface-2 text-c-text-faint'}`}>
-                        <ChevronRight size={18} />
-                    </div>
+                <div className="flex items-center gap-1 flex-shrink-0 pl-1">
+                    {!isRetired && (
+                        <div className="relative">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v); }}
+                                className="p-2 text-c-text-faint hover:text-c-text hover:bg-c-surface-2 rounded-full transition-colors"
+                            >
+                                <MoreVertical size={18} />
+                            </button>
+                            <AnimatePresence>
+                                {menuOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.95, y: 5 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95, y: 5 }}
+                                        className="absolute right-0 mt-1 w-48 bg-c-surface-2 border border-c-border-strong rounded-xl shadow-2xl z-30 overflow-hidden"
+                                    >
+                                        <button onClick={(e) => { e.stopPropagation(); onSwap(lot); setMenuOpen(false); }} className="w-full text-left px-4 py-3 text-sm font-semibold text-c-text hover:bg-c-surface-3 flex items-center gap-3">
+                                            <Repeat size={16} /> Intercambiar macho
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); onRetire(lot); setMenuOpen(false); }} className="w-full text-left px-4 py-3 text-sm font-semibold text-c-text hover:bg-c-surface-3 flex items-center gap-3">
+                                            <LogOut size={16} /> Retirar macho
+                                        </button>
+                                        <div className="h-px bg-c-border" />
+                                        <button onClick={(e) => { e.stopPropagation(); onDelete(lot); setMenuOpen(false); }} className="w-full text-left px-4 py-3 text-sm font-semibold text-brand-red hover:bg-brand-red/10 flex items-center gap-3">
+                                            <Trash2 size={16} /> Eliminar
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    )}
+                    <ChevronRight size={18} className="text-c-text-faint" />
                 </div>
-            </motion.div>
+            </div>
         </div>
     );
 };
@@ -142,12 +156,17 @@ interface SeasonMasterCardProps {
     onDeleteLot: (lot: SireLot) => void;
     onAddSire: (season: BreedingSeason) => void;
     onFinalize: (season: BreedingSeason) => void;
+    onSwapLot: (lot: SireLot) => void;
+    onRetireLot: (lot: SireLot) => void;
 }
 
 // --- TARJETA MAESTRA ---
-const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dragControls, onDeleteLot, onAddSire, onFinalize }: SeasonMasterCardProps) => {
+const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dragControls, onDeleteLot, onAddSire, onFinalize, onSwapLot, onRetireLot }: SeasonMasterCardProps) => {
     const [showMenu, setShowMenu] = useState(false);
     const seasonStats = useSeasonAggregateStats(seasonLots);
+    // Machos activos primero; los retirados van al histórico (abajo).
+    const activeLots = useMemo(() => seasonLots.filter(l => !l.retiredDate), [seasonLots]);
+    const retiredLots = useMemo(() => seasonLots.filter(l => !!l.retiredDate), [seasonLots]);
     
     const startDate = new Date(season.startDate + 'T00:00:00');
     const endDate = new Date(season.endDate + 'T00:00:00');
@@ -189,8 +208,8 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
     }
 
     return (
-        <div 
-            className="bg-c-surface rounded-[2rem] overflow-hidden border border-c-border shadow-lg mb-6 relative group"
+        <div
+            className="bg-c-surface rounded-[2rem] border border-c-border shadow-lg mb-6 relative group"
         >
             {/* 1. HEADER EXPANDIDO */}
             <div className="p-6 pb-2 relative">
@@ -318,7 +337,7 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
             <div className="px-6 pb-6">
                 <div className="flex justify-between items-center mb-3 mt-2">
                     <h3 className="text-xs font-extrabold text-c-text-faint uppercase tracking-widest flex items-center gap-2">
-                        <Users size={14} /> Equipo de Monta ({seasonLots.length})
+                        <Users size={14} /> Equipo de Monta ({activeLots.length})
                     </h3>
                     {!isClosed && (
                         <button
@@ -332,17 +351,35 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
 
                 {seasonLots.length > 0 ? (
                     <div className="space-y-0">
-                        {seasonLots.map((lot: SireLot) => (
-                            <SwipeableSireRow 
-                                key={lot.id} 
-                                lot={lot} 
-                                navigateTo={navigateTo} 
+                        {activeLots.map((lot: SireLot) => (
+                            <SireRow
+                                key={lot.id}
+                                lot={lot}
+                                navigateTo={navigateTo}
                                 onDelete={onDeleteLot}
+                                onSwap={onSwapLot}
+                                onRetire={onRetireLot}
                             />
                         ))}
+
+                        {retiredLots.length > 0 && (
+                            <>
+                                <p className="text-[10px] font-bold text-c-text-faint uppercase tracking-widest mt-4 mb-2 px-1">Histórico de machos</p>
+                                {retiredLots.map((lot: SireLot) => (
+                                    <SireRow
+                                        key={lot.id}
+                                        lot={lot}
+                                        navigateTo={navigateTo}
+                                        onDelete={onDeleteLot}
+                                        onSwap={onSwapLot}
+                                        onRetire={onRetireLot}
+                                    />
+                                ))}
+                            </>
+                        )}
                     </div>
                 ) : (
-                    <div 
+                    <div
                         onClick={() => navigateTo({ name: 'breeding-season-detail', seasonId: season.id })}
                         className="py-8 text-center bg-c-surface-2 rounded-2xl border border-c-border border-dashed cursor-pointer hover:bg-c-surface-3 transition-colors"
                     >
@@ -374,16 +411,33 @@ interface BreedingLotsViewProps {
 }
 
 export default function BreedingLotsView({ navigateTo, onEditSeason }: BreedingLotsViewProps) {
-    const { breedingSeasons, sireLots, deleteBreedingSeason, deleteSireLot, addSireLot, updateBreedingSeason } = useData();
+    const { breedingSeasons, sireLots, deleteBreedingSeason, deleteSireLot, addSireLot, updateBreedingSeason, retireSire, swapSire } = useData();
     const [deleteConfirmation, setDeleteConfirmation] = useState<BreedingSeason | null>(null);
     const [lotToDelete, setLotToDelete] = useState<SireLot | null>(null);
     const [finalizeConfirmation, setFinalizeConfirmation] = useState<BreedingSeason | null>(null);
+    const [swapForLot, setSwapForLot] = useState<SireLot | null>(null);
+    const [retireForLot, setRetireForLot] = useState<SireLot | null>(null);
+    const [retireDate, setRetireDate] = useState(new Date().toISOString().split('T')[0]);
 
     const handleConfirmFinalize = async () => {
         if (!finalizeConfirmation) return;
         try { await updateBreedingSeason(finalizeConfirmation.id, { status: 'Cerrado' }); }
         catch (err) { console.error(err); }
         setFinalizeConfirmation(null);
+    };
+
+    const handleSwap = async (newSireId: string, date?: string) => {
+        if (!swapForLot) return;
+        // swapSire lanza si el macho ya está activo; el error se muestra en el form.
+        await swapSire(swapForLot.id, newSireId, date);
+        setSwapForLot(null);
+    };
+
+    const handleConfirmRetire = async () => {
+        if (!retireForLot) return;
+        try { await retireSire(retireForLot.id, retireDate); }
+        catch (err) { console.error(err); }
+        setRetireForLot(null);
     };
     // Temporada para la que se está agregando un macho (abre el modal en la tarjeta).
     const [addSireForSeason, setAddSireForSeason] = useState<BreedingSeason | null>(null);
@@ -493,6 +547,8 @@ export default function BreedingLotsView({ navigateTo, onEditSeason }: BreedingL
                                 onDeleteLot={(lot: SireLot) => setLotToDelete(lot)}
                                 onAddSire={(s: BreedingSeason) => setAddSireForSeason(s)}
                                 onFinalize={(s: BreedingSeason) => setFinalizeConfirmation(s)}
+                                onSwapLot={(lot: SireLot) => setSwapForLot(lot)}
+                                onRetireLot={(lot: SireLot) => { setRetireDate(new Date().toISOString().split('T')[0]); setRetireForLot(lot); }}
                              />
                         </Reorder.Item>
                     );
@@ -531,6 +587,46 @@ export default function BreedingLotsView({ navigateTo, onEditSeason }: BreedingL
                         onCancel={() => setAddSireForSeason(null)}
                     />
                 )}
+            </Modal>
+
+            {/* Intercambiar macho: elige nuevo reproductor + fecha del cambio */}
+            <Modal isOpen={!!swapForLot} onClose={() => setSwapForLot(null)} title="Intercambiar macho">
+                {swapForLot && (
+                    <SireLotForm
+                        seasonId={swapForLot.seasonId}
+                        onSave={handleSwap}
+                        onCancel={() => setSwapForLot(null)}
+                        dateLabel="Fecha del cambio"
+                        submitLabel="Confirmar intercambio"
+                    />
+                )}
+            </Modal>
+
+            {/* Retirar macho: pide fecha y confirma */}
+            <Modal isOpen={!!retireForLot} onClose={() => setRetireForLot(null)} title="Retirar macho">
+                <div className="space-y-4">
+                    <p className="text-sm text-c-text-muted">
+                        El macho quedará en el histórico de la temporada. Las hembras que aún <strong>no</strong> fueron servidas por él volverán a estar disponibles; las ya servidas conservan su registro.
+                    </p>
+                    <div>
+                        <label className="block text-sm font-bold text-c-text-strong mb-2">Fecha de retiro</label>
+                        <input
+                            type="date"
+                            value={retireDate}
+                            onChange={(e) => setRetireDate(e.target.value)}
+                            max={new Date().toISOString().split('T')[0]}
+                            className="w-full bg-c-surface-2 border border-c-border-strong rounded-xl py-3 px-4 text-c-text focus:border-c-accent-sky outline-none"
+                        />
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                        <button type="button" onClick={() => setRetireForLot(null)} className="flex-1 px-5 py-3 bg-c-surface-2 hover:bg-c-surface-3 text-c-text font-bold rounded-xl transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="button" onClick={handleConfirmRetire} className="flex-1 px-5 py-3 bg-c-accent-gold hover:bg-c-accent-gold/90 text-white font-bold rounded-xl transition-colors active:scale-[0.98]">
+                            Retirar
+                        </button>
+                    </div>
+                </div>
             </Modal>
         </>
     );

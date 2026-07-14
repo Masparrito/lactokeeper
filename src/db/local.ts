@@ -172,6 +172,10 @@ export interface SireLot extends SyncedRecord {
     userId?: string;
     seasonId: string;
     sireId: string;
+    // --- HISTÓRICO DE MACHOS (Fase 2) ---
+    startDate?: string;         // cuándo entró este macho a la temporada
+    retiredDate?: string;       // cuándo fue retirado/reemplazado (undefined = activo)
+    replacedBySireId?: string;  // si fue por intercambio, el macho que lo reemplazó
 }
 
 export interface ServiceRecord extends SyncedRecord {

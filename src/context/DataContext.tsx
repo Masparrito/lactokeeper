@@ -64,6 +64,8 @@ interface IDataContext {
   addSireLot: (lotData: Omit<SireLot, 'id' | 'userId' | '_synced'>) => Promise<string>;
   updateSireLot: (lotId: string, dataToUpdate: Partial<SireLot>) => Promise<void>;
   deleteSireLot: (lotId: string) => Promise<void>;
+  retireSire: (lotId: string, date?: string) => Promise<void>;
+  swapSire: (lotId: string, newSireId: string, date?: string) => Promise<string>;
   addServiceRecord: (recordData: Omit<ServiceRecord, 'id' | 'userId' | '_synced'>) => Promise<void>;
   addFeedingPlan: (planData: Omit<FeedingPlan, 'id' | 'userId' | '_synced'>) => Promise<void>;
   addBatchEvent: (data: { lotName: string; date: string; type: EventType; details: string; }) => Promise<void>;
@@ -1507,6 +1509,76 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await recordDeletions([{ collection: "sireLots", id: lotId }]);
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
 
+    // Retira un macho de la temporada CONSERVANDO el histórico: marca el lote
+    // como retirado (no lo borra) y libera solo a las hembras NO servidas por él.
+    // Las hembras ya servidas mantienen su vínculo para conservar la atribución.
+    const retireSire = useCallback(async (lotId: string, date?: string) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        const lot = await localDb.sireLots.get(lotId);
+        if (!lot) return;
+        const retiredDate = date || new Date().toISOString().split('T')[0];
+
+        const assigned = await localDb.animals.where('sireLotId').equals(lotId).toArray();
+        const served = new Set((await localDb.serviceRecords.where('sireLotId').equals(lotId).toArray()).map(sr => sr.femaleId));
+        const toFree = assigned.filter(a => !served.has(a.id));
+
+        await localDb.sireLots.update(lotId, { retiredDate, _synced: false });
+        for (const a of toFree) {
+            await localDb.animals.update(a.id, { sireLotId: undefined, reproductiveStatus: 'Vacía', _synced: false });
+        }
+        fetchDataFromLocalDb();
+
+        const savedLot = await localDb.sireLots.get(lotId);
+        if (savedLot) enqueueSync(() => syncToFirestore("sireLots", lotId, savedLot));
+        for (const a of toFree) {
+            const ua = await localDb.animals.get(a.id);
+            if (ua) enqueueSync(() => syncToFirestore("animals", a.id, ua));
+        }
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+
+    // Intercambia el macho de un lote por otro CONSERVANDO el histórico:
+    // retira el lote saliente (apuntando a su reemplazo), crea un lote nuevo para
+    // el macho entrante y traslada a él solo las hembras NO servidas. Las hembras
+    // ya servidas quedan atribuidas al macho saliente (marca visual en su perfil).
+    const swapSire = useCallback(async (lotId: string, newSireId: string, date?: string): Promise<string> => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        const oldLot = await localDb.sireLots.get(lotId);
+        if (!oldLot) throw new Error("Lote no encontrado");
+        const swapDate = date || new Date().toISOString().split('T')[0];
+
+        const seasonLots = await localDb.sireLots.where('seasonId').equals(oldLot.seasonId).toArray();
+        if (seasonLots.some(l => l.sireId === newSireId && !l.retiredDate)) {
+            throw new Error("Ese macho ya está activo en esta temporada.");
+        }
+
+        const newLot: SireLot = {
+            id: uuidv4(), seasonId: oldLot.seasonId, sireId: newSireId,
+            startDate: swapDate, userId: currentUser.uid, _synced: false,
+        };
+        await localDb.sireLots.put(newLot);
+        await localDb.sireLots.update(lotId, { retiredDate: swapDate, replacedBySireId: newSireId, _synced: false });
+
+        const assigned = await localDb.animals.where('sireLotId').equals(lotId).toArray();
+        const served = new Set((await localDb.serviceRecords.where('sireLotId').equals(lotId).toArray()).map(sr => sr.femaleId));
+        const toMove = assigned.filter(a => !served.has(a.id));
+        for (const a of toMove) {
+            await localDb.animals.update(a.id, { sireLotId: newLot.id, _synced: false });
+        }
+        fetchDataFromLocalDb();
+
+        const savedNew = await localDb.sireLots.get(newLot.id);
+        if (savedNew) enqueueSync(() => syncToFirestore("sireLots", newLot.id, savedNew));
+        const savedOld = await localDb.sireLots.get(lotId);
+        if (savedOld) enqueueSync(() => syncToFirestore("sireLots", lotId, savedOld));
+        for (const a of toMove) {
+            const ua = await localDb.animals.get(a.id);
+            if (ua) enqueueSync(() => syncToFirestore("animals", a.id, ua));
+        }
+        return newLot.id;
+    }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+
     const addProduct = useCallback(async (productData: Omit<Product, 'id' | 'userId' | '_synced'>) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
@@ -1783,7 +1855,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addOrigin, deleteOrigin,
         addBreedingSeason, updateBreedingSeason, 
         deleteBreedingSeason,
-        addSireLot, updateSireLot, deleteSireLot, addServiceRecord,
+        addSireLot, updateSireLot, deleteSireLot, retireSire, swapSire, addServiceRecord,
         addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighing, deleteBodyWeighing, deleteWeighingSession,
         deleteBodyWeighingSession,
         addParturition, deleteParturition, addFather,
@@ -1808,7 +1880,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addOrigin, deleteOrigin,
         addBreedingSeason, updateBreedingSeason, 
         deleteBreedingSeason,
-        addSireLot, updateSireLot, deleteSireLot, addServiceRecord,
+        addSireLot, updateSireLot, deleteSireLot, retireSire, swapSire, addServiceRecord,
         addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighing, deleteBodyWeighing, deleteWeighingSession,
         deleteBodyWeighingSession,
         addParturition, deleteParturition, addFather,

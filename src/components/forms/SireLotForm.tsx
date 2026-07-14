@@ -7,21 +7,28 @@ import { formatAnimalDisplay } from '../../utils/formatting';
 import { Modal } from '../ui/Modal';
 
 interface SireLotFormProps {
-  onSave: (sireId: string) => Promise<void>;
+  onSave: (sireId: string, date?: string) => Promise<void>;
   onCancel: () => void;
   seasonId: string;
-  editingLot?: any; 
+  editingLot?: any;
+  // Si se define, se muestra un campo de fecha y se pasa a onSave (usado para
+  // el intercambio de macho, que requiere la fecha del cambio).
+  dateLabel?: string;
+  submitLabel?: string;
 }
 
-export const SireLotForm: React.FC<SireLotFormProps> = ({ 
-    onSave, 
-    onCancel, 
-    editingLot
+export const SireLotForm: React.FC<SireLotFormProps> = ({
+    onSave,
+    onCancel,
+    editingLot,
+    dateLabel,
+    submitLabel
 }) => {
   const { fathers, animals, addFather } = useData();
-  
+
   const [sireId, setSireId] = useState('');
   const [selectedSireName, setSelectedSireName] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   
   const [isFatherModalOpen, setIsFatherModalOpen] = useState(false);
   const [isSelectorOpen, setIsSelectorOpen] = useState(false); 
@@ -98,9 +105,9 @@ export const SireLotForm: React.FC<SireLotFormProps> = ({
     setIsLoading(true);
 
     try {
-      await onSave(sireId);
-    } catch (err) {
-      setError('No se pudo guardar el lote.');
+      await onSave(sireId, dateLabel ? date : undefined);
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo guardar.');
       console.error(err);
       setIsLoading(false);
     }
@@ -148,6 +155,20 @@ export const SireLotForm: React.FC<SireLotFormProps> = ({
             </p>
         </div>
 
+        {dateLabel && (
+            <div>
+                <label className="block text-sm font-bold text-c-text-strong mb-2">{dateLabel}</label>
+                <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="w-full bg-c-surface-2 border border-c-border-strong rounded-xl py-3 px-4 text-c-text focus:border-c-accent-sky outline-none"
+                    required
+                />
+            </div>
+        )}
+
         {error && (
           <div className="flex items-center space-x-2 p-4 rounded-xl text-sm bg-red-500/10 text-red-400 border border-red-500/20 animate-shake">
             <AlertTriangle size={18} className="flex-shrink-0" />
@@ -164,9 +185,11 @@ export const SireLotForm: React.FC<SireLotFormProps> = ({
             disabled={isLoading || !sireId}
             className="flex-1 px-5 py-4 bg-c-accent-sky hover:bg-c-accent-sky/90 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-c-accent-sky/20 transition-all active:scale-[0.98]"
           >
-            {editingLot 
-                ? (isLoading ? 'Actualizando...' : 'Guardar Cambios') 
-                : (isLoading ? 'Creando...' : 'Crear Lote')
+            {submitLabel
+                ? (isLoading ? 'Guardando...' : submitLabel)
+                : editingLot
+                    ? (isLoading ? 'Actualizando...' : 'Guardar Cambios')
+                    : (isLoading ? 'Creando...' : 'Crear Lote')
             }
           </button>
         </div>
