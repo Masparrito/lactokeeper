@@ -3,7 +3,7 @@ import type { PageState } from '../../types/navigation';
 import { useData } from '../../context/DataContext';
 import {
     HeartHandshake, Trash2, Edit, Dna, Users, Activity, GripVertical, MoreVertical, ChevronRight,
-    Timer, Plus
+    Timer, Plus, Flag
 } from 'lucide-react';
 import { BreedingSeason, SireLot } from '../../db/local';
 import { formatAnimalDisplay } from '../../utils/formatting';
@@ -141,41 +141,51 @@ interface SeasonMasterCardProps {
     dragControls: any;
     onDeleteLot: (lot: SireLot) => void;
     onAddSire: (season: BreedingSeason) => void;
+    onFinalize: (season: BreedingSeason) => void;
 }
 
 // --- TARJETA MAESTRA ---
-const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dragControls, onDeleteLot, onAddSire }: SeasonMasterCardProps) => {
+const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dragControls, onDeleteLot, onAddSire, onFinalize }: SeasonMasterCardProps) => {
     const [showMenu, setShowMenu] = useState(false);
     const seasonStats = useSeasonAggregateStats(seasonLots);
     
     const startDate = new Date(season.startDate + 'T00:00:00');
     const endDate = new Date(season.endDate + 'T00:00:00');
-    
-    const totalDuration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    const today = new Date();
-    const elapsed = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    const daysUntilStart = Math.ceil((startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    const daysLeft = Math.max(0, totalDuration - elapsed);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const startT = startDate.getTime(), endT = endDate.getTime(), todayT = today.getTime();
+    const DAY = 1000 * 60 * 60 * 24;
+
+    const totalDuration = Math.max(1, Math.ceil((endT - startT) / DAY));
+    const elapsed = Math.ceil((todayT - startT) / DAY);
+    const daysLeft = Math.max(0, Math.ceil((endT - todayT) / DAY));
+    const daysUntilStart = Math.max(0, Math.ceil((startT - todayT) / DAY));
     const progress = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
-    
-    const isActiveStatus = season.status === 'Activo';
+
     const hasSires = seasonLots.length > 0;
-    
-    // --- LÓGICA DE ESTADO REFINADA ---
-    const isRunning = isActiveStatus && hasSires;
-    const isOnHold = isActiveStatus && !hasSires;
-    const isFuture = daysUntilStart > 0;
-    
-    // Configuración Visual del Badge (tokens de tema, legible en claro y oscuro)
+
+    // --- ESTADO CONSCIENTE DE FECHAS ---
+    // Cerrada (finalizada manualmente) > Próxima (aún no inicia) > Por Finalizar
+    // (ya pasó su fin pero sigue abierta) > En Curso (dentro de ventana, con
+    // machos) > En Espera (dentro de ventana, sin machos).
+    const isClosed = season.status === 'Cerrado';
+    const isFuture = !isClosed && todayT < startT;
+    const isEnded = !isClosed && todayT > endT;
+    const needsFinalize = isEnded;                 // "Por Finalizar"
+    const isWithinWindow = !isClosed && !isFuture && !isEnded;
+    const isRunning = isWithinWindow && hasSires;
+    const isOnHold = isWithinWindow && !hasSires;
+
     let statusConfig;
-    if (isRunning) {
-        statusConfig = { color: 'text-c-accent', bg: 'bg-c-accent/15', border: 'border-c-accent/30', dot: 'bg-c-accent', label: 'En Curso', pulse: true };
-    } else if (isOnHold) {
-        statusConfig = { color: 'text-c-accent-gold', bg: 'bg-c-accent-gold/15', border: 'border-c-accent-gold/30', dot: 'bg-c-accent-gold', label: 'En Espera', pulse: false };
+    if (isClosed) {
+        statusConfig = { color: 'text-c-text-faint', bg: 'bg-c-surface-2', border: 'border-c-border-strong', dot: 'bg-c-text-faint', label: 'Finalizada', pulse: false };
     } else if (isFuture) {
         statusConfig = { color: 'text-c-accent-sky', bg: 'bg-c-accent-sky/15', border: 'border-c-accent-sky/30', dot: 'bg-c-accent-sky', label: 'Próxima', pulse: false };
+    } else if (needsFinalize) {
+        statusConfig = { color: 'text-c-accent-gold', bg: 'bg-c-accent-gold/15', border: 'border-c-accent-gold/30', dot: 'bg-c-accent-gold', label: 'Por Finalizar', pulse: true };
+    } else if (isRunning) {
+        statusConfig = { color: 'text-c-accent', bg: 'bg-c-accent/15', border: 'border-c-accent/30', dot: 'bg-c-accent', label: 'En Curso', pulse: true };
     } else {
-        statusConfig = { color: 'text-c-text-faint', bg: 'bg-c-surface-2', border: 'border-c-border-strong', dot: 'bg-c-text-faint', label: 'Finalizada', pulse: false };
+        statusConfig = { color: 'text-c-accent-gold', bg: 'bg-c-accent-gold/15', border: 'border-c-accent-gold/30', dot: 'bg-c-accent-gold', label: 'En Espera', pulse: false };
     }
 
     return (
@@ -221,6 +231,14 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
                                         <button onClick={(e) => { e.stopPropagation(); onEdit(); setShowMenu(false); }} className="w-full text-left px-4 py-3 text-sm font-semibold text-c-text hover:bg-c-surface-3 flex items-center gap-3">
                                             <Edit size={16} /> Editar
                                         </button>
+                                        {!isClosed && (
+                                            <>
+                                                <div className="h-px bg-c-border"></div>
+                                                <button onClick={(e) => { e.stopPropagation(); onFinalize(season); setShowMenu(false); }} className="w-full text-left px-4 py-3 text-sm font-semibold text-c-text hover:bg-c-surface-3 flex items-center gap-3">
+                                                    <Flag size={16} /> Finalizar temporada
+                                                </button>
+                                            </>
+                                        )}
                                         <div className="h-px bg-c-border"></div>
                                         <button onClick={(e) => { e.stopPropagation(); onDelete(); setShowMenu(false); }} className="w-full text-left px-4 py-3 text-sm font-semibold text-brand-red hover:bg-brand-red/10 flex items-center gap-3">
                                             <Trash2 size={16} /> Eliminar
@@ -263,12 +281,17 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
 
                     <div className="flex justify-between mt-2 items-center">
                         <p className="text-[10px] text-c-text-faint font-bold uppercase tracking-wide">
-                            {isActiveStatus ? `${Math.round(progress)}% Completado` : (isFuture ? 'Pendiente' : 'Finalizado')}
+                            {isFuture ? 'Pendiente' : (isEnded || isClosed) ? 'Completado' : `${Math.round(progress)}% Completado`}
                         </p>
-                        {isActiveStatus && (
-                            <div className={`flex items-center gap-1.5 text-xs font-bold ${isOnHold ? 'text-c-accent-gold' : 'text-c-accent-sky'}`}>
+                        {!isClosed && (
+                            <div className={`flex items-center gap-1.5 text-xs font-bold ${needsFinalize ? 'text-c-accent-gold' : isOnHold ? 'text-c-accent-gold' : 'text-c-accent-sky'}`}>
                                 <Timer size={12} />
-                                <span>{isOnHold ? 'Sin actividad' : `${daysLeft} días restantes`}</span>
+                                <span>
+                                    {isFuture ? `Comienza en ${daysUntilStart} d`
+                                        : needsFinalize ? 'Terminó — por finalizar'
+                                        : isOnHold ? 'Sin machos'
+                                        : `${daysLeft} días restantes`}
+                                </span>
                             </div>
                         )}
                     </div>
@@ -297,7 +320,7 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
                     <h3 className="text-xs font-extrabold text-c-text-faint uppercase tracking-widest flex items-center gap-2">
                         <Users size={14} /> Equipo de Monta ({seasonLots.length})
                     </h3>
-                    {isActiveStatus && (
+                    {!isClosed && (
                         <button
                             onClick={() => onAddSire(season)}
                             className="flex items-center gap-1 text-xs font-bold text-c-accent-sky bg-c-accent-sky/10 hover:bg-c-accent-sky/20 px-2.5 py-1 rounded-lg transition-colors active:scale-95"
@@ -328,6 +351,16 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
                         <p className="text-xs text-c-accent-sky font-bold mt-1 uppercase tracking-wide">Toca para añadir</p>
                     </div>
                 )}
+
+                {/* CTA visible para finalizar una temporada cuya ventana ya terminó */}
+                {needsFinalize && (
+                    <button
+                        onClick={() => onFinalize(season)}
+                        className="mt-4 w-full flex items-center justify-center gap-2 bg-c-accent-gold/15 text-c-accent-gold hover:bg-c-accent-gold/25 font-bold py-3 rounded-xl transition-colors active:scale-[0.99]"
+                    >
+                        <Flag size={16} /> Finalizar temporada
+                    </button>
+                )}
             </div>
 
         </div>
@@ -341,9 +374,17 @@ interface BreedingLotsViewProps {
 }
 
 export default function BreedingLotsView({ navigateTo, onEditSeason }: BreedingLotsViewProps) {
-    const { breedingSeasons, sireLots, deleteBreedingSeason, deleteSireLot, addSireLot } = useData();
+    const { breedingSeasons, sireLots, deleteBreedingSeason, deleteSireLot, addSireLot, updateBreedingSeason } = useData();
     const [deleteConfirmation, setDeleteConfirmation] = useState<BreedingSeason | null>(null);
     const [lotToDelete, setLotToDelete] = useState<SireLot | null>(null);
+    const [finalizeConfirmation, setFinalizeConfirmation] = useState<BreedingSeason | null>(null);
+
+    const handleConfirmFinalize = async () => {
+        if (!finalizeConfirmation) return;
+        try { await updateBreedingSeason(finalizeConfirmation.id, { status: 'Cerrado' }); }
+        catch (err) { console.error(err); }
+        setFinalizeConfirmation(null);
+    };
     // Temporada para la que se está agregando un macho (abre el modal en la tarjeta).
     const [addSireForSeason, setAddSireForSeason] = useState<BreedingSeason | null>(null);
 
@@ -369,29 +410,31 @@ export default function BreedingLotsView({ navigateTo, onEditSeason }: BreedingL
             const startB = new Date(b.startDate).getTime();
             const endB = new Date(b.endDate).getTime();
 
-            const getPriority = (season: BreedingSeason, hasSires: boolean, start: number) => {
-                if (season.status === 'Activo') {
-                    return hasSires ? 0 : 1;
-                }
-                if (start > now) return 2; 
-                return 3; 
+            // Prioridad consciente de fechas: en curso / en espera (dentro de
+            // ventana) arriba; luego "por finalizar" (terminó pero sigue abierta);
+            // luego próximas; al final las cerradas.
+            const getPriority = (season: BreedingSeason, hasSires: boolean, start: number, end: number) => {
+                if (season.status === 'Cerrado') return 4;
+                if (start > now) return 3;      // próxima
+                if (end < now) return 2;        // por finalizar
+                return hasSires ? 0 : 1;        // en curso / en espera
             };
 
-            const priorityA = getPriority(a, hasSiresA, startA);
-            const priorityB = getPriority(b, hasSiresB, startB);
+            const priorityA = getPriority(a, hasSiresA, startA, endA);
+            const priorityB = getPriority(b, hasSiresB, startB, endB);
 
             if (priorityA !== priorityB) {
                 return priorityA - priorityB;
             }
 
-            if (priorityA <= 1) { 
-                return endA - endB; 
+            if (priorityA <= 2) {
+                return endA - endB; // dentro de ventana / por finalizar: por fin más próximo
             }
-            if (priorityA === 2) { 
-                return startA - startB; 
+            if (priorityA === 3) {
+                return startA - startB; // próximas: por inicio más próximo
             }
-            
-            return endB - endA;
+
+            return endB - endA; // cerradas: más recientes primero
         });
     }, [breedingSeasons, sireLots]);
 
@@ -449,6 +492,7 @@ export default function BreedingLotsView({ navigateTo, onEditSeason }: BreedingL
                                 onDelete={() => setDeleteConfirmation(season)}
                                 onDeleteLot={(lot: SireLot) => setLotToDelete(lot)}
                                 onAddSire={(s: BreedingSeason) => setAddSireForSeason(s)}
+                                onFinalize={(s: BreedingSeason) => setFinalizeConfirmation(s)}
                              />
                         </Reorder.Item>
                     );
@@ -469,6 +513,14 @@ export default function BreedingLotsView({ navigateTo, onEditSeason }: BreedingL
                 onConfirm={handleConfirmDeleteLot}
                 title="Eliminar Semental"
                 message="¿Quitar este reproductor de la temporada? Las hembras volverán a estar disponibles."
+            />
+
+            <ConfirmationModal
+                isOpen={!!finalizeConfirmation}
+                onClose={() => setFinalizeConfirmation(null)}
+                onConfirm={handleConfirmFinalize}
+                title="Finalizar Temporada"
+                message={`¿Finalizar "${finalizeConfirmation?.name}"? La temporada quedará cerrada y no se registrarán más servicios en ella. Los registros históricos se conservan.`}
             />
 
             <Modal isOpen={!!addSireForSeason} onClose={() => setAddSireForSeason(null)} title="Agregar macho a la temporada">
