@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import type { PageState } from '../types/navigation';
 // --- Iconos ---
-import { 
-    Plus, ChevronRight, HeartPulse, TrendingUp, Dna, 
-    LayoutGrid, Heart, FlaskConical, Archive, Search, Baby 
+import {
+    Plus, ChevronRight, Dna,
+    LayoutGrid, Heart, FlaskConical, Archive, Search
 } from 'lucide-react';
 // ---
 import { AddLotModal } from '../components/ui/AddLotModal';
@@ -21,23 +21,66 @@ import { TodayPanel } from '../components/ui/TodayPanel';
 
 // --- SUB-COMPONENTES ESTILIZADOS ---
 
-const CategoryChip = ({ title, value, icon: Icon, onClick }: { 
-    title: string, 
-    value: string | number, 
-    icon: React.ElementType, 
-    onClick: () => void 
-}) => (
-    <button 
-        onClick={onClick}
-        className="flex-shrink-0 w-32 bg-c-surface backdrop-blur-md rounded-2xl p-4 border border-c-border text-left hover:border-c-accent/50 hover:bg-c-surface-2 transition-all duration-200 group active:scale-95 shadow-sm"
-    >
-        <div className="flex justify-between items-start mb-2">
-            <Icon className="w-5 h-5 text-c-text-faint group-hover:text-c-accent transition-colors" />
+interface CategoryDatum {
+    title: string;
+    value: number;
+    colorClass: string; // clase Tailwind de fondo (segmento de barra + swatch)
+    onClick: () => void;
+}
+
+// Tarjeta unificada "Composición del Rebaño": número héroe + KPIs (Hembras/
+// Vientres) + barra proporcional por categoría + leyenda tappable.
+const HerdCompositionCard = ({ total, hembras, vientres, categories, navigateTo }: {
+    total: number;
+    hembras: number;
+    vientres: number;
+    categories: CategoryDatum[];
+    navigateTo: (page: PageState) => void;
+}) => {
+    const catTotal = categories.reduce((s, c) => s + (c.value || 0), 0) || 1;
+    return (
+        <div className="mx-4 mt-4 bg-c-surface rounded-2xl border border-c-border shadow-sm p-4 animate-fade-in">
+            {/* Encabezado: héroe (Total) + KPIs secundarios (Hembras/Vientres) */}
+            <div className="flex justify-between items-start mb-4">
+                <div>
+                    <p className="text-[11px] font-bold text-c-text-faint uppercase tracking-widest mb-1.5">Composición del rebaño</p>
+                    <button onClick={() => navigateTo({ name: 'herd', kpiFilter: 'all' })} className="flex items-baseline gap-2 active:opacity-70 transition-opacity">
+                        <span className="text-4xl font-bold text-c-text-strong tracking-tight leading-none">{total}</span>
+                        <span className="text-xs font-bold text-c-text-faint uppercase tracking-wider">animales</span>
+                    </button>
+                </div>
+                <div className="flex gap-4 text-right">
+                    <button onClick={() => navigateTo({ name: 'herd', kpiFilter: 'females' })} className="active:opacity-70 transition-opacity">
+                        <p className="text-2xl font-bold text-c-text-strong leading-none">{hembras}</p>
+                        <p className="text-[9px] font-bold text-c-text-faint uppercase tracking-widest mt-1">Hembras</p>
+                    </button>
+                    <button onClick={() => navigateTo({ name: 'herd', kpiFilter: 'vientres' })} className="active:opacity-70 transition-opacity">
+                        <p className="text-2xl font-bold text-c-accent-gold leading-none">{vientres}</p>
+                        <p className="text-[9px] font-bold text-c-text-faint uppercase tracking-widest mt-1">Vientres</p>
+                    </button>
+                </div>
+            </div>
+
+            {/* Barra proporcional */}
+            <div className="flex h-4 rounded-lg overflow-hidden mb-3.5 bg-c-surface-2">
+                {categories.map(c => (c.value > 0 &&
+                    <div key={c.title} className={c.colorClass} style={{ width: `${(c.value / catTotal) * 100}%` }} />
+                ))}
+            </div>
+
+            {/* Leyenda tappable (2×2) */}
+            <div className="grid grid-cols-2 gap-y-2.5 gap-x-4">
+                {categories.map(c => (
+                    <button key={c.title} onClick={c.onClick} className="flex items-center gap-2 text-left active:opacity-70 transition-opacity">
+                        <span className={`w-2.5 h-2.5 rounded-[3px] shrink-0 ${c.colorClass}`} />
+                        <span className="text-[15px] font-bold text-c-text-strong">{c.value}</span>
+                        <span className="text-xs text-c-text-muted font-semibold truncate">{c.title}</span>
+                    </button>
+                ))}
+            </div>
         </div>
-        <p className="text-2xl font-bold text-c-text tracking-tight">{value}</p>
-        <p className="text-[10px] font-bold text-c-text-faint uppercase tracking-wider mt-1">{title}</p>
-    </button>
-);
+    );
+};
 
 const LotSegmentedControl = ({ value, onChange }: { 
     value: 'physical' | 'breeding', 
@@ -124,11 +167,11 @@ export default function LotsDashboardPage({ navigateTo, tab, onTabChange }: Lots
     // --- EL CEREBRO DE DATOS ---
     const herdAnalytics = useHerdAnalytics();
 
-    const categoryChips = [
-        { title: "Cabras", value: herdAnalytics.cabras.total, icon: HeartPulse, onClick: () => setCabrasModalOpen(true) },
-        { title: "Cabritonas", value: herdAnalytics.cabritonas.total, icon: TrendingUp, onClick: () => navigateTo({ name: 'herd', kpiFilter: 'Cabritona' }) },
-        { title: "Crías", value: herdAnalytics.crias.total, icon: Baby, onClick: () => navigateTo({ name: 'herd', kpiFilter: 'Crias' }) },
-        { title: "Reproductores", value: herdAnalytics.reproductores.total, icon: Dna, onClick: () => setReproductoresModalOpen(true) },
+    const categoryChips: CategoryDatum[] = [
+        { title: "Cabras", value: herdAnalytics.cabras.total, colorClass: 'bg-c-accent', onClick: () => setCabrasModalOpen(true) },
+        { title: "Cabritonas", value: herdAnalytics.cabritonas.total, colorClass: 'bg-c-accent-sky', onClick: () => navigateTo({ name: 'herd', kpiFilter: 'Cabritona' }) },
+        { title: "Crías", value: herdAnalytics.crias.total, colorClass: 'bg-c-accent-gold', onClick: () => navigateTo({ name: 'herd', kpiFilter: 'Crias' }) },
+        { title: "Reproductores", value: herdAnalytics.reproductores.total, colorClass: 'bg-[#6d5fd6]', onClick: () => setReproductoresModalOpen(true) },
     ];
 
     const handleOpenSeasonModal = (season?: BreedingSeason) => {
@@ -172,42 +215,15 @@ export default function LotsDashboardPage({ navigateTo, tab, onTabChange }: Lots
                 {/* Panel "Para hoy" (pendientes de manejo) */}
                 {activeTab === 'physical' && <TodayPanel navigateTo={navigateTo} />}
 
-                {/* KPIs Hero & Chips (SOLO EN LOTES FÍSICOS) */}
+                {/* Composición del Rebaño (SOLO EN LOTES FÍSICOS) */}
                 {activeTab === 'physical' && (
-                    <div className="pt-4 animate-fade-in">
-                        {/* Números Flotantes */}
-                        <div className="flex justify-around items-baseline text-center px-4">
-                            <button onClick={() => navigateTo({ name: 'herd', kpiFilter: 'all' })} className="hover:opacity-80 transition-opacity group">
-                                <span className="text-4xl font-bold text-c-text-strong group-hover:text-c-text transition-colors tracking-tight">{herdAnalytics.totalPoblacion}</span>
-                                <p className="text-[10px] text-c-text-faint uppercase tracking-widest font-bold mt-1">Total</p>
-                            </button>
-                            <div className="border-l border-c-border h-10 mx-2 self-center"></div>
-                            <button onClick={() => navigateTo({ name: 'herd', kpiFilter: 'females' })} className="hover:opacity-80 transition-opacity group">
-                                <span className="text-4xl font-bold text-c-text-strong group-hover:text-c-text transition-colors tracking-tight">{herdAnalytics.totalHembras}</span>
-                                <p className="text-[10px] text-c-text-faint uppercase tracking-widest font-bold mt-1">Hembras</p>
-                            </button>
-                            <div className="border-l border-c-border h-10 mx-2 self-center"></div>
-                            <button onClick={() => navigateTo({ name: 'herd', kpiFilter: 'vientres' })} className="hover:opacity-80 transition-opacity group">
-                                <span className="text-5xl font-bold text-c-accent-gold group-hover:opacity-80 transition-opacity tracking-tight">{herdAnalytics.totalVientres}</span>
-                                <p className="text-[10px] text-c-text-faint uppercase tracking-widest font-bold mt-1">Vientres</p>
-                            </button>
-                        </div>
-
-                        {/* Grilla de Chips (Scroll Horizontal) */}
-                        <div className="flex gap-3 overflow-x-auto pb-4 px-4 mt-8 snap-x snap-mandatory" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                            <style>{`.horizontal-scroll::-webkit-scrollbar { display: none; }`}</style>
-                            {categoryChips.map(chip => (
-                                <div key={chip.title} className="snap-start">
-                                    <CategoryChip 
-                                        title={chip.title}
-                                        value={chip.value}
-                                        icon={chip.icon}
-                                        onClick={chip.onClick}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    <HerdCompositionCard
+                        total={herdAnalytics.totalPoblacion}
+                        hembras={herdAnalytics.totalHembras}
+                        vientres={herdAnalytics.totalVientres}
+                        categories={categoryChips}
+                        navigateTo={navigateTo}
+                    />
                 )}
 
                 {/* CORRECCIÓN DE SCROLL: 

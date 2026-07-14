@@ -17,6 +17,15 @@ interface LotWithCount extends Lot {
     subLots: LotWithCount[];
 }
 
+// Color de identidad estable por lote (derivado del id, no del orden), para el
+// punto de color de la lista densa.
+const LOT_COLORS = ['bg-c-accent', 'bg-c-accent-sky', 'bg-c-accent-gold', 'bg-[#6d5fd6]', 'bg-[#e07a3c]', 'bg-[#d6467a]'];
+const lotColorClass = (id: string): string => {
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+    return LOT_COLORS[h % LOT_COLORS.length];
+};
+
 // --- SUB-COMPONENTES DE MODALES ---
 
 // Modal de Confirmación para Eliminar
@@ -133,60 +142,53 @@ const RenameLotModal = ({ isOpen, onClose, updateLot, lot }: {
 };
 
 
-// --- Componente de Contenido (Sin cambios) ---
-const LotCardContent = ({ lotName, count, subLotsCount, dragControls, isSubLot }: { 
-    lotName: string, 
-    count: number, 
-    subLotsCount: number, 
-    dragControls: any, 
-    isSubLot: boolean 
+// --- Componente de Contenido: fila delgada de la lista densa ---
+const LotCardContent = ({ lotName, count, subLotsCount, dragControls, colorClass }: {
+    lotName: string,
+    count: number,
+    subLotsCount: number,
+    dragControls: any,
+    colorClass: string
 }) => (
-    <div className="w-full p-4 flex items-center">
-        {!isSubLot && (
-            <div className="pl-2 pr-4 cursor-grab touch-none self-stretch flex items-center" onPointerDown={(e) => dragControls.start(e)}>
-                <GripVertical className="text-c-text-faint" />
-            </div>
-        )}
-        {isSubLot && <div className="w-4 flex-shrink-0"></div>}
-
-        <div className="flex-grow">
-            <p className="font-bold text-lg text-c-text flex items-center gap-2">
+    <div className="w-full py-3 pl-2 pr-3 flex items-center">
+        <div className="pr-2.5 cursor-grab touch-none self-stretch flex items-center text-c-border-strong" onPointerDown={(e) => dragControls.start(e)}>
+            <GripVertical size={16} />
+        </div>
+        <span className={`w-2.5 h-2.5 rounded-full shrink-0 mr-3 ${colorClass}`} />
+        <div className="flex-grow min-w-0">
+            <p className="font-bold text-[15px] text-c-text truncate flex items-center gap-1.5">
                 {lotName}
                 {subLotsCount > 0 && (
-                    <span title={`${subLotsCount} sub-lotes`} className="bg-c-surface-2 p-1 rounded-full">
-                        <Layers size={12} className="text-c-text-muted" />
-                    </span>
+                    <Layers size={12} className="text-c-text-muted shrink-0" />
                 )}
             </p>
-            <p className="text-sm text-c-text-muted">
-                <span className="font-semibold text-c-accent">{count}</span> {count === 1 ? 'animal' : 'animales'}
-                {subLotsCount > 0 ? ' (directos)' : ''}
-            </p>
         </div>
+        <div className="flex items-baseline gap-1 mr-1.5 shrink-0">
+            <span className="text-[15px] font-bold text-c-accent">{count}</span>
+            <span className="text-[11px] text-c-text-faint font-semibold">{count === 1 ? 'animal' : 'animales'}</span>
+        </div>
+        <ChevronRight size={16} className="text-c-text-faint shrink-0" />
     </div>
 );
 
-// --- Componente de Tarjeta Swipeable ---
-const SwipeableLotCard = ({ lot, onEdit, onDelete, onClick, dragControls, isSubLot = false, subLots = [], onSubLotClick }: {
+// --- Fila Swipeable de la lista densa ---
+const SwipeableLotCard = ({ lot, onEdit, onDelete, onClick, dragControls, subLots = [], onSubLotClick }: {
     lot: LotWithCount,
     onEdit: () => void,
     onDelete: () => void,
     onClick: () => void,
     dragControls?: any,
-    isSubLot?: boolean,
     subLots?: LotWithCount[],
     onSubLotClick?: (lot: LotWithCount) => void
 }) => {
     const swipeControls = useAnimation();
     const dragStarted = useRef(false);
-    const showEdit = lot.name !== 'Sin Asignar';
-    const showDelete = lot.name !== 'Sin Asignar';
-    const buttonsWidth = (showEdit ? 80 : 0) + (showDelete ? 80 : 0);
+    const buttonsWidth = 72 + 72;
 
     const dragProps = {
-        drag: "x" as "x", 
-        dragConstraints: { left: -buttonsWidth, right: 0 }, 
-        dragElastic: 0.1, 
+        drag: "x" as "x",
+        dragConstraints: { left: -buttonsWidth, right: 0 },
+        dragElastic: 0.1,
         onPanStart: () => { dragStarted.current = true; },
         // (CORREGIDO TS6133) 'e' se reemplaza con '_e' para indicar que no se usa
         onPanEnd: (_e: any, info: any) => {
@@ -195,22 +197,22 @@ const SwipeableLotCard = ({ lot, onEdit, onDelete, onClick, dragControls, isSubL
             } else {
                 swipeControls.start({ x: -buttonsWidth });
             }
-            setTimeout(() => { dragStarted.current = false; }, 50); 
+            setTimeout(() => { dragStarted.current = false; }, 50);
         },
-        onTap: () => { if (!dragStarted.current) { onClick(); } }, 
-        animate: swipeControls, 
+        onTap: () => { if (!dragStarted.current) { onClick(); } },
+        animate: swipeControls,
         transition: { type: "spring", stiffness: 400, damping: 40 }
     };
 
     return (
-        <div className={`relative w-full overflow-hidden ${isSubLot ? 'rounded-lg' : 'rounded-2xl'} bg-c-surface border border-c-border shadow-sm`}>
-            <div className="absolute inset-y-0 right-0 flex items-center z-0 h-full">
-                {showEdit && <button onClick={onEdit} onPointerDown={(e) => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-c-accent-sky text-white"><Edit size={22} /><span className="text-xs mt-1 font-semibold">Editar</span></button>}
-                {showDelete && <button onClick={onDelete} onPointerDown={(e) => e.stopPropagation()} className="h-full w-[80px] flex flex-col items-center justify-center bg-brand-red text-white"><Trash2 size={22} /><span className="text-xs mt-1 font-semibold">Borrar</span></button>}
+        <div className="relative w-full overflow-hidden">
+            <div className="absolute inset-y-0 right-0 flex items-stretch z-0">
+                <button onClick={onEdit} onPointerDown={(e) => e.stopPropagation()} className="w-[72px] flex flex-col items-center justify-center bg-c-accent-sky text-white"><Edit size={18} /><span className="text-[10px] mt-0.5 font-semibold">Editar</span></button>
+                <button onClick={onDelete} onPointerDown={(e) => e.stopPropagation()} className="w-[72px] flex flex-col items-center justify-center bg-brand-red text-white"><Trash2 size={18} /><span className="text-[10px] mt-0.5 font-semibold">Borrar</span></button>
             </div>
             <motion.div
                 {...dragProps}
-                dragListener={!isSubLot && dragControls ? false : undefined}
+                dragListener={dragControls ? false : undefined}
                 className="relative w-full z-10 cursor-pointer bg-c-surface"
             >
                 <LotCardContent
@@ -218,26 +220,26 @@ const SwipeableLotCard = ({ lot, onEdit, onDelete, onClick, dragControls, isSubL
                     count={lot.count}
                     subLotsCount={lot.subLots?.length || 0}
                     dragControls={dragControls}
-                    isSubLot={isSubLot}
+                    colorClass={lotColorClass(lot.id)}
                 />
-            </motion.div>
 
-            {/* Sub-lotes (corrales) como chips verdes dentro de la tarjeta del lote */}
-            {!isSubLot && subLots.length > 0 && (
-                <div className="relative z-10 bg-c-surface px-4 pb-3 -mt-1 flex flex-wrap gap-2">
-                    {subLots.map(sl => (
-                        <button
-                            key={sl.id}
-                            onClick={(e) => { e.stopPropagation(); onSubLotClick?.(sl); }}
-                            onPointerDown={(e) => e.stopPropagation()}
-                            className="flex items-center gap-1.5 bg-c-accent/10 hover:bg-c-accent/20 text-c-accent border border-c-accent/25 rounded-lg pl-2.5 pr-1.5 py-1.5 text-sm font-semibold active:scale-95 transition-all"
-                        >
-                            {subLotDisplayName(sl.name)}
-                            <span className="text-xs font-bold bg-c-accent/15 rounded px-1.5 py-0.5 min-w-[1.25rem] text-center">{sl.count}</span>
-                        </button>
-                    ))}
-                </div>
-            )}
+                {/* Sub-lotes (corrales) como chips verdes dentro de la fila */}
+                {subLots.length > 0 && (
+                    <div className="px-4 pb-3 -mt-1 pl-10 flex flex-wrap gap-2">
+                        {subLots.map(sl => (
+                            <button
+                                key={sl.id}
+                                onClick={(e) => { e.stopPropagation(); onSubLotClick?.(sl); }}
+                                onPointerDown={(e) => e.stopPropagation()}
+                                className="flex items-center gap-1.5 bg-c-accent/10 hover:bg-c-accent/20 text-c-accent border border-c-accent/25 rounded-lg pl-2.5 pr-1.5 py-1 text-xs font-semibold active:scale-95 transition-all"
+                            >
+                                {subLotDisplayName(sl.name)}
+                                <span className="text-[11px] font-bold bg-c-accent/15 rounded px-1.5 py-0.5 min-w-[1.25rem] text-center">{sl.count}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </motion.div>
         </div>
     );
 };
@@ -251,12 +253,12 @@ const ReorderableLotItem = ({ lot, navigateTo, onEdit, onDelete }: {
 }) => {
     const dragControls = useDragControls();
     return ( 
-        <Reorder.Item 
-            key={lot.id} 
-            value={lot} 
-            dragListener={false} 
-            dragControls={dragControls} 
-            className="space-y-1"
+        <Reorder.Item
+            key={lot.id}
+            value={lot}
+            dragListener={false}
+            dragControls={dragControls}
+            className="relative bg-c-surface border-b border-c-border last:border-b-0"
         >
             <SwipeableLotCard
                 lot={lot}
@@ -264,11 +266,10 @@ const ReorderableLotItem = ({ lot, navigateTo, onEdit, onDelete }: {
                 onClick={() => navigateTo({ name: 'lot-detail', lotName: lot.name })}
                 onEdit={() => onEdit(lot)}
                 onDelete={() => onDelete(lot)}
-                isSubLot={false}
                 subLots={lot.subLots}
                 onSubLotClick={(sl) => navigateTo({ name: 'lot-detail', lotName: sl.name })}
             />
-        </Reorder.Item> 
+        </Reorder.Item>
     );
 };
 
@@ -386,19 +387,21 @@ export default function PhysicalLotsView({ navigateTo }: { navigateTo: (page: Pa
 
     return (
         <>
-            <Reorder.Group as="div" axis="y" values={orderedLots} onReorder={setOrderedLots} className="space-y-3 px-4 pt-4">
-                {orderedLots.map((lot) => (
-                    <ReorderableLotItem
-                        key={lot.id}
-                        lot={lot}
-                        navigateTo={navigateTo}
-                        onEdit={(lotToEdit) => setRenameModal(lotToEdit)}
-                        onDelete={(lotToDelete) => handleDeleteRequest(lotToDelete)}
-                    />
-                ))}
-            </Reorder.Group>
+            <div className="mx-4">
+                <Reorder.Group as="div" axis="y" values={orderedLots} onReorder={setOrderedLots} className="bg-c-surface border border-c-border rounded-2xl overflow-hidden shadow-sm">
+                    {orderedLots.map((lot) => (
+                        <ReorderableLotItem
+                            key={lot.id}
+                            lot={lot}
+                            navigateTo={navigateTo}
+                            onEdit={(lotToEdit) => setRenameModal(lotToEdit)}
+                            onDelete={(lotToDelete) => handleDeleteRequest(lotToDelete)}
+                        />
+                    ))}
+                </Reorder.Group>
 
-            {unassignedLink}
+                {unassignedLink}
+            </div>
 
             <ConfirmationModal 
                 isOpen={!!deleteConfirmation} 
