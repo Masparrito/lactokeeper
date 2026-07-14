@@ -1,14 +1,15 @@
 // src/pages/modules/lactokeeper/LactoKeeperDashboardPage.tsx (CORREGIDO - Flujo de importación ELIMINADO)
 
-import { useState, useMemo } from 'react'; // (CORREGIDO) React sí se usa
+import { useState, useMemo, useRef } from 'react'; // (CORREGIDO) React sí se usa
 import { Area, XAxis, YAxis, ResponsiveContainer, BarChart, Bar, ReferenceLine, ComposedChart, Line, Cell, Tooltip, CartesianGrid } from 'recharts';
 import { useData } from '../../../context/DataContext';
 import { useHerdAnalytics } from '../../../hooks/useHerdAnalytics';
 import { useHerdLactation } from '../../../hooks/useHerdLactation';
 // (CORREGIDO) Eliminados Plus, Camera, FilePen
-import { Droplet, ActivitySquare, BarChart as BarChartIconLucide, Info, TrendingUp, Activity, Calendar, Layers, Target } from 'lucide-react';
+import { Droplet, ActivitySquare, BarChart as BarChartIconLucide, Info, TrendingUp, Activity, Calendar, Layers, Target, Download, FileText, FileSpreadsheet, Globe } from 'lucide-react';
 import { CustomTooltip } from '../../../components/ui/CustomTooltip';
 import { Modal } from '../../../components/ui/Modal';
+import { exportLactationToPDF, exportLactationToCSV, exportLactationToHTML } from '../../../utils/lactationExporter';
 
 interface LactoKeeperDashboardProps {
   onNavigateToAnalysis: () => void;
@@ -21,8 +22,39 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
   const [isChartInfoModalOpen, setIsChartInfoModalOpen] = useState(false);
   const [isGaussInfoModalOpen, setIsGaussInfoModalOpen] = useState(false);
 
+  // Opciones configurables de la curva + menú de descargas.
+  const [showBand, setShowBand] = useState(true);
+  const [showWood, setShowWood] = useState(true);
+  const [showMean, setShowMean] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const lactationCardRef = useRef<HTMLDivElement>(null);
+
   // Curva de lactancia + KPIs (sensible a la config de la finca).
   const lactation = useHerdLactation(period);
+
+  const PERIOD_LABELS: Record<typeof period, string> = {
+    '1m': 'Último mes', '3m': 'Último trimestre', '6m': 'Últimos 6 meses',
+    '12m': 'Último año', 'all': 'Histórico completo',
+  };
+
+  const handleExport = async (kind: 'pdf' | 'csv' | 'html') => {
+    setExportMenuOpen(false);
+    const meta = { periodLabel: PERIOD_LABELS[period], herdAverage: analytics.herdAverage, activeGoats: analytics.activeGoats };
+    try {
+      if (kind === 'csv') { exportLactationToCSV(lactation, meta); return; }
+      if (kind === 'html') { exportLactationToHTML(lactation, meta); return; }
+      // PDF captura la tarjeta renderizada
+      if (!lactationCardRef.current) return;
+      setIsExporting(true);
+      await exportLactationToPDF(lactationCardRef.current, lactation, meta);
+    } catch (e) {
+      console.error('Error exportando la curva de lactancia:', e);
+      alert('No se pudo generar la descarga. Intenta de nuevo.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const analytics = useMemo(() => {
     // ... (Lógica de 'analytics' sin cambios) ...
@@ -144,10 +176,60 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
                         ))}
                     </div>
                 </div>
-                <p className="text-[11px] text-c-text-faint mb-4">
+                <p className="text-[11px] text-c-text-faint mb-3">
                     Basada en <span className="font-semibold text-c-text-muted">{lactation.sampleSize.weighings}</span> pesajes de <span className="font-semibold text-c-text-muted">{lactation.sampleSize.animals}</span> animales{period !== 'all' ? ` · últimos ${period === '1m' ? '30 días' : period === '3m' ? '3 meses' : period === '6m' ? '6 meses' : '12 meses'}` : ' · histórico completo'} · meta {lactation.targetDays} d.
                 </p>
 
+                {/* Barra de opciones: toggles configurables + descargas */}
+                <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+                    <div className="flex gap-1.5 flex-wrap">
+                        {([['band', 'Banda', showBand, setShowBand], ['wood', 'Curva', showWood, setShowWood], ['mean', 'Puntos', showMean, setShowMean]] as const).map(([key, lbl, val, setter]) => (
+                            <button
+                                key={key}
+                                onClick={() => setter(v => !v)}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${val ? 'bg-c-accent-sky/10 border-c-accent-sky text-c-accent-sky' : 'bg-c-surface-2 border-c-border text-c-text-muted hover:text-c-text'}`}
+                            >
+                                {lbl}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="relative">
+                        <button
+                            onClick={() => setExportMenuOpen(o => !o)}
+                            disabled={isExporting || (!lactation.kpis && lactation.chart.length === 0)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-c-accent-sky text-white shadow-sm hover:bg-c-accent-sky/90 transition-colors disabled:opacity-50 active:scale-95"
+                        >
+                            <Download size={14} />
+                            {isExporting ? 'Generando…' : 'Descargar'}
+                        </button>
+                        {exportMenuOpen && (
+                            <>
+                                <div className="fixed inset-0 z-10" onClick={() => setExportMenuOpen(false)} />
+                                <div className="absolute right-0 mt-2 z-20 w-56 bg-c-surface border border-c-border rounded-xl shadow-xl overflow-hidden animate-fade-in">
+                                    {[
+                                        { kind: 'pdf' as const, icon: FileText, tint: 'text-brand-red', title: 'PDF', sub: 'Gráfico + tablas para imprimir' },
+                                        { kind: 'html' as const, icon: Globe, tint: 'text-c-accent-sky', title: 'HTML interactivo', sub: 'Súper gráfico dinámico, offline' },
+                                        { kind: 'csv' as const, icon: FileSpreadsheet, tint: 'text-c-accent', title: 'CSV para Excel', sub: 'Datos y KPIs en tabla' },
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.kind}
+                                            onClick={() => handleExport(opt.kind)}
+                                            className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-c-surface-2 transition-colors border-b border-c-border last:border-0"
+                                        >
+                                            <opt.icon size={18} className={`${opt.tint} mt-0.5 shrink-0`} />
+                                            <div>
+                                                <p className="text-sm font-semibold text-c-text-strong leading-tight">{opt.title}</p>
+                                                <p className="text-[11px] text-c-text-faint leading-tight mt-0.5">{opt.sub}</p>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+
+              <div ref={lactationCardRef} className="bg-c-surface rounded-xl">
                 {/* KPIs — 2×2 amplios y legibles */}
                 {lactation.kpis && (
                     <div className="grid grid-cols-2 gap-3 mb-5">
@@ -191,11 +273,13 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
                                 );
                             }} />
                             {/* Banda P25–P75: base invisible + banda visible (apiladas) */}
-                            <Area type="monotone" dataKey="p25" stackId="band" stroke="none" fill="transparent" isAnimationActive={false} />
-                            <Area type="monotone" dataKey="band" stackId="band" stroke="none" fill="#1E6FAD" fillOpacity={0.12} isAnimationActive={false} />
+                            {showBand && <Area type="monotone" dataKey="p25" stackId="band" stroke="none" fill="transparent" isAnimationActive={false} />}
+                            {showBand && <Area type="monotone" dataKey="band" stackId="band" stroke="none" fill="#1E6FAD" fillOpacity={0.12} isAnimationActive={false} />}
+                            {/* Promedios por intervalo (puntos) */}
+                            {showMean && <Line type="monotone" dataKey="mean" stroke="none" dot={{ r: 2.5, fill: '#1E6FAD', fillOpacity: 0.5, strokeWidth: 0 }} isAnimationActive={false} connectNulls={false} />}
                             {/* Curva de Wood ajustada */}
-                            <Line type="monotone" dataKey="wood" stroke="#1E6FAD" strokeWidth={3} dot={false} isAnimationActive={false} connectNulls />
-                            {lactation.kpis && <ReferenceLine x={lactation.kpis.peakDay} stroke="#2F843C" strokeDasharray="4 4" label={{ value: 'Pico', fill: '#2F843C', fontSize: 10, position: 'top' }} />}
+                            {showWood && <Line type="monotone" dataKey="wood" stroke="#1E6FAD" strokeWidth={3} dot={false} isAnimationActive={false} connectNulls />}
+                            {showWood && lactation.kpis && <ReferenceLine x={lactation.kpis.peakDay} stroke="#2F843C" strokeDasharray="4 4" label={{ value: 'Pico', fill: '#2F843C', fontSize: 10, position: 'top' }} />}
                             {/* Meta de lactancia (config de la finca) */}
                             <ReferenceLine x={lactation.targetDays} stroke="#B45309" strokeDasharray="2 4" strokeWidth={1.5} label={{ value: `Meta ${lactation.targetDays}d`, fill: '#B45309', fontSize: 10, position: 'insideTopRight' }} />
                         </ComposedChart>
@@ -213,6 +297,7 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
                 {!lactation.kpis && (
                     <p className="text-xs text-c-text-faint text-center mt-3">Aún no hay suficientes pesajes para ajustar una curva definida. Se muestra la banda de dispersión disponible. Amplía el período para incluir más datos.</p>
                 )}
+              </div>
             </div>
 
             {/* Distribución por etapa de lactancia */}
