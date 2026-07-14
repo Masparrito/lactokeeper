@@ -91,7 +91,7 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
         { id: 'lots-dashboard', page: { name: 'lots-dashboard' }, label: 'Lotes', icon: GiGoat, mapsTo: ['lots-dashboard', 'lot-detail', 'breeding-season-detail', 'sire-lot-detail', 'feeding-plan', 'batch-treatment'] },
         { id: 'herd', page: { name: 'herd' }, label: 'Rebaño', icon: FaCow, mapsTo: ['herd', 'rebano-profile', 'manage-lots', 'lactation-profile', 'lactation-weighings', 'growth-profile', 'growth-weighings', 'configuracion', 'management'] },
         { id: 'add-animal', page: { name: 'add-animal' }, label: 'Añadir', icon: PlusCircle, mapsTo: ['add-animal'] },
-        { id: 'farm-calendar', page: { name: 'farm-calendar' }, label: 'Calendario', icon: CalendarDays, mapsTo: ['farm-calendar', 'birthing-season-detail'] },
+        { id: 'farm-calendar', page: { name: 'farm-calendar' }, label: 'Partos', icon: CalendarDays, mapsTo: ['farm-calendar', 'birthing-season-detail'] },
         { id: 'modules', label: 'Módulos', icon: Grid, mapsTo: [] }, 
     ] as const;
 
