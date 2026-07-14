@@ -101,26 +101,11 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
         mainScrollRef.current?.scrollTo(0, 0); 
     };
 
-    // --- LÓGICA DE RETROCESO CORREGIDA ---
+    // --- LÓGICA DE RETROCESO ---
+    // La pestaña del dashboard ('physical'/'breeding') ahora vive en el propio
+    // PageState, así que el historial la preserva y "volver" regresa a la misma
+    // vista de la que se salió (Temporadas/Físicos). Ya no hacen falta parches.
     const navigateBack = () => {
-        // DETECCIÓN DE CASOS ESPECIALES (Interceptamos antes de ver el historial)
-        // Esto soluciona que al volver de Temporadas te mande a la pestaña incorrecta.
-        
-        if (page.name === 'breeding-season-detail') {
-            // <--- FIX: Si vuelvo de detalle temporada, fuerzo ir al dashboard con TAB 'seasons'
-            // Usamos 'as any' para pasar propiedades extra que LotsDashboard pueda leer
-            setPage({ name: 'lots-dashboard', initialTab: 'seasons' } as any);
-            // Limpiamos el último historial para no duplicar si el usuario sigue dando atrás
-            setHistory(h => h.slice(0, -1)); 
-            return;
-        }
-
-        if (page.name === 'sire-lot-detail') {
-            setPage({ name: 'lots-dashboard', initialTab: 'sires' } as any);
-            setHistory(h => h.slice(0, -1));
-            return;
-        }
-
         // Lógica Estándar (Historial)
         const lastPage = history.pop();
         
@@ -134,6 +119,11 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
                 case 'feeding-plan':
                 case 'batch-treatment':
                     setPage({ name: 'lots-dashboard' });
+                    break;
+
+                case 'breeding-season-detail':
+                case 'sire-lot-detail':
+                    setPage({ name: 'lots-dashboard', tab: 'breeding' });
                     break;
 
                 case 'lactation-weighings':
@@ -231,12 +221,13 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
         const commonProps = { navigateTo, onBack: navigateBack };
         
         switch (page.name) {
-            case 'lots-dashboard': 
-                // <--- FIX: Pasamos el 'initialTab' si existe en el estado de la página
-                // Asegúrate que tu componente LotsDashboardPage reciba esta prop
-                return <LotsDashboardPage 
-                    navigateTo={navigateTo} 
-                    initialTab={(page as any).initialTab} 
+            case 'lots-dashboard':
+                // La pestaña activa vive en el PageState; onTabChange la actualiza
+                // (sin apilar historial) para que "volver" restaure la pestaña correcta.
+                return <LotsDashboardPage
+                    navigateTo={navigateTo}
+                    tab={page.tab}
+                    onTabChange={(tab) => setPage({ name: 'lots-dashboard', tab })}
                 />;
             
             case 'lot-detail': return <LotDetailPage lotName={page.lotName} onBack={navigateBack} navigateTo={navigateTo} scrollContainerRef={mainScrollRef}/>;

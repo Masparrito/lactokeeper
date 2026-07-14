@@ -19,7 +19,7 @@ interface BreedingSeasonDetailPageProps {
 }
 
 export default function BreedingSeasonDetailPage({ seasonId, navigateTo, onBack }: BreedingSeasonDetailPageProps) {
-    const { breedingSeasons, sireLots, animals, fathers, addSireLot, deleteSireLot } = useData();
+    const { breedingSeasons, sireLots, animals, fathers, serviceRecords, addSireLot, deleteSireLot } = useData();
     
     // Estados
     const [isAddLotModalOpen, setAddLotModalOpen] = useState(false);
@@ -35,22 +35,22 @@ export default function BreedingSeasonDetailPage({ seasonId, navigateTo, onBack 
         return sireLots.filter(lot => lot.seasonId === season.id);
     }, [sireLots, season]);
 
-    // 3. Calcular Estadísticas (Hembras totales en la temporada)
+    // 3. Calcular Estadísticas (hembras asignadas y servidas en la temporada)
     const stats = useMemo(() => {
-        let totalFemales = 0;
         const activeLotIds = new Set(seasonLots.map(l => l.id));
-        
-        // Contamos animales activos asignados a cualquiera de estos lotes
-        const females = animals.filter(a => 
-            a.status === 'Activo' && 
-            !a.isReference && 
-            a.sireLotId && 
+        const females = animals.filter(a =>
+            a.status === 'Activo' &&
+            !a.isReference &&
+            a.sireLotId &&
             activeLotIds.has(a.sireLotId)
         );
-        totalFemales = females.length;
-
-        return { totalFemales, totalSires: seasonLots.length };
-    }, [animals, seasonLots]);
+        const totalFemales = females.length;
+        const served = females.filter(f =>
+            serviceRecords.some(sr => sr.femaleId === f.id && activeLotIds.has(sr.sireLotId))
+        ).length;
+        const pct = totalFemales > 0 ? Math.round((served / totalFemales) * 100) : 0;
+        return { totalFemales, totalSires: seasonLots.length, served, pct };
+    }, [animals, serviceRecords, seasonLots]);
 
     // Handlers
     const handleAddLot = async (sireId: string) => {
@@ -80,133 +80,145 @@ export default function BreedingSeasonDetailPage({ seasonId, navigateTo, onBack 
         return 'Semental Desconocido';
     };
 
-    if (!season) return <div className="p-10 text-center text-zinc-500">Temporada no encontrada.</div>;
+    if (!season) return <div className="p-10 text-center text-c-text-muted">Temporada no encontrada.</div>;
 
     const startDate = new Date(season.startDate + 'T00:00:00').toLocaleDateString('es-VE', { day: 'numeric', month: 'short' });
     const endDate = new Date(season.endDate + 'T00:00:00').toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' });
 
     return (
         <>
-            <div className="w-full max-w-2xl mx-auto pb-20 animate-fade-in">
-                
+            <div className="w-full max-w-2xl mx-auto pb-24 animate-fade-in">
+
                 {/* HEADER */}
-                <header className="pt-8 pb-4 px-4 sticky top-0 bg-brand-dark z-30 border-b border-brand-border">
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                            <button onClick={onBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors">
+                <header className="pt-8 pb-4 px-4 sticky top-0 bg-c-bg/95 backdrop-blur-md z-30 border-b border-c-border">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2 min-w-0">
+                            <button onClick={onBack} className="p-2 -ml-2 text-c-text-muted hover:text-c-text transition-colors shrink-0">
                                 <ArrowLeft size={24} />
                             </button>
-                            <div>
-                                <h1 className="text-2xl font-bold text-white leading-none">{season.name}</h1>
-                                <div className="flex items-center gap-2 mt-1 text-zinc-400 text-xs font-medium">
+                            <div className="min-w-0">
+                                <h1 className="text-2xl font-bold text-c-text-strong leading-tight truncate">{season.name}</h1>
+                                <div className="flex items-center gap-2 mt-1 text-c-text-muted text-xs font-medium">
                                     <Calendar size={12} />
                                     <span>{startDate} - {endDate}</span>
-                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${season.status === 'Activo' ? 'bg-green-500/20 text-green-400' : 'bg-zinc-700 text-zinc-400'}`}>
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${season.status === 'Activo' ? 'bg-c-accent/15 text-c-accent' : 'bg-c-surface-2 text-c-text-faint'}`}>
                                         {season.status}
                                     </span>
                                 </div>
                             </div>
                         </div>
-                        
+
                         {season.status === 'Activo' && (
-                            <button 
+                            <button
                                 onClick={() => setAddLotModalOpen(true)}
-                                className="bg-brand-blue hover:bg-blue-600 text-white p-2 rounded-xl transition-colors shadow-lg shadow-blue-900/20"
+                                className="bg-c-accent-sky hover:bg-c-accent-sky/90 text-white p-2.5 rounded-xl transition-colors shadow-sm shrink-0"
+                                title="Agregar macho"
                             >
-                                <Plus size={24} />
+                                <Plus size={22} />
                             </button>
                         )}
                     </div>
+                </header>
 
-                    {/* Stats Rápidos */}
-                    <div className="flex gap-4 mt-4">
-                        <div className="bg-zinc-800/50 rounded-lg px-3 py-2 flex items-center gap-2 border border-zinc-700/50">
-                            <Dna size={16} className="text-brand-blue" />
+                <div className="p-4 space-y-5">
+
+                    {/* Resumen: machos, hembras y medidor de servidas */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-c-surface rounded-2xl p-4 border border-c-border flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-c-accent-sky/10 flex items-center justify-center text-c-accent-sky shrink-0"><Dna size={18} /></div>
                             <div>
-                                <p className="text-lg font-bold text-white leading-none">{stats.totalSires}</p>
-                                <p className="text-[10px] text-zinc-500 uppercase">Lotes / Machos</p>
+                                <p className="text-2xl font-bold text-c-text-strong leading-none">{stats.totalSires}</p>
+                                <p className="text-[10px] text-c-text-faint uppercase font-bold tracking-wider mt-1">Machos</p>
                             </div>
                         </div>
-                        <div className="bg-zinc-800/50 rounded-lg px-3 py-2 flex items-center gap-2 border border-zinc-700/50">
-                            <Users size={16} className="text-pink-400" />
+                        <div className="bg-c-surface rounded-2xl p-4 border border-c-border flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-c-accent-gold/10 flex items-center justify-center text-c-accent-gold shrink-0"><Users size={18} /></div>
                             <div>
-                                <p className="text-lg font-bold text-white leading-none">{stats.totalFemales}</p>
-                                <p className="text-[10px] text-zinc-500 uppercase">Hembras Asig.</p>
+                                <p className="text-2xl font-bold text-c-text-strong leading-none">{stats.totalFemales}</p>
+                                <p className="text-[10px] text-c-text-faint uppercase font-bold tracking-wider mt-1">Hembras</p>
                             </div>
                         </div>
                     </div>
-                </header>
 
-                <div className="p-4 space-y-6">
-                    
-                    {/* TARJETA DE TRATAMIENTO DE LUZ (BOTÓN ACTIVO) */}
+                    {stats.totalFemales > 0 && (
+                        <div className="bg-c-surface rounded-2xl p-4 border border-c-border">
+                            <div className="flex justify-between items-baseline mb-2">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-c-text-faint">Servidas</span>
+                                <span className="text-sm font-bold text-c-text-strong">
+                                    {stats.served}<span className="text-c-text-faint font-medium">/{stats.totalFemales}</span>
+                                    <span className="text-c-accent"> · {stats.pct}%</span>
+                                </span>
+                            </div>
+                            <div className="h-2.5 w-full bg-c-surface-2 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full bg-c-accent transition-all" style={{ width: `${stats.pct}%` }} />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* TARJETA DE TRATAMIENTO DE LUZ */}
                     {season.requiresLightTreatment && (
-                        <div 
+                        <button
                             onClick={() => setIsLightModalOpen(true)}
-                            className={`rounded-2xl p-4 border flex items-start gap-4 relative overflow-hidden cursor-pointer transition-all hover:shadow-lg active:scale-[0.98] ${
-                                season.lightTreatmentConfirmed 
-                                    ? 'bg-yellow-500/5 border-yellow-500/20 hover:bg-yellow-500/10' 
-                                    : 'bg-zinc-900 border-zinc-800 hover:border-zinc-600'
+                            className={`w-full text-left rounded-2xl p-4 border flex items-start gap-4 relative overflow-hidden transition-all active:scale-[0.99] ${
+                                season.lightTreatmentConfirmed
+                                    ? 'bg-c-accent-gold/10 border-c-accent-gold/25 hover:bg-c-accent-gold/15'
+                                    : 'bg-c-surface border-c-border hover:border-c-accent-gold/40'
                             }`}
                         >
-                            <div className="bg-yellow-500/10 p-3 rounded-full">
-                                <Sun size={24} className="text-yellow-500" />
+                            <div className="bg-c-accent-gold/15 p-3 rounded-full shrink-0">
+                                <Sun size={22} className="text-c-accent-gold" />
                             </div>
-                            <div className="flex-1 z-10">
+                            <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-start">
-                                    <h3 className="text-sm font-bold text-yellow-500 uppercase tracking-wide">Tratamiento de Luz</h3>
-                                    <ChevronRight size={16} className="text-zinc-600" />
+                                    <h3 className="text-sm font-bold text-c-accent-gold uppercase tracking-wide">Tratamiento de Luz</h3>
+                                    <ChevronRight size={16} className="text-c-text-faint" />
                                 </div>
-                                <p className="text-xs text-zinc-400 mt-1">
-                                    {season.lightTreatmentStartDate 
-                                        ? `Inicio: ${new Date(season.lightTreatmentStartDate + 'T00:00:00').toLocaleDateString()}` 
+                                <p className="text-xs text-c-text-muted mt-1">
+                                    {season.lightTreatmentStartDate
+                                        ? `Inicio: ${new Date(season.lightTreatmentStartDate + 'T00:00:00').toLocaleDateString()}`
                                         : 'Toca para configurar la fecha de inicio'}
                                 </p>
                                 <div className="mt-2 flex items-center gap-2">
-                                    <div className={`h-2 w-2 rounded-full ${season.lightTreatmentConfirmed ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
-                                    <span className="text-xs font-medium text-zinc-300">
+                                    <div className={`h-2 w-2 rounded-full ${season.lightTreatmentConfirmed ? 'bg-c-accent' : 'bg-brand-red animate-pulse'}`} />
+                                    <span className="text-xs font-medium text-c-text">
                                         {season.lightTreatmentStatus || 'Pendiente de Inicio'}
                                     </span>
                                 </div>
                             </div>
-                            {/* Decoración de fondo */}
-                            <Sun className="absolute -bottom-4 -right-4 text-yellow-500/5 w-32 h-32 pointer-events-none" />
-                        </div>
+                        </button>
                     )}
 
-                    {/* LISTA DE LOTES */}
+                    {/* LISTA DE MACHOS */}
                     <div>
-                        <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-3 px-1">Lotes de Reproducción</h3>
-                        
+                        <h3 className="text-xs font-bold text-c-text-faint uppercase tracking-wider mb-3 px-1">Reproductores</h3>
+
                         {seasonLots.length > 0 ? (
                             <div className="space-y-3">
                                 {seasonLots.map((lot) => (
-                                    <div 
+                                    <div
                                         key={lot.id}
-                                        className="group relative w-full bg-brand-glass backdrop-blur-md border border-brand-border hover:border-zinc-600 rounded-2xl transition-all overflow-hidden"
+                                        className="group relative w-full bg-c-surface border border-c-border hover:border-c-accent-sky/40 rounded-2xl transition-all overflow-hidden shadow-sm"
                                     >
-                                        <div 
+                                        <button
                                             onClick={() => navigateTo({ name: 'sire-lot-detail', lotId: lot.id })}
-                                            className="p-4 flex justify-between items-center cursor-pointer active:bg-zinc-800/50"
+                                            className="w-full p-4 flex justify-between items-center text-left active:bg-c-surface-2"
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-brand-blue font-bold text-xs border border-zinc-700">
-                                                    ID
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="w-11 h-11 rounded-xl bg-c-bg flex items-center justify-center text-c-accent-sky border border-c-border shrink-0">
+                                                    <Dna size={22} />
                                                 </div>
-                                                <div>
-                                                    <p className="font-bold text-white text-base">{getSireName(lot.sireId)}</p>
-                                                    <p className="text-xs text-zinc-500">
-                                                        Toca para gestionar hembras
-                                                    </p>
+                                                <div className="min-w-0">
+                                                    <p className="font-bold text-c-text text-base truncate">{getSireName(lot.sireId)}</p>
+                                                    <p className="text-xs text-c-text-muted">Toca para gestionar hembras</p>
                                                 </div>
                                             </div>
-                                            <ChevronRight className="text-zinc-600 group-hover:text-white transition-colors" />
-                                        </div>
+                                            <ChevronRight className="text-c-text-faint group-hover:text-c-text transition-colors shrink-0" />
+                                        </button>
 
                                         {/* Botón Eliminar */}
-                                        <button 
+                                        <button
                                             onClick={(e) => { e.stopPropagation(); setLotToDelete(lot); }}
-                                            className="absolute top-0 bottom-0 right-0 w-12 flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity border-l border-red-500/20"
+                                            className="absolute top-0 bottom-0 right-0 w-12 flex items-center justify-center bg-brand-red/10 hover:bg-brand-red/20 text-brand-red opacity-0 group-hover:opacity-100 transition-opacity border-l border-brand-red/20"
                                         >
                                             <Trash2 size={18} />
                                         </button>
@@ -214,11 +226,11 @@ export default function BreedingSeasonDetailPage({ seasonId, navigateTo, onBack 
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-10 bg-zinc-900/30 rounded-2xl border border-zinc-800/50 border-dashed">
-                                <Dna size={32} className="text-zinc-700 mx-auto mb-3" />
-                                <p className="text-sm text-zinc-500">No hay lotes creados en esta temporada.</p>
+                            <div className="text-center py-10 bg-c-surface rounded-2xl border border-c-border border-dashed">
+                                <Dna size={32} className="text-c-text-faint mx-auto mb-3" />
+                                <p className="text-sm text-c-text-muted">No hay machos en esta temporada.</p>
                                 {season.status === 'Activo' && (
-                                    <button onClick={() => setAddLotModalOpen(true)} className="mt-3 text-brand-blue text-sm font-bold hover:underline">
+                                    <button onClick={() => setAddLotModalOpen(true)} className="mt-3 text-c-accent-sky text-sm font-bold hover:underline">
                                         + Agregar Primer Macho
                                     </button>
                                 )}

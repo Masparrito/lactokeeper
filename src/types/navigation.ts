@@ -5,8 +5,10 @@
 export type AppModule = 'rebano' | 'lactokeeper' | 'kilos' | 'salud' | 'cents' | 'evolucion' | 'famacha';
 
 // El tipo para la navegación interna del módulo Rebaño
-export type PageState = 
-  | { name: 'lots-dashboard' } 
+export type PageState =
+  // tab: qué pestaña del dashboard de lotes mostrar (persiste al volver desde
+  // un detalle de temporada/semental, en vez de caer siempre en 'Físicos').
+  | { name: 'lots-dashboard', tab?: 'physical' | 'breeding' }
   | { name: 'lot-detail', lotName: string }
   | { name: 'sire-lot-detail', lotId: string }
   | { name: 'breeding-season-detail', seasonId: string }

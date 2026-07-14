@@ -1,13 +1,15 @@
 import { useState, useMemo } from 'react';
 import type { PageState } from '../../types/navigation';
 import { useData } from '../../context/DataContext';
-import { 
+import {
     HeartHandshake, Trash2, Edit, Dna, Users, Activity, GripVertical, MoreVertical, ChevronRight,
-    Timer
+    Timer, Plus
 } from 'lucide-react';
 import { BreedingSeason, SireLot } from '../../db/local';
 import { formatAnimalDisplay } from '../../utils/formatting';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
+import { Modal } from '../ui/Modal';
+import { SireLotForm } from '../forms/SireLotForm';
 import { Reorder, useDragControls, useMotionValue, useTransform, motion, AnimatePresence } from 'framer-motion';
 
 // --- HELPER: Estadísticas por Semental ---
@@ -27,35 +29,21 @@ const useSireLotStats = (lotId: string) => {
     }, [animals, serviceRecords, lotId]);
 };
 
-// --- HELPER: Mapa de Calor ---
-const useSeasonHeatmap = (season: BreedingSeason, seasonLots: SireLot[]) => {
-    const { serviceRecords } = useData();
+// --- HELPER: Estadísticas agregadas de la temporada (hembras y servidas) ---
+const useSeasonAggregateStats = (seasonLots: SireLot[]) => {
+    const { animals, serviceRecords } = useData();
     return useMemo(() => {
-        if (!season.startDate || !season.endDate) return [];
-        const start = new Date(season.startDate).getTime();
-        const end = new Date(season.endDate).getTime();
-        const duration = end - start;
         const lotIds = new Set(seasonLots.map(l => l.id));
-
-        const seasonServices = serviceRecords.filter(sr => 
-            lotIds.has(sr.sireLotId) && 
-            new Date(sr.serviceDate).getTime() >= start && 
-            new Date(sr.serviceDate).getTime() <= end
+        const assigned = animals.filter(a =>
+            a.sireLotId && lotIds.has(a.sireLotId) && a.status === 'Activo' && !a.isReference
         );
-
-        if (seasonServices.length === 0) return []; 
-
-        const buckets = new Array(20).fill(0); 
-        const bucketSize = duration / 20;
-
-        seasonServices.forEach(sr => {
-            const time = new Date(sr.serviceDate).getTime();
-            const bucketIndex = Math.min(Math.floor((time - start) / bucketSize), 19);
-            buckets[bucketIndex]++;
-        });
-        const max = Math.max(...buckets);
-        return buckets.map(v => (max > 0 ? (v / max) * 100 : 0));
-    }, [season, seasonLots, serviceRecords]);
+        const total = assigned.length;
+        const served = assigned.filter(f =>
+            serviceRecords.some(sr => sr.femaleId === f.id && lotIds.has(sr.sireLotId))
+        ).length;
+        const pct = total > 0 ? Math.round((served / total) * 100) : 0;
+        return { total, served, pct };
+    }, [animals, serviceRecords, seasonLots]);
 };
 
 // --- SUB-COMPONENTE: Fila de Semental (DARK REDESIGN) ---
@@ -93,9 +81,9 @@ const SwipeableSireRow = ({ lot, navigateTo, onDelete }: SwipeableSireRowProps) 
     return (
         <div className="relative mb-3 overflow-hidden h-[80px]"> 
             {/* Fondo Rojo de Eliminación */}
-            <motion.div 
+            <motion.div
                 style={{ opacity: deleteOpacity }}
-                className="absolute inset-0 bg-red-900/20 rounded-2xl flex items-center justify-end pr-6 pointer-events-none z-0 border border-red-900/30"
+                className="absolute inset-0 bg-brand-red/15 rounded-2xl flex items-center justify-end pr-6 pointer-events-none z-0 border border-brand-red/30"
             >
                 <Trash2 size={24} className="text-brand-red" />
             </motion.div>
@@ -125,7 +113,7 @@ const SwipeableSireRow = ({ lot, navigateTo, onDelete }: SwipeableSireRowProps) 
                                 {stats.totalFemales} Hembras
                             </span>
                             {stats.serviceRate > 0 && (
-                                <span className="text-[10px] font-bold text-green-400 bg-green-900/20 px-2 py-0.5 rounded-md border border-green-900/30 flex items-center gap-1">
+                                <span className="text-[10px] font-bold text-c-accent bg-c-accent/10 px-2 py-0.5 rounded-md border border-c-accent/20 flex items-center gap-1">
                                     <Activity size={10} /> {stats.serviceRate.toFixed(0)}% Servidas
                                 </span>
                             )}
@@ -134,7 +122,7 @@ const SwipeableSireRow = ({ lot, navigateTo, onDelete }: SwipeableSireRowProps) 
                 </div>
 
                 <div className="pl-2 flex flex-col items-end justify-center">
-                     <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${stats.serviceRate >= 100 ? 'bg-green-500/10 text-brand-green' : 'bg-c-surface-2 text-c-text-faint'}`}>
+                     <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${stats.serviceRate >= 100 ? 'bg-c-accent/10 text-c-accent' : 'bg-c-surface-2 text-c-text-faint'}`}>
                         <ChevronRight size={18} />
                     </div>
                 </div>
@@ -152,11 +140,13 @@ interface SeasonMasterCardProps {
     onDelete: () => void;
     dragControls: any;
     onDeleteLot: (lot: SireLot) => void;
+    onAddSire: (season: BreedingSeason) => void;
 }
 
-// --- TARJETA MAESTRA (DARK MODE REFINED) ---
-const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dragControls, onDeleteLot }: SeasonMasterCardProps) => {
+// --- TARJETA MAESTRA ---
+const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dragControls, onDeleteLot, onAddSire }: SeasonMasterCardProps) => {
     const [showMenu, setShowMenu] = useState(false);
+    const seasonStats = useSeasonAggregateStats(seasonLots);
     
     const startDate = new Date(season.startDate + 'T00:00:00');
     const endDate = new Date(season.endDate + 'T00:00:00');
@@ -176,15 +166,12 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
     const isOnHold = isActiveStatus && !hasSires;
     const isFuture = daysUntilStart > 0;
     
-    const heatmapData = useSeasonHeatmap(season, seasonLots);
-    const hasActivity = heatmapData.some(v => v > 0);
-
-    // Configuración Visual del Badge
+    // Configuración Visual del Badge (tokens de tema, legible en claro y oscuro)
     let statusConfig;
     if (isRunning) {
-        statusConfig = { color: 'text-green-400', bg: 'bg-green-900/20', border: 'border-green-500/30', dot: 'bg-green-500', label: 'En Curso', pulse: true };
+        statusConfig = { color: 'text-c-accent', bg: 'bg-c-accent/15', border: 'border-c-accent/30', dot: 'bg-c-accent', label: 'En Curso', pulse: true };
     } else if (isOnHold) {
-        statusConfig = { color: 'text-yellow-400', bg: 'bg-yellow-900/20', border: 'border-yellow-500/30', dot: 'bg-yellow-500', label: 'En Espera', pulse: false };
+        statusConfig = { color: 'text-c-accent-gold', bg: 'bg-c-accent-gold/15', border: 'border-c-accent-gold/30', dot: 'bg-c-accent-gold', label: 'En Espera', pulse: false };
     } else if (isFuture) {
         statusConfig = { color: 'text-c-accent-sky', bg: 'bg-c-accent-sky/15', border: 'border-c-accent-sky/30', dot: 'bg-c-accent-sky', label: 'Próxima', pulse: false };
     } else {
@@ -235,7 +222,7 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
                                             <Edit size={16} /> Editar
                                         </button>
                                         <div className="h-px bg-c-border"></div>
-                                        <button onClick={(e) => { e.stopPropagation(); onDelete(); setShowMenu(false); }} className="w-full text-left px-4 py-3 text-sm font-semibold text-red-400 hover:bg-red-900/30 flex items-center gap-3">
+                                        <button onClick={(e) => { e.stopPropagation(); onDelete(); setShowMenu(false); }} className="w-full text-left px-4 py-3 text-sm font-semibold text-brand-red hover:bg-brand-red/10 flex items-center gap-3">
                                             <Trash2 size={16} /> Eliminar
                                         </button>
                                     </motion.div>
@@ -269,7 +256,7 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
                     <div className="h-3 w-full bg-c-surface-3 rounded-full overflow-hidden relative">
                         {/* Barra de Progreso Dinámica */}
                         <div
-                            className={`h-full rounded-full ${isRunning ? 'bg-gradient-to-r from-indigo-500 to-purple-500' : (isOnHold ? 'bg-yellow-600' : 'bg-c-border-strong')}`}
+                            className={`h-full rounded-full ${isRunning ? 'bg-c-accent-sky' : (isOnHold ? 'bg-c-accent-gold' : 'bg-c-border-strong')}`}
                             style={{ width: `${progress}%` }}
                         />
                     </div>
@@ -279,13 +266,29 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
                             {isActiveStatus ? `${Math.round(progress)}% Completado` : (isFuture ? 'Pendiente' : 'Finalizado')}
                         </p>
                         {isActiveStatus && (
-                            <div className={`flex items-center gap-1.5 text-xs font-bold ${isOnHold ? 'text-yellow-500' : 'text-c-accent-sky'}`}>
+                            <div className={`flex items-center gap-1.5 text-xs font-bold ${isOnHold ? 'text-c-accent-gold' : 'text-c-accent-sky'}`}>
                                 <Timer size={12} />
                                 <span>{isOnHold ? 'Sin actividad' : `${daysLeft} días restantes`}</span>
                             </div>
                         )}
                     </div>
                 </div>
+
+                {/* Medidor de servidas (reemplaza el gráfico decorativo) */}
+                {seasonStats.total > 0 && (
+                    <div className="bg-c-surface-2 rounded-2xl p-4 border border-c-border">
+                        <div className="flex justify-between items-baseline mb-2">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-c-text-faint">Servidas</span>
+                            <span className="text-sm font-bold text-c-text-strong">
+                                {seasonStats.served}<span className="text-c-text-faint font-medium">/{seasonStats.total}</span>
+                                <span className="text-c-accent"> · {seasonStats.pct}%</span>
+                            </span>
+                        </div>
+                        <div className="h-2.5 w-full bg-c-surface-3 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full bg-c-accent transition-all" style={{ width: `${seasonStats.pct}%` }} />
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* 2. AREA DE SEMENTALES */}
@@ -294,6 +297,14 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
                     <h3 className="text-xs font-extrabold text-c-text-faint uppercase tracking-widest flex items-center gap-2">
                         <Users size={14} /> Equipo de Monta ({seasonLots.length})
                     </h3>
+                    {isActiveStatus && (
+                        <button
+                            onClick={() => onAddSire(season)}
+                            className="flex items-center gap-1 text-xs font-bold text-c-accent-sky bg-c-accent-sky/10 hover:bg-c-accent-sky/20 px-2.5 py-1 rounded-lg transition-colors active:scale-95"
+                        >
+                            <Plus size={14} /> Agregar macho
+                        </button>
+                    )}
                 </div>
 
                 {seasonLots.length > 0 ? (
@@ -319,26 +330,6 @@ const SeasonMasterCard = ({ season, seasonLots, navigateTo, onEdit, onDelete, dr
                 )}
             </div>
 
-            {/* 3. MAPA DE CALOR (Footer Sutil) */}
-            {hasActivity && (
-                <div className="relative h-14 w-full bg-gradient-to-t from-pink-900/10 to-transparent border-t border-c-border">
-                     <div className="absolute left-6 top-3 flex items-center gap-2">
-                        <Activity size={12} className="text-pink-500" />
-                        <span className="text-[9px] font-bold text-pink-500/70 uppercase tracking-widest">
-                            Actividad Reciente
-                        </span>
-                     </div>
-                     <div className="absolute bottom-0 left-0 right-0 flex items-end justify-between px-2 h-full opacity-60 pb-1">
-                        {heatmapData.map((val, idx) => (
-                            <div 
-                                key={idx} 
-                                className="w-full mx-[2px] bg-pink-500 rounded-t-sm transition-all"
-                                style={{ height: `${Math.max(val, 5)}%`, opacity: val > 0 ? 0.6 : 0.1 }}
-                            />
-                        ))}
-                     </div>
-                </div>
-            )}
         </div>
     );
 };
@@ -350,9 +341,21 @@ interface BreedingLotsViewProps {
 }
 
 export default function BreedingLotsView({ navigateTo, onEditSeason }: BreedingLotsViewProps) {
-    const { breedingSeasons, sireLots, deleteBreedingSeason, deleteSireLot } = useData();
+    const { breedingSeasons, sireLots, deleteBreedingSeason, deleteSireLot, addSireLot } = useData();
     const [deleteConfirmation, setDeleteConfirmation] = useState<BreedingSeason | null>(null);
     const [lotToDelete, setLotToDelete] = useState<SireLot | null>(null);
+    // Temporada para la que se está agregando un macho (abre el modal en la tarjeta).
+    const [addSireForSeason, setAddSireForSeason] = useState<BreedingSeason | null>(null);
+
+    // Agrega un macho a la temporada desde la propia tarjeta (evita duplicados).
+    const handleAddSire = async (sireId: string) => {
+        if (!addSireForSeason) return;
+        const exists = sireLots.some(l => l.seasonId === addSireForSeason.id && l.sireId === sireId);
+        if (exists) { alert('Este reproductor ya está en esta temporada.'); return; }
+        try { await addSireLot({ seasonId: addSireForSeason.id, sireId }); }
+        catch (err) { console.error(err); }
+        setAddSireForSeason(null);
+    };
 
     // --- ORDENAMIENTO POR PRIORIDAD ---
     const orderedSeasons = useMemo(() => {
@@ -438,13 +441,14 @@ export default function BreedingLotsView({ navigateTo, onEditSeason }: BreedingL
                     
                     return (
                         <Reorder.Item key={season.id} value={season} dragListener={false} dragControls={undefined}>
-                             <DraggableSeasonCard 
+                             <DraggableSeasonCard
                                 season={season}
                                 seasonLots={lotsForThisSeason}
                                 navigateTo={navigateTo}
                                 onEdit={() => onEditSeason(season)}
                                 onDelete={() => setDeleteConfirmation(season)}
                                 onDeleteLot={(lot: SireLot) => setLotToDelete(lot)}
+                                onAddSire={(s: BreedingSeason) => setAddSireForSeason(s)}
                              />
                         </Reorder.Item>
                     );
@@ -466,6 +470,16 @@ export default function BreedingLotsView({ navigateTo, onEditSeason }: BreedingL
                 title="Eliminar Semental"
                 message="¿Quitar este reproductor de la temporada? Las hembras volverán a estar disponibles."
             />
+
+            <Modal isOpen={!!addSireForSeason} onClose={() => setAddSireForSeason(null)} title="Agregar macho a la temporada">
+                {addSireForSeason && (
+                    <SireLotForm
+                        seasonId={addSireForSeason.id}
+                        onSave={handleAddSire}
+                        onCancel={() => setAddSireForSeason(null)}
+                    />
+                )}
+            </Modal>
         </>
     );
 };

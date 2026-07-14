@@ -94,21 +94,23 @@ const StatItem = ({ label, value, unit, subLabel, icon: Icon }: { label: string,
 // --- INTERFAZ DE PROPS (CORRECCIÓN TYPESCRIPT) ---
 interface LotsDashboardPageProps {
     navigateTo: (page: PageState) => void;
-    initialTab?: string; // Recibimos el parámetro opcional desde RebanoShell
+    // Pestaña controlada desde el PageState (para preservarla al volver).
+    tab?: 'physical' | 'breeding';
+    onTabChange?: (tab: 'physical' | 'breeding') => void;
 }
 
 // --- COMPONENTE PRINCIPAL ---
 
-export default function LotsDashboardPage({ navigateTo, initialTab }: LotsDashboardPageProps) {
-    
-    // Lógica para determinar la pestaña inicial basada en lo que envía RebanoShell
-    const getInitialTab = (): 'physical' | 'breeding' => {
-        if (initialTab === 'breeding' || initialTab === 'seasons') return 'breeding';
-        return 'physical';
-    };
+export default function LotsDashboardPage({ navigateTo, tab, onTabChange }: LotsDashboardPageProps) {
 
-    // Inicializamos el estado con la lógica anterior
-    const [activeTab, setActiveTab] = useState<'physical' | 'breeding'>(getInitialTab());
+    // La pestaña puede venir controlada por la ruta (tab) o gestionarse localmente
+    // como respaldo. handleTabChange sincroniza ambos y avisa a la ruta.
+    const [localTab, setLocalTab] = useState<'physical' | 'breeding'>(tab ?? 'physical');
+    const activeTab: 'physical' | 'breeding' = tab ?? localTab;
+    const setActiveTab = (v: 'physical' | 'breeding') => {
+        setLocalTab(v);
+        onTabChange?.(v);
+    };
     
     const [isAddLotModalOpen, setAddLotModalOpen] = useState(false);
     const { addBreedingSeason, updateBreedingSeason } = useData();
