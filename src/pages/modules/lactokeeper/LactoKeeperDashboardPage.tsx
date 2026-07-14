@@ -4,59 +4,11 @@ import { useState, useMemo } from 'react'; // (CORREGIDO) React sí se usa
 import { Area, XAxis, YAxis, ResponsiveContainer, BarChart, Bar, ReferenceLine, ComposedChart, Line, Cell, Tooltip, CartesianGrid } from 'recharts';
 import { useData } from '../../../context/DataContext';
 import { useHerdAnalytics } from '../../../hooks/useHerdAnalytics';
-import { calculateDEL } from '../../../utils/calculations';
+import { useHerdLactation } from '../../../hooks/useHerdLactation';
 // (CORREGIDO) Eliminados Plus, Camera, FilePen
-import { Droplet, ActivitySquare, BarChart as BarChartIconLucide, Info, TrendingUp, Activity, Calendar, Layers } from 'lucide-react';
+import { Droplet, ActivitySquare, BarChart as BarChartIconLucide, Info, TrendingUp, Activity, Calendar, Layers, Target } from 'lucide-react';
 import { CustomTooltip } from '../../../components/ui/CustomTooltip';
 import { Modal } from '../../../components/ui/Modal';
-// (CORREGIDO) Eliminadas importaciones de flujo
-import { Weighing } from '../../../db/local';
-
-// --- Modelo de lactancia de Wood: y = a · t^b · e^(−c·t) ---
-// Se ajusta por mínimos cuadrados linealizando ln(y) = ln(a) + b·ln(t) − c·t.
-interface WoodParams { a: number; b: number; c: number; }
-
-function solve3(A: number[][], b: number[]): number[] | null {
-    const M = A.map((row, i) => [...row, b[i]]);
-    for (let col = 0; col < 3; col++) {
-        let piv = col;
-        for (let r = col + 1; r < 3; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
-        if (Math.abs(M[piv][col]) < 1e-12) return null;
-        [M[col], M[piv]] = [M[piv], M[col]];
-        for (let r = 0; r < 3; r++) {
-            if (r === col) continue;
-            const f = M[r][col] / M[col][col];
-            for (let k = col; k < 4; k++) M[r][k] -= f * M[col][k];
-        }
-    }
-    return [M[0][3] / M[0][0], M[1][3] / M[1][1], M[2][3] / M[2][2]];
-}
-
-function fitWoodParams(points: { t: number; y: number }[]): WoodParams | null {
-    const pts = points.filter(p => p.t >= 1 && p.y > 0 && isFinite(p.t) && isFinite(p.y));
-    if (pts.length < 12) return null;
-    const S = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-    const rhs = [0, 0, 0];
-    for (const { t, y } of pts) {
-        const x = [1, Math.log(t), t];
-        const ly = Math.log(y);
-        for (let i = 0; i < 3; i++) { rhs[i] += x[i] * ly; for (let j = 0; j < 3; j++) S[i][j] += x[i] * x[j]; }
-    }
-    const beta = solve3(S, rhs);
-    if (!beta) return null;
-    const a = Math.exp(beta[0]); const b = beta[1]; const c = -beta[2];
-    if (!(a > 0) || !(b > 0) || !(c > 0)) return null; // sin pico => modelo no útil
-    return { a, b, c };
-}
-
-const evalWood = (p: WoodParams, t: number) => p.a * Math.pow(t, p.b) * Math.exp(-p.c * t);
-
-function percentile(sorted: number[], q: number): number {
-    if (!sorted.length) return 0;
-    const idx = (sorted.length - 1) * q;
-    const lo = Math.floor(idx), hi = Math.ceil(idx);
-    return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
-}
 
 interface LactoKeeperDashboardProps {
   onNavigateToAnalysis: () => void;
@@ -69,14 +21,14 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
   const [isChartInfoModalOpen, setIsChartInfoModalOpen] = useState(false);
   const [isGaussInfoModalOpen, setIsGaussInfoModalOpen] = useState(false);
 
-  // --- (CORREGIDO) Estados del flujo de importación ELIMINADOS ---
+  // Curva de lactancia + KPIs (sensible a la config de la finca).
+  const lactation = useHerdLactation(period);
 
   const analytics = useMemo(() => {
     // ... (Lógica de 'analytics' sin cambios) ...
     if (isLoading || !weighings.length || !animals.length) {
       return {
-        herdAverage: 0, activeGoats: 0, woodChart: [], woodKpis: null, stageDist: [],
-        sampleSize: { weighings: 0, animals: 0 },
+        herdAverage: 0, activeGoats: 0, stageDist: [],
         gaussData: { distribution: [], mean: 0, stdDev: 0 }
       };
     }
@@ -84,63 +36,6 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
     if (weighings.length > 0) {
         const latestDate = weighings.reduce((max, w) => w.date > max ? w.date : max, weighings[0].date);
         animalsInLastWeighing = new Set(weighings.filter(w => w.date === latestDate).map(w => w.goatId)).size;
-    }
-    // Filtrar los pesajes por período (ventana hacia atrás desde hoy).
-    const PERIOD_DAYS: Record<string, number | null> = { '1m': 30, '3m': 90, '6m': 182, '12m': 365, 'all': null };
-    const days = PERIOD_DAYS[period];
-    const cutoffMs = days ? Date.now() - days * 86400000 : null;
-    const weighingsForChart = cutoffMs
-        ? weighings.filter((w: Weighing) => new Date(w.date + 'T00:00:00').getTime() >= cutoffMs)
-        : weighings;
-
-    // Puntos (DEL, kg) para ajustar la curva de lactancia del rebaño.
-    const delPoints: { t: number; y: number }[] = [];
-    const curveAnimals = new Set<string>();
-    weighingsForChart.forEach(w => {
-        const parturitionForWeighing = parturitions
-            .filter(p => p.goatId === w.goatId && new Date(w.date) >= new Date(p.parturitionDate))
-            .sort((a, b) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime())[0];
-        if (!parturitionForWeighing) return;
-        const del = calculateDEL(parturitionForWeighing.parturitionDate, w.date);
-        if (del >= 1 && w.kg > 0) { delPoints.push({ t: del, y: w.kg }); curveAnimals.add(w.goatId); }
-    });
-    const sampleSize = { weighings: delPoints.length, animals: curveAnimals.size };
-
-    const woodParams = fitWoodParams(delPoints);
-    const observedMax = delPoints.reduce((m, p) => Math.max(m, p.t), 0);
-    const displayMax = Math.min(320, Math.max(120, observedMax));
-    const BIN = 10;
-    const woodChart: any[] = [];
-    for (let start = 0; start < displayMax; start += BIN) {
-        const center = start + BIN / 2;
-        const ys = delPoints.filter(p => p.t >= start && p.t < start + BIN).map(p => p.y).sort((a, b) => a - b);
-        const p25 = ys.length ? percentile(ys, 0.25) : null;
-        const p75 = ys.length ? percentile(ys, 0.75) : null;
-        woodChart.push({
-            del: center,
-            mean: ys.length ? +(ys.reduce((s, v) => s + v, 0) / ys.length).toFixed(2) : null,
-            p25: p25 !== null ? +p25.toFixed(2) : null,
-            band: (p25 !== null && p75 !== null) ? +(p75 - p25).toFixed(2) : null,
-            wood: woodParams ? +evalWood(woodParams, center).toFixed(2) : null,
-            n: ys.length,
-        });
-    }
-
-    let woodKpis: { peakDay: number; peakYield: number; persistence: number; proj305: number } | null = null;
-    if (woodParams) {
-        const peakDay = woodParams.b / woodParams.c;
-        const peakYield = evalWood(woodParams, peakDay);
-        let proj = 0;
-        for (let t = 1; t <= 305; t++) proj += evalWood(woodParams, t);
-        const post = evalWood(woodParams, peakDay + 100);
-        if (peakDay > 0 && peakDay < 400 && peakYield > 0 && isFinite(proj)) {
-            woodKpis = {
-                peakDay: Math.round(peakDay),
-                peakYield: +peakYield.toFixed(2),
-                persistence: Math.round((post / peakYield) * 100),
-                proj305: Math.round(proj),
-            };
-        }
     }
 
     // Distribución por etapa de lactancia (animales con lactancia activa, a hoy).
@@ -188,8 +83,8 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
     }
     const gaussData = { distribution, mean, stdDev };
     const totalAverage = weighings.length > 0 ? weighings.reduce((sum,w) => sum + w.kg, 0) / weighings.length : 0;
-    return { herdAverage: totalAverage, activeGoats: animalsInLastWeighing, woodChart, woodKpis, stageDist, sampleSize, gaussData };
-  }, [animals, weighings, parturitions, isLoading, period]);
+    return { herdAverage: totalAverage, activeGoats: animalsInLastWeighing, stageDist, gaussData };
+  }, [animals, weighings, parturitions, isLoading]);
 
   // --- (CORREGIDO) Handlers del flujo de importación ELIMINADOS ---
 
@@ -231,58 +126,66 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
                 </button>
             </div>
 
-            {/* ... (Resto de los gráficos de Curva de Lactancia y Distribución SIN CAMBIOS) ... */}
-            <div className="bg-c-surface rounded-2xl p-4 border border-c-border shadow-sm">
-                <div className="flex justify-between items-center border-b border-c-border pb-2 mb-4">
-                    <div className="flex items-center space-x-2 text-c-text-muted font-semibold text-xs uppercase tracking-wider">
-                        <BarChartIconLucide size={16}/>
+            {/* ===================== CURVA DE LACTANCIA ===================== */}
+            <div className="bg-c-surface rounded-2xl p-5 border border-c-border shadow-sm">
+                <div className="flex justify-between items-start gap-3 mb-1">
+                    <div className="flex items-center gap-2 text-c-text-strong font-bold text-sm">
+                        <TrendingUp size={18} className="text-c-accent-sky"/>
                         <span>Curva de Lactancia</span>
-                        <button onClick={() => setIsChartInfoModalOpen(true)} className="text-c-text-faint hover:text-c-text transition-colors">
-                            <Info size={14}/>
+                        <button onClick={() => setIsChartInfoModalOpen(true)} className="text-c-text-faint hover:text-c-accent-sky transition-colors">
+                            <Info size={15}/>
                         </button>
                     </div>
-                    <div className="flex bg-c-surface-2 rounded-lg p-0.5">
+                    <div className="flex bg-c-surface-2 rounded-lg p-0.5 shrink-0">
                         {([['1m','Mes'],['3m','Trim.'],['6m','Sem.'],['12m','Año'],['all','Todo']] as const).map(([val, lbl]) => (
-                            <button key={val} onClick={() => setPeriod(val)} className={`px-2 py-0.5 text-xs font-semibold rounded-md transition-colors ${period === val ? 'bg-c-accent-sky text-white shadow-sm' : 'text-c-text-muted hover:text-c-text'}`}>
+                            <button key={val} onClick={() => setPeriod(val)} className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors ${period === val ? 'bg-c-accent-sky text-white shadow-sm' : 'text-c-text-muted hover:text-c-text'}`}>
                                 {lbl}
                             </button>
                         ))}
                     </div>
                 </div>
-                <p className="text-[11px] text-c-text-faint -mt-2 mb-3">
-                    Basada en <span className="font-semibold text-c-text-muted">{analytics.sampleSize.weighings}</span> pesajes de <span className="font-semibold text-c-text-muted">{analytics.sampleSize.animals}</span> animales{period !== 'all' ? ` (últimos ${period === '1m' ? '30 días' : period === '3m' ? '3 meses' : period === '6m' ? '6 meses' : '12 meses'})` : ''}.
+                <p className="text-[11px] text-c-text-faint mb-4">
+                    Basada en <span className="font-semibold text-c-text-muted">{lactation.sampleSize.weighings}</span> pesajes de <span className="font-semibold text-c-text-muted">{lactation.sampleSize.animals}</span> animales{period !== 'all' ? ` · últimos ${period === '1m' ? '30 días' : period === '3m' ? '3 meses' : period === '6m' ? '6 meses' : '12 meses'}` : ' · histórico completo'} · meta {lactation.targetDays} d.
                 </p>
-                {analytics.woodKpis && (
-                    <div className="grid grid-cols-4 gap-2 mb-3">
+
+                {/* KPIs — 2×2 amplios y legibles */}
+                {lactation.kpis && (
+                    <div className="grid grid-cols-2 gap-3 mb-5">
                         {[
-                            { icon: Calendar, label: 'Día pico', value: `${analytics.woodKpis.peakDay}`, unit: 'd' },
-                            { icon: TrendingUp, label: 'Pico', value: analytics.woodKpis.peakYield.toFixed(2), unit: 'Kg' },
-                            { icon: Activity, label: 'Persistencia', value: `${analytics.woodKpis.persistence}`, unit: '%' },
-                            { icon: Droplet, label: 'Proy. 305d', value: `${analytics.woodKpis.proj305}`, unit: 'Kg' },
+                            { icon: Calendar, tint: 'text-c-accent-sky', label: 'Día pico', value: `${lactation.kpis.peakDay}`, unit: 'días', help: 'DEL del máximo' },
+                            { icon: TrendingUp, tint: 'text-c-accent-gold', label: 'Producción pico', value: lactation.kpis.peakYield.toFixed(2), unit: 'Kg/día', help: 'Máximo del rebaño' },
+                            { icon: Activity, tint: 'text-c-accent', label: 'Persistencia', value: `${lactation.kpis.persistence}`, unit: '%', help: '100 días tras el pico' },
+                            { icon: Target, tint: 'text-c-accent-sky', label: `Proy. ${lactation.targetDays} d`, value: `${lactation.kpis.projTotal}`, unit: 'Kg', help: 'Total por lactancia' },
                         ].map((k) => (
-                            <div key={k.label} className="bg-c-surface-2 rounded-xl p-2 text-center">
-                                <k.icon size={13} className="text-c-accent-sky mx-auto mb-1" />
-                                <p className="text-base font-bold text-c-text leading-none">{k.value}<span className="text-[10px] font-medium text-c-text-faint ml-0.5">{k.unit}</span></p>
-                                <p className="text-[9px] text-c-text-faint uppercase tracking-wide mt-1">{k.label}</p>
+                            <div key={k.label} className="bg-c-surface-2 rounded-2xl p-4 border border-c-border/60">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <k.icon size={16} className={k.tint} />
+                                    <span className="text-[11px] font-semibold text-c-text-muted uppercase tracking-wide">{k.label}</span>
+                                </div>
+                                <p className="text-2xl font-bold text-c-text-strong leading-none">
+                                    {k.value}<span className="text-sm font-medium text-c-text-faint ml-1">{k.unit}</span>
+                                </p>
+                                <p className="text-[10px] text-c-text-faint mt-1.5">{k.help}</p>
                             </div>
                         ))}
                     </div>
                 )}
-                <div className="w-full h-48">
+
+                {/* Gráfico amplio */}
+                <div className="w-full h-72">
                     <ResponsiveContainer>
-                        <ComposedChart data={analytics.woodChart} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                        <ComposedChart data={lactation.chart} margin={{ top: 8, right: 12, left: 0, bottom: 18 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                            <XAxis type="number" dataKey="del" tick={{ fill: '#64748b', fontSize: 11 }} stroke="#cbd5e1" tickLine={false} axisLine={false} domain={[0, 'dataMax']} label={{ value: 'Días en leche (DEL)', position: 'insideBottom', offset: -3, fontSize: 10, fill: '#94a3b8' }} />
-                            <YAxis orientation="right" tick={{ fill: '#64748b', fontSize: 11 }} stroke="#cbd5e1" tickLine={false} axisLine={false} domain={[0, 'auto']} width={30} />
+                            <XAxis type="number" dataKey="del" tick={{ fill: '#64748b', fontSize: 11 }} stroke="#cbd5e1" tickLine={false} axisLine={false} domain={[0, lactation.displayMax]} ticks={Array.from({ length: Math.floor(lactation.displayMax / 50) + 1 }, (_, i) => i * 50)} label={{ value: 'Días en leche (DEL)', position: 'insideBottom', offset: -8, fontSize: 11, fill: '#94a3b8' }} />
+                            <YAxis orientation="right" tick={{ fill: '#64748b', fontSize: 11 }} stroke="#cbd5e1" tickLine={false} axisLine={false} domain={[0, 'auto']} width={34} label={{ value: 'Kg/día', angle: 90, position: 'insideRight', fontSize: 10, fill: '#94a3b8' }} />
                             <Tooltip content={({ active, payload }: any) => {
                                 if (!active || !payload || !payload.length) return null;
                                 const d = payload[0].payload;
-                                const p75 = (d.p25 != null && d.band != null) ? (d.p25 + d.band).toFixed(2) : null;
                                 return (
                                     <div className="bg-c-surface border border-c-border rounded-lg px-3 py-2 shadow-lg text-xs">
                                         <p className="font-bold text-c-text">Día {Math.round(d.del)}</p>
                                         {d.wood != null && <p className="text-c-accent-sky font-semibold">Curva: {d.wood} Kg</p>}
-                                        {d.p25 != null && p75 != null && <p className="text-c-text-muted">Rango: {d.p25}–{p75} Kg</p>}
+                                        {d.p25 != null && d.p75 != null && <p className="text-c-text-muted">Rango: {d.p25}–{d.p75} Kg</p>}
                                         <p className="text-c-text-faint">{d.n} pesajes</p>
                                     </div>
                                 );
@@ -292,12 +195,23 @@ export default function LactoKeeperDashboardPage({ onNavigateToAnalysis }: Lacto
                             <Area type="monotone" dataKey="band" stackId="band" stroke="none" fill="#1E6FAD" fillOpacity={0.12} isAnimationActive={false} />
                             {/* Curva de Wood ajustada */}
                             <Line type="monotone" dataKey="wood" stroke="#1E6FAD" strokeWidth={3} dot={false} isAnimationActive={false} connectNulls />
-                            {analytics.woodKpis && <ReferenceLine x={analytics.woodKpis.peakDay} stroke="#2F843C" strokeDasharray="4 4" label={{ value: 'Pico', fill: '#2F843C', fontSize: 10, position: 'top' }} />}
+                            {lactation.kpis && <ReferenceLine x={lactation.kpis.peakDay} stroke="#2F843C" strokeDasharray="4 4" label={{ value: 'Pico', fill: '#2F843C', fontSize: 10, position: 'top' }} />}
+                            {/* Meta de lactancia (config de la finca) */}
+                            <ReferenceLine x={lactation.targetDays} stroke="#B45309" strokeDasharray="2 4" strokeWidth={1.5} label={{ value: `Meta ${lactation.targetDays}d`, fill: '#B45309', fontSize: 10, position: 'insideTopRight' }} />
                         </ComposedChart>
                     </ResponsiveContainer>
                 </div>
-                {!analytics.woodKpis && (
-                    <p className="text-xs text-c-text-faint text-center mt-2">Aún no hay suficientes pesajes para ajustar una curva definida. Se muestra la banda de dispersión disponible.</p>
+
+                {/* Leyenda */}
+                <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mt-3 text-[10px] text-c-text-faint">
+                    <span className="flex items-center gap-1.5"><span className="inline-block w-4 h-0.5 rounded bg-[#1E6FAD]"/>Curva ajustada (Wood)</span>
+                    <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-[#1E6FAD]/20"/>Rango P25–P75</span>
+                    <span className="flex items-center gap-1.5"><span className="inline-block w-4 border-t border-dashed border-[#2F843C]"/>Pico</span>
+                    <span className="flex items-center gap-1.5"><span className="inline-block w-4 border-t border-dashed border-[#B45309]"/>Meta lactancia</span>
+                </div>
+
+                {!lactation.kpis && (
+                    <p className="text-xs text-c-text-faint text-center mt-3">Aún no hay suficientes pesajes para ajustar una curva definida. Se muestra la banda de dispersión disponible. Amplía el período para incluir más datos.</p>
                 )}
             </div>
 
