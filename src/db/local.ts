@@ -165,6 +165,7 @@ export interface BreedingSeason extends SyncedRecord {
     lightTreatmentDuration?: number;
     lightTreatmentStatus?: 'Pendiente' | 'En Curso' | 'Finalizado';
     lightTreatmentConfirmed?: boolean;
+    closedDate?: string; // fecha real en que se finalizó la temporada
 }
 
 export interface SireLot extends SyncedRecord {

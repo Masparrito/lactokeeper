@@ -415,13 +415,14 @@ export default function BreedingLotsView({ navigateTo, onEditSeason }: BreedingL
     const [deleteConfirmation, setDeleteConfirmation] = useState<BreedingSeason | null>(null);
     const [lotToDelete, setLotToDelete] = useState<SireLot | null>(null);
     const [finalizeConfirmation, setFinalizeConfirmation] = useState<BreedingSeason | null>(null);
+    const [finalizeDate, setFinalizeDate] = useState(new Date().toISOString().split('T')[0]);
     const [swapForLot, setSwapForLot] = useState<SireLot | null>(null);
     const [retireForLot, setRetireForLot] = useState<SireLot | null>(null);
     const [retireDate, setRetireDate] = useState(new Date().toISOString().split('T')[0]);
 
     const handleConfirmFinalize = async () => {
         if (!finalizeConfirmation) return;
-        try { await updateBreedingSeason(finalizeConfirmation.id, { status: 'Cerrado' }); }
+        try { await updateBreedingSeason(finalizeConfirmation.id, { status: 'Cerrado', closedDate: finalizeDate }); }
         catch (err) { console.error(err); }
         setFinalizeConfirmation(null);
     };
@@ -546,7 +547,12 @@ export default function BreedingLotsView({ navigateTo, onEditSeason }: BreedingL
                                 onDelete={() => setDeleteConfirmation(season)}
                                 onDeleteLot={(lot: SireLot) => setLotToDelete(lot)}
                                 onAddSire={(s: BreedingSeason) => setAddSireForSeason(s)}
-                                onFinalize={(s: BreedingSeason) => setFinalizeConfirmation(s)}
+                                onFinalize={(s: BreedingSeason) => {
+                                    const t = new Date().toISOString().split('T')[0];
+                                    // Por defecto, la fecha de fin planificada si ya pasó; si no, hoy.
+                                    setFinalizeDate(s.endDate && s.endDate < t ? s.endDate : t);
+                                    setFinalizeConfirmation(s);
+                                }}
                                 onSwapLot={(lot: SireLot) => setSwapForLot(lot)}
                                 onRetireLot={(lot: SireLot) => { setRetireDate(new Date().toISOString().split('T')[0]); setRetireForLot(lot); }}
                              />
@@ -571,13 +577,33 @@ export default function BreedingLotsView({ navigateTo, onEditSeason }: BreedingL
                 message="¿Quitar este reproductor de la temporada? Las hembras volverán a estar disponibles."
             />
 
-            <ConfirmationModal
-                isOpen={!!finalizeConfirmation}
-                onClose={() => setFinalizeConfirmation(null)}
-                onConfirm={handleConfirmFinalize}
-                title="Finalizar Temporada"
-                message={`¿Finalizar "${finalizeConfirmation?.name}"? La temporada quedará cerrada y no se registrarán más servicios en ella. Los registros históricos se conservan.`}
-            />
+            {/* Finalizar temporada: pide la fecha de finalización */}
+            <Modal isOpen={!!finalizeConfirmation} onClose={() => setFinalizeConfirmation(null)} title="Finalizar temporada">
+                <div className="space-y-4">
+                    <p className="text-sm text-c-text-muted leading-relaxed">
+                        {finalizeConfirmation && (<>Se cerrará <strong className="text-c-text">"{finalizeConfirmation.name}"</strong>. </>)}
+                        No se registrarán más servicios en ella. Los registros históricos se conservan.
+                    </p>
+                    <div>
+                        <label className="block text-sm font-bold text-c-text-strong mb-2">Fecha de finalización</label>
+                        <input
+                            type="date"
+                            value={finalizeDate}
+                            onChange={(e) => setFinalizeDate(e.target.value)}
+                            max={new Date().toISOString().split('T')[0]}
+                            className="w-full bg-c-surface-2 border border-c-border-strong rounded-xl py-3 px-4 text-c-text focus:border-c-accent-sky outline-none"
+                        />
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                        <button type="button" onClick={() => setFinalizeConfirmation(null)} className="flex-1 px-5 py-3 bg-c-surface-2 hover:bg-c-surface-3 text-c-text font-bold rounded-xl transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="button" onClick={handleConfirmFinalize} className="flex-1 px-5 py-3 bg-c-accent-gold hover:bg-c-accent-gold/90 text-white font-bold rounded-xl transition-colors active:scale-[0.98]">
+                            Finalizar
+                        </button>
+                    </div>
+                </div>
+            </Modal>
 
             <Modal isOpen={!!addSireForSeason} onClose={() => setAddSireForSeason(null)} title="Agregar macho a la temporada">
                 {addSireForSeason && (
