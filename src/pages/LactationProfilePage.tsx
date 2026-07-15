@@ -12,6 +12,7 @@ import { ParturitionModal } from '../components/modals/ParturitionModal';
 import { DryOffModal } from '../components/modals/DryOffModal';
 import { useData } from '../context/DataContext';
 import { calculateDEL } from '../utils/calculations';
+import { getStaleOpenLactations, nextParturitionDate } from '../utils/lactation';
 import type { PageState } from '../types/navigation';
 // --- CORRECCIÓN: Se importa solo el componente HistoricalLactationChart ---
 import { HistoricalLactationChart } from '../components/charts/HistoricalLactationChart';
@@ -67,7 +68,8 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
     const [partoModal, setPartoModal] = useState<{ date: string; id: string } | null>(null);
     const [deleteLactPart, setDeleteLactPart] = useState<Parturition | null>(null);
     // Secado con fecha (motor único DryOffModal).
-    const [isDryOpen, setDryOpen] = useState(false);
+    // Objetivo del modal de secado: {id del parto, fecha del siguiente parto (tope)}.
+    const [dryTarget, setDryTarget] = useState<{ id: string; maxDate: string | null } | null>(null);
     const fmtD = (d: string) => { try { return new Date(d + 'T00:00:00Z').toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }); } catch { return d; } };
 
     // Parto de cada lactancia (para detectar provisionales) indexado por fecha.
@@ -131,6 +133,13 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
         );
         return { ...lastLactationCycle, id: correspondingParturition?.id, status: correspondingParturition?.status };
     }, [allLactations, parturitions, animalId]);
+
+    // Ids de partos con lactancia abierta sin secar (quedaron 'activa' detrás de
+    // un parto más nuevo). Se marcan y ofrecen "declarar seca" por fila.
+    const staleLactationIds = useMemo(
+        () => new Set(getStaleOpenLactations(animalId, parturitions).map(p => p.id)),
+        [animalId, parturitions]
+    );
 
     const currentDEL = useMemo(() => {
        if (!currentLactationData || currentLactationData.status === 'seca' || currentLactationData.status === 'finalizada') return 'N/A';
@@ -318,18 +327,20 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                             (currentLactationData?.status === 'activa' || currentLactationData?.status === 'en-secado');
                         const part = parturitionByDate.get(lact.parturitionDate);
                         const isProvisional = !!part?.provisional;
+                        const isStale = !!part && staleLactationIds.has(part.id);
                         return (
                             <div key={lact.parturitionDate} className="space-y-1">
                                 <button
                                     onClick={() => navigateTo({ name: 'lactation-weighings', animalId, parturitionDate: lact.parturitionDate })}
-                                    className="w-full flex items-center gap-3 bg-c-surface border border-c-border rounded-xl px-3 py-2.5 text-left hover:bg-c-surface-2 transition-colors"
+                                    className={`w-full flex items-center gap-3 bg-c-surface border rounded-xl px-3 py-2.5 text-left hover:bg-c-surface-2 transition-colors ${isStale ? 'border-c-accent-gold/50' : 'border-c-border'}`}
                                 >
                                     <div className="w-9 h-9 rounded-lg bg-amber-500/15 text-amber-500 flex items-center justify-center font-bold flex-shrink-0">{n}</div>
                                     <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 flex-wrap">
                                             <span className="font-semibold text-c-text-strong">Lactancia {n}</span>
                                             <span className="text-xs text-c-text-faint">{year}</span>
                                             {isCurrent && <span className="text-[10px] font-bold uppercase bg-c-accent/15 text-c-accent px-1.5 py-0.5 rounded">Actual</span>}
+                                            {isStale && <span className="text-[10px] font-bold uppercase bg-c-accent-gold/15 text-c-accent-gold px-1.5 py-0.5 rounded flex items-center gap-1"><AlertTriangle size={9} /> Sin secar</span>}
                                         </div>
                                         <p className="text-xs text-c-text-muted truncate">
                                             {hasWeighings
@@ -339,6 +350,16 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                                     </div>
                                     <ChevronRight size={18} className="text-c-text-faint flex-shrink-0" />
                                 </button>
+                                {isStale && part && (
+                                    <button
+                                        onClick={() => setDryTarget({ id: part.id, maxDate: nextParturitionDate(part, parturitions) })}
+                                        className="w-full flex items-center gap-2 bg-c-accent-gold/10 border border-c-accent-gold/30 text-c-accent-gold rounded-lg px-3 py-2 text-left hover:bg-c-accent-gold/15 transition-colors"
+                                    >
+                                        <Archive size={15} className="flex-shrink-0" />
+                                        <span className="text-xs font-semibold flex-1">Lactancia abierta sin secar — declarar seca</span>
+                                        <ChevronRight size={15} className="flex-shrink-0" />
+                                    </button>
+                                )}
                                 {isProvisional && part && (
                                     <div className="flex items-center gap-2">
                                         <button
@@ -444,19 +465,20 @@ export default function LactationProfilePage({ animalId, onBack, navigateTo }: L
                                     </div>
                                 </div>
                                 <div className="flex gap-3">
-                                    <button onClick={() => setDryOpen(true)} className="flex-1 flex items-center justify-center gap-2 bg-c-surface-2 hover:bg-c-surface-3 text-c-text-strong font-semibold py-2.5 px-3 rounded-xl transition-colors text-sm"><CalendarDays size={16} /> Editar fecha</button>
+                                    <button onClick={() => currentLactationData.id && setDryTarget({ id: currentLactationData.id, maxDate: null })} className="flex-1 flex items-center justify-center gap-2 bg-c-surface-2 hover:bg-c-surface-3 text-c-text-strong font-semibold py-2.5 px-3 rounded-xl transition-colors text-sm"><CalendarDays size={16} /> Editar fecha</button>
                                     <button onClick={() => currentLactationData.id && revertLactationDrying(currentLactationData.id)} className="flex-1 flex items-center justify-center gap-2 bg-brand-red/10 hover:bg-brand-red/20 text-brand-red font-semibold py-2.5 px-3 rounded-xl transition-colors text-sm"><RefreshCw size={16} /> Reactivar</button>
                                 </div>
                             </div>
                         ) : (
-                            <button onClick={() => setDryOpen(true)} className="w-full flex items-center justify-center space-x-2 bg-c-surface-2 hover:bg-c-surface-3 text-c-text-strong font-semibold py-3 px-4 rounded-xl transition-colors"><Archive size={20} /><span>Declarar seca (con fecha)</span></button>
+                            <button onClick={() => currentLactationData.id && setDryTarget({ id: currentLactationData.id, maxDate: null })} className="w-full flex items-center justify-center space-x-2 bg-c-surface-2 hover:bg-c-surface-3 text-c-text-strong font-semibold py-3 px-4 rounded-xl transition-colors"><Archive size={20} /><span>Declarar seca (con fecha)</span></button>
                         )}
                     </div>
                 )}
             </div>
 
-            {/* Declarar / editar secado (motor único) */}
-            <DryOffModal isOpen={isDryOpen} parturitionId={currentLactationData?.id ?? null} onClose={() => setDryOpen(false)} />
+            {/* Declarar / editar secado (motor único) — funciona para la lactancia
+                actual y para lactancias viejas sin secar (con tope de fecha). */}
+            <DryOffModal isOpen={!!dryTarget} parturitionId={dryTarget?.id ?? null} maxDate={dryTarget?.maxDate} onClose={() => setDryTarget(null)} />
 
             {/* Crear lactancia (parto provisional) */}
             <Modal isOpen={isCreateOpen} onClose={() => setCreateOpen(false)} title="Crear lactancia">

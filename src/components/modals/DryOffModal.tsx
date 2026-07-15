@@ -10,22 +10,41 @@ interface DryOffModalProps {
     isOpen: boolean;
     onClose: () => void;
     parturitionId: string | null;
+    // Fecha del SIGUIENTE parto (si la lactancia a secar quedó atrás de un parto
+    // más nuevo). El secado debe ser ESTRICTAMENTE anterior a esa fecha.
+    maxDate?: string | null;
     onDone?: () => void;
 }
 
-export function DryOffModal({ isOpen, onClose, parturitionId, onDone }: DryOffModalProps) {
+// Día anterior a una fecha ISO (YYYY-MM-DD).
+const prevDay = (iso: string) => {
+    const d = new Date(iso + 'T00:00:00');
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+};
+
+export function DryOffModal({ isOpen, onClose, parturitionId, maxDate, onDone }: DryOffModalProps) {
     const { parturitions, animals, setLactationAsDry } = useData();
     const today = new Date().toISOString().split('T')[0];
 
     const part = parturitions.find(p => p.id === parturitionId) || null;
     const animal = part ? animals.find(a => a.id === part.goatId) : null;
 
+    // Tope efectivo: nunca futuro y, si hay parto siguiente, el día anterior a él.
+    const upperBound = maxDate ? (prevDay(maxDate) < today ? prevDay(maxDate) : today) : today;
+
     const [date, setDate] = useState(today);
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        if (isOpen) { setDate(part?.dryingStartDate || today); setError(''); }
+        if (isOpen) {
+            // Al abrir: usa la fecha de secado previa si existe; si el default (hoy)
+            // se pasa del tope, arranca en el tope.
+            const initial = part?.dryingStartDate || today;
+            setDate(initial > upperBound ? upperBound : initial);
+            setError('');
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, parturitionId]);
 
@@ -34,6 +53,7 @@ export function DryOffModal({ isOpen, onClose, parturitionId, onDone }: DryOffMo
         if (!date) { setError('Elige la fecha de secado.'); return; }
         if (date < part.parturitionDate) { setError('La fecha no puede ser anterior al parto.'); return; }
         if (date > today) { setError('La fecha no puede ser futura.'); return; }
+        if (maxDate && date >= maxDate) { setError(`La fecha debe ser anterior al siguiente parto (${maxDate}).`); return; }
         setError('');
         setSaving(true);
         try {
@@ -59,7 +79,7 @@ export function DryOffModal({ isOpen, onClose, parturitionId, onDone }: DryOffMo
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-c-text-muted mb-1">Fecha de secado</label>
-                    <input type="date" value={date} min={part?.parturitionDate} max={today} onChange={e => setDate(e.target.value)}
+                    <input type="date" value={date} min={part?.parturitionDate} max={upperBound} onChange={e => setDate(e.target.value)}
                         className="w-full bg-c-surface-2 text-c-text p-3 rounded-xl border border-c-border focus:outline-none focus:ring-2 focus:ring-c-accent-sky" />
                 </div>
                 {error && <p className="text-sm text-red-500 text-center">{error}</p>}
