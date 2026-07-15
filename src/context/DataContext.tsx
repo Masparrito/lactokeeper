@@ -60,7 +60,7 @@ interface IDataContext {
   addBreedingSeason: (seasonData: Omit<BreedingSeason, 'id' | 'userId' | '_synced'>) => Promise<string>;
   updateBreedingSeason: (seasonId: string, dataToUpdate: Partial<BreedingSeason>) => Promise<void>;
   closeBreedingSeason: (seasonId: string, closedDate: string) => Promise<void>;
-  normalizeReproductiveState: () => Promise<number>;
+  normalizeReproductiveState: (opts?: { aggressive?: boolean; diagnostic?: boolean }) => Promise<{ released: number; report: string[] }>;
 
   deleteBreedingSeason: (seasonId: string) => Promise<void>;
 
@@ -1496,8 +1496,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     //  2) Hembras 'Servida' ya desvinculadas cuya presunta preñez venció (>=150 d
     //     sin parto) => vuelven a 'Vacía'.
     // Solo escribe cuando hay un cambio real; nunca borra servicios ni partos.
-    const normalizeReproductiveState = useCallback(async (): Promise<number> => {
-        if (!currentUser || isNormalizingReproRef.current) return 0;
+    const normalizeReproductiveState = useCallback(async (opts?: { aggressive?: boolean; diagnostic?: boolean }): Promise<{ released: number; report: string[] }> => {
+        const aggressive = !!opts?.aggressive;
+        const wantReport = !!opts?.diagnostic;
+        // El guard evita que la AUTO-reparación se solape consigo misma. El botón
+        // manual (aggressive) siempre procede, para no dar un falso "0" si la
+        // auto-reparación estuviera en curso.
+        if (!currentUser) return { released: 0, report: [] };
+        if (isNormalizingReproRef.current && !aggressive) return { released: 0, report: [] };
         isNormalizingReproRef.current = true;
         try {
             const localDb = getDB();
@@ -1515,21 +1521,30 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const nowMs = Date.now();
 
             const updates: { id: string; reproductiveStatus: Animal['reproductiveStatus']; clearSire: boolean }[] = [];
+            const report: string[] = [];
+            let withLink = 0;
 
             for (const a of allAnimals) {
                 if (a.isReference) continue;
                 if (a.sireLotId) {
+                    withLink++;
                     const lot = lotById.get(a.sireLotId);
                     const season = lot ? seasonById.get(lot.seasonId) : undefined;
-                    // Solo liberamos si SABEMOS con certeza que la temporada terminó
-                    // (cerrada o vencida por fecha). Si el lote/temporada aún no
-                    // cargaron, no hacemos nada (evita falsos positivos en la carga).
-                    if (season && isSeasonOver(season, nowMs)) {
+                    const over = season ? isSeasonOver(season, nowMs) : false;
+                    // Seguro (auto): solo si la temporada existe y terminó.
+                    // Agresivo (botón manual, datos completos): también lotes huérfanos
+                    // o temporadas inexistentes (contexto de monta roto/inexistente);
+                    // solo se respeta a las hembras de una temporada ACTIVA vigente.
+                    const shouldRelease = aggressive ? (!lot || !season || over) : (!!season && over);
+                    if (shouldRelease) {
                         const target = computeReleasedReproState({
                             animal: a, services: svcByFemale.get(a.id) || [], parturitions: partByGoat.get(a.id) || [],
                             diasGestacion: dias, nowMs,
                         });
                         updates.push({ id: a.id, reproductiveStatus: target.reproductiveStatus, clearSire: true });
+                    }
+                    if (wantReport && report.length < 25) {
+                        report.push(`${a.id}: lote ${lot ? '✓' : '✗ORFANO'} · temp ${season ? season.name.slice(0, 12) + '/' + season.status : '✗NINGUNA'} · fin ${season?.endDate || '-'} · terminada:${over ? 'SÍ' : 'NO'} → ${shouldRelease ? 'LIBERA' : 'mantiene'}`);
                     }
                 } else if (a.reproductiveStatus === 'Servida') {
                     if (isPresumedPregnancyExpired(svcByFemale.get(a.id) || [], partByGoat.get(a.id) || [], dias, nowMs)) {
@@ -1538,7 +1553,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             }
 
-            if (!updates.length) return 0;
+            if (wantReport) report.unshift(`Hembras con vínculo de monta: ${withLink}. A liberar: ${updates.filter(u => u.clearSire).length}.`);
+
+            if (!updates.length) return { released: 0, report };
 
             for (const u of updates) {
                 const changes: any = { reproductiveStatus: u.reproductiveStatus, _synced: false };
@@ -1552,7 +1569,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 if (!ua) continue;
                 enqueueSync(() => syncToFirestore("animals", u.id, ua));
             }
-            return updates.length;
+            return { released: updates.filter(u => u.clearSire).length, report };
         } finally {
             isNormalizingReproRef.current = false;
         }

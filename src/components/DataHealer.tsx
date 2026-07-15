@@ -9,17 +9,20 @@ export const DataHealer = () => {
     const [report, setReport] = useState<string[]>([]);
     const [isReproHealing, setIsReproHealing] = useState(false);
     const [reproReport, setReproReport] = useState<string | null>(null);
+    const [reproDiag, setReproDiag] = useState<string[]>([]);
 
     const handleReproRepair = async () => {
         setIsReproHealing(true);
         setReproReport(null);
+        setReproDiag([]);
         try {
-            const count = await normalizeReproductiveState();
+            const { released, report } = await normalizeReproductiveState({ aggressive: true, diagnostic: true });
             setReproReport(
-                count > 0
-                    ? `🎉 Listo: ${count} ${count === 1 ? 'hembra liberada' : 'hembras liberadas'} de temporadas terminadas.`
-                    : '✨ No había hembras atascadas en temporadas terminadas.'
+                released > 0
+                    ? `🎉 Listo: ${released} ${released === 1 ? 'hembra liberada' : 'hembras liberadas'} de temporadas terminadas.`
+                    : 'No se liberó ninguna hembra. Detalle abajo (compártelo si el problema sigue):'
             );
+            setReproDiag(report);
         } catch (e: any) {
             setReproReport(`❌ Error: ${e?.message || 'no se pudo reparar'}`);
         }
@@ -148,6 +151,15 @@ export const DataHealer = () => {
                 {reproReport && (
                     <div className={`mt-4 p-4 rounded-xl border text-sm font-semibold ${reproReport.includes('Error') ? 'bg-brand-red/10 border-brand-red/20 text-brand-red' : 'bg-c-surface-2 border-c-border text-c-text'}`}>
                         {reproReport}
+                    </div>
+                )}
+                {reproDiag.length > 0 && (
+                    <div className="mt-3 bg-c-surface-2 p-3 rounded-xl border border-c-border max-h-72 overflow-y-auto">
+                        <div className="font-mono text-[11px] leading-relaxed space-y-1">
+                            {reproDiag.map((line, i) => (
+                                <div key={i} className={i === 0 ? 'text-c-text-strong font-bold pb-1 border-b border-c-border' : 'text-c-text-muted'}>{line}</div>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>
