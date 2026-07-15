@@ -184,10 +184,12 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
         
         try {
             // 1. Actualizamos la base de datos local
-            // Importante: Pasamos 'undefined' casteado o null para borrar el campo
-            await updateAnimal(actionSheetAnimal.id, { 
-                sireLotId: undefined as any, // Dexie interpreta undefined como "borrar esta clave"
-                reproductiveStatus: newStatus 
+            // Usamos `null` (no `undefined`): null SÍ se sincroniza a Firestore para
+            // desvincular; undefined se descarta en el sync y el vínculo viejo
+            // reaparecería al recargar desde la nube.
+            await updateAnimal(actionSheetAnimal.id, {
+                sireLotId: null,
+                reproductiveStatus: newStatus
             });
             
             // 2. Forzamos la recarga de datos desde la DB para que la UI se actualice con la verdad

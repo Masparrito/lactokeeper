@@ -94,7 +94,9 @@ export interface Animal extends SyncedRecord {
     racialComposition?: string;
     observations?: string;
     reproductiveStatus: ReproductiveStatus; // <--- Usa el tipo actualizado
-    sireLotId?: string;
+    // `null` = desvinculada explícitamente (se sincroniza a Firestore; `undefined`
+    // se descarta en el sync y dejaría el vínculo viejo en la nube).
+    sireLotId?: string | null;
     endDate?: string;
     salePrice?: number;
     saleBuyer?: string;

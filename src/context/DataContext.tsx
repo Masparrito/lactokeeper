@@ -3,7 +3,7 @@ import { Table } from 'dexie';
 import { Animal, Weighing, Parturition, Father, Lot, Origin, BreedingSeason, SireLot, ServiceRecord, Event, EventType, BodyWeighing, Product, HealthPlan, PlanActivity, HealthEvent, FeedingPlan, FamachaRev, initDB, getDB, GanaderoOSTables } from '../db/local';
 import { db as firestoreDb } from '../firebaseConfig';
 import { useAuth } from './AuthContext';
-import { collection, query, where, onSnapshot, doc, setDoc, writeBatch, Timestamp, serverTimestamp, deleteField } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, setDoc, writeBatch, Timestamp, serverTimestamp } from "firebase/firestore";
 import { v4 as uuidv4 } from 'uuid';
 import { calculateAgeInMonths } from '../utils/calculations';
 import { computeReleasedReproState, isPresumedPregnancyExpired } from '../utils/reproduction';
@@ -1197,7 +1197,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 // provisional (solo fecha) también libera el vínculo.
                 const motherChanges: Partial<Animal> = { _synced: false };
                 if (mother.lifecycleStage !== 'Cabra') motherChanges.lifecycleStage = 'Cabra';
-                if (mother.sireLotId) motherChanges.sireLotId = undefined;
+                if (mother.sireLotId) motherChanges.sireLotId = null;
                 if (mother.reproductiveStatus !== 'Post-Parto') motherChanges.reproductiveStatus = 'Post-Parto';
                 await localDb.animals.update(upperCaseMotherId, motherChanges);
             }
@@ -1470,7 +1470,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     animal: m, services: svcByFemale.get(m.id) || [], parturitions: partByGoat.get(m.id) || [],
                     diasGestacion: dias, nowMs,
                 });
-                await localDb.animals.update(m.id, { sireLotId: undefined, reproductiveStatus: target.reproductiveStatus, _synced: false });
+                await localDb.animals.update(m.id, { sireLotId: null, reproductiveStatus: target.reproductiveStatus, _synced: false });
             }
         });
 
@@ -1484,7 +1484,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         for (const m of members) {
             const ua = await localDb.animals.get(m.id);
-            if (ua) { const payload: any = { ...ua, sireLotId: deleteField() }; enqueueSync(() => syncToFirestore("animals", m.id, payload)); }
+            if (ua) enqueueSync(() => syncToFirestore("animals", m.id, ua));
         }
     }, [currentUser, appConfig, enqueueSync, fetchDataFromLocalDb]);
 
@@ -1537,7 +1537,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         for (const u of updates) {
             const changes: any = { reproductiveStatus: u.reproductiveStatus, _synced: false };
-            if (u.clearSire) changes.sireLotId = undefined;
+            if (u.clearSire) changes.sireLotId = null;
             await localDb.animals.update(u.id, changes);
         }
         await fetchDataFromLocalDb();
@@ -1545,8 +1545,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         for (const u of updates) {
             const ua = await localDb.animals.get(u.id);
             if (!ua) continue;
-            const payload: any = u.clearSire ? { ...ua, sireLotId: deleteField() } : ua;
-            enqueueSync(() => syncToFirestore("animals", u.id, payload));
+            enqueueSync(() => syncToFirestore("animals", u.id, ua));
         }
     }, [currentUser, appConfig, enqueueSync, fetchDataFromLocalDb]);
 
@@ -1578,7 +1577,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     await localDb.animals.bulkUpdate(animalIdsToUpdate.map(id => ({
                         key: id,
                         changes: {
-                            sireLotId: undefined,
+                            sireLotId: null,
                             reproductiveStatus: 'Vacía',
                             _synced: false
                         }
@@ -1604,8 +1603,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const updatedAnimals = await localDb.animals.bulkGet(animalIdsToUpdate);
             for (const animal of updatedAnimals) {
                 if (animal) {
-                    const firestoreUpdateData = { ...animal, sireLotId: deleteField() };
-                    enqueueSync(() => syncToFirestore("animals", animal.id, firestoreUpdateData));
+                    enqueueSync(() => syncToFirestore("animals", animal.id, animal));
                 }
             }
         }
@@ -1656,7 +1654,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         await localDb.sireLots.update(lotId, { retiredDate, _synced: false });
         for (const a of toFree) {
-            await localDb.animals.update(a.id, { sireLotId: undefined, reproductiveStatus: 'Vacía', _synced: false });
+            await localDb.animals.update(a.id, { sireLotId: null, reproductiveStatus: 'Vacía', _synced: false });
         }
         fetchDataFromLocalDb();
 

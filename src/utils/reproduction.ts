@@ -21,9 +21,10 @@ const toMs = (d: string) => new Date(d + (d.length <= 10 ? 'T00:00:00' : '')).ge
  *    (Si ya estaba 'Preñada' confirmada, se conserva 'Preñada'.)
  *  - Ya parió tras el servicio, nunca se le vio servicio, o
  *    pasaron >= diasGestacion sin parto                      => 'Vacía' (libre).
- * Siempre devuelve `sireLotId: undefined` (deja de estar "en monta").
+ * Siempre devuelve `sireLotId: null` (desvinculada; `null` sí se sincroniza a
+ * Firestore, mientras que `undefined` se descartaría y dejaría el vínculo viejo).
  */
-export function computeReleasedReproState(input: ReleaseInput): Pick<Animal, 'sireLotId' | 'reproductiveStatus'> {
+export function computeReleasedReproState(input: ReleaseInput): { sireLotId: null; reproductiveStatus: Animal['reproductiveStatus'] } {
     const { animal, services, parturitions, diasGestacion, nowMs } = input;
     const last = [...services].sort((a, b) => toMs(b.serviceDate) - toMs(a.serviceDate))[0];
     const partoAfterService = !!last && parturitions.some(p => toMs(p.parturitionDate) >= toMs(last.serviceDate));
@@ -33,7 +34,7 @@ export function computeReleasedReproState(input: ReleaseInput): Pick<Animal, 'si
     const reproductiveStatus: Animal['reproductiveStatus'] = gestando
         ? (animal.reproductiveStatus === 'Preñada' ? 'Preñada' : 'Servida')
         : 'Vacía';
-    return { sireLotId: undefined, reproductiveStatus };
+    return { sireLotId: null, reproductiveStatus };
 }
 
 /**
