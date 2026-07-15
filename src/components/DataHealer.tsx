@@ -1,12 +1,30 @@
 import { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { getAnimalZootecnicCategory } from '../utils/calculations';
-import { RefreshCcw } from 'lucide-react';
+import { RefreshCcw, HeartHandshake } from 'lucide-react';
 
 export const DataHealer = () => {
-    const { animals, parturitions, bulkUpdateAnimals, appConfig } = useData();
+    const { animals, parturitions, bulkUpdateAnimals, appConfig, normalizeReproductiveState } = useData();
     const [isHealing, setIsHealing] = useState(false);
     const [report, setReport] = useState<string[]>([]);
+    const [isReproHealing, setIsReproHealing] = useState(false);
+    const [reproReport, setReproReport] = useState<string | null>(null);
+
+    const handleReproRepair = async () => {
+        setIsReproHealing(true);
+        setReproReport(null);
+        try {
+            const count = await normalizeReproductiveState();
+            setReproReport(
+                count > 0
+                    ? `🎉 Listo: ${count} ${count === 1 ? 'hembra liberada' : 'hembras liberadas'} de temporadas terminadas.`
+                    : '✨ No había hembras atascadas en temporadas terminadas.'
+            );
+        } catch (e: any) {
+            setReproReport(`❌ Error: ${e?.message || 'no se pudo reparar'}`);
+        }
+        setIsReproHealing(false);
+    };
 
     const handleHealData = async () => {
         const confirm = window.confirm(
@@ -106,6 +124,33 @@ export const DataHealer = () => {
                     </div>
                 </div>
             )}
+
+            {/* Reparación de estados de monta */}
+            <div className="mt-8 pt-6 border-t border-c-border">
+                <h3 className="text-c-text-strong font-bold text-lg mb-2 flex items-center gap-2">
+                    <HeartHandshake className={isReproHealing ? "animate-pulse text-c-accent" : "text-c-accent"} size={24} />
+                    Reparar Estados de Monta
+                </h3>
+                <p className="text-c-text-muted text-sm mb-6 leading-relaxed">
+                    Libera a las hembras que quedaron asignadas a una <strong>temporada de monta ya terminada</strong>
+                    {' '}(cerrada o vencida por fecha). Las servidas recientes quedan gestando; las que ya parieron o
+                    superaron los ~150 días de gestación vuelven a Vacías. No borra servicios ni partos.
+                </p>
+                <button
+                    onClick={handleReproRepair}
+                    disabled={isReproHealing}
+                    className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 font-bold text-white transition-all
+                        ${isReproHealing ? 'bg-c-surface-2 text-c-text-muted cursor-not-allowed' : 'bg-c-accent hover:bg-c-accent/90 shadow-lg shadow-c-accent/20 active:scale-95'}
+                    `}
+                >
+                    {isReproHealing ? 'Reparando...' : 'Liberar hembras de montas terminadas'}
+                </button>
+                {reproReport && (
+                    <div className={`mt-4 p-4 rounded-xl border text-sm font-semibold ${reproReport.includes('Error') ? 'bg-brand-red/10 border-brand-red/20 text-brand-red' : 'bg-c-surface-2 border-c-border text-c-text'}`}>
+                        {reproReport}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

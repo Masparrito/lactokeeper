@@ -3,7 +3,7 @@
 // monta (temporada cerrada / retiro). No toca la base de datos: solo calcula el
 // estado reproductivo correcto a partir de servicios y partos.
 
-import type { Animal, ServiceRecord, Parturition } from '../db/local';
+import type { Animal, ServiceRecord, Parturition, BreedingSeason } from '../db/local';
 
 export interface ReleaseInput {
     animal: Animal;
@@ -14,6 +14,20 @@ export interface ReleaseInput {
 }
 
 const toMs = (d: string) => new Date(d + (d.length <= 10 ? 'T00:00:00' : '')).getTime();
+
+/**
+ * Una temporada de monta ya "terminó" (y por tanto sus hembras deben liberarse)
+ * cuando fue cerrada formalmente O cuando su fecha de fin ya pasó. Así se corrigen
+ * también las temporadas viejas que quedaron 'Activo' pero vencidas por fecha.
+ */
+export function isSeasonOver(season: BreedingSeason, nowMs: number): boolean {
+    if (season.status === 'Cerrado' || season.closedDate) return true;
+    if (season.endDate) {
+        const end = toMs(season.endDate);
+        if (isFinite(end) && end < nowMs) return true;
+    }
+    return false;
+}
 
 /**
  * Estado reproductivo correcto de una hembra que se desvincula de una monta:
