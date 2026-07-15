@@ -411,7 +411,7 @@ interface BreedingLotsViewProps {
 }
 
 export default function BreedingLotsView({ navigateTo, onEditSeason }: BreedingLotsViewProps) {
-    const { breedingSeasons, sireLots, deleteBreedingSeason, deleteSireLot, addSireLot, updateBreedingSeason, retireSire, swapSire } = useData();
+    const { breedingSeasons, sireLots, deleteBreedingSeason, deleteSireLot, addSireLot, closeBreedingSeason, retireSire, swapSire } = useData();
     const [deleteConfirmation, setDeleteConfirmation] = useState<BreedingSeason | null>(null);
     const [lotToDelete, setLotToDelete] = useState<SireLot | null>(null);
     const [finalizeConfirmation, setFinalizeConfirmation] = useState<BreedingSeason | null>(null);
@@ -422,7 +422,7 @@ export default function BreedingLotsView({ navigateTo, onEditSeason }: BreedingL
 
     const handleConfirmFinalize = async () => {
         if (!finalizeConfirmation) return;
-        try { await updateBreedingSeason(finalizeConfirmation.id, { status: 'Cerrado', closedDate: finalizeDate }); }
+        try { await closeBreedingSeason(finalizeConfirmation.id, finalizeDate); }
         catch (err) { console.error(err); }
         setFinalizeConfirmation(null);
     };

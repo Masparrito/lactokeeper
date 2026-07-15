@@ -6,6 +6,7 @@ import { useAuth } from './AuthContext';
 import { collection, query, where, onSnapshot, doc, setDoc, writeBatch, Timestamp, serverTimestamp, deleteField } from "firebase/firestore";
 import { v4 as uuidv4 } from 'uuid';
 import { calculateAgeInMonths } from '../utils/calculations';
+import { computeReleasedReproState, isPresumedPregnancyExpired } from '../utils/reproduction';
 
 import { AppConfig, DEFAULT_CONFIG } from '../types/config';
 
@@ -58,7 +59,8 @@ interface IDataContext {
   deleteOrigin: (originId: string) => Promise<void>;
   addBreedingSeason: (seasonData: Omit<BreedingSeason, 'id' | 'userId' | '_synced'>) => Promise<string>;
   updateBreedingSeason: (seasonId: string, dataToUpdate: Partial<BreedingSeason>) => Promise<void>;
-  
+  closeBreedingSeason: (seasonId: string, closedDate: string) => Promise<void>;
+
   deleteBreedingSeason: (seasonId: string) => Promise<void>;
 
   addSireLot: (lotData: Omit<SireLot, 'id' | 'userId' | '_synced'>) => Promise<string>;
@@ -233,6 +235,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Estados de Control
     const [isLoading, setIsLoading] = useState(true);
+    // Guard: la normalización reproductiva corre una vez por sesión de usuario.
+    const hasNormalizedReproRef = useRef(false);
     const [syncStatus, setSyncStatus] = useState<SyncStatus>(navigator.onLine ? 'idle' : 'offline');
     const [pendingDeletionsCount, setPendingDeletionsCount] = useState(0);
     const [lastSyncAt, setLastSyncAt] = useState<number | null>(() => {
@@ -1187,11 +1191,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await localDb.parturitions.put(parturitionData);
 
             const mother = await localDb.animals.get(upperCaseMotherId);
-            if (mother && mother.lifecycleStage !== 'Cabra') {
-                await localDb.animals.update(upperCaseMotherId, {
-                    lifecycleStage: 'Cabra',
-                    _synced: false
-                });
+            if (mother) {
+                // Al declarar un parto, la madre deja de estar "en monta": se
+                // desvincula del lote (sireLotId) y pasa a Post-Parto. Un parto
+                // provisional (solo fecha) también libera el vínculo.
+                const motherChanges: Partial<Animal> = { _synced: false };
+                if (mother.lifecycleStage !== 'Cabra') motherChanges.lifecycleStage = 'Cabra';
+                if (mother.sireLotId) motherChanges.sireLotId = undefined;
+                if (mother.reproductiveStatus !== 'Post-Parto') motherChanges.reproductiveStatus = 'Post-Parto';
+                await localDb.animals.update(upperCaseMotherId, motherChanges);
             }
 
             // Un parto provisional (solo fecha, para crear la lactancia) NO genera
@@ -1428,6 +1436,129 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const updatedSeason = await localDb.breedingSeasons.get(seasonId);
         if (updatedSeason) enqueueSync(() => syncToFirestore("breedingSeasons", seasonId, updatedSeason));
     }, [currentUser, enqueueSync, fetchDataFromLocalDb]);
+
+    // Cierra/finaliza una temporada LIBERANDO a sus hembras. A diferencia de un
+    // updateBreedingSeason genérico, aquí retiramos los lotes activos y, por cada
+    // hembra miembro, aplicamos la lógica reproductiva: las servidas dentro de la
+    // ventana de gestación quedan "gestando" (Servida), las que ya parieron o
+    // vencieron los ~150 días quedan Vacías, y todas se desvinculan del lote.
+    const closeBreedingSeason = useCallback(async (seasonId: string, closedDate: string) => {
+        if (!currentUser) throw new Error("Usuario no autenticado");
+        const localDb = getDB();
+        const dias = appConfig?.diasGestacion ?? 150;
+        const nowMs = Date.now();
+
+        const lots = await localDb.sireLots.where({ seasonId }).toArray();
+        const lotIds = lots.map(l => l.id);
+        const members = lotIds.length ? await localDb.animals.where('sireLotId').anyOf(lotIds).toArray() : [];
+        const memberIds = members.map(m => m.id);
+
+        const services = memberIds.length ? await localDb.serviceRecords.where('femaleId').anyOf(memberIds).toArray() : [];
+        const parts = memberIds.length ? await localDb.parturitions.where('goatId').anyOf(memberIds).toArray() : [];
+        const svcByFemale = new Map<string, ServiceRecord[]>();
+        services.forEach(sr => { const arr = svcByFemale.get(sr.femaleId) || []; arr.push(sr); svcByFemale.set(sr.femaleId, arr); });
+        const partByGoat = new Map<string, Parturition[]>();
+        parts.forEach(p => { const arr = partByGoat.get(p.goatId) || []; arr.push(p); partByGoat.set(p.goatId, arr); });
+
+        await localDb.transaction('rw', localDb.breedingSeasons, localDb.sireLots, localDb.animals, async () => {
+            await localDb.breedingSeasons.update(seasonId, { status: 'Cerrado', closedDate, _synced: false });
+            for (const l of lots) {
+                if (!l.retiredDate) await localDb.sireLots.update(l.id, { retiredDate: closedDate, _synced: false });
+            }
+            for (const m of members) {
+                const target = computeReleasedReproState({
+                    animal: m, services: svcByFemale.get(m.id) || [], parturitions: partByGoat.get(m.id) || [],
+                    diasGestacion: dias, nowMs,
+                });
+                await localDb.animals.update(m.id, { sireLotId: undefined, reproductiveStatus: target.reproductiveStatus, _synced: false });
+            }
+        });
+
+        fetchDataFromLocalDb();
+
+        const updatedSeason = await localDb.breedingSeasons.get(seasonId);
+        if (updatedSeason) enqueueSync(() => syncToFirestore("breedingSeasons", seasonId, updatedSeason));
+        for (const l of lots) {
+            const sl = await localDb.sireLots.get(l.id);
+            if (sl) enqueueSync(() => syncToFirestore("sireLots", l.id, sl));
+        }
+        for (const m of members) {
+            const ua = await localDb.animals.get(m.id);
+            if (ua) { const payload: any = { ...ua, sireLotId: deleteField() }; enqueueSync(() => syncToFirestore("animals", m.id, payload)); }
+        }
+    }, [currentUser, appConfig, enqueueSync, fetchDataFromLocalDb]);
+
+    // Normalización idempotente del estado reproductivo (auto-reparación). Corre
+    // una vez tras cargar los datos y arregla:
+    //  1) Hembras aún vinculadas a lotes de temporadas CERRADAS (o lotes huérfanos)
+    //     => se desvinculan y se recalcula su estado (gestando / Vacía).
+    //  2) Hembras 'Servida' ya desvinculadas cuya presunta preñez venció (>=150 d
+    //     sin parto) => vuelven a 'Vacía'.
+    // Solo escribe cuando hay un cambio real; nunca borra servicios ni partos.
+    const normalizeReproductiveState = useCallback(async () => {
+        if (!currentUser) return;
+        const localDb = getDB();
+        const [allAnimals, allLots, allSeasons, allServices, allParts] = await Promise.all([
+            localDb.animals.toArray(), localDb.sireLots.toArray(), localDb.breedingSeasons.toArray(),
+            localDb.serviceRecords.toArray(), localDb.parturitions.toArray(),
+        ]);
+        const lotById = new Map(allLots.map(l => [l.id, l]));
+        const seasonById = new Map(allSeasons.map(s => [s.id, s]));
+        const svcByFemale = new Map<string, ServiceRecord[]>();
+        allServices.forEach(sr => { const arr = svcByFemale.get(sr.femaleId) || []; arr.push(sr); svcByFemale.set(sr.femaleId, arr); });
+        const partByGoat = new Map<string, Parturition[]>();
+        allParts.forEach(p => { const arr = partByGoat.get(p.goatId) || []; arr.push(p); partByGoat.set(p.goatId, arr); });
+        const dias = appConfig?.diasGestacion ?? 150;
+        const nowMs = Date.now();
+
+        const updates: { id: string; reproductiveStatus: Animal['reproductiveStatus']; clearSire: boolean }[] = [];
+
+        for (const a of allAnimals) {
+            if (a.isReference) continue;
+            if (a.sireLotId) {
+                const lot = lotById.get(a.sireLotId);
+                const season = lot ? seasonById.get(lot.seasonId) : undefined;
+                const closedOrOrphan = !lot || !season || season.status === 'Cerrado';
+                if (closedOrOrphan) {
+                    const target = computeReleasedReproState({
+                        animal: a, services: svcByFemale.get(a.id) || [], parturitions: partByGoat.get(a.id) || [],
+                        diasGestacion: dias, nowMs,
+                    });
+                    updates.push({ id: a.id, reproductiveStatus: target.reproductiveStatus!, clearSire: true });
+                }
+            } else if (a.reproductiveStatus === 'Servida') {
+                if (isPresumedPregnancyExpired(svcByFemale.get(a.id) || [], partByGoat.get(a.id) || [], dias, nowMs)) {
+                    updates.push({ id: a.id, reproductiveStatus: 'Vacía', clearSire: false });
+                }
+            }
+        }
+
+        if (!updates.length) return;
+
+        for (const u of updates) {
+            const changes: any = { reproductiveStatus: u.reproductiveStatus, _synced: false };
+            if (u.clearSire) changes.sireLotId = undefined;
+            await localDb.animals.update(u.id, changes);
+        }
+        await fetchDataFromLocalDb();
+
+        for (const u of updates) {
+            const ua = await localDb.animals.get(u.id);
+            if (!ua) continue;
+            const payload: any = u.clearSire ? { ...ua, sireLotId: deleteField() } : ua;
+            enqueueSync(() => syncToFirestore("animals", u.id, payload));
+        }
+    }, [currentUser, appConfig, enqueueSync, fetchDataFromLocalDb]);
+
+    // Reinicia el guard al cambiar de usuario (para que se normalice de nuevo).
+    useEffect(() => { hasNormalizedReproRef.current = false; }, [currentUser?.uid]);
+
+    // Corre la auto-reparación una sola vez cuando termina la carga inicial.
+    useEffect(() => {
+        if (isLoading || !currentUser || hasNormalizedReproRef.current) return;
+        hasNormalizedReproRef.current = true;
+        normalizeReproductiveState().catch(e => console.error('normalizeReproductiveState:', e));
+    }, [isLoading, currentUser, normalizeReproductiveState]);
 
     const deleteBreedingSeason = useCallback(async (seasonId: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
@@ -1853,7 +1984,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateLot,
         deleteLot, 
         addOrigin, deleteOrigin,
-        addBreedingSeason, updateBreedingSeason, 
+        addBreedingSeason, updateBreedingSeason, closeBreedingSeason,
         deleteBreedingSeason,
         addSireLot, updateSireLot, deleteSireLot, retireSire, swapSire, addServiceRecord,
         addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighing, deleteBodyWeighing, deleteWeighingSession,
@@ -1878,7 +2009,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateLot,
         deleteLot, 
         addOrigin, deleteOrigin,
-        addBreedingSeason, updateBreedingSeason, 
+        addBreedingSeason, updateBreedingSeason, closeBreedingSeason,
         deleteBreedingSeason,
         addSireLot, updateSireLot, deleteSireLot, retireSire, swapSire, addServiceRecord,
         addFeedingPlan, addBatchEvent, addWeighing, addBodyWeighing, deleteWeighing, deleteBodyWeighing, deleteWeighingSession,
