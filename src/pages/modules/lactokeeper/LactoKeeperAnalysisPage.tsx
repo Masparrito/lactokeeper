@@ -462,7 +462,7 @@ export default function LactoKeeperAnalysisPage({ onSelectAnimal }: LactoKeeperA
                                 <button
                                     onClick={() => setSpecialFilter(prev => prev === 'orphan' ? 'all' : 'orphan')}
                                     disabled={orphanWeighingIds.size === 0}
-                                    className={`w-full px-3 py-2 text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition-all ${specialFilter === 'orphan' ? 'bg-brand-red text-white shadow-lg shadow-red-500/20' : 'bg-red-900/40 text-red-300'} ${specialFilter !== 'orphan' && 'animate-pulse'}`}
+                                    className={`w-full px-3 py-2 text-xs font-bold rounded-md flex items-center justify-center gap-1.5 transition-all border ${specialFilter === 'orphan' ? 'bg-brand-red text-white border-brand-red shadow-lg shadow-brand-red/20' : 'bg-brand-red/10 text-brand-red border-brand-red/30'} ${specialFilter !== 'orphan' && 'animate-pulse'}`}
                                 >
                                     <AlertTriangle size={14}/>
                                     <span>Alerta: {orphanWeighingIds.size} animal(es) con pesajes sin parto activo.</span>
