@@ -22,19 +22,25 @@ interface AssignedFemaleCardProps {
     animal: Animal;
     services: ServiceRecord[];
     currentLotId: string;
+    // Lotes que pertenecen a la temporada de ESTE lote. Solo los servicios
+    // registrados bajo estos lotes cuentan como "servida" en esta temporada
+    // (evita que servicios de temporadas anteriores ya finalizadas se muestren).
+    seasonLotIds: Set<string>;
     sireNameByLot: Map<string, string>;
     onClick: () => void;
     onOpenActions: (animal: Animal) => void;
 }
 
-const AssignedFemaleCard = ({ animal, services, currentLotId, sireNameByLot, onClick, onOpenActions }: AssignedFemaleCardProps) => {
+const AssignedFemaleCard = ({ animal, services, currentLotId, seasonLotIds, sireNameByLot, onClick, onOpenActions }: AssignedFemaleCardProps) => {
     const formattedName = animal.name ? String(animal.name).toUpperCase().trim() : '';
-    
+
     // --- LÓGICA DE CONTADOR DE SERVICIOS ---
+    // Solo cuentan los servicios de ESTA temporada (bajo alguno de sus lotes).
+    // Un servicio de una temporada anterior no debe marcarla "servida" aquí.
     const animalServices = useMemo(() => {
-        return services.filter(s => s.femaleId === animal.id)
+        return services.filter(s => s.femaleId === animal.id && seasonLotIds.has(s.sireLotId))
             .sort((a, b) => new Date(b.serviceDate).getTime() - new Date(a.serviceDate).getTime());
-    }, [services, animal.id]);
+    }, [services, animal.id, seasonLotIds]);
 
     const serviceCount = animalServices.length;
     // Distintivo: si fue servida por un macho distinto al de este lote.
@@ -150,6 +156,12 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
         return animals.find(a => a.id === lot.sireId);
     }, [fathers, animals, lot]);
     const sireName = useMemo(() => sire ? formatAnimalDisplay(sire) : 'Desconocido', [sire]);
+
+    // Lotes de la MISMA temporada que este lote (para acotar los servicios).
+    const seasonLotIds = useMemo(() => {
+        if (!lot) return new Set<string>();
+        return new Set(sireLots.filter(l => l.seasonId === lot.seasonId).map(l => l.id));
+    }, [sireLots, lot]);
 
     const assignedFemales = useMemo(() => {
         if (!lot) return [];
@@ -290,6 +302,7 @@ export default function SireLotDetailPage({ lotId, navigateTo, onBack }: SireLot
                                 animal={animal}
                                 services={serviceRecords} // <-- PASAMOS LOS SERVICIOS AQUÍ
                                 currentLotId={lotId}
+                                seasonLotIds={seasonLotIds}
                                 sireNameByLot={sireNameByLot}
                                 onClick={() => navigateTo({ name: 'rebano-profile', animalId: animal.id })}
                                 onOpenActions={handleOpenActions}
