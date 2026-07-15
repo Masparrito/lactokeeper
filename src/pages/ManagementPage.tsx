@@ -140,6 +140,13 @@ export default function ManagementPage({ navigateTo, onBack, typeFilter }: Manag
             return;
         }
 
+        // Lactancia sin secar: lleva al perfil de lactancia del animal, donde
+        // puede declarar seca esa lactancia vieja.
+        if (alert.subType === 'STALE_LACTATION') {
+            navigateTo({ name: 'lactation-profile', animalId: alert.animalId });
+            return;
+        }
+
         // 1. Buscamos al animal completo usando el ID de la alerta
         const animal = animals.find(a => a.id === alert.animalId);
 

@@ -5,7 +5,7 @@ import {
     getAnimalZootecnicCategory,
     calculateAgeInMonths 
 } from '../utils/calculations';
-import { 
+import {
     Wind, // Secado
     Baby, // Parto / Destete
     Heart, // Para servicio no visto
@@ -13,10 +13,11 @@ import {
     MoveRight, // Mover Lote
     Scale, // Pesar
     Sun, // Tratamiento Luz
-    Calendar // Calendario
+    Calendar, // Calendario
+    AlertTriangle // Lactancia sin secar (anomalía)
 } from 'lucide-react';
 import { formatAnimalDisplay } from '../utils/formatting';
-import { DEFAULT_CONFIG } from '../types/config'; 
+import { DEFAULT_CONFIG } from '../types/config';
 
 // Definimos la estructura de una Alerta
 export interface ManagementAlert {
@@ -24,7 +25,7 @@ export interface ManagementAlert {
     animalId: string; // Puede ser ID de animal o ID de Temporada
     animalDisplay: string; // Nombre animal o Nombre Temporada
     type: 'SECADO' | 'REPRODUCTIVO' | 'DESTETE' | 'MANEJO';
-    subType?: 'WEANING' | 'SERVICE_WEIGHT' | 'LIGHT_START' | 'LIGHT_END' | 'SEASON_REMINDER';
+    subType?: 'WEANING' | 'SERVICE_WEIGHT' | 'LIGHT_START' | 'LIGHT_END' | 'SEASON_REMINDER' | 'STALE_LACTATION';
     icon: React.ElementType;
     color: 'text-blue-400' | 'text-pink-400' | 'text-green-400' | 'text-yellow-400' | 'text-red-500' | 'text-orange-400';
     title: string;
@@ -242,6 +243,30 @@ export const useManagementAlerts = () => {
                     .filter(p => p.goatId === animal.id)
                     .sort((a, b) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime());
                 const lastParturition = animalParturitions[0];
+
+                // Lactancia abierta sin secar: partos 'activa' que quedaron ATRÁS
+                // de uno más nuevo (sorted desc => cualquiera después del índice 0).
+                // Alerta de SECADO diferenciada (ícono/color propios) que lleva al
+                // perfil de lactancia para declararla seca.
+                const staleLactations = animalParturitions.slice(1).filter(p => p.status === 'activa');
+                if (staleLactations.length > 0) {
+                    const oldest = staleLactations[staleLactations.length - 1];
+                    generatedAlerts.push({
+                        id: `${animal.id}_stale_lactation`,
+                        animalId: animal.id,
+                        animalDisplay: formatAnimalDisplay(animal),
+                        type: 'SECADO',
+                        subType: 'STALE_LACTATION',
+                        icon: AlertTriangle,
+                        color: 'text-orange-400',
+                        title: 'Lactancia sin secar',
+                        message: staleLactations.length === 1
+                            ? `Se cargó un parto nuevo pero la lactancia del ${oldest.parturitionDate} sigue activa. Toca para declararla seca.`
+                            : `${staleLactations.length} lactancias anteriores siguen activas sin secar. Toca para declararlas secas.`,
+                        sortDate: today,
+                        data: { parturitionId: oldest.id }
+                    });
+                }
 
                 // Confirmar Preñez
                 if (animal.reproductiveStatus === 'En Servicio' && lastService && hasServiceRecord) {

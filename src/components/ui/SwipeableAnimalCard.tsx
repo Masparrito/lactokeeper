@@ -1,10 +1,11 @@
 import React from 'react';
 import { Animal } from '../../db/local';
-import { MoreHorizontal, MapPin, CheckCircle2 } from 'lucide-react';
+import { MoreHorizontal, MapPin, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { formatAge } from '../../utils/calculations';
 import { StatusIcons } from '../icons/StatusIcons';
 import { useAnimalStatus, getStatusDisplayFlags } from '../../hooks/useAnimalStatus';
 import { useData } from '../../context/DataContext';
+import { hasStaleOpenLactation } from '../../utils/lactation';
 
 interface SwipeableAnimalCardProps {
     animal: Animal;
@@ -25,6 +26,7 @@ export const SwipeableAnimalCard: React.FC<SwipeableAnimalCardProps> = ({
     const statuses = useAnimalStatus(animal);
     const { parturitions, appConfig } = useData();
     const { showReproductive, showLactation } = getStatusDisplayFlags(animal, parturitions, appConfig);
+    const hasStale = animal.sex === 'Hembra' && hasStaleOpenLactation(animal.id, parturitions);
 
     return (
         <div className="relative group">
@@ -70,13 +72,18 @@ export const SwipeableAnimalCard: React.FC<SwipeableAnimalCardProps> = ({
                             </div>
 
                             {/* Línea 2: Categoría y Edad */}
-                            <div className="flex items-center gap-2 mt-0.5">
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                 <span className="text-xs font-semibold text-c-text-muted bg-c-surface-2 px-2 py-0.5 rounded-md">
                                     {animal.lifecycleStage || 'Sin Categoría'}
                                 </span>
                                 <span className="text-xs text-c-text-faint">
                                     • {formatAge(animal.birthDate)}
                                 </span>
+                                {hasStale && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-c-accent-gold bg-c-accent-gold/15 border border-c-accent-gold/30 px-1.5 py-0.5 rounded">
+                                        <AlertTriangle size={9} /> Sin secar
+                                    </span>
+                                )}
                             </div>
 
                             {/* Línea 3: Ubicación */}

@@ -39,8 +39,12 @@ interface ParturitionModalProps {
 }
 
 export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onClose, motherId, defaultDate, replaceProvisionalId }) => {
-    const { animals, fathers, addFather, addParturition, deleteParturition, parturitions: allParturitions, addEvent, updateAnimal } = useData();
+    const { animals, fathers, addFather, addParturition, deleteParturition, parturitions: allParturitions, addEvent, updateAnimal, setLactationAsDry } = useData();
     const [step, setStep] = useState<Step>(1);
+
+    // Aviso de lactancia anterior sin secar (no bloqueante).
+    const [dryPrevNow, setDryPrevNow] = useState(false);
+    const [dryPrevDate, setDryPrevDate] = useState('');
 
     const [parturitionDate, setParturitionDate] = useState(new Date().toISOString().split('T')[0]);
     const [sireId, setSireId] = useState('');
@@ -111,6 +115,22 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
 
     const selectedFather = useMemo(() => allReproducers.find((f) => f.id === sireId), [sireId, allReproducers]);
 
+    // Lactancia anterior aún abierta (activa) de esta madre: al registrar este
+    // parto quedará pendiente de secado. Se avisa (sin bloquear) y se ofrece
+    // secarla aquí mismo o dejarlo para después.
+    const openPrevLactation = useMemo(() => {
+        return allParturitions
+            .filter((p: Parturition) => p.goatId.toUpperCase() === motherId.toUpperCase() && p.status === 'activa' && p.id !== replaceProvisionalId)
+            .sort((a: Parturition, b: Parturition) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime())[0] || null;
+    }, [allParturitions, motherId, replaceProvisionalId]);
+
+    // Fecha por defecto para secar la anterior: el día antes del parto nuevo.
+    const prevDryDefault = useMemo(() => {
+        const d = new Date(parturitionDate + 'T00:00:00');
+        d.setDate(d.getDate() - 1);
+        return d.toISOString().split('T')[0];
+    }, [parturitionDate]);
+
     const handleSubmit = async () => {
         setIsLoading(true); setError('');
 
@@ -161,6 +181,12 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
             const mother = animals.find(a => a.id === motherId);
             if (mother) {
                 await updateAnimal(motherId, { reproductiveStatus: 'Lactante' as any });
+            }
+
+            // Secar la lactancia anterior aquí mismo, si el usuario lo eligió.
+            if (dryPrevNow && openPrevLactation) {
+                try { await setLactationAsDry(openPrevLactation.id, dryPrevDate || prevDryDefault); }
+                catch (e) { console.error('No se pudo secar la lactancia anterior:', e); }
             }
 
              if(addEvent) {
@@ -342,6 +368,36 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
                                     </div>
                                 )
                             })}
+
+                            {/* Aviso NO bloqueante: lactancia anterior sin secar */}
+                            {openPrevLactation && (
+                                <div className="p-4 rounded-xl bg-c-accent-gold/10 border border-c-accent-gold/30 space-y-3">
+                                    <div className="flex items-start gap-3">
+                                        <AlertTriangle size={18} className="text-c-accent-gold flex-shrink-0 mt-0.5" />
+                                        <div className="text-sm">
+                                            <p className="font-bold text-c-accent-gold">Lactancia anterior sin secar</p>
+                                            <p className="text-c-text-muted mt-0.5">
+                                                {motherId.toUpperCase()} tiene una lactancia activa (parto del {openPrevLactation.parturitionDate}). Al registrar este parto quedará pendiente de secado.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                                        <input type="checkbox" checked={dryPrevNow} onChange={e => { setDryPrevNow(e.target.checked); if (e.target.checked && !dryPrevDate) setDryPrevDate(prevDryDefault); }} className="w-4 h-4 accent-c-accent-gold" />
+                                        <span className="text-sm font-semibold text-c-text">Declarar seca la anterior ahora</span>
+                                    </label>
+                                    {dryPrevNow && (
+                                        <div className="pl-6">
+                                            <label className="block text-xs font-medium text-c-text-muted mb-1">Fecha de secado (anterior al parto nuevo)</label>
+                                            <input type="date" value={dryPrevDate || prevDryDefault} max={prevDryDefault} min={openPrevLactation.parturitionDate}
+                                                onChange={e => setDryPrevDate(e.target.value)}
+                                                className="w-full bg-c-surface-2 text-c-text p-2.5 rounded-lg border border-c-border focus:outline-none focus:ring-2 focus:ring-c-accent-gold" />
+                                        </div>
+                                    )}
+                                    {!dryPrevNow && (
+                                        <p className="text-[11px] text-c-text-faint pl-6">Si no, podrás declararla seca luego desde el perfil de lactancia (te lo recordará una alerta).</p>
+                                    )}
+                                </div>
+                            )}
 
                             {error && (
                                 <div className="flex items-center gap-3 p-4 rounded-xl text-sm bg-red-500/10 border border-red-500/20 text-red-400 font-medium animate-pulse">
