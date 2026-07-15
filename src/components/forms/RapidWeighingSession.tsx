@@ -75,6 +75,11 @@ export const RapidWeighingSession: React.FC<RapidWeighingSessionProps> = ({ weig
     const kgRef = useRef<HTMLInputElement>(null);
 
     const dateStr = sessionDate.toISOString().split('T')[0];
+    // Fecha elegida, legible y con inicial mayúscula (para el encabezado).
+    const prettyDate = (() => {
+        const s = sessionDate.toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' });
+        return s.charAt(0).toUpperCase() + s.slice(1);
+    })();
     const normId = currentId.toUpperCase().trim();
     const exactAnimal = useMemo(() => animals.find(a => a.id === normId), [animals, normId]);
 
@@ -172,7 +177,9 @@ export const RapidWeighingSession: React.FC<RapidWeighingSessionProps> = ({ weig
                         <button onClick={onBack} className="p-2 -ml-2 text-c-text-muted hover:text-c-text transition-colors"><ArrowLeft size={24} /></button>
                         <div className="flex-grow">
                             <h1 className="text-2xl font-bold tracking-tight text-c-text-strong">{isLeche ? 'Carga Rápida de Leche' : 'Carga Rápida de Peso'}</h1>
-                            <p className="text-md text-c-text-muted">{isLeche ? 'Sesión de Ordeño' : 'Sesión de Pesaje Corporal'}</p>
+                            <p className={`text-sm font-bold ${accentText} flex items-center justify-center gap-1.5`}>
+                                <Calendar size={14} /> {prettyDate}
+                            </p>
                         </div>
                         <div className="w-8" />
                     </header>
