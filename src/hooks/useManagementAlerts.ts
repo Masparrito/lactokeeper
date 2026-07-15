@@ -24,7 +24,7 @@ export interface ManagementAlert {
     animalId: string; // Puede ser ID de animal o ID de Temporada
     animalDisplay: string; // Nombre animal o Nombre Temporada
     type: 'SECADO' | 'REPRODUCTIVO' | 'DESTETE' | 'MANEJO';
-    subType?: 'WEANING' | 'SERVICE_WEIGHT' | 'LIGHT_START' | 'LIGHT_END'; 
+    subType?: 'WEANING' | 'SERVICE_WEIGHT' | 'LIGHT_START' | 'LIGHT_END' | 'SEASON_REMINDER';
     icon: React.ElementType;
     color: 'text-blue-400' | 'text-pink-400' | 'text-green-400' | 'text-yellow-400' | 'text-red-500' | 'text-orange-400';
     title: string;
@@ -49,11 +49,12 @@ export const useManagementAlerts = () => {
     const { 
         animals, 
         parturitions, 
-        serviceRecords, 
-        bodyWeighings, 
-        events, 
+        serviceRecords,
+        bodyWeighings,
+        events,
         breedingSeasons, // <--- NUEVO: Escuchamos temporadas
-        appConfig 
+        sireLots,
+        appConfig
     } = useData();
 
     const alerts = useMemo(() => {
@@ -165,6 +166,41 @@ export const useManagementAlerts = () => {
         });
 
         // ---------------------------------------------------------
+        // 1.b RECORDATORIO POR TEMPORADA DE MONTA ABIERTA
+        // Una sola alerta por temporada en curso con hembras aún sin servicio
+        // visto (en vez de una alerta por cada hembra). Sirve de recordatorio
+        // para revisar celos y registrar los servicios; aparece en "Para hoy".
+        // ---------------------------------------------------------
+        breedingSeasons.forEach(season => {
+            if (season.status === 'Cerrado') return;
+            const start = new Date(season.startDate + 'T00:00:00').getTime();
+            const end = new Date(season.endDate + 'T23:59:59').getTime();
+            const isRunning = todayTime >= start && todayTime <= end;
+            if (!isRunning) return; // solo temporadas en curso (abiertas y vigentes)
+
+            const lotIds = new Set(sireLots.filter(l => l.seasonId === season.id).map(l => l.id));
+            if (lotIds.size === 0) return; // sin machos asignados: nada que recordar
+
+            const assigned = activeAnimals.filter(a => a.sex === 'Hembra' && a.sireLotId && lotIds.has(a.sireLotId));
+            const pending = assigned.filter(f => !serviceRecords.some(sr => sr.femaleId === f.id && lotIds.has(sr.sireLotId)));
+            if (pending.length === 0) return; // todas servidas: sin recordatorio
+
+            generatedAlerts.push({
+                id: `season_service_reminder_${season.id}`,
+                animalId: season.id,
+                animalDisplay: season.name,
+                type: 'REPRODUCTIVO',
+                subType: 'SEASON_REMINDER',
+                icon: Heart,
+                color: 'text-pink-400',
+                title: 'Temporada abierta',
+                message: `${pending.length} ${pending.length === 1 ? 'hembra' : 'hembras'} sin servicio visto. Revisa celos y registra los servicios.`,
+                sortDate: today,
+                data: { seasonId: season.id }
+            });
+        });
+
+        // ---------------------------------------------------------
         // 2. ALERTAS DE ANIMALES (Lógica existente)
         // ---------------------------------------------------------
         
@@ -227,21 +263,10 @@ export const useManagementAlerts = () => {
                     }
                 }
 
-                // Servicio No Visto
-                if (animal.reproductiveStatus === 'En Servicio' && !hasServiceRecord) {
-                    generatedAlerts.push({
-                        id: `${animal.id}_servicio_no_visto`,
-                        animalId: animal.id,
-                        animalDisplay: formatAnimalDisplay(animal),
-                        type: 'REPRODUCTIVO',
-                        icon: Heart,
-                        color: 'text-red-500',
-                        title: 'Servicio No Visto',
-                        message: `En lote de monta, pero sin servicio reportado. Revisar celo.`,
-                        sortDate: today 
-                    });
-                }
-                
+                // (El aviso de "servicio no visto" ya NO es por-hembra: ahora se
+                // agrega como un único recordatorio por temporada abierta, más
+                // abajo, para no saturar el centro de alertas.)
+
                 // Sin Peso de Monta
                 const ageInMonths = calculateAgeInMonths(animal.birthDate);
                 const hasClosedCycle = animalsWithServiceWeightEvent.has(animal.id);
@@ -402,7 +427,8 @@ export const useManagementAlerts = () => {
         bodyWeighings, 
         events, 
         breedingSeasons, // Añadido a dependencias
-        appConfig 
+        sireLots,
+        appConfig
     ]);
 
     return alerts;

@@ -133,6 +133,13 @@ export default function ManagementPage({ navigateTo, onBack, typeFilter }: Manag
             return;
         }
 
+        // Recordatorio de temporada abierta: no es de un animal, lleva a la
+        // sección de Temporadas de Monta para registrar los servicios.
+        if (alert.subType === 'SEASON_REMINDER') {
+            navigateTo({ name: 'lots-dashboard', tab: 'breeding' });
+            return;
+        }
+
         // 1. Buscamos al animal completo usando el ID de la alerta
         const animal = animals.find(a => a.id === alert.animalId);
 
