@@ -64,7 +64,7 @@ const AlertGroup: React.FC<{
                     {title}
                 </span>
                 <div className="flex items-center gap-2">
-                    <span className="bg-c-surface-2 text-c-text-strong rounded-md px-2 py-0.5 text-xs font-bold border border-c-border-strong">
+                    <span className="bg-brand-red text-white rounded-full min-w-[22px] px-1.5 py-0.5 text-xs font-extrabold text-center shadow-sm">
                         {alertCount}
                     </span>
                     <ChevronDown size={16} className={`text-c-text-faint transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
@@ -232,7 +232,7 @@ export default function ManagementPage({ navigateTo, onBack, typeFilter }: Manag
                         icon={Heart}
                         alerts={reproductiveAlerts}
                         onAlertClick={handleAlertClick}
-                        startOpen={true}
+                        startOpen={!!typeFilter}
                     />
                 )}
                 
@@ -242,7 +242,7 @@ export default function ManagementPage({ navigateTo, onBack, typeFilter }: Manag
                         icon={Baby}
                         alerts={weaningAlerts}
                         onAlertClick={handleAlertClick}
-                        startOpen={true}
+                        startOpen={!!typeFilter}
                     />
                 )}
 
@@ -252,7 +252,7 @@ export default function ManagementPage({ navigateTo, onBack, typeFilter }: Manag
                         icon={Wind}
                         alerts={dryingAlerts}
                         onAlertClick={handleAlertClick}
-                        startOpen={true}
+                        startOpen={!!typeFilter}
                     />
                 )}
 
@@ -262,7 +262,7 @@ export default function ManagementPage({ navigateTo, onBack, typeFilter }: Manag
                         icon={Sun}
                         alerts={managementAlerts}
                         onAlertClick={handleAlertClick}
-                        startOpen={true}
+                        startOpen={!!typeFilter}
                     />
                 )}
             </main>
