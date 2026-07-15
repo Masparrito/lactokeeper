@@ -12,8 +12,10 @@ import {
     Heart,
     Target,
     DollarSign,
-    LayoutGrid, Droplets, Scale, HeartPulse, Eye, ShieldCheck
+    LayoutGrid, Droplets, Scale, HeartPulse, Eye, ShieldCheck,
+    Wrench, Info
 } from 'lucide-react';
+import { Modal } from '../components/ui/Modal';
 import type { PageState, AppModule } from '../types/navigation';
 import { AppConfig, DEFAULT_CONFIG } from '../types/config';
 import { auth } from '../firebaseConfig';
@@ -182,6 +184,8 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
 
     const [formState, setFormState] = useState(configToFormState(savedConfig || DEFAULT_CONFIG));
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
+    const [advancedOpen, setAdvancedOpen] = useState(false);
+    const [advancedInfoOpen, setAdvancedInfoOpen] = useState(false);
 
     useEffect(() => {
         if (savedConfig || !isLoadingConfig) {
@@ -355,10 +359,44 @@ export default function ConfiguracionPage({ onBack }: ConfiguracionPageProps) {
                     <SettingsInput label="Umbral de Alerta" type="number" name="growthAlertThreshold" value={String(formState.growthAlertThreshold)} onChange={handleChange} unit="0.0 - 1.0" sublabel="Ej: 0.85 = Alerta si está 15% bajo meta" />
                 </SettingsGroup>
 
-                {/* SANEAMIENTO DE BASE DE DATOS */}
+                {/* HERRAMIENTAS AVANZADAS (plegable) */}
                 <div className="my-8">
-                    <DataHealer />
+                    <div className="flex items-center justify-between px-1 mb-2">
+                        <button
+                            onClick={() => setAdvancedOpen(v => !v)}
+                            className="flex items-center gap-2 text-sm font-bold text-c-text-muted uppercase tracking-wider"
+                        >
+                            <Wrench size={16} />
+                            Herramientas Avanzadas
+                            <ChevronDown size={16} className={`text-c-text-faint transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        <button
+                            onClick={() => setAdvancedInfoOpen(true)}
+                            className="p-1.5 text-c-text-faint hover:text-c-accent-sky rounded-full transition-colors"
+                            title="¿Cuándo usar estas herramientas?"
+                        >
+                            <Info size={18} />
+                        </button>
+                    </div>
+                    {advancedOpen && <DataHealer />}
                 </div>
+
+                <Modal isOpen={advancedInfoOpen} onClose={() => setAdvancedInfoOpen(false)} title="¿Cuándo usar las herramientas avanzadas?">
+                    <div className="space-y-4 text-sm">
+                        <p className="text-c-text-muted">
+                            Son herramientas de mantenimiento de uso ocasional. En condiciones normales <strong className="text-c-text">no hace falta usarlas</strong>: la app se corrige sola. Úsalas solo si notas un dato desajustado.
+                        </p>
+                        <div className="bg-c-surface-2 rounded-xl p-3 border border-c-border">
+                            <p className="font-bold text-c-text-strong flex items-center gap-2"><ShieldCheck size={15} className="text-c-accent-sky" /> Saneador de Rebaño Activo</p>
+                            <p className="text-c-text-muted mt-1">Recalcula la <strong>categoría</strong> (Cabra/Cabritona/Cría) de los animales activos según edad, partos y producción. Úsalo si ves animales en una categoría equivocada.</p>
+                        </div>
+                        <div className="bg-c-surface-2 rounded-xl p-3 border border-c-border">
+                            <p className="font-bold text-c-text-strong flex items-center gap-2"><Heart size={15} className="text-c-accent" /> Reparar Estados de Monta</p>
+                            <p className="text-c-text-muted mt-1">Libera a las hembras que quedaron atadas a una <strong>temporada de monta ya terminada</strong>. Normalmente se hace solo al abrir la app; úsalo si alguna sigue apareciendo "en monta" en una temporada vieja.</p>
+                        </div>
+                        <p className="text-xs text-c-text-faint pt-1 border-t border-c-border">Ninguna de estas herramientas borra servicios, partos ni pesajes.</p>
+                    </div>
+                </Modal>
 
                 <div className="mt-4">
                      <button 

@@ -7,10 +7,9 @@ import {
     AuthError
 } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
-import { AlertTriangle, Trash2, Mail, Lock, LogIn, UserPlus } from 'lucide-react';
-import { Dexie } from 'dexie';
+import { AlertTriangle, Mail, Lock, LogIn, UserPlus } from 'lucide-react';
 // --- CAMBIO: Se importa el nuevo ícono que representa el OS ---
-import { GiGoat } from 'react-icons/gi'; 
+import { GiGoat } from 'react-icons/gi';
 
 export const LoginPage: React.FC = () => {
     const [isLoginView, setIsLoginView] = useState(true);
@@ -18,20 +17,6 @@ export const LoginPage: React.FC = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-
-    const handleForceDeleteDB = async () => {
-        if (window.confirm("¿Estás seguro de que quieres forzar la eliminación de la base de datos local? Esto no afectará tus datos en la nube.")) {
-            try {
-                // El nombre de la base de datos ahora es GanaderoOS_DB
-                await Dexie.delete('GanaderoOS_DB');
-                alert("Base de datos local eliminada con éxito. La página se recargará.");
-                window.location.reload();
-            } catch (err) {
-                alert("Error al eliminar la base de datos.");
-                console.error(err);
-            }
-        }
-    };
 
     const handleAuthError = (err: AuthError) => {
         if (err.code === 'auth/network-request-failed') {
@@ -143,17 +128,6 @@ export const LoginPage: React.FC = () => {
                             )}
                         </button>
                     </form>
-                </div>
-
-                <div className="mt-6 text-center">
-                    <button
-                        onClick={handleForceDeleteDB}
-                        className="inline-flex items-center justify-center gap-2 mx-auto text-brand-red/90 font-semibold text-sm py-2 px-4 rounded-lg border border-brand-red/30 hover:bg-brand-red/10 transition-colors"
-                    >
-                        <Trash2 size={15} />
-                        Forzar Reinicio de DB Local
-                    </button>
-                    <p className="text-xs text-c-text-faint mt-2">Si la app no carga, usa este botón.</p>
                 </div>
             </div>
         </div>
