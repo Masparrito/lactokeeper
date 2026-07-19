@@ -1,13 +1,14 @@
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { Animal } from '../db/local';
-import { Baby, Heart, HeartHandshake, CircleOff, Wind, Archive, Waypoints, CalendarCheck } from 'lucide-react'; // Agregamos CalendarCheck
-import { GiUdder } from 'react-icons/gi';
+import { Heart, HeartHandshake, Wind, CalendarCheck, MilkOff, CircleDashed } from 'lucide-react';
+import { GiUdder, GiEmbryo } from 'react-icons/gi';
+import { FaMars } from 'react-icons/fa6';
 import { DEFAULT_CONFIG } from '../types/config';
 
 // Definición centralizada de iconos y colores
 export const STATUS_DEFINITIONS = {
-    PREGNANT: { key: 'PREGNANT', Icon: Baby, color: 'text-brand-green', label: 'Preñada' },
+    PREGNANT: { key: 'PREGNANT', Icon: GiEmbryo, color: 'text-brand-green', label: 'Preñada' },
     // CAMBIO 1: Ícono SERVIDA_CONFIRMED (Corazón Abrazado/Visto)
     SERVIDA_CONFIRMED: { key: 'SERVIDA_CONFIRMED', Icon: HeartHandshake, color: 'text-pink-400', label: 'Servida (Visto)' },
     
@@ -15,11 +16,11 @@ export const STATUS_DEFINITIONS = {
     IN_SERVICE_CONFIRMED: { key: 'IN_SERVICE_CONFIRMED', Icon: CalendarCheck, color: 'text-yellow-500', label: 'Monta Registrada (Falta Estado)' },
     
     IN_SERVICE: { key: 'IN_SERVICE', Icon: Heart, color: 'text-red-400', label: 'En Monta' },
-    EMPTY: { key: 'EMPTY', Icon: CircleOff, color: 'text-zinc-400', label: 'Vacía' },
-    SIRE_IN_SERVICE: { key: 'SIRE_IN_SERVICE', Icon: Waypoints, color: 'text-blue-400', label: 'Reproductor Activo' },
+    EMPTY: { key: 'EMPTY', Icon: CircleDashed, color: 'text-zinc-400', label: 'Vacía' },
+    SIRE_IN_SERVICE: { key: 'SIRE_IN_SERVICE', Icon: FaMars, color: 'text-blue-400', label: 'Reproductor Activo' },
     MILKING: { key: 'MILKING', Icon: GiUdder, color: 'text-blue-300', label: 'En Ordeño' },
     DRYING_OFF: { key: 'DRYING_OFF', Icon: Wind, color: 'text-yellow-400', label: 'Secando' },
-    DRY: { key: 'DRY', Icon: Archive, color: 'text-zinc-500', label: 'Seca' },
+    DRY: { key: 'DRY', Icon: MilkOff, color: 'text-zinc-500', label: 'Seca' },
 };
 
 export type AnimalStatusKey = keyof typeof STATUS_DEFINITIONS;
