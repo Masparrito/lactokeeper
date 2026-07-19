@@ -23,11 +23,6 @@ export const DataHealer = () => {
         setDryReport([]);
         const logs: string[] = [];
         try {
-            const latestParturition = (animalId: string) =>
-                parturitions
-                    .filter(p => p.goatId === animalId)
-                    .sort((x, y) => new Date(y.parturitionDate).getTime() - new Date(x.parturitionDate).getTime())[0];
-
             // 1) LACTANCIA: 'en-secado' -> 'seca'
             const enSecado = parturitions.filter(p => p.status === 'en-secado');
             for (const p of enSecado) {
@@ -56,29 +51,31 @@ export const DataHealer = () => {
             logs.push('🎉 NORMALIZACIÓN COMPLETADA');
             logs.push(`- Lactancias 'en-secado' → Seca: ${enSecado.length}`);
             logs.push(`- Estados reproductivos corregidos: ${statusUpdates.length}`);
-            logs.push('(Vuelve a tocar para ver el diagnóstico ya limpio.)');
 
-            // DIAGNÓSTICO del estado (previo a esta corrida)
-            const hembras = animals.filter(a => a.status === 'Activo' && !a.isReference && a.sex === 'Hembra');
+            // DIAGNÓSTICO del estado YA NORMALIZADO: aplicamos en memoria los cambios
+            // recién hechos para que el reporte refleje el resultado, sin re-tocar.
+            const enSecadoIds = new Set(enSecado.map(p => p.id));
+            const adjParts = parturitions.map(p => enSecadoIds.has(p.id) ? { ...p, status: 'seca' as const } : p);
+            const updById = new Map(statusUpdates.map(u => [u.id, u.changes.reproductiveStatus]));
+            const adjAnimals = animals.map(a => updById.has(a.id) ? { ...a, reproductiveStatus: updById.get(a.id) as Animal['reproductiveStatus'] } : a);
+            const latestPart = (id: string) =>
+                adjParts.filter(p => p.goatId === id).sort((x, y) => new Date(y.parturitionDate).getTime() - new Date(x.parturitionDate).getTime())[0];
+
+            const hembras = adjAnimals.filter(a => a.status === 'Activo' && !a.isReference && a.sex === 'Hembra');
             const part: Record<string, number> = { activa: 0, 'en-secado': 0, seca: 0, finalizada: 0, 'sin-parto': 0 };
             const repro: Record<string, number> = {};
             hembras.forEach(a => {
-                const lp = latestParturition(a.id);
+                const lp = latestPart(a.id);
                 const ps = lp ? lp.status : 'sin-parto';
                 part[ps] = (part[ps] || 0) + 1;
                 const rs = (a.reproductiveStatus as string) || '(vacío)';
                 repro[rs] = (repro[rs] || 0) + 1;
             });
             logs.push('──────────');
-            logs.push(`🔎 DIAGNÓSTICO (previo) — hembras activas: ${hembras.length}`);
+            logs.push(`🔎 DIAGNÓSTICO (ya normalizado) — hembras activas: ${hembras.length}`);
             logs.push(`Lactancia → activa:${part.activa} · en-secado:${part['en-secado']} · seca:${part.seca} · finalizada:${part.finalizada} · sin parto:${part['sin-parto']}`);
             logs.push('Estado repro → ' + (Object.entries(repro).map(([k, v]) => `${k}:${v}`).join(' · ') || '—'));
-            logs.push(`Secas en datos (parto seca/en-secado): ${part.seca + part['en-secado']}`);
-            logs.push('— Muestra (ID · parto · repro):');
-            hembras.slice(0, 14).forEach(a => {
-                const lp = latestParturition(a.id);
-                logs.push(`${a.id} · ${lp ? lp.status : 'sin-parto'} · ${a.reproductiveStatus || '—'}`);
-            });
+            logs.push(`Secas (parto seca/en-secado): ${part.seca + part['en-secado']}`);
         } catch (e: any) {
             logs.push(`❌ Error: ${e?.message || 'no se pudo reparar/diagnosticar'}`);
         }
