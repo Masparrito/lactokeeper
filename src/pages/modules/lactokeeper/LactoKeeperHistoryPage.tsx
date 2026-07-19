@@ -9,6 +9,7 @@ import {
     ChevronRight, Milk, TrendingUp
 } from 'lucide-react';
 import type { PageState as RebanoPageState } from '../../../types/navigation';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
 import { useLactationHistory, HistoryScope } from '../../../hooks/useLactationHistory';
 import { AnimalLactationSummary, LactationRecord } from '../../../utils/lactationMetrics';
 import { MonthlyHistoryView } from './LactoKeeperHistoryMonthlyView';
@@ -212,22 +213,111 @@ const AnimalDetail = ({
     </div>
 );
 
+// --- Detalle de una lactancia (SOLO LECTURA). Parecido al perfil de "Leche"
+// pero sin posibilidad de agregar/editar datos, y dentro del propio Historial
+// (así el "back" vuelve exactamente a la vista anterior). ---
+const LactationDetailReadOnly = ({ animalId, lact, standardDays, onBack }: {
+    animalId: string; lact: LactationRecord; standardDays: number; onBack: () => void;
+}) => {
+    const year = new Date(lact.parturitionDate + 'T00:00:00Z').getUTCFullYear();
+    const pill = lactStatusPill(lact);
+    return (
+        <div className="p-4 space-y-4 pb-24">
+            <button onClick={onBack} className="flex items-center gap-2 text-c-text-muted hover:text-c-text">
+                <ArrowLeft size={20} /> <span className="font-semibold">Volver a {animalId}</span>
+            </button>
+
+            <div className="bg-c-surface rounded-2xl p-4 border border-c-border">
+                <div className="flex items-center gap-2">
+                    <div className="flex-none w-9 h-9 rounded-lg bg-c-accent-gold/15 text-c-accent-gold flex items-center justify-center font-bold">{lact.lactationNumber}</div>
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-lg font-bold text-c-text">Lactancia {lact.lactationNumber}</h2>
+                            <span className="text-xs text-c-text-faint">{year}</span>
+                            {pill && <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md border ${pill.cls}`}>{pill.txt}</span>}
+                        </div>
+                        <p className="text-[11px] text-c-text-faint font-mono">{animalId}</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-4 gap-2 mt-3 text-center">
+                    <div><p className="text-sm font-bold text-c-text">{lact.averageKg.toFixed(2)}</p><p className="text-[9px] text-c-text-faint uppercase">Prom Kg</p></div>
+                    <div><p className="text-sm font-bold text-c-text">{lact.peakKg.toFixed(2)}</p><p className="text-[9px] text-c-text-faint uppercase">Pico Kg</p></div>
+                    <div><p className="text-sm font-bold text-c-text">{lact.durationDays}</p><p className="text-[9px] text-c-text-faint uppercase">Días</p></div>
+                    <div><p className="text-sm font-bold text-c-accent-sky">{Math.round(lact.standardizedProduction)}</p><p className="text-[9px] text-c-text-faint uppercase">a {standardDays}d</p></div>
+                </div>
+            </div>
+
+            {lact.curve.length > 1 && (
+                <div className="bg-c-surface rounded-2xl p-3 border border-c-border">
+                    <p className="text-xs font-bold uppercase tracking-wider text-c-text-faint mb-2 ml-1">Curva de lactancia</p>
+                    <div className="w-full h-44">
+                        <ResponsiveContainer>
+                            <AreaChart data={lact.curve} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
+                                <defs><linearGradient id="lactGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#38bdf8" stopOpacity={0.5} /><stop offset="100%" stopColor="#38bdf8" stopOpacity={0} /></linearGradient></defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,120,120,0.15)" />
+                                <XAxis dataKey="del" tick={{ fill: '#7d8a88', fontSize: 10 }} />
+                                <YAxis tick={{ fill: '#7d8a88', fontSize: 10 }} />
+                                <Tooltip contentStyle={{ background: '#1c1c1e', border: 'none', borderRadius: 8, fontSize: 12 }} labelFormatter={(v) => `DEL ${v}`} formatter={(v: any) => [`${v} Kg`, 'Prod']} />
+                                <Area type="monotone" dataKey="kg" stroke="#38bdf8" fill="url(#lactGrad)" strokeWidth={2} />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            )}
+
+            <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-c-text-faint mb-2 ml-1">Pesajes ({lact.weighings.length}) · solo lectura</p>
+                <div className="space-y-1.5">
+                    {lact.weighings.length === 0 && <p className="text-sm text-c-text-faint text-center py-4">Sin pesajes registrados.</p>}
+                    {[...lact.weighings].reverse().map((w, i) => (
+                        <div key={i} className="flex items-center gap-3 bg-c-surface-2 rounded-lg p-3 border border-c-border">
+                            <div className="flex-none w-8 h-8 rounded-md bg-cyan-500/10 flex items-center justify-center"><Droplet size={16} className="text-cyan-400" /></div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-bold text-c-text">{w.kg.toFixed(2)} <span className="text-xs font-normal text-c-text-faint">Kg</span></p>
+                                <p className="text-[11px] text-c-text-faint">{new Date(w.date + 'T00:00:00Z').toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' })} · DEL {w.del}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export default function LactoKeeperHistoryPage({ navigateToRebano }: LactoKeeperHistoryPageProps) {
     const [view, setView] = useState<HistoryView>('animal');
     const [scope, setScope] = useState<HistoryScope>('active');
     const [rank, setRank] = useState<RankKey>('general');
     const [selected, setSelected] = useState<AnimalLactationSummary | null>(null);
+    const [selectedLactation, setSelectedLactation] = useState<number | null>(null);
     const data = useLactationHistory(scope);
 
     if (selected && view === 'animal') {
         // refrescar el resumen seleccionado desde los datos actuales del scope
         const fresh = data.summaries.find(s => s.animalId === selected.animalId) || selected;
+
+        // Nivel 3: detalle de una lactancia (solo lectura). Back -> vuelve al animal.
+        if (selectedLactation != null) {
+            const lact = fresh.lactations.find(l => l.lactationNumber === selectedLactation);
+            if (lact) {
+                return (
+                    <LactationDetailReadOnly
+                        animalId={fresh.animalId}
+                        lact={lact}
+                        standardDays={data.standardDays}
+                        onBack={() => setSelectedLactation(null)}
+                    />
+                );
+            }
+        }
+
+        // Nivel 2: detalle del animal (sus lactancias). Back -> vuelve al ranking.
         return (
             <AnimalDetail
                 summary={fresh}
                 standardDays={data.standardDays}
-                onBack={() => setSelected(null)}
-                onOpenLactation={(l) => navigateToRebano({ name: 'lactation-weighings', animalId: fresh.animalId, parturitionDate: l.parturitionDate })}
+                onBack={() => { setSelected(null); setSelectedLactation(null); }}
+                onOpenLactation={(l) => setSelectedLactation(l.lactationNumber)}
             />
         );
     }

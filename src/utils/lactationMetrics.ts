@@ -13,6 +13,7 @@ export interface LactationRecord {
     status: Parturition['status'];
     weighingsCount: number;
     curve: { del: number; kg: number }[];
+    weighings: { date: string; kg: number; del: number }[]; // pesajes con fecha (solo lectura)
     averageKg: number;                // promedio de los pesajes
     peakKg: number;
     peakDel: number;
@@ -100,9 +101,10 @@ export function computeAnimalLactations(
             const d = new Date(w.date);
             return d >= start && d < end;
         });
-        const curve = cw
-            .map(w => ({ del: calculateDEL(p.parturitionDate, w.date), kg: w.kg }))
+        const wgs = cw
+            .map(w => ({ date: w.date, kg: w.kg, del: calculateDEL(p.parturitionDate, w.date) }))
             .sort((a, b) => a.del - b.del);
+        const curve = wgs.map(w => ({ del: w.del, kg: w.kg }));
         const avg = cw.length ? cw.reduce((s, w) => s + w.kg, 0) / cw.length : 0;
         const peak = curve.reduce((m, c) => (c.kg > m.kg ? c : m), { kg: 0, del: 0 });
 
@@ -127,6 +129,7 @@ export function computeAnimalLactations(
             status: p.status,
             weighingsCount: cw.length,
             curve,
+            weighings: wgs,
             averageKg: avg,
             peakKg: peak.kg,
             peakDel: peak.del,
