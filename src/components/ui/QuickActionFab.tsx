@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Plus, Baby, Droplets, Scale, HeartHandshake, Award } from 'lucide-react';
+import { Plus, Baby, Droplets, Scale, HeartHandshake, Award, Stethoscope } from 'lucide-react';
 
-export type QuickActionType = 'parto' | 'secado' | 'destete' | 'peso_servicio' | 'servicio_visto';
+export type QuickActionType = 'parto' | 'secado' | 'destete' | 'peso_servicio' | 'servicio_visto' | 'prenez';
 
 interface QuickActionFabProps {
     onActionSelect: (action: QuickActionType) => void;
@@ -47,12 +47,19 @@ export const QuickActionFab = ({ onActionSelect }: QuickActionFabProps) => {
             textColor: 'text-brand-green',
             bgColor: 'bg-green-50'
         },
-        { 
-            id: 'servicio_visto', 
-            label: 'Servicio Visto', 
-            icon: HeartHandshake, 
+        {
+            id: 'servicio_visto',
+            label: 'Servicio Visto',
+            icon: HeartHandshake,
             textColor: 'text-purple-500',
             bgColor: 'bg-purple-50'
+        },
+        {
+            id: 'prenez',
+            label: 'Declarar Preñada',
+            icon: Stethoscope,
+            textColor: 'text-brand-green',
+            bgColor: 'bg-green-50'
         },
     ];
 

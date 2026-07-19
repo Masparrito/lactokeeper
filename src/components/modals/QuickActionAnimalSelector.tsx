@@ -25,9 +25,10 @@ export const QuickActionAnimalSelector = ({ isOpen, onClose, actionType, onAnima
         switch (actionType) {
             case 'parto':
             case 'servicio_visto':
+            case 'prenez':
                 // VIENTRES: Solo Hembras que ya son Cabras o Cabritonas
-                candidates = candidates.filter(a => 
-                    a.sex === 'Hembra' && 
+                candidates = candidates.filter(a =>
+                    a.sex === 'Hembra' &&
                     (a.lifecycleStage === 'Cabra' || a.lifecycleStage === 'Cabritona')
                 );
                 break;
@@ -80,6 +81,7 @@ export const QuickActionAnimalSelector = ({ isOpen, onClose, actionType, onAnima
             case 'destete': return 'Registrar Destete';
             case 'peso_servicio': return 'Peso 1er Servicio';
             case 'servicio_visto': return 'Servicio Visto';
+            case 'prenez': return 'Declarar Preñada';
             default: return 'Seleccionar Animal';
         }
     };
