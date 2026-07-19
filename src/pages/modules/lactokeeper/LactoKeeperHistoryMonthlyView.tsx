@@ -140,6 +140,17 @@ export function MonthlyHistoryView({ navigateToRebano }: { navigateToRebano: (pa
         return periodAnalysis.classifiedAnimals.filter(animal => animal.classification === classificationFilter);
     }, [periodAnalysis.classifiedAnimals, classificationFilter]);
 
+    // Un renglón por CABRA (no por pesaje): se conserva el pesaje más reciente del
+    // período por animal, y se ordena por producción.
+    const uniqueAnimals = useMemo(() => {
+        const map = new Map<string, AnalyzedAnimal>();
+        for (const a of filteredWeighings) {
+            const prev = map.get(a.id);
+            if (!prev || new Date(a.date).getTime() > new Date(prev.date).getTime()) map.set(a.id, a);
+        }
+        return Array.from(map.values()).sort((a, b) => b.latestWeighing - a.latestWeighing);
+    }, [filteredWeighings]);
+
     const handleBarClick = (data: any) => { if (data?.payload?.name) { const newFilter = data.payload.name as any; setClassificationFilter(prev => prev === newFilter ? 'all' : newFilter); } };
 
     if (isLoading) { return <div className="text-center p-10"><h1 className="text-2xl text-c-text-muted">Cargando historial...</h1></div>; }
@@ -190,10 +201,10 @@ export function MonthlyHistoryView({ navigateToRebano }: { navigateToRebano: (pa
                 </div>
 
                 <div className="space-y-2">
-                    <h3 className="text-lg font-semibold text-c-text-strong ml-1 mt-4">Pesajes del Período ({filteredWeighings.length})</h3>
-                    {filteredWeighings.length > 0 ? (
-                        filteredWeighings.sort((a, b) => b.latestWeighing - a.latestWeighing).map((animal) => (
-                            <WeighingRow key={animal.weighingId || animal.id} weighing={animal} onSelectAnimal={(id) => navigateToRebano({ name: 'lactation-profile', animalId: id })} />
+                    <h3 className="text-lg font-semibold text-c-text-strong ml-1 mt-4">Animales del Período ({uniqueAnimals.length})</h3>
+                    {uniqueAnimals.length > 0 ? (
+                        uniqueAnimals.map((animal) => (
+                            <WeighingRow key={animal.id} weighing={animal} onSelectAnimal={(id) => navigateToRebano({ name: 'lactation-profile', animalId: id })} />
                         ))
                     ) : (
                         <div className="text-center py-6 bg-c-surface rounded-lg">
