@@ -35,6 +35,7 @@ import { DeclareServiceWeightModal } from '../components/modals/DeclareServiceWe
 import { ParturitionModal } from '../components/modals/ParturitionModal';
 import { DeclareServiceModal } from '../components/modals/DeclareServiceModal';
 import { DeclareDryOffModal } from '../components/modals/DeclareDryOffModal';
+import { DeclarePregnancyModal } from '../components/modals/DeclarePregnancyModal';
 
 interface InitialRebanoState {
     page: PageState | null;
@@ -66,6 +67,7 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
     const [isQuickParturitionModalOpen, setIsQuickParturitionModalOpen] = useState(false);
     const [isQuickServiceModalOpen, setIsQuickServiceModalOpen] = useState(false);
     const [isQuickDryOffModalOpen, setIsQuickDryOffModalOpen] = useState(false);
+    const [isQuickPregnancyModalOpen, setIsQuickPregnancyModalOpen] = useState(false);
 
     // Filters Persistence
     const [viewMode, setViewMode] = useState<'Activos' | 'Referencia'>('Activos');
@@ -196,6 +198,7 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
             case 'parto': setIsQuickParturitionModalOpen(true); break;
             case 'servicio_visto': setIsQuickServiceModalOpen(true); break;
             case 'secado': setIsQuickDryOffModalOpen(true); break;
+            case 'prenez': setIsQuickPregnancyModalOpen(true); break;
         }
     };
 
@@ -333,6 +336,11 @@ export default function RebanoShell({ initialState, onSwitchModule }: RebanoShel
                     <DeclareDryOffModal
                         isOpen={isQuickDryOffModalOpen}
                         onClose={() => { setIsQuickDryOffModalOpen(false); setSelectedQuickAnimal(null); }}
+                        animal={selectedQuickAnimal}
+                    />
+                    <DeclarePregnancyModal
+                        isOpen={isQuickPregnancyModalOpen}
+                        onClose={() => { setIsQuickPregnancyModalOpen(false); setSelectedQuickAnimal(null); }}
                         animal={selectedQuickAnimal}
                     />
                 </>
