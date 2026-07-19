@@ -16,7 +16,7 @@ interface DeclareDryOffModalProps {
 const calendarCss = dayPickerCss;
 
 export const DeclareDryOffModal = ({ isOpen, onClose, animal }: DeclareDryOffModalProps) => {
-    const { updateAnimal, addEvent } = useData();
+    const { parturitions, setLactationAsDry } = useData();
     const [date, setDate] = useState<Date>(new Date());
     const [reason, setReason] = useState('Fin de Lactancia');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,16 +27,17 @@ export const DeclareDryOffModal = ({ isOpen, onClose, animal }: DeclareDryOffMod
     const handleSave = async () => {
         setIsSubmitting(true);
         try {
-            await updateAnimal(animal.id, {
-                reproductiveStatus: 'Seca' as any 
-            });
-            if (addEvent) {
-                await addEvent({
-                    animalId: animal.id,
-                    date: date.toISOString().split('T')[0],
-                    type: 'Secado',
-                    details: `Secado registrado (Acción Rápida). Motivo: ${reason}.`
-                });
+            // El "secado" es un estado de LACTANCIA (Parturition.status='seca'), no
+            // un estado reproductivo. Actualizamos la lactancia activa vía la función
+            // central (esto sí mueve el icono de ubre "En Ordeño" -> "Seca" y sincroniza).
+            // El evento "Secado" de la línea de tiempo se deriva del parto (useEvents),
+            // por eso no creamos uno aparte (evita duplicados).
+            const activeLactation = parturitions
+                .filter(p => p.goatId === animal.id && p.status !== 'finalizada')
+                .sort((a, b) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime())[0];
+
+            if (activeLactation) {
+                await setLactationAsDry(activeLactation.id, date.toISOString().split('T')[0]);
             }
             onClose();
         } catch (error) {

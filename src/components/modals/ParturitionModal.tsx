@@ -39,7 +39,7 @@ interface ParturitionModalProps {
 }
 
 export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onClose, motherId, defaultDate, replaceProvisionalId }) => {
-    const { animals, fathers, addFather, addParturition, deleteParturition, parturitions: allParturitions, addEvent, updateAnimal, setLactationAsDry } = useData();
+    const { animals, fathers, addFather, addParturition, deleteParturition, parturitions: allParturitions, addEvent, setLactationAsDry } = useData();
     const [step, setStep] = useState<Step>(1);
 
     // Aviso de lactancia anterior sin secar (no bloqueante).
@@ -178,10 +178,9 @@ export const ParturitionModal: React.FC<ParturitionModalProps> = ({ isOpen, onCl
                 _synced: false
             });
 
-            const mother = animals.find(a => a.id === motherId);
-            if (mother) {
-                await updateAnimal(motherId, { reproductiveStatus: 'Lactante' as any });
-            }
+            // La madre queda en 'Post-Parto': ese estado ya lo asigna addParturition.
+            // (Antes se sobreescribía con un 'Lactante' inválido que rompía el icono
+            //  reproductivo; su lactancia se refleja por el parto activo, no aquí.)
 
             // Secar la lactancia anterior aquí mismo, si el usuario lo eligió.
             if (dryPrevNow && openPrevLactation) {

@@ -5,25 +5,19 @@ import { AppConfig } from '../../types/config';
 import { Search, Filter, CheckCircle2, CheckSquare, MinusSquare, FileArchive, Users, FilterX } from 'lucide-react';
 import { useInbreedingCheck } from '../../hooks/useInbreedingCheck';
 import { formatAge, getAnimalZootecnicCategory } from '../../utils/calculations';
-import { STATUS_DEFINITIONS, AnimalStatusKey } from '../../hooks/useAnimalStatus';
+import { STATUS_DEFINITIONS, AnimalStatusKey, computeAnimalStatuses } from '../../hooks/useAnimalStatus';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
-// --- LÓGICA AUXILIAR DE STATUS (Mantenida intacta) ---
-const getAnimalStatuses = (animal: Animal, allParturitions: Parturition[], allServiceRecords: ServiceRecord[], allSireLots: SireLot[], allBreedingSeasons: BreedingSeason[]): AnimalStatusKey[] => {
-    const s: AnimalStatusKey[] = []; if (!animal) return [];
-    if (animal.sex === 'Hembra') { const lp = allParturitions.filter(p=>p.goatId===animal.id&&p.status!=='finalizada').sort((a,b)=>new Date(b.parturitionDate).getTime()-new Date(a.parturitionDate).getTime())[0]; if (lp) { if (lp.status==='activa') s.push('MILKING'); else s.push('DRY'); } }
-    if (animal.reproductiveStatus==='Preñada') s.push('PREGNANT'); else if (animal.reproductiveStatus==='En Servicio') { 
-        const hasServiceRecord = allServiceRecords.some(sr=>sr.femaleId===animal.id&&sr.sireLotId===animal.sireLotId);
-        if (hasServiceRecord) s.push('IN_SERVICE_CONFIRMED'); else s.push('IN_SERVICE'); 
-    } else if (animal.reproductiveStatus==='Vacía'||animal.reproductiveStatus==='Post-Parto') s.push('EMPTY');
-    if (animal.sex === 'Macho') { 
-        const activeSeasons = allBreedingSeasons.filter(bs => bs.status === 'Activo');
-        const activeSeasonIds = new Set(activeSeasons.map(s => s.id));
-        const isActiveSire = allSireLots.some(sl => sl.sireId === animal.id && activeSeasonIds.has(sl.seasonId));
-        if(isActiveSire) s.push('SIRE_IN_SERVICE'); 
-    }
-    return Array.from(new Set(s));
-};
+// --- LÓGICA AUXILIAR DE STATUS ---
+// Delega en el MOTOR ÚNICO para que el filtrado coincida exactamente con los
+// iconos que se muestran. No reimplementar la lógica aquí.
+const getAnimalStatuses = (animal: Animal, allParturitions: Parturition[], allServiceRecords: ServiceRecord[], allSireLots: SireLot[], allBreedingSeasons: BreedingSeason[]): AnimalStatusKey[] =>
+    computeAnimalStatuses(animal, {
+        parturitions: allParturitions,
+        serviceRecords: allServiceRecords,
+        sireLots: allSireLots,
+        breedingSeasons: allBreedingSeasons,
+    }).map(s => s.key as AnimalStatusKey);
 
 const CATEGORIES = ['Cabrita', 'Cabritona', 'Cabra', 'Cabrito', 'Macho de Levante', 'Macho Cabrío'];
 
@@ -411,7 +405,7 @@ export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({
                     {activeMode === 'Activo' && (
                         <div className="space-y-4 pt-2 border-t border-c-border/50">
                             <FilterBar title="Estado Productivo" filters={['MILKING', 'DRY'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey]).filter(Boolean)} activeFilter={productiveFilter} onFilterChange={setProductiveFilter} />
-                            <FilterBar title="Estado Reproductivo" filters={['PREGNANT', 'IN_SERVICE_CONFIRMED', 'IN_SERVICE', 'EMPTY', 'SIRE_IN_SERVICE'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey]).filter(Boolean)} activeFilter={reproductiveFilter} onFilterChange={setReproductiveFilter} />
+                            <FilterBar title="Estado Reproductivo" filters={['PREGNANT', 'SERVIDA_CONFIRMED', 'IN_SERVICE_CONFIRMED', 'IN_SERVICE', 'EMPTY', 'SIRE_IN_SERVICE'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey]).filter(Boolean)} activeFilter={reproductiveFilter} onFilterChange={setReproductiveFilter} />
                         </div>
                     )}
 
