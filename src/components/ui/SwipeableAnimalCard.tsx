@@ -60,7 +60,7 @@ export const SwipeableAnimalCard: React.FC<SwipeableAnimalCardProps> = ({
                         )}
 
                         <div className="flex flex-col min-w-0">
-                            {/* Línea 1: ID y Nombre */}
+                            {/* Línea 1: ID, Nombre y chip de Aborto */}
                             <div className="flex items-baseline gap-2">
                                 <span className={`text-lg font-bold font-mono tracking-tight ${isSelected ? 'text-c-accent-sky' : 'text-c-text'}`}>
                                     {animal.id}
@@ -68,6 +68,11 @@ export const SwipeableAnimalCard: React.FC<SwipeableAnimalCardProps> = ({
                                 {animal.name && (
                                     <span className="text-sm text-c-text-muted truncate max-w-[120px]">
                                         {animal.name}
+                                    </span>
+                                )}
+                                {hasAborto && (
+                                    <span className="self-center text-[9px] font-bold uppercase tracking-wide text-red-500 bg-red-500/12 border border-red-500/30 px-1.5 py-0.5 rounded-md">
+                                        Aborto
                                     </span>
                                 )}
                             </div>
@@ -112,13 +117,8 @@ export const SwipeableAnimalCard: React.FC<SwipeableAnimalCardProps> = ({
                             </button>
                         )}
 
-                        {/* Iconos de estado (Preñada, Ordeño, etc.) + chip de Aborto */}
-                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                            {hasAborto && (
-                                <span className="text-[9px] font-bold uppercase tracking-wide text-red-500 bg-red-500/12 border border-red-500/30 px-1.5 py-0.5 rounded-md">
-                                    Aborto
-                                </span>
-                            )}
+                        {/* Iconos de estado (Preñada, Ordeño, etc.) */}
+                        <div className="mt-1">
                             <StatusIcons statuses={statuses} sex={animal.sex} size={16} showReproductive={showReproductive} showLactation={showLactation} />
                         </div>
                     </div>
