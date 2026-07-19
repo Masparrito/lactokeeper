@@ -1,262 +1,252 @@
 // src/pages/modules/lactokeeper/LactoKeeperHistoryPage.tsx
+// Historial de Producción (v1): indicadores del rebaño + listado de animales con
+// sus lactancias. Interruptor Activos/Total. KPIs de ranking que filtran el
+// listado. Todo se alimenta del motor único useLactationHistory.
 
-import { useState, useMemo } from 'react';
-import { useData } from '../../../context/DataContext';
-import { ArrowLeft, ChevronRight, BarChart2, Calendar, TrendingUp, Droplet, ArrowUp, ArrowDown, Users } from 'lucide-react';
-import { BarChart, Bar, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, LabelList } from 'recharts';
-import { useGaussAnalysis, AnalyzedAnimal } from '../../../hooks/useGaussAnalysis';
-import { useHistoricalAnalysis, PeriodStats } from '../../../hooks/useHistoricalAnalysis';
-import type { PageState as RebanoPageState } from '../../../types/navigation'; // Keep RebanoPageState type
-import { Modal } from '../../../components/ui/Modal';
-import { CustomTooltip } from '../../../components/ui/CustomTooltip'; // Import CustomTooltip
-// --- CAMBIO: Importar formatAnimalDisplay ---
+import { useState } from 'react';
+import {
+    ArrowLeft, Trophy, Medal, Award, CalendarDays, Droplet, Snowflake,
+    ChevronRight, Milk, TrendingUp
+} from 'lucide-react';
+import type { PageState as RebanoPageState } from '../../../types/navigation';
+import { useLactationHistory, HistoryScope } from '../../../hooks/useLactationHistory';
+import { AnimalLactationSummary, LactationRecord } from '../../../utils/lactationMetrics';
 
-// --- SUB-COMPONENTES ---
+interface LactoKeeperHistoryPageProps {
+    navigateToRebano: (page: RebanoPageState) => void;
+}
 
-const ChangeIndicator = ({ value }: { value?: number }) => {
-    if (value === undefined || isNaN(value) || value === 0) {
-        return <div className="w-16 h-5"></div>; // Placeholder
-    }
-    const isPositive = value > 0;
-    const color = isPositive ? 'text-brand-green' : 'text-brand-red';
-    const Icon = isPositive ? ArrowUp : ArrowDown;
+type RankKey = 'general' | 'primi' | 'multi';
+
+const fmtKg = (n: number) => `${Math.round(n).toLocaleString('es')} Kg`;
+const fmtDays = (n: number | null) => (n == null ? '—' : `${Math.round(n)} d`);
+
+// --- Interruptor Activos / Total ---
+const ScopeToggle = ({ scope, setScope }: { scope: HistoryScope; setScope: (s: HistoryScope) => void }) => (
+    <div className="flex bg-c-surface-2 rounded-xl p-1 border border-c-border">
+        {(['active', 'all'] as HistoryScope[]).map(s => (
+            <button
+                key={s}
+                onClick={() => setScope(s)}
+                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors ${scope === s ? 'bg-c-accent-sky text-white shadow' : 'text-c-text-muted'}`}
+            >
+                {s === 'active' ? 'Activos' : 'Total histórico'}
+            </button>
+        ))}
+    </div>
+);
+
+// --- Tarjeta de media ponderada ---
+const StatTile = ({ icon: Icon, label, value, color }: { icon: any; label: string; value: string; color: string }) => (
+    <div className="bg-c-surface-2 rounded-xl p-3 border border-c-border flex flex-col items-center text-center">
+        <Icon className={color} size={18} />
+        <p className="text-lg font-bold text-c-text mt-1">{value}</p>
+        <p className="text-[10px] text-c-text-faint uppercase tracking-wide leading-tight mt-0.5">{label}</p>
+    </div>
+);
+
+// --- KPI de ranking (clicable, filtra el listado) ---
+const RankTile = ({ active, onClick, icon: Icon, label, count }: { active: boolean; onClick: () => void; icon: any; label: string; count: number }) => (
+    <button
+        onClick={onClick}
+        className={`rounded-xl p-3 border flex flex-col items-center text-center transition-colors ${active ? 'bg-c-accent-sky/15 border-c-accent-sky/50' : 'bg-c-surface-2 border-c-border'}`}
+    >
+        <Icon className={active ? 'text-c-accent-sky' : 'text-c-text-muted'} size={18} />
+        <p className={`text-sm font-bold mt-1 ${active ? 'text-c-accent-sky' : 'text-c-text'}`}>{label}</p>
+        <p className="text-[10px] text-c-text-faint">{count} animales</p>
+    </button>
+);
+
+const ParityBadge = ({ parity }: { parity: AnimalLactationSummary['parity'] }) => {
+    if (parity === '—') return null;
+    const isPrimi = parity === 'Primípara';
     return (
-        <span className={`flex items-center text-sm font-bold ${color} whitespace-nowrap`}>
-            <Icon size={16} className="mr-0.5" />
-            {value.toFixed(1)}%
+        <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-md ${isPrimi ? 'text-sky-400 bg-sky-400/12 border border-sky-400/30' : 'text-purple-400 bg-purple-400/12 border border-purple-400/30'}`}>
+            {parity}
         </span>
     );
 };
 
-const PeriodCard = ({ stats, onClick }: { stats: PeriodStats, onClick: () => void }) => (
-    <button onClick={onClick} className="w-full text-left bg-c-surface backdrop-blur-xl rounded-2xl p-4 border border-c-border flex justify-between items-center hover:border-c-accent-sky transition-colors">
-        <div className="min-w-0 mr-2">
-            <p className="font-bold text-lg text-c-text truncate">{stats.periodLabel}</p>
-            <p className="text-sm text-c-text-muted truncate">Prom: {stats.averageKg.toFixed(2)} Kg | {stats.animalCount} animales</p>
+// --- Tarjeta de animal en el ranking ---
+const AnimalRankCard = ({ rankPos, summary, onClick }: { rankPos: number; summary: AnimalLactationSummary; onClick: () => void }) => (
+    <button
+        onClick={onClick}
+        className="w-full text-left bg-c-surface rounded-2xl p-4 border border-c-border hover:border-c-accent-sky/40 transition-colors flex items-center gap-3"
+    >
+        <div className={`flex-none w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${rankPos <= 3 ? 'bg-c-accent-gold/20 text-c-accent-gold' : 'bg-c-surface-2 text-c-text-muted'}`}>
+            {rankPos}
         </div>
-        <div className="flex-shrink-0 flex items-center space-x-2">
-             <ChangeIndicator value={stats.avgKgChange} />
-            <ChevronRight className="text-c-text-faint flex-shrink-0" />
+        <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold font-mono text-c-text">{summary.animalId}</span>
+                {summary.name && <span className="text-xs text-c-text-muted truncate max-w-[110px]">{summary.name}</span>}
+                <ParityBadge parity={summary.parity} />
+                {summary.isReference && <span className="text-[9px] text-c-text-faint uppercase">Ref.</span>}
+            </div>
+            <p className="text-[11px] text-c-text-faint mt-0.5">
+                {summary.numLactations} {summary.numLactations === 1 ? 'lactancia' : 'lactancias'} · media {fmtKg(summary.avgStandardized)}
+            </p>
         </div>
+        <div className="text-right flex-none">
+            <p className="text-lg font-bold text-c-accent-sky leading-none">{fmtKg(summary.bestStandardized)}</p>
+            <p className="text-[9px] text-c-text-faint uppercase mt-0.5">mejor lact.</p>
+        </div>
+        <ChevronRight className="text-c-text-faint flex-none" size={18} />
     </button>
 );
 
-// --- WeighingRow ACTUALIZADO con estilo estándar ---
-const WeighingRow = ({ weighing, onSelectAnimal }: { weighing: AnalyzedAnimal, onSelectAnimal: (id: string) => void }) => {
-    // --- CAMBIO: Preparar nombre formateado ---
-    const formattedName = weighing.name ? String(weighing.name).toUpperCase().trim() : '';
+const EmptyState = ({ scope }: { scope: HistoryScope }) => (
+    <div className="text-center py-10 text-c-text-faint">
+        <Milk size={32} className="mx-auto mb-2 opacity-50" />
+        <p className="text-sm">
+            {scope === 'active' ? 'No hay animales activos con lactancias registradas.' : 'No hay lactancias registradas todavía.'}
+        </p>
+    </div>
+);
 
-    return(
-        <button onClick={() => onSelectAnimal(weighing.id)} className="w-full text-left bg-c-surface-2 rounded-lg p-3 border border-c-border flex justify-between items-center hover:border-c-accent-sky/50">
-            {/* --- INICIO: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
-            <div className="min-w-0 pr-3 flex items-center gap-3"> {/* Added gap-3 */}
-                {/* ID (Protagonista) - Fuente y tamaño aplicados */}
-                <div> {/* Wrapper div for text alignment */}
-                    <p className="font-mono font-semibold text-base text-c-text truncate">{weighing.id.toUpperCase()}</p>
+// --- Tarjeta de una lactancia individual (estilo perfil de "Leche") ---
+const lactStatusPill = (l: LactationRecord) => {
+    if (l.status === 'activa') return { txt: 'Actual', cls: 'text-brand-green bg-brand-green/12 border-brand-green/30' };
+    if (l.status === 'finalizada') return { txt: 'Aborto', cls: 'text-red-500 bg-red-500/12 border-red-500/30' };
+    if (l.status === 'seca' || l.status === 'en-secado') return { txt: 'Seca', cls: 'text-orange-400 bg-orange-400/12 border-orange-400/30' };
+    return null;
+};
 
-                    {/* Nombre (Secundario, si existe) */}
-                    {formattedName && (
-                      <p className="text-xs font-normal text-c-text-muted truncate">{formattedName}</p> // Adjusted size/color
-                    )}
+const LactationCard = ({ lact, standardDays, onClick }: { lact: LactationRecord; standardDays: number; onClick: () => void }) => {
+    const year = new Date(lact.parturitionDate + 'T00:00:00Z').getUTCFullYear();
+    const pill = lactStatusPill(lact);
+    return (
+        <button onClick={onClick} className="w-full text-left bg-c-surface rounded-2xl p-4 border border-c-border hover:border-c-accent-sky/40 transition-colors">
+            <div className="flex items-center gap-3 mb-3">
+                <div className="flex-none w-9 h-9 rounded-lg bg-c-accent-gold/15 text-c-accent-gold flex items-center justify-center font-bold">
+                    {lact.lactationNumber}
                 </div>
-                {/* --- CAMBIO: Clasificación movida aquí como "píldora" --- */}
-                <span className={`px-2 py-0.5 text-xs font-semibold rounded-full text-white whitespace-nowrap ${ // Added whitespace-nowrap
-                    weighing.classification === 'Pobre' ? 'bg-brand-red/80' :
-                    weighing.classification === 'Sobresaliente' ? 'bg-brand-green/80' :
-                    'bg-c-text-faint/80'
-                }`}>
-                    {weighing.classification}
-                </span>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-c-text">Lactancia {lact.lactationNumber}</h4>
+                        <span className="text-xs text-c-text-faint">{year}</span>
+                        {pill && <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md border ${pill.cls}`}>{pill.txt}</span>}
+                    </div>
+                    <p className="text-[11px] text-c-text-faint">
+                        {lact.weighingsCount > 0 ? `${lact.weighingsCount} pesajes` : 'Sin pesajes'}
+                    </p>
+                </div>
+                <ChevronRight className="text-c-text-faint flex-none" size={18} />
             </div>
-            {/* --- FIN: APLICACIÓN DEL ESTILO ESTÁNDAR --- */}
-
-            {/* Producción a la derecha */}
-            <p className="font-semibold text-lg text-c-accent-gold flex-shrink-0"> {/* Added flex-shrink-0 */}
-                {weighing.latestWeighing.toFixed(2)}
-                <span className="text-base font-medium text-c-text-faint ml-1">Kg</span> {/* Added ml-1 */}
-            </p>
+            <div className="grid grid-cols-4 gap-2 text-center">
+                <div>
+                    <p className="text-[10px] text-c-text-faint flex items-center justify-center gap-0.5"><Droplet size={10} />Prom</p>
+                    <p className="text-sm font-bold text-c-text">{lact.averageKg.toFixed(2)}</p>
+                </div>
+                <div>
+                    <p className="text-[10px] text-c-text-faint flex items-center justify-center gap-0.5"><TrendingUp size={10} />Pico</p>
+                    <p className="text-sm font-bold text-c-text">{lact.peakKg.toFixed(2)}</p>
+                </div>
+                <div>
+                    <p className="text-[10px] text-c-text-faint flex items-center justify-center gap-0.5"><CalendarDays size={10} />Días</p>
+                    <p className="text-sm font-bold text-c-text">{lact.durationDays}</p>
+                </div>
+                <div>
+                    <p className="text-[10px] text-c-text-faint">a {standardDays}d</p>
+                    <p className="text-sm font-bold text-c-accent-sky">{Math.round(lact.standardizedProduction)}</p>
+                </div>
+            </div>
         </button>
     );
 };
-// --- FIN WeighingRow ---
 
-const CustomBarLabel = (props: any) => {
-    const { x, y, width, value, total } = props;
-    if (total === 0 || value === 0) return null;
-    const percentage = ((value / total) * 100).toFixed(0);
-    return ( <text x={x + width / 2} y={y + 20} fill="#fff" textAnchor="middle" fontSize="12px" fontWeight="bold">{`${percentage}%`}</text> );
-};
+// --- Vista de detalle de un animal (sus lactancias) ---
+const AnimalDetail = ({
+    summary, standardDays, onBack, onOpenLactation
+}: {
+    summary: AnimalLactationSummary;
+    standardDays: number;
+    onBack: () => void;
+    onOpenLactation: (l: LactationRecord) => void;
+}) => (
+    <div className="p-4 space-y-4 pb-24">
+        <button onClick={onBack} className="flex items-center gap-2 text-c-text-muted hover:text-c-text">
+            <ArrowLeft size={20} /> <span className="font-semibold">Volver al ranking</span>
+        </button>
 
-// Modal para análisis de ingresos (Usa WeighingRow actualizado)
-const AnalysisModal = ({ isOpen, onClose, data, periodLabel, onSelectAnimal }: {
-    isOpen: boolean,
-    onClose: () => void,
-    data: PeriodStats | null,
-    periodLabel: string,
-    onSelectAnimal: (id: string) => void
-}) => {
-    const { animals, weighings, parturitions } = useData();
-    const [classificationFilter, setClassificationFilter] = useState<'all' | 'Pobre' | 'Promedio' | 'Sobresaliente'>('all');
-
-    const analysis = useGaussAnalysis(data?.newAnimalsWeighings || [], animals, weighings, parturitions, false);
-
-    const filteredAnimals = useMemo(() => {
-        if (classificationFilter === 'all') return analysis.classifiedAnimals;
-        return analysis.classifiedAnimals.filter(a => a.classification === classificationFilter);
-    }, [analysis.classifiedAnimals, classificationFilter]);
-
-    const handleBarClick = (barData: any) => { if (barData?.payload?.name) { const newFilter = barData.payload.name as any; setClassificationFilter(prev => prev === newFilter ? 'all' : newFilter); }};
-
-    if (!isOpen || !data) return null;
-
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Análisis Nuevos Ingresos - ${periodLabel}`}>
-            <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-c-surface-2 p-3 rounded-2xl"><div className="text-xs uppercase text-c-text-muted mb-1 flex items-center gap-1"><Droplet size={14}/>Promedio</div><p className="text-2xl font-bold text-c-accent-gold">{analysis.mean.toFixed(2)}<span className="text-lg ml-1 text-c-text-faint">Kg</span></p></div>
-                    <div className="bg-c-surface-2 p-3 rounded-2xl"><div className="text-xs uppercase text-c-text-muted mb-1 flex items-center gap-1"><Users size={14}/>Animales</div><p className="text-2xl font-bold text-c-text">{analysis.classifiedAnimals.length}</p></div>
-                </div>
-                <div className="bg-c-surface-2 backdrop-blur-xl rounded-2xl p-4 border border-c-border">
-                    <div className="w-full h-48">
-                        <ResponsiveContainer><BarChart data={analysis.distribution} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                            <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 12 }} stroke="#cbd5e1" /><YAxis orientation="left" tick={{ fill: '#64748b', fontSize: 12 }} stroke="#cbd5e1" />
-                            <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(30, 111, 173, 0.06)'}} />
-                            <Bar dataKey="count" onClick={handleBarClick} cursor="pointer">
-                                {analysis.distribution.map(entry => <Cell key={entry.name} fill={entry.fill} className={`${classificationFilter !== 'all' && classificationFilter !== entry.name ? 'opacity-30' : 'opacity-100'}`} />)}
-                                <LabelList dataKey="count" content={<CustomBarLabel total={analysis.classifiedAnimals.length} />} />
-                            </Bar>
-                        </BarChart></ResponsiveContainer>
-                    </div>
-                </div>
-                <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                    {filteredAnimals.sort((a,b) => b.latestWeighing - a.latestWeighing).map((animal) => (
-                        // --- Usa WeighingRow actualizado ---
-                        <WeighingRow key={animal.weighingId || animal.id} weighing={animal} onSelectAnimal={onSelectAnimal} />
-                    ))}
-                </div>
+        <div className="bg-c-surface rounded-2xl p-4 border border-c-border">
+            <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-xl font-bold font-mono text-c-text">{summary.animalId}</h2>
+                {summary.name && <span className="text-sm text-c-text-muted">{summary.name}</span>}
+                <ParityBadge parity={summary.parity} />
+                {summary.isReference && <span className="text-[9px] text-c-text-faint uppercase">Ref.</span>}
             </div>
-        </Modal>
-    );
-};
+            <div className="grid grid-cols-4 gap-2 mt-3 text-center">
+                <div><p className="text-sm font-bold text-c-text">{fmtKg(summary.totalMilkAllTime)}</p><p className="text-[9px] text-c-text-faint uppercase">Total</p></div>
+                <div><p className="text-sm font-bold text-c-text">{fmtDays(summary.avgDuration || null)}</p><p className="text-[9px] text-c-text-faint uppercase">D. Lactancia</p></div>
+                <div><p className="text-sm font-bold text-c-text">{fmtDays(summary.avgDryDays)}</p><p className="text-[9px] text-c-text-faint uppercase">D. Secos</p></div>
+                <div><p className="text-sm font-bold text-c-text">{fmtDays(summary.avgOpenDays)}</p><p className="text-[9px] text-c-text-faint uppercase">D. Abiertos</p></div>
+            </div>
+        </div>
 
+        <p className="text-xs font-bold uppercase tracking-wider text-c-text-faint">
+            Lactancias ({summary.numLactations})
+        </p>
+        <div className="space-y-2">
+            {[...summary.lactations].reverse().map(l => (
+                <LactationCard key={l.lactationNumber} lact={l} standardDays={standardDays} onClick={() => onOpenLactation(l)} />
+            ))}
+        </div>
+    </div>
+);
 
-interface LactoKeeperHistoryPageProps {
-    navigateToRebano: (page: RebanoPageState) => void; // Mantener navigateToRebano
-}
+export default function LactoKeeperHistoryPage({ navigateToRebano }: LactoKeeperHistoryPageProps) {
+    const [scope, setScope] = useState<HistoryScope>('active');
+    const [rank, setRank] = useState<RankKey>('general');
+    const [selected, setSelected] = useState<AnimalLactationSummary | null>(null);
+    const data = useLactationHistory(scope);
 
-// --- COMPONENTE PRINCIPAL (Sin cambios lógicos mayores) ---
-export default function LactoKeeperHistoryPage({ navigateToRebano }: LactoKeeperHistoryPageProps) { // Usar navigateToRebano
-    const { animals, weighings, parturitions, isLoading } = useData();
-    const [selectedPeriod, setSelectedPeriod] = useState<PeriodStats | null>(null);
-    const [classificationFilter, setClassificationFilter] = useState<'all' | 'Pobre' | 'Promedio' | 'Sobresaliente'>('all');
-    const [isVariationModalOpen, setIsVariationModalOpen] = useState(false);
-    const [analysisModalData, setAnalysisModalData] = useState<PeriodStats | null>(null);
-
-    const { monthlyData } = useHistoricalAnalysis(weighings);
-    const periodAnalysis = useGaussAnalysis(selectedPeriod?.weighings || [], animals, weighings, parturitions, false);
-
-    const filteredWeighings = useMemo(() => {
-        if (classificationFilter === 'all') return periodAnalysis.classifiedAnimals;
-        return periodAnalysis.classifiedAnimals.filter(animal => animal.classification === classificationFilter);
-    }, [periodAnalysis.classifiedAnimals, classificationFilter]);
-
-    const handleBarClick = (data: any) => { if (data?.payload?.name) { const newFilter = data.payload.name as any; setClassificationFilter(prev => prev === newFilter ? 'all' : newFilter); }};
-
-    if (isLoading) { return <div className="text-center p-10"><h1 className="text-2xl text-c-text-muted">Cargando historial...</h1></div>; }
-
-    if (!selectedPeriod) {
+    if (selected) {
+        // refrescar el resumen seleccionado desde los datos actuales del scope
+        const fresh = data.summaries.find(s => s.animalId === selected.animalId) || selected;
         return (
-            <div className="w-full max-w-2xl mx-auto space-y-4 pb-12 px-4 pt-4">
-                <header className="text-center pb-4"><h1 className="text-2xl font-bold tracking-tight text-c-text">Historial de Producción</h1></header>
-                {monthlyData.length > 0 ? (
-                    <div className="space-y-2">
-                        {monthlyData.map(stats => (<PeriodCard key={stats.periodId} stats={stats} onClick={() => setSelectedPeriod(stats)} />))}
-                    </div>
-                 ) : (
-                    <div className="text-center py-10 bg-c-surface rounded-2xl mx-4">
-                        <p className="text-c-text-muted">No hay datos históricos de pesajes registrados.</p>
-                    </div>
-                 )}
-            </div>
+            <AnimalDetail
+                summary={fresh}
+                standardDays={data.standardDays}
+                onBack={() => setSelected(null)}
+                onOpenLactation={(l) => navigateToRebano({ name: 'lactation-weighings', animalId: fresh.animalId, parturitionDate: l.parturitionDate })}
+            />
         );
     }
 
+    const list = rank === 'primi' ? data.rankingPrimiparas : rank === 'multi' ? data.rankingMultiparas : data.rankingGeneral;
+
     return (
-        <>
-            <div className="w-full max-w-2xl mx-auto space-y-4 pb-12 animate-fade-in px-4">
-                <header className="flex items-center pt-4 pb-4">
-                    <button onClick={() => { setSelectedPeriod(null); setClassificationFilter('all'); }} className="p-2 -ml-2 text-c-text-muted hover:text-c-text transition-colors"><ArrowLeft size={24} /></button>
-                    <div className="text-center flex-grow"><h1 className="text-2xl font-bold tracking-tight text-c-text">{selectedPeriod.periodLabel}</h1></div>
-                    <div className="w-8"></div> {/* Spacer */}
-                </header>
+        <div className="p-4 space-y-5 pb-24">
+            <h1 className="text-2xl font-bold text-c-text">Historial de Producción</h1>
+            <ScopeToggle scope={scope} setScope={setScope} />
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-c-surface p-3 rounded-2xl"><div className="text-xs uppercase text-c-text-muted mb-1 flex items-center gap-1"><Droplet size={14}/>Promedio / Animal</div><div className="flex items-baseline gap-2"><p className="text-2xl font-bold text-c-accent-gold">{selectedPeriod.averageKg.toFixed(2)}<span className="text-lg ml-1 text-c-text-faint">Kg</span></p><ChangeIndicator value={selectedPeriod.avgKgChange} /></div></div>
-                    <div className="bg-c-surface p-3 rounded-2xl"><div className="text-xs uppercase text-c-text-muted mb-1 flex items-center gap-1"><Calendar size={14}/>Eventos de Pesaje</div><p className="text-2xl font-bold text-c-text">{selectedPeriod.weighingEvents}</p></div>
-                    <button onClick={() => setIsVariationModalOpen(true)} className="bg-c-surface p-3 rounded-2xl text-left hover:border-c-accent-sky transition-colors border border-c-border"><div className="text-xs uppercase text-c-text-muted mb-1 flex items-center gap-1"><Users size={14}/>Animales Ordeñados</div><div className="flex items-baseline gap-2"><p className="text-2xl font-bold text-c-text">{selectedPeriod.animalCount}</p><ChangeIndicator value={selectedPeriod.animalCountChange}/></div></button>
-                    <div className="bg-c-surface p-3 rounded-2xl"><div className="text-xs uppercase text-c-text-muted mb-1 flex items-center gap-1"><TrendingUp size={14}/>Total Registrado</div><p className="text-2xl font-bold text-c-accent-gold">{selectedPeriod.totalKg.toFixed(0)}<span className="text-lg ml-1 text-c-text-faint">Kg</span></p></div>
-                </div>
-
-                <div className="bg-c-surface backdrop-blur-xl rounded-2xl p-4 border border-c-border">
-                    <div className="flex items-center space-x-2 border-b border-c-border pb-2 mb-4"><BarChart2 className="text-c-accent-sky" size={18}/><h3 className="text-lg font-semibold text-c-text">Distribución del Período</h3></div>
-                    <div className="w-full h-48">
-                        <ResponsiveContainer><BarChart data={periodAnalysis.distribution} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                            <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 12 }} stroke="#cbd5e1" /><YAxis orientation="left" tick={{ fill: '#64748b', fontSize: 12 }} stroke="#cbd5e1" />
-                            <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(30, 111, 173, 0.06)'}} />
-                            <Bar dataKey="count" onClick={handleBarClick} cursor="pointer">
-                                {periodAnalysis.distribution.map((entry) => (<Cell key={entry.name} fill={entry.fill} className={`${classificationFilter !== 'all' && classificationFilter !== entry.name ? 'opacity-30' : 'opacity-100'} transition-opacity`} />))}
-                                <LabelList dataKey="count" content={<CustomBarLabel total={periodAnalysis.classifiedAnimals.length} />} />
-                            </Bar>
-                        </BarChart></ResponsiveContainer>
-                    </div>
-                    <div className="text-center text-xs text-c-text-muted mt-2"><span>μ = {periodAnalysis.mean.toFixed(2)} Kg</span> | <span>σ = {periodAnalysis.stdDev.toFixed(2)}</span></div>
-                </div>
-
-                <div className="space-y-2">
-                    <h3 className="text-lg font-semibold text-c-text-strong ml-1 mt-4">Pesajes del Período ({filteredWeighings.length})</h3>
-                    {filteredWeighings.length > 0 ? (
-                        filteredWeighings.sort((a,b) => b.latestWeighing - a.latestWeighing).map((animal) => (
-                            // --- Usa WeighingRow actualizado ---
-                            <WeighingRow key={animal.weighingId || animal.id} weighing={animal} onSelectAnimal={(id) => navigateToRebano({ name: 'lactation-profile', animalId: id })} />
-                        ))
-                    ) : (
-                        <div className="text-center py-6 bg-c-surface rounded-lg">
-                            <p className="text-c-text-faint">No hay pesajes que coincidan con el filtro.</p>
-                        </div>
-                    )}
+            <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-c-text-faint mb-2">Medias ponderadas del rebaño</p>
+                <div className="grid grid-cols-3 gap-3">
+                    <StatTile icon={CalendarDays} label="Días Lactancia" value={fmtDays(data.avgLactationDays)} color="text-blue-300" />
+                    <StatTile icon={Snowflake} label="Días Secos" value={fmtDays(data.avgDryDays)} color="text-orange-400" />
+                    <StatTile icon={Droplet} label="Días Abiertos" value={fmtDays(data.avgOpenDays)} color="text-emerald-400" />
                 </div>
             </div>
 
-            <Modal isOpen={isVariationModalOpen} onClose={() => setIsVariationModalOpen(false)} title="Variación de Animales en Ordeño">
-                <div className="text-c-text-strong space-y-4">
-                    <div>
-                        <h4 className="font-semibold text-c-text mb-1">{selectedPeriod.periodLabel} vs Mes Anterior</h4>
-                        <p className="text-sm text-c-text-muted">El mes anterior tenías <span className='font-bold text-c-text'>{selectedPeriod.previousAnimalCount}</span> animales en ordeño. Este mes tienes <span className='font-bold text-c-text'>{selectedPeriod.animalCount}</span>.</p>
-                        <div className="flex items-center gap-2 mt-2">
-                            <p>El cambio neto es de <span className='font-bold text-c-text'>{selectedPeriod.animalCount - (selectedPeriod.previousAnimalCount || 0)}</span> animales</p>
-                            <ChangeIndicator value={selectedPeriod.animalCountChange}/>
-                        </div>
-                    </div>
-                    <div className="pt-4 border-t border-c-border">
-                        {selectedPeriod.exitingAnimalCount! > 0 && <p className="text-sm text-c-text-muted mt-1">Salieron del ordeño: <span className="font-bold text-brand-red">{selectedPeriod.exitingAnimalCount}</span> animales.</p>}
-                        {selectedPeriod.newAnimalsWeighings.length > 0 && <p className="text-sm text-c-text-muted mt-1">Nuevos ingresos: <span className="font-bold text-brand-green">{new Set(selectedPeriod.newAnimalsWeighings.map(w => w.goatId)).size}</span> animales.</p>}
-
-                        {selectedPeriod.newAnimalsWeighings.length > 0 && (
-                            <button onClick={() => { setAnalysisModalData(selectedPeriod); setIsVariationModalOpen(false); }} className="w-full mt-4 bg-c-accent-sky text-white font-semibold py-2 rounded-lg hover:opacity-90 transition-colors">
-                                Analizar los {new Set(selectedPeriod.newAnimalsWeighings.map(w => w.goatId)).size} Nuevos Ingresos
-                            </button>
-                        )}
-                    </div>
+            <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-c-text-faint mb-2">Ranking de productoras · toca para filtrar</p>
+                <div className="grid grid-cols-3 gap-3">
+                    <RankTile active={rank === 'general'} onClick={() => setRank('general')} icon={Trophy} label="General" count={data.rankingGeneral.length} />
+                    <RankTile active={rank === 'primi'} onClick={() => setRank('primi')} icon={Medal} label="Primíparas" count={data.rankingPrimiparas.length} />
+                    <RankTile active={rank === 'multi'} onClick={() => setRank('multi')} icon={Award} label="Multíparas" count={data.rankingMultiparas.length} />
                 </div>
-            </Modal>
+            </div>
 
-            <AnalysisModal
-                isOpen={!!analysisModalData}
-                onClose={() => setAnalysisModalData(null)}
-                data={analysisModalData}
-                periodLabel={selectedPeriod.periodLabel}
-                onSelectAnimal={(id) => navigateToRebano({ name: 'lactation-profile', animalId: id })}
-            />
-        </>
+            <div className="space-y-2">
+                <p className="text-sm font-semibold text-c-text-muted">
+                    {list.length} animales · producción estandarizada a {data.standardDays} días
+                </p>
+                {list.length === 0 ? <EmptyState scope={scope} /> : list.map((s, i) => (
+                    <AnimalRankCard key={s.animalId} rankPos={i + 1} summary={s} onClick={() => setSelected(s)} />
+                ))}
+            </div>
+        </div>
     );
 }
