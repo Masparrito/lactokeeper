@@ -405,7 +405,7 @@ export const AdvancedAnimalSelector: React.FC<AdvancedAnimalSelectorProps> = ({
                     {activeMode === 'Activo' && (
                         <div className="space-y-4 pt-2 border-t border-c-border/50">
                             <FilterBar title="Estado Productivo" filters={['MILKING', 'DRY'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey]).filter(Boolean)} activeFilter={productiveFilter} onFilterChange={setProductiveFilter} />
-                            <FilterBar title="Estado Reproductivo" filters={['PREGNANT', 'SERVIDA_CONFIRMED', 'IN_SERVICE_CONFIRMED', 'IN_SERVICE', 'EMPTY', 'SIRE_IN_SERVICE'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey]).filter(Boolean)} activeFilter={reproductiveFilter} onFilterChange={setReproductiveFilter} />
+                            <FilterBar title="Estado Reproductivo" filters={['PREGNANT', 'SERVIDA_CONFIRMED', 'IN_SERVICE_CONFIRMED', 'IN_SERVICE', 'EMPTY', 'ABORTED', 'SIRE_IN_SERVICE'].map(k => STATUS_DEFINITIONS[k as AnimalStatusKey]).filter(Boolean)} activeFilter={reproductiveFilter} onFilterChange={setReproductiveFilter} />
                         </div>
                     )}
 

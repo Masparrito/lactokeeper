@@ -15,6 +15,7 @@ const ALL_STATUS_KEYS: AnimalStatusKey[] = [
     'IN_SERVICE_CONFIRMED',
     'IN_SERVICE',
     'EMPTY',
+    'ABORTED',
     'SIRE_IN_SERVICE',
 ];
 
