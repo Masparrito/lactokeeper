@@ -52,9 +52,13 @@ const ReferenceLoadHub = ({ navigateTo, onBack }: { navigateTo: NavigateToProfil
 
     const term = search.trim().toUpperCase();
     const females = animals.filter(a => a.sex === 'Hembra');
+    // Sin buscador: todas las hembras "históricas" (referencia o inactivas). Con
+    // buscador: cualquier hembra por ID/nombre. Sin límite (lista completa).
     const results = term
-        ? females.filter(a => a.id.toUpperCase().includes(term) || (a.name || '').toUpperCase().includes(term)).slice(0, 40)
-        : females.filter(a => a.isReference).slice(0, 40); // por defecto: las de referencia
+        ? females.filter(a => a.id.toUpperCase().includes(term) || (a.name || '').toUpperCase().includes(term))
+        : females
+            .filter(a => a.isReference || a.status !== 'Activo')
+            .sort((a, b) => a.id.localeCompare(b.id));
 
     return (
         <div className="w-full max-w-2xl mx-auto px-4 pt-4 space-y-4 pb-24 animate-fade-in">
@@ -84,7 +88,7 @@ const ReferenceLoadHub = ({ navigateTo, onBack }: { navigateTo: NavigateToProfil
             </div>
 
             <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-c-text-faint">{term ? `Resultados (${results.length})` : 'Referencias'}</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-c-text-faint">{term ? `Resultados (${results.length})` : `Referencias e históricas (${results.length})`}</p>
                 {results.map(a => (
                     <button
                         key={a.id}
