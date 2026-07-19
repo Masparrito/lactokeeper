@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { Animal, Parturition, ServiceRecord, SireLot, BreedingSeason } from '../db/local';
-import { Heart, HeartHandshake, Wind, CalendarCheck, MilkOff, CircleDashed } from 'lucide-react';
+import { Heart, HeartHandshake, Wind, CalendarCheck, MilkOff, CircleDashed, HeartCrack } from 'lucide-react';
 import { GiUdder, GiEmbryo } from 'react-icons/gi';
 import { FaMars } from 'react-icons/fa6';
 import { AppConfig, DEFAULT_CONFIG } from '../types/config';
@@ -21,6 +21,8 @@ export const STATUS_DEFINITIONS = {
     MILKING: { key: 'MILKING', Icon: GiUdder, color: 'text-blue-300', label: 'En Ordeño' },
     DRYING_OFF: { key: 'DRYING_OFF', Icon: Wind, color: 'text-yellow-400', label: 'Secando' },
     DRY: { key: 'DRY', Icon: MilkOff, color: 'text-orange-400', label: 'Seca' },
+    // Aborto: el último parto quedó como 'finalizada' (aborto no inducido).
+    ABORTED: { key: 'ABORTED', Icon: HeartCrack, color: 'text-red-500', label: 'Aborto' },
 };
 
 export type AnimalStatusKey = keyof typeof STATUS_DEFINITIONS;
@@ -112,6 +114,10 @@ export const computeAnimalStatuses = (
         else if (lastParturition.status === 'en-secado' || lastParturition.status === 'seca') {
             activeStatuses.push(STATUS_DEFINITIONS.DRY);
             isDry = true;
+        }
+        // Último parto = aborto no inducido ('finalizada'): se marca "Aborto".
+        else if (lastParturition.status === 'finalizada') {
+            activeStatuses.push(STATUS_DEFINITIONS.ABORTED);
         }
     }
 

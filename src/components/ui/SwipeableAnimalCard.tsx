@@ -27,6 +27,7 @@ export const SwipeableAnimalCard: React.FC<SwipeableAnimalCardProps> = ({
     const { parturitions, appConfig } = useData();
     const { showReproductive, showLactation } = getStatusDisplayFlags(animal, parturitions, appConfig);
     const hasStale = animal.sex === 'Hembra' && hasStaleOpenLactation(animal.id, parturitions);
+    const hasAborto = statuses.some(s => s.key === 'ABORTED');
 
     return (
         <div className="relative group">
@@ -111,8 +112,13 @@ export const SwipeableAnimalCard: React.FC<SwipeableAnimalCardProps> = ({
                             </button>
                         )}
 
-                        {/* Iconos de estado (Preñada, Ordeño, etc.) */}
-                        <div className="mt-1">
+                        {/* Iconos de estado (Preñada, Ordeño, etc.) + chip de Aborto */}
+                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                            {hasAborto && (
+                                <span className="text-[9px] font-bold uppercase tracking-wide text-red-500 bg-red-500/12 border border-red-500/30 px-1.5 py-0.5 rounded-md">
+                                    Aborto
+                                </span>
+                            )}
                             <StatusIcons statuses={statuses} sex={animal.sex} size={16} showReproductive={showReproductive} showLactation={showLactation} />
                         </div>
                     </div>

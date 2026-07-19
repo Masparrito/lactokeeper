@@ -73,7 +73,7 @@ export const DataHealer = () => {
             });
             logs.push('──────────');
             logs.push(`🔎 DIAGNÓSTICO (ya normalizado) — hembras activas: ${hembras.length}`);
-            logs.push(`Lactancia → activa:${part.activa} · en-secado:${part['en-secado']} · seca:${part.seca} · finalizada:${part.finalizada} · sin parto:${part['sin-parto']}`);
+            logs.push(`Lactancia → activa:${part.activa} · en-secado:${part['en-secado']} · seca:${part.seca} · aborto:${part.finalizada} · sin parto:${part['sin-parto']}`);
             logs.push('Estado repro → ' + (Object.entries(repro).map(([k, v]) => `${k}:${v}`).join(' · ') || '—'));
             logs.push(`Secas (parto seca/en-secado): ${part.seca + part['en-secado']}`);
         } catch (e: any) {
