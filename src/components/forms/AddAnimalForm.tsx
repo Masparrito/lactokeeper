@@ -54,13 +54,14 @@ const Toggle = ({ labelOn, labelOff, value, onChange }: { labelOn: string, label
 interface AddAnimalFormProps {
     onSaveSuccess: () => void;
     onCancel: () => void;
+    initialStatus?: 'Activo' | 'Referencia';
 }
 
-export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onCancel }) => {
+export const AddAnimalForm: React.FC<AddAnimalFormProps> = ({ onSaveSuccess, onCancel, initialStatus }) => {
     const { addAnimal, animals, lots, fathers } = useData();
 
     // Estados del formulario
-    const [status, setStatus] = useState<'Activo' | 'Referencia'>('Activo');
+    const [status, setStatus] = useState<'Activo' | 'Referencia'>(initialStatus || 'Activo');
     const [sex, setSex] = useState<'Hembra' | 'Macho'>('Hembra');
     const [animalId, setAnimalId] = useState('');
     const [name, setName] = useState('');

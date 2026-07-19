@@ -92,7 +92,7 @@ export default function LactoKeeperShell({ initialPage, onPageStateChange, navig
             case 'history':
                 return <LactoKeeperHistoryPage navigateToRebano={handleNavigateToRebano} />;
             case 'add-data':
-                return <LactoKeeperAddDataPage onSaveSuccess={() => navigateTo({ name: 'analysis' })} />;
+                return <LactoKeeperAddDataPage onSaveSuccess={() => navigateTo({ name: 'analysis' })} navigateTo={navigateTo} />;
             case 'drying':
                 return <LactoKeeperDryOffPage navigateToRebano={handleNavigateToRebano} />;
             case 'lactation-profile':
