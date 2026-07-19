@@ -105,10 +105,14 @@ export const computeAnimalStatuses = (
     const hasCalved = animalParturitions.length > 0;
 
     // B. Estado de Lactancia (Productivo)
+    let isDry = false;
     if (lastParturition) {
         if (lastParturition.status === 'activa') activeStatuses.push(STATUS_DEFINITIONS.MILKING);
         // "Secando" se elimina del flujo: cualquier estado de secado se muestra como "Seca".
-        else if (lastParturition.status === 'en-secado' || lastParturition.status === 'seca') activeStatuses.push(STATUS_DEFINITIONS.DRY);
+        else if (lastParturition.status === 'en-secado' || lastParturition.status === 'seca') {
+            activeStatuses.push(STATUS_DEFINITIONS.DRY);
+            isDry = true;
+        }
     }
 
     // C. Determinación de "Vientre" (Aptitud Reproductiva)
@@ -147,8 +151,10 @@ export const computeAnimalStatuses = (
         }
     }
 
-    // E. Lógica de "Vacía": solo si es un Vientre apto que NO está comprometido.
-    if (isVientre && !isPregnantOrConfirmed && !isJustInService) {
+    // E. Lógica de "Vacía": solo si es un Vientre apto, NO comprometido y NO seca.
+    // Una cabra SECA se muestra simplemente como "Seca" (seco es seco): no tiene
+    // sentido marcarla también "Vacía/abierta" cuando está en su periodo seco.
+    if (isVientre && !isPregnantOrConfirmed && !isJustInService && !isDry) {
         activeStatuses.push(STATUS_DEFINITIONS.EMPTY);
     }
 

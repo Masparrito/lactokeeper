@@ -16,10 +16,9 @@ interface DeclareDryOffModalProps {
 const calendarCss = dayPickerCss;
 
 export const DeclareDryOffModal = ({ isOpen, onClose, animal }: DeclareDryOffModalProps) => {
-    const { parturitions, setLactationAsDry, updateAnimal } = useData();
+    const { parturitions, setLactationAsDry } = useData();
     const [date, setDate] = useState<Date>(new Date());
     const [reason, setReason] = useState('Fin de Lactancia');
-    const [isPregnant, setIsPregnant] = useState(true); // El secado suele hacerse por preñez.
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showCalendar, setShowCalendar] = useState(false);
 
@@ -40,10 +39,9 @@ export const DeclareDryOffModal = ({ isOpen, onClose, animal }: DeclareDryOffMod
             if (activeLactation) {
                 await setLactationAsDry(activeLactation.id, date.toISOString().split('T')[0]);
             }
-            // La cabra suele secarse porque está preñada (aún no pare). Registramos
-            // ese estado reproductivo —o 'Vacía' si el usuario indica que no lo está—
-            // para que los iconos de perfil/rebaño reflejen la preñez correctamente.
-            await updateAnimal(animal.id, { reproductiveStatus: isPregnant ? 'Preñada' : 'Vacía' });
+            // Secar = secar. NO se toca el estado reproductivo: una cabra seca se
+            // muestra simplemente como "Seca". Si además está Servida/Preñada (porque
+            // se le vio servicio o se confirmó preñez), ese estado se conserva aparte.
             onClose();
         } catch (error) {
             console.error("Error al secar:", error);
@@ -126,32 +124,6 @@ export const DeclareDryOffModal = ({ isOpen, onClose, animal }: DeclareDryOffMod
                                 <option value="Enfermedad">Enfermedad / Mastitis</option>
                                 <option value="Estratégico">Decisión Estratégica</option>
                             </select>
-                        </div>
-                    )}
-
-                    {/* ¿Está preñada? (el secado suele hacerse por preñez) */}
-                    {!showCalendar && (
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-c-text-faint uppercase tracking-widest ml-1">¿Está preñada?</label>
-                            <div className="grid grid-cols-2 gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsPregnant(true)}
-                                    className={`py-3 rounded-xl border text-sm font-bold transition-colors ${isPregnant ? 'bg-brand-green/15 text-brand-green border-brand-green/40' : 'bg-c-surface-2 text-c-text-muted border-c-border'}`}
-                                >
-                                    Sí, preñada
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsPregnant(false)}
-                                    className={`py-3 rounded-xl border text-sm font-bold transition-colors ${!isPregnant ? 'bg-c-surface-3 text-c-text border-c-border-strong' : 'bg-c-surface-2 text-c-text-muted border-c-border'}`}
-                                >
-                                    No
-                                </button>
-                            </div>
-                            <p className="text-[11px] text-c-text-faint ml-1">
-                                Se seca la lactancia y {isPregnant ? 'se marca como Preñada.' : 'queda como Vacía.'}
-                            </p>
                         </div>
                     )}
                 </div>
