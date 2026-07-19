@@ -1,15 +1,77 @@
 import { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { getAnimalZootecnicCategory } from '../utils/calculations';
-import { RefreshCcw, HeartHandshake } from 'lucide-react';
+import { RefreshCcw, HeartHandshake, Droplets } from 'lucide-react';
+import { Animal } from '../db/local';
 
 export const DataHealer = () => {
-    const { animals, parturitions, bulkUpdateAnimals, appConfig, normalizeReproductiveState } = useData();
+    const { animals, parturitions, events, bulkUpdateAnimals, setLactationAsDry, appConfig, normalizeReproductiveState } = useData();
     const [isHealing, setIsHealing] = useState(false);
     const [report, setReport] = useState<string[]>([]);
     const [isReproHealing, setIsReproHealing] = useState(false);
     const [reproReport, setReproReport] = useState<string | null>(null);
     const [reproDiag, setReproDiag] = useState<string[]>([]);
+    const [isDryHealing, setIsDryHealing] = useState(false);
+    const [dryReport, setDryReport] = useState<string[]>([]);
+
+    // Repara cabras "declaradas secas" con el flujo viejo, que escribía un estado
+    // reproductivo inválido ('Seca') SIN marcar la lactancia como seca. Resultado:
+    // seguían como lactancia activa y no aparecían como Seca. Aquí se marca la
+    // lactancia como 'seca' (icono correcto) y se limpia el estado inválido.
+    const handleDryRepair = async () => {
+        setIsDryHealing(true);
+        setDryReport([]);
+        const logs: string[] = [];
+        try {
+            const latestOpenParturition = (animalId: string) =>
+                parturitions
+                    .filter(p => p.goatId === animalId && p.status !== 'finalizada')
+                    .sort((x, y) => new Date(y.parturitionDate).getTime() - new Date(x.parturitionDate).getTime())[0];
+
+            const candidates = animals.filter(a => {
+                if (a.status !== 'Activo' || a.isReference) return false;
+                const invalidSeca = (a.reproductiveStatus as string) === 'Seca';
+                const latest = latestOpenParturition(a.id);
+                const lactationActive = !!latest && (latest.status === 'activa' || latest.status === 'en-secado');
+                const hasSecadoEvent = events.some(e => e.animalId === a.id && e.type === 'Secado');
+                // Roto = marcado con el 'Seca' inválido, o con evento de Secado pero la
+                // lactancia todavía sin cerrar como 'seca'.
+                return invalidSeca || (hasSecadoEvent && lactationActive);
+            });
+
+            if (candidates.length === 0) {
+                logs.push('✨ No se encontraron animales secos por reparar.');
+                setDryReport(logs);
+                setIsDryHealing(false);
+                return;
+            }
+
+            let fixedLactation = 0;
+            const statusUpdates: { id: string; changes: Partial<Animal> }[] = [];
+
+            for (const a of candidates) {
+                const latest = latestOpenParturition(a.id);
+                if (latest && latest.status !== 'seca') {
+                    const secadoEvent = events.find(e => e.animalId === a.id && e.type === 'Secado');
+                    await setLactationAsDry(latest.id, secadoEvent?.date);
+                    fixedLactation++;
+                    logs.push(`✅ ${a.id}: lactancia → Seca`);
+                }
+                if ((a.reproductiveStatus as string) === 'Seca') {
+                    statusUpdates.push({ id: a.id, changes: { reproductiveStatus: 'Vacía' } });
+                }
+            }
+            if (statusUpdates.length) await bulkUpdateAnimals(statusUpdates);
+
+            logs.push('🎉 REPARACIÓN COMPLETADA.');
+            logs.push(`- Lactancias marcadas como Seca: ${fixedLactation}`);
+            logs.push(`- Estados inválidos ('Seca') corregidos: ${statusUpdates.length}`);
+        } catch (e: any) {
+            logs.push(`❌ Error: ${e?.message || 'no se pudo reparar'}`);
+        }
+        setDryReport(logs);
+        setIsDryHealing(false);
+    };
 
     const handleReproRepair = async () => {
         setIsReproHealing(true);
@@ -158,6 +220,37 @@ export const DataHealer = () => {
                         <div className="font-mono text-[11px] leading-relaxed space-y-1">
                             {reproDiag.map((line, i) => (
                                 <div key={i} className={i === 0 ? 'text-c-text-strong font-bold pb-1 border-b border-c-border' : 'text-c-text-muted'}>{line}</div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Reparación de animales secos (declarados con el flujo viejo) */}
+            <div className="mt-8 pt-6 border-t border-c-border">
+                <h3 className="text-c-text-strong font-bold text-lg mb-2 flex items-center gap-2">
+                    <Droplets className={isDryHealing ? "animate-pulse text-cyan-400" : "text-cyan-400"} size={24} />
+                    Reparar Animales Secos
+                </h3>
+                <p className="text-c-text-muted text-sm mb-6 leading-relaxed">
+                    Corrige las cabras que fueron <strong>declaradas secas</strong> con la versión anterior de la app,
+                    en las que la lactancia no llegó a cerrarse (por eso <strong>no aparecían como Seca</strong>).
+                    Marca su lactancia como seca y limpia el estado inválido. No borra partos ni pesajes.
+                </p>
+                <button
+                    onClick={handleDryRepair}
+                    disabled={isDryHealing}
+                    className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 font-bold text-white transition-all
+                        ${isDryHealing ? 'bg-c-surface-2 text-c-text-muted cursor-not-allowed' : 'bg-cyan-600 hover:bg-cyan-500 shadow-lg shadow-cyan-500/20 active:scale-95'}
+                    `}
+                >
+                    {isDryHealing ? 'Reparando...' : 'Reparar animales secos'}
+                </button>
+                {dryReport.length > 0 && (
+                    <div className="mt-4 bg-c-surface-2 p-4 rounded-xl border border-c-border max-h-80 overflow-y-auto">
+                        <div className="font-mono text-xs space-y-1">
+                            {dryReport.map((line, i) => (
+                                <div key={i} className={line.includes('Error') ? 'text-brand-red' : 'text-c-text-muted'}>{line}</div>
                             ))}
                         </div>
                     </div>
