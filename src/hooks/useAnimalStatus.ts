@@ -20,7 +20,7 @@ export const STATUS_DEFINITIONS = {
     SIRE_IN_SERVICE: { key: 'SIRE_IN_SERVICE', Icon: FaMars, color: 'text-blue-400', label: 'Reproductor Activo' },
     MILKING: { key: 'MILKING', Icon: GiUdder, color: 'text-blue-300', label: 'En Ordeño' },
     DRYING_OFF: { key: 'DRYING_OFF', Icon: Wind, color: 'text-yellow-400', label: 'Secando' },
-    DRY: { key: 'DRY', Icon: MilkOff, color: 'text-zinc-500', label: 'Seca' },
+    DRY: { key: 'DRY', Icon: MilkOff, color: 'text-orange-400', label: 'Seca' },
 };
 
 export type AnimalStatusKey = keyof typeof STATUS_DEFINITIONS;

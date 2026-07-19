@@ -5,7 +5,7 @@ import { RefreshCcw, HeartHandshake, Droplets } from 'lucide-react';
 import { Animal } from '../db/local';
 
 export const DataHealer = () => {
-    const { animals, parturitions, events, bulkUpdateAnimals, setLactationAsDry, appConfig, normalizeReproductiveState } = useData();
+    const { animals, parturitions, bulkUpdateAnimals, setLactationAsDry, appConfig, normalizeReproductiveState } = useData();
     const [isHealing, setIsHealing] = useState(false);
     const [report, setReport] = useState<string[]>([]);
     const [isReproHealing, setIsReproHealing] = useState(false);
@@ -14,10 +14,10 @@ export const DataHealer = () => {
     const [isDryHealing, setIsDryHealing] = useState(false);
     const [dryReport, setDryReport] = useState<string[]>([]);
 
-    // Repara cabras "declaradas secas" con el flujo viejo, que escribía un estado
-    // reproductivo inválido ('Seca') SIN marcar la lactancia como seca. Resultado:
-    // seguían como lactancia activa y no aparecían como Seca. Aquí se marca la
-    // lactancia como 'seca' (icono correcto) y se limpia el estado inválido.
+    // Normaliza el estado de las hembras dejando TODO en valores canónicos:
+    //  - Lactancia 'en-secado' (estado "Secando" eliminado del flujo) -> 'seca'.
+    //  - Estado reproductivo inválido/faltante ('Lactante', 'Seca', vacío) -> canónico
+    //    ('Vacía' para vientres, 'No Aplica' para jóvenes/machos).
     const handleDryRepair = async () => {
         setIsDryHealing(true);
         setDryReport([]);
@@ -27,38 +27,38 @@ export const DataHealer = () => {
                 parturitions
                     .filter(p => p.goatId === animalId)
                     .sort((x, y) => new Date(y.parturitionDate).getTime() - new Date(x.parturitionDate).getTime())[0];
-            const latestOpenParturition = (animalId: string) =>
-                parturitions
-                    .filter(p => p.goatId === animalId && p.status !== 'finalizada')
-                    .sort((x, y) => new Date(y.parturitionDate).getTime() - new Date(x.parturitionDate).getTime())[0];
 
-            // 1) REPARACIÓN (flujo viejo: 'Seca' inválido, o evento de secado con lactancia sin cerrar)
-            const candidates = animals.filter(a => {
-                if (a.status !== 'Activo' || a.isReference) return false;
-                const invalidSeca = (a.reproductiveStatus as string) === 'Seca';
-                const latest = latestOpenParturition(a.id);
-                const lactationActive = !!latest && (latest.status === 'activa' || latest.status === 'en-secado');
-                const hasSecadoEvent = events.some(e => e.animalId === a.id && e.type === 'Secado');
-                return invalidSeca || (hasSecadoEvent && lactationActive);
-            });
+            // 1) LACTANCIA: 'en-secado' -> 'seca'
+            const enSecado = parturitions.filter(p => p.status === 'en-secado');
+            for (const p of enSecado) {
+                await setLactationAsDry(p.id, (p as any).dryingStartDate);
+            }
 
-            let fixedLactation = 0;
+            // 2) ESTADO REPRODUCTIVO inválido/faltante -> canónico
             const statusUpdates: { id: string; changes: Partial<Animal> }[] = [];
-            for (const a of candidates) {
-                const latest = latestOpenParturition(a.id);
-                if (latest && latest.status !== 'seca') {
-                    const secadoEvent = events.find(e => e.animalId === a.id && e.type === 'Secado');
-                    await setLactationAsDry(latest.id, secadoEvent?.date);
-                    fixedLactation++;
+            for (const a of animals) {
+                if (a.status !== 'Activo' || a.isReference) continue;
+                const rs = (a.reproductiveStatus as string) || '';
+                const isInvalidOrMissing = rs === 'Lactante' || rs === 'Seca' || rs === '';
+                if (!isInvalidOrMissing) continue;
+                let target: Animal['reproductiveStatus'];
+                if (a.sex === 'Macho') {
+                    target = 'No Aplica';
+                } else {
+                    const hasParto = parturitions.some(p => p.goatId === a.id);
+                    const isVientre = hasParto || a.lifecycleStage === 'Cabra' || a.lifecycleStage === 'Cabritona';
+                    target = isVientre ? 'Vacía' : 'No Aplica';
                 }
-                if ((a.reproductiveStatus as string) === 'Seca') {
-                    statusUpdates.push({ id: a.id, changes: { reproductiveStatus: 'Vacía' } });
-                }
+                statusUpdates.push({ id: a.id, changes: { reproductiveStatus: target } });
             }
             if (statusUpdates.length) await bulkUpdateAnimals(statusUpdates);
-            logs.push(candidates.length ? `🎉 Reparadas: ${fixedLactation} lactancias, ${statusUpdates.length} estados.` : '✨ Nada que reparar con el criterio del flujo viejo.');
 
-            // 2) DIAGNÓSTICO del estado real (para entender por qué no se ven secas)
+            logs.push('🎉 NORMALIZACIÓN COMPLETADA');
+            logs.push(`- Lactancias 'en-secado' → Seca: ${enSecado.length}`);
+            logs.push(`- Estados reproductivos corregidos: ${statusUpdates.length}`);
+            logs.push('(Vuelve a tocar para ver el diagnóstico ya limpio.)');
+
+            // DIAGNÓSTICO del estado (previo a esta corrida)
             const hembras = animals.filter(a => a.status === 'Activo' && !a.isReference && a.sex === 'Hembra');
             const part: Record<string, number> = { activa: 0, 'en-secado': 0, seca: 0, finalizada: 0, 'sin-parto': 0 };
             const repro: Record<string, number> = {};
@@ -70,7 +70,7 @@ export const DataHealer = () => {
                 repro[rs] = (repro[rs] || 0) + 1;
             });
             logs.push('──────────');
-            logs.push(`🔎 DIAGNÓSTICO — hembras activas: ${hembras.length}`);
+            logs.push(`🔎 DIAGNÓSTICO (previo) — hembras activas: ${hembras.length}`);
             logs.push(`Lactancia → activa:${part.activa} · en-secado:${part['en-secado']} · seca:${part.seca} · finalizada:${part.finalizada} · sin parto:${part['sin-parto']}`);
             logs.push('Estado repro → ' + (Object.entries(repro).map(([k, v]) => `${k}:${v}`).join(' · ') || '—'));
             logs.push(`Secas en datos (parto seca/en-secado): ${part.seca + part['en-secado']}`);
@@ -243,12 +243,13 @@ export const DataHealer = () => {
             <div className="mt-8 pt-6 border-t border-c-border">
                 <h3 className="text-c-text-strong font-bold text-lg mb-2 flex items-center gap-2">
                     <Droplets className={isDryHealing ? "animate-pulse text-cyan-400" : "text-cyan-400"} size={24} />
-                    Reparar Animales Secos
+                    Normalizar Estados
                 </h3>
                 <p className="text-c-text-muted text-sm mb-6 leading-relaxed">
-                    Corrige las cabras que fueron <strong>declaradas secas</strong> con la versión anterior de la app,
-                    en las que la lactancia no llegó a cerrarse (por eso <strong>no aparecían como Seca</strong>).
-                    Marca su lactancia como seca y limpia el estado inválido. No borra partos ni pesajes.
+                    Pone todos los estados en orden: pasa las lactancias <strong>"en-secado"</strong> (estado
+                    "Secando" eliminado) a <strong>Seca</strong>, y corrige los estados reproductivos inválidos o
+                    vacíos (<strong>Lactante</strong>, sin estado) a su valor correcto (Vacía / No Aplica).
+                    Muestra un diagnóstico. No borra partos ni pesajes.
                 </p>
                 <button
                     onClick={handleDryRepair}
@@ -257,7 +258,7 @@ export const DataHealer = () => {
                         ${isDryHealing ? 'bg-c-surface-2 text-c-text-muted cursor-not-allowed' : 'bg-cyan-600 hover:bg-cyan-500 shadow-lg shadow-cyan-500/20 active:scale-95'}
                     `}
                 >
-                    {isDryHealing ? 'Analizando...' : 'Reparar / Diagnosticar secas'}
+                    {isDryHealing ? 'Normalizando...' : 'Normalizar estados y diagnosticar'}
                 </button>
                 {dryReport.length > 0 && (
                     <div className="mt-4 bg-c-surface-2 p-4 rounded-xl border border-c-border max-h-80 overflow-y-auto">
