@@ -43,7 +43,7 @@ interface IDataContext {
   lastSyncAt: number | null;       // timestamp de la última subida exitosa
   syncNow: () => Promise<void>;    // forzar sincronización ahora
   addAnimal: (animalData: Omit<Animal, 'id' | '_synced' | 'userId' | 'createdAt'> & { id?: string }) => Promise<void>;
-  updateAnimal: (animalId: string, dataToUpdate: Partial<Animal>) => Promise<void>;
+  updateAnimal: (animalId: string, dataToUpdate: Partial<Animal>, eventDate?: string) => Promise<void>;
   bulkUpdateAnimals: (updates: { id: string; changes: Partial<Animal> }[]) => Promise<void>;
   deleteAnimalPermanently: (animalId: string) => Promise<void>;
   changeAnimalId: (oldId: string, newId: string) => Promise<void>;
@@ -693,11 +693,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         enqueueSync(() => syncToFirestore("animals", newAnimal.id, newAnimal));
     }, [currentUser, enqueueSync, fetchDataFromLocalDb, internalAddEvent]);
 
-    const updateAnimal = useCallback(async (animalId: string, dataToUpdate: Partial<Animal>) => {
+    const updateAnimal = useCallback(async (animalId: string, dataToUpdate: Partial<Animal>, eventDate?: string) => {
         if (!currentUser) throw new Error("Usuario no autenticado");
         const localDb = getDB();
         const upperId = animalId.toUpperCase();
         const today = new Date().toISOString().split('T')[0];
+        const evDate = eventDate || today; // fecha real del evento (p. ej. diagnóstico de preñez)
         
         const currentAnimal = await localDb.animals.get(upperId);
         if (!currentAnimal) throw new Error("Animal no encontrado para actualizar");
@@ -742,7 +743,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await localDb.animals.update(upperId, dataWithSyncFlag);
 
         if (dataToUpdate.location !== undefined && dataToUpdate.location !== currentAnimal.location) internalAddEvent({ animalId: upperId, date: today, type: 'Movimiento', details: `Movido de '${currentAnimal.location || 'Sin Asignar'}' a '${dataToUpdate.location || 'Sin Asignar'}'`, lotName: dataToUpdate.location || '' });
-        if (dataToUpdate.reproductiveStatus !== undefined && dataToUpdate.reproductiveStatus !== currentAnimal.reproductiveStatus) internalAddEvent({ animalId: upperId, date: today, type: 'Cambio de Estado', details: `Estado reproductivo: ${dataToUpdate.reproductiveStatus}` });
+        if (dataToUpdate.reproductiveStatus !== undefined && dataToUpdate.reproductiveStatus !== currentAnimal.reproductiveStatus) internalAddEvent({ animalId: upperId, date: evDate, type: 'Cambio de Estado', details: `Estado reproductivo: ${dataToUpdate.reproductiveStatus}` });
         if (dataToUpdate.status !== undefined && dataToUpdate.status !== currentAnimal.status) internalAddEvent({ animalId: upperId, date: dataToUpdate.endDate || today, type: 'Cambio de Estado', details: `Animal dado de baja: ${dataToUpdate.status} ${dataToUpdate.cullReason ? `(${dataToUpdate.cullReason})` : ''}` });
         
         fetchDataFromLocalDb();
