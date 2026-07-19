@@ -11,12 +11,29 @@ import {
 import type { PageState as RebanoPageState } from '../../../types/navigation';
 import { useLactationHistory, HistoryScope } from '../../../hooks/useLactationHistory';
 import { AnimalLactationSummary, LactationRecord } from '../../../utils/lactationMetrics';
+import { MonthlyHistoryView } from './LactoKeeperHistoryMonthlyView';
 
 interface LactoKeeperHistoryPageProps {
     navigateToRebano: (page: RebanoPageState) => void;
 }
 
 type RankKey = 'general' | 'primi' | 'multi';
+type HistoryView = 'animal' | 'monthly';
+
+// --- Selector de vista: Por Animal / Mes a Mes ---
+const ViewSwitcher = ({ view, setView }: { view: HistoryView; setView: (v: HistoryView) => void }) => (
+    <div className="flex gap-2">
+        {([['animal', 'Por Animal'], ['monthly', 'Mes a Mes']] as [HistoryView, string][]).map(([v, label]) => (
+            <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`flex-1 py-2 rounded-xl text-sm font-bold border transition-colors ${view === v ? 'bg-c-accent-sky/15 text-c-accent-sky border-c-accent-sky/50' : 'bg-c-surface-2 text-c-text-muted border-c-border'}`}
+            >
+                {label}
+            </button>
+        ))}
+    </div>
+);
 
 const fmtKg = (n: number) => `${Math.round(n).toLocaleString('es')} Kg`;
 const fmtDays = (n: number | null) => (n == null ? '—' : `${Math.round(n)} d`);
@@ -196,12 +213,13 @@ const AnimalDetail = ({
 );
 
 export default function LactoKeeperHistoryPage({ navigateToRebano }: LactoKeeperHistoryPageProps) {
+    const [view, setView] = useState<HistoryView>('animal');
     const [scope, setScope] = useState<HistoryScope>('active');
     const [rank, setRank] = useState<RankKey>('general');
     const [selected, setSelected] = useState<AnimalLactationSummary | null>(null);
     const data = useLactationHistory(scope);
 
-    if (selected) {
+    if (selected && view === 'animal') {
         // refrescar el resumen seleccionado desde los datos actuales del scope
         const fresh = data.summaries.find(s => s.animalId === selected.animalId) || selected;
         return (
@@ -217,8 +235,18 @@ export default function LactoKeeperHistoryPage({ navigateToRebano }: LactoKeeper
     const list = rank === 'primi' ? data.rankingPrimiparas : rank === 'multi' ? data.rankingMultiparas : data.rankingGeneral;
 
     return (
-        <div className="p-4 space-y-5 pb-24">
-            <h1 className="text-2xl font-bold text-c-text">Historial de Producción</h1>
+        <div className="pb-24">
+            <div className="px-4 pt-4 space-y-4">
+                <h1 className="text-2xl font-bold text-c-text">Historial de Producción</h1>
+                <ViewSwitcher view={view} setView={setView} />
+            </div>
+
+            {view === 'monthly' ? (
+                <div className="mt-4">
+                    <MonthlyHistoryView navigateToRebano={navigateToRebano} />
+                </div>
+            ) : (
+            <div className="p-4 space-y-5">
             <ScopeToggle scope={scope} setScope={setScope} />
 
             <div>
@@ -247,6 +275,8 @@ export default function LactoKeeperHistoryPage({ navigateToRebano }: LactoKeeper
                     <AnimalRankCard key={s.animalId} rankPos={i + 1} summary={s} onClick={() => setSelected(s)} />
                 ))}
             </div>
+            </div>
+            )}
         </div>
     );
 }
