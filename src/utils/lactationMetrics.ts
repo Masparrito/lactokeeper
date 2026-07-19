@@ -60,21 +60,35 @@ function cumulativeProduction(curve: { del: number; kg: number }[], capDel: numb
     return total;
 }
 
-// Días abiertos = tiempo entre estar 'Vacía' y quedar 'Preñada'. Se deriva de
-// los eventos 'Cambio de Estado' (que registran fecha + estado reproductivo).
-function computeOpenDays(animalId: string, events: AppEvent[]): number | null {
-    const evs = events
+// Días abiertos (MÉTODO HÍBRIDO): por cada preñez confirmada, el inicio del
+// período abierto es la fecha MÁS RECIENTE entre (a) el evento 'Vacía' anterior
+// y (b) el parto anterior. Así usa la fecha de "Vacía" cuando existe (más
+// preciso) y cae al parto cuando no la hay, para que el dato no quede vacío.
+function computeOpenDays(animalId: string, events: AppEvent[], parts: Parturition[]): number | null {
+    const statusEvs = events
         .filter(e => e.animalId === animalId && e.type === 'Cambio de Estado' && typeof (e as any).details === 'string')
-        .map(e => ({ date: e.date, det: (e as any).details as string }))
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        .map(e => ({ date: e.date, det: (e as any).details as string }));
+    const pregnancies = statusEvs.filter(e => e.det.includes('Preñada'));
+    if (!pregnancies.length) return null;
+
+    const vaciaDates = statusEvs.filter(e => e.det.includes('Vacía')).map(e => e.date);
+    const partoDates = parts.map(p => p.parturitionDate);
+    const beforeT = (d: string, t: number) => new Date(d + 'T00:00:00Z').getTime() < t;
+
     const intervals: number[] = [];
-    let openStart: string | null = null;
-    for (const e of evs) {
-        if (e.det.includes('Vacía')) openStart = e.date;
-        else if (e.det.includes('Preñada') && openStart) {
-            intervals.push(Math.max(0, daysBetween(openStart, e.date)));
-            openStart = null;
-        }
+    for (const preg of pregnancies) {
+        const pregT = new Date(preg.date + 'T00:00:00Z').getTime();
+        const lastBefore = (dates: string[]) =>
+            dates.filter(d => beforeT(d, pregT)).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+        const vaciaBefore = lastBefore(vaciaDates);
+        const partoBefore = lastBefore(partoDates);
+        // Inicio = la más reciente de las dos (respeta el límite del ciclo: si hubo
+        // un parto después de la última "Vacía", el período abierto reinicia en el parto).
+        const starts = [vaciaBefore, partoBefore].filter(Boolean) as string[];
+        if (!starts.length) continue;
+        const start = starts.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+        const d = daysBetween(start, preg.date);
+        if (d >= 0) intervals.push(d);
     }
     if (!intervals.length) return null;
     return intervals.reduce((a, b) => a + b, 0) / intervals.length;
@@ -160,7 +174,7 @@ export function computeAnimalLactations(
         avgStandardized: stds.length ? stds.reduce((a, b) => a + b, 0) / stds.length : 0,
         avgDuration: durVals.length ? durVals.reduce((a, b) => a + b, 0) / durVals.length : 0,
         avgDryDays: dryVals.length ? dryVals.reduce((a, b) => a + b, 0) / dryVals.length : null,
-        avgOpenDays: computeOpenDays(animal.id, events),
+        avgOpenDays: computeOpenDays(animal.id, events, parts),
         totalMilkAllTime: productive.reduce((s, l) => s + l.totalProduction, 0),
         lastParturitionDate: parts.length ? parts[parts.length - 1].parturitionDate : null,
     };
