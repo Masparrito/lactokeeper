@@ -23,51 +23,64 @@ export const DataHealer = () => {
         setDryReport([]);
         const logs: string[] = [];
         try {
+            const latestParturition = (animalId: string) =>
+                parturitions
+                    .filter(p => p.goatId === animalId)
+                    .sort((x, y) => new Date(y.parturitionDate).getTime() - new Date(x.parturitionDate).getTime())[0];
             const latestOpenParturition = (animalId: string) =>
                 parturitions
                     .filter(p => p.goatId === animalId && p.status !== 'finalizada')
                     .sort((x, y) => new Date(y.parturitionDate).getTime() - new Date(x.parturitionDate).getTime())[0];
 
+            // 1) REPARACIÓN (flujo viejo: 'Seca' inválido, o evento de secado con lactancia sin cerrar)
             const candidates = animals.filter(a => {
                 if (a.status !== 'Activo' || a.isReference) return false;
                 const invalidSeca = (a.reproductiveStatus as string) === 'Seca';
                 const latest = latestOpenParturition(a.id);
                 const lactationActive = !!latest && (latest.status === 'activa' || latest.status === 'en-secado');
                 const hasSecadoEvent = events.some(e => e.animalId === a.id && e.type === 'Secado');
-                // Roto = marcado con el 'Seca' inválido, o con evento de Secado pero la
-                // lactancia todavía sin cerrar como 'seca'.
                 return invalidSeca || (hasSecadoEvent && lactationActive);
             });
 
-            if (candidates.length === 0) {
-                logs.push('✨ No se encontraron animales secos por reparar.');
-                setDryReport(logs);
-                setIsDryHealing(false);
-                return;
-            }
-
             let fixedLactation = 0;
             const statusUpdates: { id: string; changes: Partial<Animal> }[] = [];
-
             for (const a of candidates) {
                 const latest = latestOpenParturition(a.id);
                 if (latest && latest.status !== 'seca') {
                     const secadoEvent = events.find(e => e.animalId === a.id && e.type === 'Secado');
                     await setLactationAsDry(latest.id, secadoEvent?.date);
                     fixedLactation++;
-                    logs.push(`✅ ${a.id}: lactancia → Seca`);
                 }
                 if ((a.reproductiveStatus as string) === 'Seca') {
                     statusUpdates.push({ id: a.id, changes: { reproductiveStatus: 'Vacía' } });
                 }
             }
             if (statusUpdates.length) await bulkUpdateAnimals(statusUpdates);
+            logs.push(candidates.length ? `🎉 Reparadas: ${fixedLactation} lactancias, ${statusUpdates.length} estados.` : '✨ Nada que reparar con el criterio del flujo viejo.');
 
-            logs.push('🎉 REPARACIÓN COMPLETADA.');
-            logs.push(`- Lactancias marcadas como Seca: ${fixedLactation}`);
-            logs.push(`- Estados inválidos ('Seca') corregidos: ${statusUpdates.length}`);
+            // 2) DIAGNÓSTICO del estado real (para entender por qué no se ven secas)
+            const hembras = animals.filter(a => a.status === 'Activo' && !a.isReference && a.sex === 'Hembra');
+            const part: Record<string, number> = { activa: 0, 'en-secado': 0, seca: 0, finalizada: 0, 'sin-parto': 0 };
+            const repro: Record<string, number> = {};
+            hembras.forEach(a => {
+                const lp = latestParturition(a.id);
+                const ps = lp ? lp.status : 'sin-parto';
+                part[ps] = (part[ps] || 0) + 1;
+                const rs = (a.reproductiveStatus as string) || '(vacío)';
+                repro[rs] = (repro[rs] || 0) + 1;
+            });
+            logs.push('──────────');
+            logs.push(`🔎 DIAGNÓSTICO — hembras activas: ${hembras.length}`);
+            logs.push(`Lactancia → activa:${part.activa} · en-secado:${part['en-secado']} · seca:${part.seca} · finalizada:${part.finalizada} · sin parto:${part['sin-parto']}`);
+            logs.push('Estado repro → ' + (Object.entries(repro).map(([k, v]) => `${k}:${v}`).join(' · ') || '—'));
+            logs.push(`Secas en datos (parto seca/en-secado): ${part.seca + part['en-secado']}`);
+            logs.push('— Muestra (ID · parto · repro):');
+            hembras.slice(0, 14).forEach(a => {
+                const lp = latestParturition(a.id);
+                logs.push(`${a.id} · ${lp ? lp.status : 'sin-parto'} · ${a.reproductiveStatus || '—'}`);
+            });
         } catch (e: any) {
-            logs.push(`❌ Error: ${e?.message || 'no se pudo reparar'}`);
+            logs.push(`❌ Error: ${e?.message || 'no se pudo reparar/diagnosticar'}`);
         }
         setDryReport(logs);
         setIsDryHealing(false);
@@ -244,7 +257,7 @@ export const DataHealer = () => {
                         ${isDryHealing ? 'bg-c-surface-2 text-c-text-muted cursor-not-allowed' : 'bg-cyan-600 hover:bg-cyan-500 shadow-lg shadow-cyan-500/20 active:scale-95'}
                     `}
                 >
-                    {isDryHealing ? 'Reparando...' : 'Reparar animales secos'}
+                    {isDryHealing ? 'Analizando...' : 'Reparar / Diagnosticar secas'}
                 </button>
                 {dryReport.length > 0 && (
                     <div className="mt-4 bg-c-surface-2 p-4 rounded-xl border border-c-border max-h-80 overflow-y-auto">
