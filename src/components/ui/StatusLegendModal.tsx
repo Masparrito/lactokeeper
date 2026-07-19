@@ -11,6 +11,7 @@ interface StatusLegendModalProps {
 const ALL_STATUS_KEYS: AnimalStatusKey[] = [
     'MILKING',    'DRY',
     'PREGNANT',
+    'SERVIDA_CONFIRMED',
     'IN_SERVICE_CONFIRMED',
     'IN_SERVICE',
     'EMPTY',

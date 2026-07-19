@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
-import { Animal, Parturition } from '../db/local';
+import { Animal, Parturition, ServiceRecord, SireLot, BreedingSeason } from '../db/local';
 import { Heart, HeartHandshake, Wind, CalendarCheck, MilkOff, CircleDashed } from 'lucide-react';
 import { GiUdder, GiEmbryo } from 'react-icons/gi';
 import { FaMars } from 'react-icons/fa6';
@@ -60,92 +60,109 @@ export const getStatusDisplayFlags = (
     return { showReproductive: isVientre, showLactation: hasCalved };
 };
 
+// Datos que necesita el motor de estados. Se inyectan para que la función sea
+// PURA (sin depender de React ni del contexto) y pueda reutilizarse en todos
+// lados (tarjetas, perfil, LactoKeeper y filtros) sin volver a copiar la lógica.
+export interface AnimalStatusData {
+    parturitions: Parturition[];
+    serviceRecords: ServiceRecord[];
+    breedingSeasons: BreedingSeason[];
+    sireLots: SireLot[];
+    appConfig?: AppConfig;
+}
+
+// --- MOTOR ÚNICO DE ESTADOS (FUENTE DE VERDAD) ---
+// Cualquier superficie que muestre iconos de estado (o filtre por ellos) debe
+// pasar por aquí. No duplicar esta lógica en otros archivos.
+export const computeAnimalStatuses = (
+    animal: Animal | undefined | null,
+    { parturitions, serviceRecords, breedingSeasons, sireLots, appConfig }: AnimalStatusData
+): (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] => {
+    const activeStatuses: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] = [];
+
+    if (!animal) return [];
+
+    // --- 1. Lógica de Machos ---
+    if (animal.sex === 'Macho') {
+        const activeSeasons = breedingSeasons.filter(s => s.status === 'Activo');
+        const activeSeasonIds = new Set(activeSeasons.map(s => s.id));
+        const isActiveSire = sireLots.some(sl => sl.sireId === animal.id && activeSeasonIds.has(sl.seasonId));
+
+        if (isActiveSire) {
+            activeStatuses.push(STATUS_DEFINITIONS.SIRE_IN_SERVICE);
+        }
+        return activeStatuses; // Los machos no tienen otros estados
+    }
+
+    // --- 2. Lógica de Hembras ---
+
+    // A. Buscar el último parto para determinar estado productivo
+    const animalParturitions = parturitions
+        .filter(p => p.goatId === animal.id)
+        .sort((a, b) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime());
+
+    const lastParturition = animalParturitions[0];
+    const hasCalved = animalParturitions.length > 0;
+
+    // B. Estado de Lactancia (Productivo)
+    if (lastParturition) {
+        if (lastParturition.status === 'activa') activeStatuses.push(STATUS_DEFINITIONS.MILKING);
+        // "Secando" se elimina del flujo: cualquier estado de secado se muestra como "Seca".
+        else if (lastParturition.status === 'en-secado' || lastParturition.status === 'seca') activeStatuses.push(STATUS_DEFINITIONS.DRY);
+    }
+
+    // C. Determinación de "Vientre" (Aptitud Reproductiva)
+    const config = appConfig || DEFAULT_CONFIG;
+    const ageInMonths = calculateAgeInMonths(animal.birthDate);
+    const minVientreAge = config.edadMinimaVientreMeses > 0 ? config.edadMinimaVientreMeses : 6;
+    const isVientre = hasCalved || (ageInMonths >= minVientreAge);
+
+    // D. Estado Reproductivo (Gestación/Servicio)
+    let isPregnantOrConfirmed = false;
+    let isJustInService = false;
+
+    // PRIORIDAD 1: PREÑADA
+    if (animal.reproductiveStatus === 'Preñada') {
+        activeStatuses.push(STATUS_DEFINITIONS.PREGNANT);
+        isPregnantOrConfirmed = true;
+    }
+    // PRIORIDAD 2: SERVIDA (Servicio Visto y Confirmado, gracias al addServiceRecord)
+    else if (animal.reproductiveStatus === 'Servida') {
+        activeStatuses.push(STATUS_DEFINITIONS.SERVIDA_CONFIRMED);
+        isPregnantOrConfirmed = true; // Tratado como comprometido
+    }
+    // PRIORIDAD 3: EN SERVICIO (Aún no confirmado o solo asignado al lote)
+    else if (animal.reproductiveStatus === 'En Servicio') {
+        // Verificamos si tiene un registro de monta específico
+        const hasServiceRecord = serviceRecords.some(sr => sr.femaleId === animal.id && sr.sireLotId === animal.sireLotId);
+
+        if (hasServiceRecord) {
+            // Monta registrada, pero el animal sigue en estado 'En Servicio' (no ha pasado a 'Servida' o 'Preñada')
+            activeStatuses.push(STATUS_DEFINITIONS.IN_SERVICE_CONFIRMED);
+            isPregnantOrConfirmed = true;
+        } else {
+            // Solo está en el lote (En Monta)
+            activeStatuses.push(STATUS_DEFINITIONS.IN_SERVICE);
+            isJustInService = true;
+        }
+    }
+
+    // E. Lógica de "Vacía": solo si es un Vientre apto que NO está comprometido.
+    if (isVientre && !isPregnantOrConfirmed && !isJustInService) {
+        activeStatuses.push(STATUS_DEFINITIONS.EMPTY);
+    }
+
+    // F. Limpieza y Retorno
+    const uniqueKeys = Array.from(new Set(activeStatuses.map(s => s.key)));
+    return uniqueKeys.map(key => STATUS_DEFINITIONS[key as AnimalStatusKey]).filter(Boolean);
+};
+
+// Hook: envuelve el motor único con los datos del contexto y memoiza.
 export const useAnimalStatus = (animal: Animal) => {
     const { parturitions, serviceRecords, breedingSeasons, sireLots, appConfig } = useData();
 
-    const statuses = useMemo(() => {
-        const activeStatuses: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] = [];
-
-        if (!animal) return [];
-
-        // --- 1. Lógica de Machos ---
-        if (animal.sex === 'Macho') {
-            const activeSeasons = breedingSeasons.filter(s => s.status === 'Activo');
-            const activeSeasonIds = new Set(activeSeasons.map(s => s.id));
-            const isActiveSire = sireLots.some(sl => sl.sireId === animal.id && activeSeasonIds.has(sl.seasonId));
-            
-            if (isActiveSire) {
-                activeStatuses.push(STATUS_DEFINITIONS.SIRE_IN_SERVICE);
-            }
-            return activeStatuses; // Los machos no tienen otros estados
-        }
-
-        // --- 2. Lógica de Hembras (RECONSTRUIDA) ---
-        
-        // A. Buscar el último parto para determinar estado productivo
-        const animalParturitions = parturitions
-            .filter(p => p.goatId === animal.id)
-            .sort((a, b) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime());
-            
-        const lastParturition = animalParturitions[0];
-        const hasCalved = animalParturitions.length > 0;
-
-        // B. Estado de Lactancia (Productivo)
-        if (lastParturition) {
-            if (lastParturition.status === 'activa') activeStatuses.push(STATUS_DEFINITIONS.MILKING);
-            // "Secando" se elimina del flujo: cualquier estado de secado se muestra como "Seca".
-            else if (lastParturition.status === 'en-secado' || lastParturition.status === 'seca') activeStatuses.push(STATUS_DEFINITIONS.DRY);
-        }
-
-        // C. Determinación de "Vientre" (Aptitud Reproductiva)
-        const config = appConfig || DEFAULT_CONFIG;
-        const ageInMonths = calculateAgeInMonths(animal.birthDate);
-        
-        const minVientreAge = config.edadMinimaVientreMeses > 0 ? config.edadMinimaVientreMeses : 6;
-        
-        const isVientre = hasCalved || (ageInMonths >= minVientreAge);
-
-        // D. Estado Reproductivo (Gestación/Servicio)
-        let isPregnantOrConfirmed = false;
-        let isJustInService = false;
-
-        // PRIORIDAD 1: PREÑADA
-        if (animal.reproductiveStatus === 'Preñada') {
-            activeStatuses.push(STATUS_DEFINITIONS.PREGNANT);
-            isPregnantOrConfirmed = true;
-        } 
-        // PRIORIDAD 2: SERVIDA (Servicio Visto y Confirmado, gracias al addServiceRecord)
-        else if (animal.reproductiveStatus === 'Servida') { 
-            activeStatuses.push(STATUS_DEFINITIONS.SERVIDA_CONFIRMED);
-            isPregnantOrConfirmed = true; // Tratado como comprometido
-        }
-        // PRIORIDAD 3: EN SERVICIO (Aún no confirmado o solo asignado al lote)
-        else if (animal.reproductiveStatus === 'En Servicio') {
-            // Verificamos si tiene un registro de monta específico
-            const hasServiceRecord = serviceRecords.some(sr => sr.femaleId === animal.id && sr.sireLotId === animal.sireLotId);
-            
-            if (hasServiceRecord) {
-                // Monta registrada, pero el animal sigue en estado 'En Servicio' (no ha pasado a 'Servida' o 'Preñada')
-                activeStatuses.push(STATUS_DEFINITIONS.IN_SERVICE_CONFIRMED); 
-                isPregnantOrConfirmed = true; 
-            } else {
-                // Solo está en el lote (En Monta)
-                activeStatuses.push(STATUS_DEFINITIONS.IN_SERVICE);
-                isJustInService = true;
-            }
-        }
-        
-        // E. Lógica de "Vacía" (CORREGIDA)
-        // Solo mostramos "Vacía" si es un Vientre apto que NO está comprometido.
-        if (isVientre && !isPregnantOrConfirmed && !isJustInService) {
-            activeStatuses.push(STATUS_DEFINITIONS.EMPTY);
-        }
-        
-        // F. Limpieza y Retorno
-        const uniqueKeys = Array.from(new Set(activeStatuses.map(s => s.key)));
-        return uniqueKeys.map(key => STATUS_DEFINITIONS[key as AnimalStatusKey]).filter(Boolean);
-
-    }, [animal, parturitions, serviceRecords, breedingSeasons, sireLots, appConfig]);
-
-    return statuses;
+    return useMemo(
+        () => computeAnimalStatuses(animal, { parturitions, serviceRecords, breedingSeasons, sireLots, appConfig }),
+        [animal, parturitions, serviceRecords, breedingSeasons, sireLots, appConfig]
+    );
 };

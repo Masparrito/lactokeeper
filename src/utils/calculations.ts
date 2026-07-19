@@ -1,5 +1,5 @@
 import { BodyWeighing, Animal, Parturition, ServiceRecord, SireLot, BreedingSeason, Event as AppEvent } from '../db/local';
-import { STATUS_DEFINITIONS, AnimalStatusKey } from '../hooks/useAnimalStatus';
+import { STATUS_DEFINITIONS, AnimalStatusKey, computeAnimalStatuses } from '../hooks/useAnimalStatus';
 import { AppConfig } from '../types/config'; 
 
 // -------------------------------------------------------------------------
@@ -140,6 +140,9 @@ export const isEligibleForBreeding = (animal: Animal, minAgeConfigMonths: number
     return ageInMonths >= effectiveMinAge;
 };
 
+// Delega en el MOTOR ÚNICO (computeAnimalStatuses en useAnimalStatus.ts) para
+// que perfil, LactoKeeper y filtros muestren exactamente los mismos estados que
+// las tarjetas del rebaño. No reimplementar la lógica aquí.
 export const getAnimalStatusObjects = (
     animal: Animal | undefined | null,
     allParturitions: Parturition[],
@@ -147,38 +150,12 @@ export const getAnimalStatusObjects = (
     allSireLots: SireLot[],
     allBreedingSeasons: BreedingSeason[]
 ): (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] => {
-    const activeStatuses: (typeof STATUS_DEFINITIONS[AnimalStatusKey])[] = [];
-    if (!animal) return [];
-
-    if (animal.sex === 'Hembra') {
-        const lastParturition = allParturitions
-            .filter(p => p.goatId === animal.id && p.status !== 'finalizada')
-            .sort((a, b) => new Date(b.parturitionDate).getTime() - new Date(a.parturitionDate).getTime())[0];
-
-        if (lastParturition) {
-            if (lastParturition.status === 'activa') activeStatuses.push(STATUS_DEFINITIONS.MILKING);
-            else if (lastParturition.status === 'en-secado' || lastParturition.status === 'seca') activeStatuses.push(STATUS_DEFINITIONS.DRY);
-        }
-    }
-
-    if (animal.reproductiveStatus === 'Preñada') activeStatuses.push(STATUS_DEFINITIONS.PREGNANT);
-    else if (animal.reproductiveStatus === 'En Servicio') {
-        const hasServiceRecord = allServiceRecords.some(sr => sr.femaleId === animal.id && sr.sireLotId === animal.sireLotId);
-        if (hasServiceRecord) activeStatuses.push(STATUS_DEFINITIONS.IN_SERVICE_CONFIRMED);
-        else activeStatuses.push(STATUS_DEFINITIONS.IN_SERVICE);
-    }
-    else if (animal.reproductiveStatus === 'Vacía' || animal.reproductiveStatus === 'Post-Parto') {
-         activeStatuses.push(STATUS_DEFINITIONS.EMPTY);
-    }
-
-    if (animal.sex === 'Macho') {
-        const activeSeasons = allBreedingSeasons.filter(bs => bs.status === 'Activo');
-        const activeSeasonIds = new Set(activeSeasons.map(s => s.id));
-        const isActiveSire = allSireLots.some(sl => sl.sireId === animal.id && activeSeasonIds.has(sl.seasonId));
-        if(isActiveSire) activeStatuses.push(STATUS_DEFINITIONS.SIRE_IN_SERVICE);
-    }
-    
-    return Array.from(new Set(activeStatuses.map(s => s.key))).map(key => STATUS_DEFINITIONS[key as AnimalStatusKey]);
+    return computeAnimalStatuses(animal, {
+        parturitions: allParturitions,
+        serviceRecords: allServiceRecords,
+        sireLots: allSireLots,
+        breedingSeasons: allBreedingSeasons,
+    });
 };
 
 // --- HELPERS DE PESO Y PRODUCCIÓN ---
