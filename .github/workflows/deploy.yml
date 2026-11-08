@@ -44,13 +44,21 @@ jobs:
       # Si falla, el job se detiene aquí y el hosting NO se actualiza, de modo
       # que la app en producción sigue en la versión que funciona (nunca se
       # publica un cliente que llame a una función que aún no existe).
-      - name: Desplegar Cloud Functions (backend seguro de Gemini)
+      - name: Desplegar Cloud Functions (Gemini + conector de Claude)
+        # La clave del conector de Claude (MCP_API_KEY) vive en GitHub Secrets y
+        # se entrega a la función en un .env que solo existe durante el deploy
+        # (no se usa Secret Manager: si el secreto faltara ahí, el deploy de
+        # TODAS las funciones fallaría). Sin el secreto, el conector queda
+        # cerrado: responde que falta la clave y no lee ni escribe nada.
         run: |
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
+          if [ -n "$MCP_API_KEY" ]; then printf 'MCP_API_KEY=%s\n' "$MCP_API_KEY" > functions/.env.lactokeeper; fi
           npx --yes firebase-tools@latest deploy --only functions --project lactokeeper --non-interactive --force
+          rm -f functions/.env.lactokeeper
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
+          MCP_API_KEY: ${{ secrets.MCP_API_KEY }}
 
       - name: Desplegar a Firebase Hosting (canal live = producción)
         uses: FirebaseExtended/action-hosting-deploy@v0

@@ -1,4 +1,4 @@
-// Cloud Functions de LactoKeeper / GanaderoOS.
+// Cloud Functions de GanaderoOS.
 //
 // scanNotebook: proxy SEGURO para el escaneo de cuadernos con Gemini Vision.
 //
@@ -152,3 +152,7 @@ exports.scanNotebook = onCall(
    }
   }
 );
+
+// Conector MCP para Claude (claude.ai): lee, carga y cruza los datos de la
+// finca. Ver functions/mcp/servidor.js y docs/CONECTOR_CLAUDE.md.
+exports.mcp = require("./mcp/servidor").mcp;

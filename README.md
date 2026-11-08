@@ -1,8 +1,8 @@
-# 🐐 GanaderoOS — LactoKeeper
+# 🐐 GanaderoOS
 
 > El sistema operativo para la gestión ganadera caprina. **Offline‑first**, instalable como PWA y pensado para usarse en el campo, sin conexión, con sincronización automática a la nube.
 
-GanaderoOS (nombre del paquete: `ganadero-os`; marca pública: **LactoKeeper**) no es solo un registro de animales: es una plataforma integral que cubre todo el ciclo productivo de una finca de cabras — reproducción, producción lechera, crecimiento, sanidad, economía y simulación estratégica.
+GanaderoOS (nombre del paquete: `ganadero-os`) no es solo un registro de animales: es una plataforma integral que cubre todo el ciclo productivo de una finca de cabras — reproducción, producción lechera, crecimiento, sanidad, economía y simulación estratégica.
 
 - **Idioma:** Español (es‑VE), con terminología zootécnica venezolana (cabra, cabritona, cabrito, semental…).
 - **Filosofía:** *offline‑first*. La base local (IndexedDB vía Dexie) es la **fuente de verdad de escritura**; Firebase Firestore es la capa de respaldo y sincronización en tiempo real.
@@ -141,7 +141,7 @@ Gestión 360° del animal, desde el nacimiento hasta la baja.
 - **Centro de Alertas de Manejo:** Secado, Reproducción, Destete y Manejo (luz), agrupadas e inteligentes.
 - Importación masiva, planes de alimentación y tratamientos por lote.
 
-### 🥛 LactoKeeper — *control lechero*
+### 🥛 LactoKeeper — *módulo de control lechero de GanaderoOS*
 - **Curva de lactancia del rebaño** (la "firma genética") y distribución (campana de Gauss).
 - **Análisis diario** con clasificación individual (Pobre/Promedio/Sobresaliente), filtros por tendencia y fase de lactancia, y *scoring ponderado a DEL* que premia la persistencia.
 - **Carga de datos** manual, por sesión, o por **OCR/IA de planillas** (foto).
@@ -167,6 +167,12 @@ Gestión 360° del animal, desde el nacimiento hasta la baja.
 - **Motor de simulación** de dinámica de rebaño (población, reproducción, lactancia y economía) hasta 10 años, alimentable desde datos reales.
 - **GanaGenius — Diagnóstico:** identifica el "eslabón más débil" (sensibilidad a preñez, prolificidad, mortalidad) en *Web Worker*.
 - **GanaGenius — Optimización de linealidad:** busca la distribución de montas que minimiza la variabilidad de producción (200 simulaciones en *Web Worker*).
+
+---
+
+## 🤖 Conector de Claude
+
+GanaderoOS tiene un **conector MCP** (Cloud Function `mcp`) para que Claude lea, cargue y cruce todos los datos de la finca desde claude.ai: altas, partos, pesajes, servicios, sanidad, FAMACHA, catálogos, configuración e informes (producción, lactancias, reproducción, crecimiento, sanidad, bajas, económico, progenie) y un análisis libre por cualquier combinación de campos. Toda carga repite la lógica de la app, se puede simular antes y se puede deshacer. Puesta en marcha y detalle en [`docs/CONECTOR_CLAUDE.md`](docs/CONECTOR_CLAUDE.md).
 
 ---
 
@@ -285,6 +291,6 @@ La aplicación es funcional y los módulos comparten correctamente los datos ví
 
 <div align="center">
 
-**GanaderoOS / LactoKeeper** — gestión ganadera caprina, hecha para el campo.
+**GanaderoOS** — gestión ganadera caprina, hecha para el campo.
 
 </div>

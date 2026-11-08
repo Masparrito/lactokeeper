@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Reglas de seguridad de Firestore para LactoKeeper / GanaderoOS.
+// Reglas de seguridad de Firestore para GanaderoOS.
 //
 // Basadas EXACTAMENTE en las reglas que ya tenía la app (que funcionaban bien
 // para todo salvo un caso). El ÚNICO cambio funcional respecto al original es
@@ -17,6 +17,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function esDelConector(collection) {
+      return collection.matches('mcp_.*');
+    }
+
     // --- REGLA ESPECÍFICA PARA CONFIGURACIÓN ---
     // Un usuario lee/escribe SU propio documento de configuración (id = uid).
     match /configuracion/{userId} {
@@ -24,22 +28,27 @@ service cloud.firestore {
     }
 
     // --- REGLA GENERAL PARA OTRAS COLECCIONES ---
+    // Las colecciones mcp_* son las bitácoras del conector de Claude (copias
+    // previas para deshacer, auditoría, cuenta elegida): solo las usa el
+    // servidor (Admin SDK, que no pasa por estas reglas). Ningún cliente las
+    // lee ni las escribe. Como las reglas se SUMAN (basta que una permita), la
+    // exclusión tiene que estar dentro de la regla general, no en otra aparte.
     match /{collection}/{docId} {
 
       // Leer / actualizar: solo el dueño del documento existente.
-      allow read, update: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read, update: if request.auth != null && !esDelConector(collection) && resource.data.userId == request.auth.uid;
 
       // Borrar: el dueño, o un documento inexistente/huérfano (ver nota arriba).
-      allow delete: if request.auth != null
+      allow delete: if request.auth != null && !esDelConector(collection)
                     && (resource == null
                         || !('userId' in resource.data)
                         || resource.data.userId == request.auth.uid);
 
       // Crear: el documento entrante debe declararse propiedad del usuario.
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && !esDelConector(collection) && request.resource.data.userId == request.auth.uid;
 
       // Listar: la app siempre filtra las consultas por userId.
-      allow list: if request.auth != null;
+      allow list: if request.auth != null && !esDelConector(collection);
     }
   }
 }
