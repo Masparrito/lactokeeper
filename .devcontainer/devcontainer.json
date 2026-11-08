@@ -1,5 +1,5 @@
 {
-  "name": "LactoKeeper Codespace",
+  "name": "GanaderoOS Codespace",
   "forwardPorts": [5173],
   "portsAttributes": {
     "5173": {

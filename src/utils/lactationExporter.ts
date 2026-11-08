@@ -46,7 +46,7 @@ export const exportLactationToPDF = async (
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(20);
     doc.setTextColor(HEADING_COLOR);
-    doc.text('LactoKeeper — Curva de Lactancia', m, m + 6);
+    doc.text('GanaderoOS — Curva de Lactancia', m, m + 6);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
@@ -134,7 +134,7 @@ const esc = (v: any): string => {
 
 export const exportLactationToCSV = (data: HerdLactationResult, meta: LactationExportMeta) => {
     const lines: string[] = [];
-    lines.push('LactoKeeper - Curva de Lactancia del Rebaño');
+    lines.push('GanaderoOS - Curva de Lactancia del Rebaño');
     if (meta.farmName) lines.push(`Finca,${esc(meta.farmName)}`);
     lines.push(`Generado,${esc(nowStr())}`);
     lines.push(`Período,${esc(meta.periodLabel)}`);
@@ -211,7 +211,7 @@ function buildInteractiveHTML(payload: any): string {
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>LactoKeeper · Curva de Lactancia</title>
+<title>GanaderoOS · Curva de Lactancia</title>
 <style>
   :root{
     --bg:#f1f5f9; --surface:#ffffff; --surface2:#f8fafc; --border:#e2e8f0;
@@ -310,7 +310,7 @@ document.getElementById('sub').textContent =
   [DATA.farmName, 'Período: '+DATA.periodLabel, 'Meta: '+DATA.targetDays+' días',
    DATA.sampleSize.weighings+' pesajes · '+DATA.sampleSize.animals+' animales']
   .filter(Boolean).join('   ·   ');
-document.getElementById('foot').textContent = 'LactoKeeper · Generado el '+DATA.generatedAt+' · Archivo interactivo autocontenido';
+document.getElementById('foot').textContent = 'GanaderoOS · Generado el '+DATA.generatedAt+' · Archivo interactivo autocontenido';
 
 (function(){
   const k = DATA.kpis; const box = document.getElementById('kpis');
